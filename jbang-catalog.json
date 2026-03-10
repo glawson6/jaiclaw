@@ -1,0 +1,16 @@
+{
+  "catalogs": {},
+  "aliases": {
+    "shell": {
+      "script-ref": "io.jclaw:jclaw-shell:0.1.0",
+      "description": "JClaw interactive shell — personal AI assistant CLI",
+      "java": "21"
+    },
+    "gateway": {
+      "script-ref": "io.jclaw:jclaw-gateway-app:0.1.0",
+      "description": "JClaw gateway server — REST API + WebSocket + channel adapters",
+      "java": "21"
+    }
+  },
+  "templates": {}
+}

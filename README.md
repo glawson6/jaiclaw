@@ -4,49 +4,39 @@ Java/Spring AI personal assistant framework. Embeddable agent runtime with tool 
 
 Built on Java 21, Spring Boot 3.5, Spring AI 1.1, and Spring Shell 3.4.
 
-## Prerequisites
-
-- **Java 21** (Oracle or Eclipse Temurin)
-- **Git**
-- At least one LLM provider: [Ollama](https://ollama.com) (free, local), OpenAI, or Anthropic
-
 ## Quick Start
 
+### Option 1: Docker (easiest — just needs Docker)
+
 ```bash
-# 1. Clone
 git clone https://github.com/jclaw/jclaw.git
 cd jclaw
+./quickstart.sh
+```
 
-# 2. Set JAVA_HOME
-export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle  # adjust to your JDK path
+This builds the Docker image, starts the gateway + Ollama, and pulls a local LLM model. No Java installation needed — Docker handles everything. Test with:
 
-# 3. Build
-./mvnw install -DskipTests
+```bash
+curl -X POST http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"content": "hello"}'
+```
 
-# 4. Run the shell
-./mvnw spring-boot:run -pl jclaw-shell
+### Option 2: From Source (for developers)
 
-# 5. Run the setup wizard (inside the shell)
+```bash
+git clone https://github.com/jclaw/jclaw.git
+cd jclaw
+./setup.sh
+```
+
+The setup script installs Java 21 via SDKMAN (if needed), builds all modules, and launches the interactive shell. Run the onboarding wizard to configure your LLM provider:
+
+```bash
 jclaw> onboard
 ```
 
-The `onboard` wizard walks you through LLM provider selection, API key entry, channel configuration, and writes all config files. After it finishes:
-
-```bash
-# Source your secrets
-source ~/.jclaw/.env
-
-# Restart to pick up config
-./mvnw spring-boot:run -pl jclaw-shell
-
-# Verify
-jclaw> status
-jclaw> chat hello
-```
-
-### Without the Wizard
-
-If you prefer manual setup, pass API keys directly:
+Or skip the wizard and pass API keys directly:
 
 ```bash
 # Ollama (free, local — install with: brew install ollama && ollama serve && ollama pull llama3.2)
@@ -58,6 +48,18 @@ OPENAI_API_KEY=sk-... ./mvnw spring-boot:run -pl jclaw-shell
 # Anthropic
 ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
 ```
+
+### Option 3: JBang (coming soon)
+
+Once JClaw is published to Maven Central:
+
+```bash
+# Install JBang: curl -Ls https://sh.jbang.dev | bash
+jbang shell@jclaw     # interactive shell
+jbang gateway@jclaw   # gateway server
+```
+
+JBang auto-downloads Java 21 — zero prerequisites besides JBang itself.
 
 ## Running the Gateway (REST API + Channels)
 
@@ -202,5 +204,5 @@ Free for personal use and small organizations.
 Commercial licensing required for SaaS, enterprise use,
 or embedding in commercial products.
 
-Contact: your-email@example.com
+Contact: gregory.lawson@taptech.net
 
