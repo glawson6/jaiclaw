@@ -1,0 +1,5 @@
+io/jclaw/autoconfigure/JClawAutoConfiguration.class
+io/jclaw/autoconfigure/JClawAutoConfiguration$TelegramAutoConfiguration.class
+io/jclaw/autoconfigure/JClawAutoConfiguration$SlackAutoConfiguration.class
+io/jclaw/autoconfigure/JClawAutoConfiguration$GatewayAutoConfiguration.class
+io/jclaw/autoconfigure/JClawAutoConfiguration$DiscordAutoConfiguration.class

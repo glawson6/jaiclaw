@@ -1,0 +1,47 @@
+Copyright (c) 2026 Gregory Lawson
+
+Permission is granted to use, copy, modify, and run this software
+subject to the terms below.
+
+1. Personal Use
+Individuals may use this software for personal, educational,
+research, and non-commercial purposes without restriction.
+
+2. Small Organization Use
+Organizations with fewer than 10 employees AND less than
+$1,000,000 USD in annual revenue may use this software internally
+without payment.
+
+3. Restricted Commercial Uses
+The following uses require a separate commercial license from
+the author:
+
+- Operating this software as part of a hosted service or SaaS platform
+- Embedding this software within a commercial product or service
+- Running this software in production environments serving external customers
+- Use by organizations exceeding the limits defined in Section 2
+
+4. Redistribution
+You may redistribute copies of the software provided that:
+
+- this license is included
+- attribution to the original author is preserved
+- the software is not sold or sublicensed as a standalone product
+
+5. No Warranty
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT.
+
+6. Limitation of Liability
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+7. Commercial Licensing
+Commercial licenses and support agreements are available from
+the author. Contact the project maintainer for details.
+
+8. Future License Conversion (Optional)
+Unless otherwise stated, this software may be re-released under
+the Apache License 2.0 three years after the original release date.

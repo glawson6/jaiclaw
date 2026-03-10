@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.embabel.agent</groupId>
+  <artifactId>embabel-agent-shell</artifactId>
+  <version>0.3.4</version>
+  <name>Embabel Agent Shell</name>
+  <description>Embabel Agent Command Line</description>
+  <url>https://github.com/embabel/embabel-agent</url>
+  <organization>
+    <name>Embabel Pty Ltd</name>
+    <url>https://www.embabel.com</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <comments>Copyright 2024-2026 the Embabel Pty Ltd.
+
+                Licensed under the Apache License, Version 2.0 (the "License");
+                you may not use this file except in compliance with the License.
+                You may obtain a copy of the License at
+
+                https://www.apache.org/licenses/LICENSE-2.0
+
+                Unless required by applicable law or agreed to in writing, software
+                distributed under the License is distributed on an "AS IS" BASIS,
+                WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+                implied.
+
+                See the License for the specific language governing permissions and
+                limitations under the License.</comments>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>rjohnson</id>
+      <name>Rod Johnson</name>
+      <email>rod@embabel.com</email>
+      <organization>Embabel Pty Ltd</organization>
+      <organizationUrl>https://www.embabel.com</organizationUrl>
+      <roles>
+        <role>Founder and Project Lead</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>alexheifetz</id>
+      <name>Alex Hein-Heifetz</name>
+      <email>alex@embabel.com</email>
+      <organization>Embabel Pty Ltd</organization>
+      <organizationUrl>https://www.embabel.com</organizationUrl>
+      <roles>
+        <role>lead</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>igordayen</id>
+      <name>Igor Dayen</name>
+      <email>igor@embabel.com</email>
+      <organization>Embabel Pty Ltd</organization>
+      <organizationUrl>https://www.embabel.com</organizationUrl>
+      <roles>
+        <role>lead</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>poutsma</id>
+      <name>Arjen Poutsma</name>
+      <email>arjen@embabel.com</email>
+      <organization>Embabel Pty Ltd</organization>
+      <organizationUrl>https://www.embabel.com</organizationUrl>
+      <roles>
+        <role>lead</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>jasperblues</id>
+      <name>Jasper Blues</name>
+      <email>jasper@embabel.com</email>
+      <organization>Embabel Pty Ltd</organization>
+      <organizationUrl>https://www.embabel.com</organizationUrl>
+      <roles>
+        <role>lead</role>
+      </roles>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/embabel/embabel-agent.git</connection>
+    <developerConnection>scm:git:https://github.com/embabel/embabel-agent.git</developerConnection>
+    <tag>v0.3.4</tag>
+    <url>https://github.com/embabel/embabel-agent</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>com.embabel.agent</groupId>
+      <artifactId>embabel-agent-api</artifactId>
+      <version>0.3.4</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.shell</groupId>
+      <artifactId>spring-shell-starter</artifactId>
+      <version>3.4.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>1.10.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>26.0.2</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+</project>

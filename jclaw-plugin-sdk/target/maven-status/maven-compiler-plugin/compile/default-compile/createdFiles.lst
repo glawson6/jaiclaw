@@ -1,0 +1,9 @@
+io/jclaw/plugin/PluginRecord.class
+io/jclaw/plugin/PluginRegistry.class
+io/jclaw/plugin/PluginApi.class
+io/jclaw/plugin/HookRunner.class
+io/jclaw/plugin/PluginDiscovery.class
+io/jclaw/plugin/PluginStatus.class
+io/jclaw/plugin/PluginOrigin.class
+io/jclaw/plugin/JClawPlugin.class
+io/jclaw/plugin/PluginApiImpl.class

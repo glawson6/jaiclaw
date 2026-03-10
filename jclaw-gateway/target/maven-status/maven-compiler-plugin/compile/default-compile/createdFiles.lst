@@ -1,0 +1,8 @@
+io/jclaw/gateway/WebhookDispatcher$WebhookHandler.class
+io/jclaw/gateway/GatewayLifecycle.class
+io/jclaw/gateway/WebSocketSessionHandler.class
+io/jclaw/gateway/WebhookDispatcher.class
+io/jclaw/gateway/GatewayController.class
+io/jclaw/gateway/GatewayController$ChatResponse.class
+io/jclaw/gateway/GatewayService.class
+io/jclaw/gateway/GatewayController$ChatRequest.class

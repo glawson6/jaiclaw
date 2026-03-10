@@ -1,0 +1,10 @@
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/ToolCatalog.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/ToolRegistry.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/SpringAiToolBridge.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/AbstractBuiltinTool.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/BuiltinTools.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/FileReadTool.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/FileWriteTool.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/ShellExecTool.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/WebFetchTool.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/WebSearchTool.java

@@ -1,0 +1,28 @@
+{
+  "groups": [
+    {
+      "name": "embabel.agent.shell",
+      "type": "com.embabel.agent.shell.config.ShellProperties",
+      "sourceType": "com.embabel.agent.shell.config.ShellProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "embabel.agent.shell.line-length",
+      "type": "java.lang.Integer",
+      "sourceType": "com.embabel.agent.shell.config.ShellProperties",
+      "defaultValue": 140
+    },
+    {
+      "name": "embabel.agent.shell.redirect-log-to-file",
+      "type": "java.lang.Boolean",
+      "description": "If this is true we redirect all log output to a file when the user chats",
+      "sourceType": "com.embabel.agent.shell.config.ShellProperties",
+      "defaultValue": false
+    }
+  ],
+  "hints": [],
+  "ignored": {
+    "properties": []
+  }
+}

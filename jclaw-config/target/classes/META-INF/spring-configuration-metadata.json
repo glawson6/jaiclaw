@@ -1,0 +1,55 @@
+{
+  "groups": [
+    {
+      "name": "jclaw",
+      "type": "io.jclaw.config.JClawProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "jclaw.agent",
+      "type": "io.jclaw.config.AgentProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.identity",
+      "type": "io.jclaw.config.IdentityProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.memory",
+      "type": "io.jclaw.config.MemoryProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.models",
+      "type": "io.jclaw.config.ModelsProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.plugins",
+      "type": "io.jclaw.config.PluginsProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.session",
+      "type": "io.jclaw.config.SessionProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.skills",
+      "type": "io.jclaw.config.SkillsProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    },
+    {
+      "name": "jclaw.tools",
+      "type": "io.jclaw.config.ToolsProperties",
+      "sourceType": "io.jclaw.config.JClawProperties"
+    }
+  ],
+  "hints": [],
+  "ignored": {
+    "properties": []
+  }
+}

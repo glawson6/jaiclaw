@@ -1,0 +1,11 @@
+io/jclaw/tools/bridge/SpringAiToolBridge$1.class
+io/jclaw/tools/bridge/SpringAiToolBridge.class
+io/jclaw/tools/builtin/WebSearchTool.class
+io/jclaw/tools/builtin/FileWriteTool.class
+io/jclaw/tools/builtin/AbstractBuiltinTool.class
+io/jclaw/tools/builtin/BuiltinTools.class
+io/jclaw/tools/builtin/WebFetchTool.class
+io/jclaw/tools/builtin/FileReadTool.class
+io/jclaw/tools/ToolCatalog.class
+io/jclaw/tools/ToolRegistry.class
+io/jclaw/tools/builtin/ShellExecTool.class

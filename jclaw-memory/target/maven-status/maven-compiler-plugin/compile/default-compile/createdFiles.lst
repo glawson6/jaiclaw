@@ -1,0 +1,7 @@
+io/jclaw/memory/MemorySearchResult.class
+io/jclaw/memory/MemorySource.class
+io/jclaw/memory/InMemorySearchManager$MemoryEntry.class
+io/jclaw/memory/InMemorySearchManager.class
+io/jclaw/memory/VectorStoreSearchManager.class
+io/jclaw/memory/MemorySearchOptions.class
+io/jclaw/memory/MemorySearchManager.class

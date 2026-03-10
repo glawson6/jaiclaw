@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: io.jclaw.skills.SkillLoaderSpec
+-------------------------------------------------------------------------------
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.135 s -- in io.jclaw.skills.SkillLoaderSpec
