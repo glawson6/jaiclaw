@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: io.jclaw.channel.telegram.TelegramAdapterSpec
 -------------------------------------------------------------------------------
-Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.356 s -- in io.jclaw.channel.telegram.TelegramAdapterSpec
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.339 s -- in io.jclaw.channel.telegram.TelegramAdapterSpec

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -149,7 +150,7 @@ public class TelegramAdapter implements ChannelAdapter {
         String url = TELEGRAM_API_BASE + config.botToken() + "/getUpdates"
                 + "?offset=" + pollingOffset.get()
                 + "&timeout=" + config.pollingTimeoutSeconds()
-                + "&allowed_updates=[\"message\"]";
+                + "&allowed_updates=%5B%22message%22%5D";
 
         try {
             var response = restTemplate.getForEntity(url, JsonNode.class);
@@ -177,12 +178,8 @@ public class TelegramAdapter implements ChannelAdapter {
 
     private void processUpdate(JsonNode update) {
         JsonNode messageNode = update.path("message");
+        if (messageNode.isMissingNode()) return;
 
-        if (messageNode.isMissingNode() || !messageNode.has("text")) {
-            return;
-        }
-
-        String text = messageNode.path("text").asText();
         String chatId = String.valueOf(messageNode.path("chat").path("id").asLong());
         String updateId = String.valueOf(update.path("update_id").asLong());
 
@@ -192,11 +189,120 @@ public class TelegramAdapter implements ChannelAdapter {
                 "message_id", messageNode.path("message_id").asLong()
         );
 
+        // Extract text (may accompany a document as caption)
+        String text = messageNode.has("text") ? messageNode.path("text").asText()
+                : messageNode.has("caption") ? messageNode.path("caption").asText("")
+                : "";
+
+        // Extract file attachments (document, photo, video, audio, voice)
+        List<ChannelMessage.Attachment> attachments = extractAttachments(messageNode);
+
+        // Skip if no text and no attachments
+        if (text.isEmpty() && attachments.isEmpty()) return;
+
         var channelMessage = ChannelMessage.inbound(
-                updateId, "telegram", config.botToken(), chatId, text, platformData);
+                updateId, "telegram", config.botToken(), chatId, text, attachments, platformData);
 
         if (handler != null) {
             handler.onMessage(channelMessage);
+        }
+    }
+
+    /**
+     * Extract file attachments from a Telegram message node.
+     * Supports document, photo, video, audio, and voice message types.
+     */
+    List<ChannelMessage.Attachment> extractAttachments(JsonNode messageNode) {
+        List<ChannelMessage.Attachment> attachments = new java.util.ArrayList<>();
+
+        // Document (PDF, DOCX, etc.)
+        if (messageNode.has("document")) {
+            JsonNode doc = messageNode.path("document");
+            String fileId = doc.path("file_id").asText();
+            String fileName = doc.has("file_name") ? doc.path("file_name").asText() : "document";
+            String mimeType = doc.has("mime_type") ? doc.path("mime_type").asText() : "application/octet-stream";
+            byte[] data = downloadFile(fileId);
+            if (data != null) {
+                attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+            }
+        }
+
+        // Photo — Telegram sends multiple sizes; pick the largest (last in array)
+        if (messageNode.has("photo") && messageNode.path("photo").isArray()) {
+            JsonNode photos = messageNode.path("photo");
+            JsonNode largest = photos.get(photos.size() - 1);
+            String fileId = largest.path("file_id").asText();
+            byte[] data = downloadFile(fileId);
+            if (data != null) {
+                attachments.add(new ChannelMessage.Attachment("photo.jpg", "image/jpeg", null, data));
+            }
+        }
+
+        // Video
+        if (messageNode.has("video")) {
+            JsonNode video = messageNode.path("video");
+            String fileId = video.path("file_id").asText();
+            String mimeType = video.has("mime_type") ? video.path("mime_type").asText() : "video/mp4";
+            byte[] data = downloadFile(fileId);
+            if (data != null) {
+                attachments.add(new ChannelMessage.Attachment("video.mp4", mimeType, null, data));
+            }
+        }
+
+        // Audio
+        if (messageNode.has("audio")) {
+            JsonNode audio = messageNode.path("audio");
+            String fileId = audio.path("file_id").asText();
+            String fileName = audio.has("file_name") ? audio.path("file_name").asText() : "audio.mp3";
+            String mimeType = audio.has("mime_type") ? audio.path("mime_type").asText() : "audio/mpeg";
+            byte[] data = downloadFile(fileId);
+            if (data != null) {
+                attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+            }
+        }
+
+        // Voice message
+        if (messageNode.has("voice")) {
+            JsonNode voice = messageNode.path("voice");
+            String fileId = voice.path("file_id").asText();
+            String mimeType = voice.has("mime_type") ? voice.path("mime_type").asText() : "audio/ogg";
+            byte[] data = downloadFile(fileId);
+            if (data != null) {
+                attachments.add(new ChannelMessage.Attachment("voice.ogg", mimeType, null, data));
+            }
+        }
+
+        return attachments.isEmpty() ? List.of() : List.copyOf(attachments);
+    }
+
+    /**
+     * Download a file from Telegram's servers using the Bot API getFile + file download.
+     * Returns null if download fails.
+     */
+    byte[] downloadFile(String fileId) {
+        try {
+            // Step 1: Get file path via getFile API
+            String getFileUrl = TELEGRAM_API_BASE + config.botToken() + "/getFile?file_id=" + fileId;
+            var fileResponse = restTemplate.getForEntity(getFileUrl, JsonNode.class);
+
+            if (!fileResponse.getStatusCode().is2xxSuccessful() || fileResponse.getBody() == null) {
+                log.warn("Failed to get file info for fileId={}", fileId);
+                return null;
+            }
+
+            String filePath = fileResponse.getBody().path("result").path("file_path").asText();
+            if (filePath.isEmpty()) {
+                log.warn("Empty file_path for fileId={}", fileId);
+                return null;
+            }
+
+            // Step 2: Download the file bytes
+            String downloadUrl = "https://api.telegram.org/file/bot" + config.botToken() + "/" + filePath;
+            byte[] bytes = restTemplate.getForObject(downloadUrl, byte[].class);
+            return bytes;
+        } catch (Exception e) {
+            log.warn("Failed to download Telegram file fileId={}: {}", fileId, e.getMessage());
+            return null;
         }
     }
 

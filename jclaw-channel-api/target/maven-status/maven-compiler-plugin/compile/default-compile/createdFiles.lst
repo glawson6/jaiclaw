@@ -5,5 +5,8 @@ io/jclaw/channel/ChannelMessage$Direction.class
 io/jclaw/channel/ChannelAdapter.class
 io/jclaw/channel/ChannelMessageHandler.class
 io/jclaw/channel/DeliveryResult.class
+io/jclaw/channel/AttachmentPayload.class
 io/jclaw/channel/ChannelMessage$Attachment.class
+io/jclaw/channel/AttachmentHandler.class
+io/jclaw/channel/AttachmentType.class
 io/jclaw/channel/ChannelRegistry.class

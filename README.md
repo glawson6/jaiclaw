@@ -1,6 +1,6 @@
 # JClaw
 
-Java/Spring AI personal assistant framework. Embeddable agent runtime with tool execution, skills, plugins, memory, and multi-channel messaging (Telegram, Slack, Discord).
+Java/Spring AI personal assistant framework. Embeddable agent runtime with tool execution, skills, plugins, memory, and multi-channel messaging (Telegram, Slack, Discord, Email, SMS).
 
 Built on Java 21, Spring Boot 3.5, Spring AI 1.1, and Spring Shell 3.4.
 
@@ -86,6 +86,8 @@ All messaging channels support a **local dev mode** that requires no public endp
 | Telegram | Long polling        | ~2 min     |
 | Slack    | Socket Mode         | ~5 min     |
 | Discord  | Gateway WebSocket   | ~5 min     |
+| Email    | IMAP polling        | ~3 min     |
+| SMS      | Twilio webhook      | ~5 min     |
 
 ```bash
 # Telegram (polling mode — no webhook needed)
@@ -102,6 +104,21 @@ OPENAI_API_KEY=sk-... \
 # Discord (Gateway mode — no webhook needed)
 DISCORD_BOT_TOKEN=... \
 DISCORD_USE_GATEWAY=true \
+OPENAI_API_KEY=sk-... \
+./mvnw spring-boot:run -pl jclaw-gateway-app
+
+# Email (IMAP polling + SMTP outbound)
+EMAIL_IMAP_HOST=imap.gmail.com \
+EMAIL_SMTP_HOST=smtp.gmail.com \
+EMAIL_USERNAME=you@gmail.com \
+EMAIL_PASSWORD=app-password \
+OPENAI_API_KEY=sk-... \
+./mvnw spring-boot:run -pl jclaw-gateway-app
+
+# SMS (Twilio)
+TWILIO_ACCOUNT_SID=AC... \
+TWILIO_AUTH_TOKEN=... \
+TWILIO_FROM_NUMBER=+15551234567 \
 OPENAI_API_KEY=sk-... \
 ./mvnw spring-boot:run -pl jclaw-gateway-app
 ```
@@ -158,18 +175,24 @@ JCLAW_HOME=~/.jclaw-staging SERVER_PORT=8081 ./mvnw spring-boot:run -pl jclaw-ga
 
 ```
 jclaw-core              Pure Java domain model (no Spring dependency)
-jclaw-channel-api       ChannelAdapter SPI for messaging platforms
+jclaw-channel-api       ChannelAdapter SPI, attachments, channel registry
 jclaw-config            @ConfigurationProperties records
-jclaw-tools             Tool registry + 5 built-in tools + Spring AI bridge
+jclaw-tools             Tool registry + built-in tools + Spring AI bridge + Embabel bridge
 jclaw-agent             Agent runtime, session management, prompt building
-jclaw-skills            Skill loader + 5 bundled skills
+jclaw-skills            Skill loader + versioning + tenant-aware registry
 jclaw-plugin-sdk        Plugin SPI, hooks, discovery
 jclaw-memory            Memory search (in-memory + vector store)
-jclaw-gateway           REST + WebSocket + webhook gateway (library)
-jclaw-channel-telegram  Telegram adapter (polling + webhook)
+jclaw-security          JWT auth, tenant resolution, SecurityContext
+jclaw-documents         Document parsing (PDF, HTML, text) + chunking pipeline
+jclaw-gateway           REST + WebSocket + webhook + MCP + observability (library)
+jclaw-channel-telegram  Telegram adapter (polling + webhook + file attachments)
 jclaw-channel-slack     Slack adapter (Socket Mode + Events API)
 jclaw-channel-discord   Discord adapter (Gateway + Interactions)
-jclaw-spring-boot-starter  Auto-configuration
+jclaw-channel-email     Email adapter (IMAP polling + SMTP + MIME attachments)
+jclaw-channel-sms       SMS/MMS adapter (Twilio REST API + webhook)
+jclaw-media             Async media analysis SPI (vision/audio LLM pipeline)
+jclaw-audit             Audit logging SPI + in-memory implementation
+jclaw-spring-boot-starter  Auto-configuration for all modules
 jclaw-gateway-app       Standalone gateway server (runnable)
 jclaw-shell             Spring Shell CLI (runnable)
 ```

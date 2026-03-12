@@ -1,5 +1,6 @@
 package io.jclaw.gateway;
 
+import io.jclaw.core.tenant.TenantContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,9 @@ import java.util.Map;
  *   <li>GET /api/channels — list registered channels</li>
  *   <li>GET /api/health — gateway health check</li>
  * </ul>
+ * <p>
+ * Tenant context is resolved from request headers (JWT) and set on
+ * {@link TenantContextHolder} before agent execution.
  */
 @RestController
 public class GatewayController {
@@ -33,14 +37,24 @@ public class GatewayController {
      * Synchronous chat endpoint — send a message and receive the agent's response.
      */
     @PostMapping("/api/chat")
-    public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
-        var response = gatewayService.handleSync(
-                request.channelId() != null ? request.channelId() : "api",
-                request.accountId() != null ? request.accountId() : "default",
-                request.peerId() != null ? request.peerId() : "user",
-                request.content());
+    public ResponseEntity<ChatResponse> chat(
+            @RequestBody ChatRequest request,
+            @RequestHeader Map<String, String> headers) {
 
-        return ResponseEntity.ok(new ChatResponse(response.id(), response.content()));
+        // Resolve and set tenant context from request headers
+        gatewayService.resolveTenant(headers).ifPresent(TenantContextHolder::set);
+
+        try {
+            var response = gatewayService.handleSync(
+                    request.channelId() != null ? request.channelId() : "api",
+                    request.accountId() != null ? request.accountId() : "default",
+                    request.peerId() != null ? request.peerId() : "user",
+                    request.content());
+
+            return ResponseEntity.ok(new ChatResponse(response.id(), response.content()));
+        } finally {
+            TenantContextHolder.clear();
+        }
     }
 
     /**

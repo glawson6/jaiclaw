@@ -3,3 +3,13 @@
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/GatewayService.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/WebSocketSessionHandler.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/WebhookDispatcher.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/attachment/AttachmentRouter.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/attachment/LoggingAttachmentRouter.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/mcp/McpController.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/mcp/McpServerRegistry.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/observability/GatewayHealthIndicator.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/observability/GatewayMetrics.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/tenant/BotTokenTenantResolver.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/tenant/CompositeTenantResolver.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/tenant/JwtTenantResolver.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-gateway/src/main/java/io/jclaw/gateway/tenant/TenantResolver.java

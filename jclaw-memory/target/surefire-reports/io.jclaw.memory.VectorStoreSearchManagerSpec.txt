@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: io.jclaw.memory.VectorStoreSearchManagerSpec
 -------------------------------------------------------------------------------
-Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.144 s -- in io.jclaw.memory.VectorStoreSearchManagerSpec
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.195 s -- in io.jclaw.memory.VectorStoreSearchManagerSpec

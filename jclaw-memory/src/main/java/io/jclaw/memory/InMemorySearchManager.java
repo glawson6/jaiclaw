@@ -1,5 +1,6 @@
 package io.jclaw.memory;
 
+import io.jclaw.core.tenant.TenantContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Simple in-memory implementation of MemorySearchManager using keyword matching.
  * Used as a fallback when no VectorStore is configured.
+ * All operations are partitioned by the current tenant via {@link TenantContextHolder}.
  */
 public class InMemorySearchManager implements MemorySearchManager {
 
@@ -17,19 +19,35 @@ public class InMemorySearchManager implements MemorySearchManager {
     private final List<MemoryEntry> entries = new CopyOnWriteArrayList<>();
 
     public void addEntry(String path, String content, MemorySource source) {
-        entries.add(new MemoryEntry(path, content, source));
+        String tenantId = resolveTenantId();
+        entries.add(new MemoryEntry(path, content, source, tenantId));
     }
 
     public void addEntry(String path, String content) {
         addEntry(path, content, MemorySource.MEMORY);
     }
 
+    /**
+     * Clear entries for the current tenant only. If no tenant context is set, clears all.
+     */
     public void clear() {
-        entries.clear();
+        String tenantId = resolveTenantId();
+        if (tenantId == null) {
+            entries.clear();
+        } else {
+            entries.removeIf(e -> tenantId.equals(e.tenantId()));
+        }
     }
 
+    /**
+     * Count entries for the current tenant. If no tenant context, counts all.
+     */
     public int size() {
-        return entries.size();
+        String tenantId = resolveTenantId();
+        if (tenantId == null) {
+            return entries.size();
+        }
+        return (int) entries.stream().filter(e -> tenantId.equals(e.tenantId())).count();
     }
 
     @Override
@@ -38,14 +56,21 @@ public class InMemorySearchManager implements MemorySearchManager {
 
         String lowerQuery = query.toLowerCase();
         String[] queryTerms = lowerQuery.split("\\s+");
+        String tenantId = resolveTenantId();
 
         return entries.stream()
+                .filter(e -> matchesTenant(e, tenantId))
                 .map(entry -> scoreEntry(entry, queryTerms))
                 .filter(Objects::nonNull)
                 .filter(r -> r.score() >= options.minScore())
                 .sorted(Comparator.comparingDouble(MemorySearchResult::score).reversed())
                 .limit(options.maxResults())
                 .toList();
+    }
+
+    private boolean matchesTenant(MemoryEntry entry, String tenantId) {
+        if (tenantId == null) return true;
+        return tenantId.equals(entry.tenantId());
     }
 
     private MemorySearchResult scoreEntry(MemoryEntry entry, String[] queryTerms) {
@@ -74,5 +99,10 @@ public class InMemorySearchManager implements MemorySearchManager {
         return (start > 0 ? "..." : "") + content.substring(start, end) + (end < content.length() ? "..." : "");
     }
 
-    record MemoryEntry(String path, String content, MemorySource source) {}
+    private String resolveTenantId() {
+        var ctx = TenantContextHolder.get();
+        return ctx != null ? ctx.getTenantId() : null;
+    }
+
+    record MemoryEntry(String path, String content, MemorySource source, String tenantId) {}
 }

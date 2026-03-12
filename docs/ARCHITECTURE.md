@@ -2,7 +2,7 @@
 
 ## Overview
 
-JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, etc.), a plugin system, tool execution, skills, and memory.
+JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, Email, SMS), a plugin system, tool execution, skills, memory, document processing, audit logging, and MCP server hosting.
 
 ---
 
@@ -11,20 +11,28 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 ```
 jclaw-core  (pure Java — NO Spring dependency)
   |
-  +---> jclaw-channel-api  (ChannelAdapter SPI, ChannelMessage — NO Spring)
+  +---> jclaw-channel-api  (ChannelAdapter SPI, ChannelMessage, attachments)
   |       |
-  |       +---> jclaw-channel-telegram
-  |       +---> jclaw-channel-slack
-  |       +---> jclaw-channel-discord
+  |       +---> jclaw-channel-telegram  (Bot API polling + webhook + file downloads)
+  |       +---> jclaw-channel-slack     (Socket Mode + Events API)
+  |       +---> jclaw-channel-discord   (Gateway WebSocket + Interactions)
+  |       +---> jclaw-channel-email     (IMAP polling + SMTP + MIME attachments)
+  |       +---> jclaw-channel-sms       (Twilio REST API + webhook + MMS)
   |
-  +---> jclaw-tools  (ToolRegistry, built-in tools, SpringAiToolBridge)
+  +---> jclaw-tools  (ToolRegistry, built-in tools, SpringAiToolBridge, Embabel bridge)
   |       |
   |       +---> jclaw-agent  (AgentRuntime, SessionManager, SystemPromptBuilder)
   |
-  +---> jclaw-skills  (SkillLoader, SkillMarkdownParser, SkillPromptBuilder)
+  +---> jclaw-skills  (SkillLoader, versioning, TenantSkillRegistry)
   +---> jclaw-plugin-sdk  (JClawPlugin SPI, PluginApi, HookRunner, PluginDiscovery)
-  +---> jclaw-memory  (MemorySearchManager SPI, InMemorySearchManager)
+  +---> jclaw-memory  (MemorySearchManager SPI, InMemorySearchManager, VectorStore)
+  +---> jclaw-security  (JWT auth, TenantResolver, SecurityContext)
+  +---> jclaw-documents  (PDF/HTML/text parsing, chunking pipeline)
+  +---> jclaw-media  (async media analysis SPI, CompositeMediaAnalyzer)
+  +---> jclaw-audit  (AuditEvent, AuditLogger SPI, InMemoryAuditLogger)
   +---> jclaw-config  (@ConfigurationProperties records)
+          |
+          +---> jclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
           |
           +---> jclaw-spring-boot-starter  (auto-configuration wiring)
           |       |
@@ -71,13 +79,13 @@ One JVM runs everything. The Spring Shell CLI is the user interface.
 Two deployments: **gateway** (handles all channel I/O) and **app** (handles AI/tool execution). Both are stateless and horizontally scalable. Redis provides shared session state.
 
 ```
-                    EXTERNAL CHANNELS
-    ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │ Telegram │ │  Slack   │ │ Discord  │ │  Web UI  │
-    │ webhook  │ │  events  │ │ gateway  │ │    WS    │
-    └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-         │            │            │             │
-         ▼            ▼            ▼             ▼
+                           EXTERNAL CHANNELS
+    ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+    │ Telegram │ │  Slack   │ │ Discord  │ │  Email   │ │   SMS    │ │  Web UI  │
+    │ webhook  │ │  events  │ │ gateway  │ │   IMAP   │ │  Twilio  │ │    WS    │
+    └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
+         │            │            │             │            │             │
+         ▼            ▼            ▼             ▼            ▼             ▼
     ┌────────────────────────────────────────────────────┐
     │              JCLAW GATEWAY (Deployment)            │
     │              Replicas: 2+, stateless               │
@@ -85,7 +93,7 @@ Two deployments: **gateway** (handles all channel I/O) and **app** (handles AI/t
     │  ┌──────────────────────────────────────────────┐  │
     │  │          Channel Adapter Layer                │  │
     │  │                                              │  │
-    │  │  TelegramAdapter  SlackAdapter  DiscordAdapter│  │
+    │  │  Telegram  Slack  Discord  Email  SMS Adapters│  │
     │  │                                              │  │
     │  │  Each adapter:                               │  │
     │  │  - Receives platform-native inbound message  │  │
@@ -163,8 +171,11 @@ Adapters are discovered via Spring component scanning and registered in a `Chann
 | Telegram  | **Polling** (local) or Webhook (prod)            | Bot API `sendMessage`    | Bot token      | `jclaw-channel-telegram`  |
 | Slack     | **Socket Mode** (local) or Events API (prod)     | `chat.postMessage`       | Bot + app token| `jclaw-channel-slack`     |
 | Discord   | **Gateway WebSocket** (local) or Webhook (prod)  | REST `channels/{id}/msg` | Bot token      | `jclaw-channel-discord`   |
+| Email     | **IMAP polling** (configurable interval)         | SMTP `Transport.send`    | Username/pass  | `jclaw-channel-email`     |
+| SMS       | **Twilio webhook** POST                          | Twilio Messages API      | Account SID    | `jclaw-channel-sms`       |
 | Web UI    | WebSocket `/ws/session/{id}`                     | WebSocket                | JWT / session  | `jclaw-gateway` (built-in)|
 | REST API  | `POST /api/chat`                                 | JSON response            | None (dev)     | `jclaw-gateway` (built-in)|
+| MCP       | `POST /mcp/{server}/tools/{tool}`                | JSON response            | JWT / headers  | `jclaw-gateway` (built-in)|
 
 **Dual-mode adapters**: All three messaging adapters support a local-dev mode that requires no public endpoint:
 - **Telegram**: `webhookUrl` blank → long polling via `getUpdates`
@@ -314,18 +325,28 @@ env:
 |----------------------------------|--------------|------------------------------|
 | Core domain model                | Done         | `jclaw-core`                 |
 | Agent runtime + sessions         | Done         | `jclaw-agent`                |
-| Tool system + 5 built-in tools   | Done         | `jclaw-tools`                |
-| Skills system                    | Done         | `jclaw-skills`               |
+| Tool system + built-in tools     | Done         | `jclaw-tools`                |
+| Embabel orchestration bridge     | Done         | `jclaw-tools` (bridge/embabel) |
+| Skills system + versioning       | Done         | `jclaw-skills`               |
+| Tenant-aware skill registry      | Done         | `jclaw-skills`               |
 | Plugin system + hooks            | Done         | `jclaw-plugin-sdk`           |
-| Memory search (in-memory)        | Done         | `jclaw-memory`               |
+| Memory search (in-memory + vector)| Done        | `jclaw-memory`               |
+| Multi-tenancy + JWT auth         | Done         | `jclaw-core` + `jclaw-security` |
+| Document parsing + chunking      | Done         | `jclaw-documents`            |
+| Media analysis SPI               | Done         | `jclaw-media`                |
+| Audit logging SPI                | Done         | `jclaw-audit`                |
 | Auto-configuration               | Done         | `jclaw-spring-boot-starter`  |
 | Spring Shell CLI                 | Done         | `jclaw-shell`                |
 | Interactive onboarding wizard    | Done         | `jclaw-shell`                |
-| Channel adapter SPI              | Done         | `jclaw-channel-api`          |
+| Channel adapter SPI + attachments| Done         | `jclaw-channel-api`          |
 | Gateway (REST + WS + webhooks)   | Done         | `jclaw-gateway`              |
+| MCP server hosting               | Done         | `jclaw-gateway` (mcp/)       |
+| Observability (metrics + health) | Done         | `jclaw-gateway` (observability/) |
 | Telegram adapter (poll + webhook)| Done         | `jclaw-channel-telegram`     |
 | Slack adapter                    | Done         | `jclaw-channel-slack`        |
 | Discord adapter                  | Done         | `jclaw-channel-discord`      |
+| Email adapter (IMAP + SMTP)      | Done         | `jclaw-channel-email`        |
+| SMS adapter (Twilio)             | Done         | `jclaw-channel-sms`          |
 | Standalone gateway app           | Done         | `jclaw-gateway-app`          |
 | Docker image build (JKube)       | Done         | `-Pk8s` profile in POMs      |
 | **Helm chart**                   | **Needed**   | `helm/spring-boot-app/`      |
@@ -356,6 +377,18 @@ jclaw:
     discord:
       enabled: true
       bot-token: ${DISCORD_BOT_TOKEN}
+    email:
+      enabled: ${EMAIL_USERNAME:false}
+      provider: imap
+      host: ${EMAIL_IMAP_HOST:}
+      smtp-host: ${EMAIL_SMTP_HOST:}
+      username: ${EMAIL_USERNAME:}
+      password: ${EMAIL_PASSWORD:}
+    sms:
+      enabled: ${TWILIO_ACCOUNT_SID:false}
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
 
 spring:
   ai:

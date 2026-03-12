@@ -111,16 +111,43 @@ public class JClawAutoConfiguration {
         }
 
         @Bean
+        @ConditionalOnMissingBean(io.jclaw.gateway.tenant.TenantResolver.class)
+        public io.jclaw.gateway.tenant.CompositeTenantResolver compositeTenantResolver(
+                List<io.jclaw.gateway.tenant.TenantResolver> resolvers) {
+            return new io.jclaw.gateway.tenant.CompositeTenantResolver(resolvers);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "jwtTenantResolver")
+        public io.jclaw.gateway.tenant.JwtTenantResolver jwtTenantResolver() {
+            return new io.jclaw.gateway.tenant.JwtTenantResolver();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "botTokenTenantResolver")
+        public io.jclaw.gateway.tenant.BotTokenTenantResolver botTokenTenantResolver() {
+            return new io.jclaw.gateway.tenant.BotTokenTenantResolver();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jclaw.gateway.attachment.AttachmentRouter.class)
+        public io.jclaw.gateway.attachment.LoggingAttachmentRouter loggingAttachmentRouter() {
+            return new io.jclaw.gateway.attachment.LoggingAttachmentRouter();
+        }
+
+        @Bean
         @ConditionalOnMissingBean
         @ConditionalOnBean(AgentRuntime.class)
         public io.jclaw.gateway.GatewayService gatewayService(
                 AgentRuntime agentRuntime,
                 SessionManager sessionManager,
                 ChannelRegistry channelRegistry,
-                JClawProperties properties) {
+                JClawProperties properties,
+                io.jclaw.gateway.tenant.CompositeTenantResolver tenantResolver,
+                io.jclaw.gateway.attachment.AttachmentRouter attachmentRouter) {
             return new io.jclaw.gateway.GatewayService(
                     agentRuntime, sessionManager, channelRegistry,
-                    properties.agent().defaultAgent());
+                    properties.agent().defaultAgent(), tenantResolver, attachmentRouter);
         }
 
         @Bean
@@ -147,6 +174,110 @@ public class JClawAutoConfiguration {
                 io.jclaw.gateway.GatewayService gatewayService) {
             return new io.jclaw.gateway.WebSocketSessionHandler(gatewayService);
         }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jclaw.gateway.mcp.McpServerRegistry mcpServerRegistry(
+                List<io.jclaw.core.mcp.McpToolProvider> providers) {
+            return new io.jclaw.gateway.mcp.McpServerRegistry(providers);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnBean(io.jclaw.gateway.mcp.McpServerRegistry.class)
+        public io.jclaw.gateway.mcp.McpController mcpController(
+                io.jclaw.gateway.mcp.McpServerRegistry registry,
+                io.jclaw.gateway.tenant.CompositeTenantResolver tenantResolver) {
+            return new io.jclaw.gateway.mcp.McpController(registry, tenantResolver);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jclaw.gateway.observability.GatewayMetrics gatewayMetrics() {
+            return new io.jclaw.gateway.observability.GatewayMetrics();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jclaw.gateway.observability.GatewayHealthIndicator gatewayHealthIndicator(
+                ChannelRegistry channelRegistry,
+                io.jclaw.gateway.observability.GatewayMetrics metrics) {
+            return new io.jclaw.gateway.observability.GatewayHealthIndicator(channelRegistry, metrics);
+        }
+    }
+
+    /**
+     * Email adapter auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jclaw.channel.email.EmailAdapter")
+    static class EmailAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jclaw.channel.email.EmailAdapter emailAdapter() {
+            var config = new io.jclaw.channel.email.EmailConfig(
+                    System.getenv("EMAIL_PROVIDER"),
+                    System.getenv("EMAIL_IMAP_HOST"),
+                    parseIntEnv("EMAIL_IMAP_PORT", 993),
+                    System.getenv("EMAIL_SMTP_HOST"),
+                    parseIntEnv("EMAIL_SMTP_PORT", 587),
+                    System.getenv("EMAIL_USERNAME"),
+                    System.getenv("EMAIL_PASSWORD"),
+                    System.getenv("EMAIL_USERNAME") != null,
+                    parseIntEnv("EMAIL_POLL_INTERVAL", 60),
+                    null);
+            return new io.jclaw.channel.email.EmailAdapter(config);
+        }
+
+        private static int parseIntEnv(String key, int defaultValue) {
+            String val = System.getenv(key);
+            if (val == null || val.isBlank()) return defaultValue;
+            try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultValue; }
+        }
+    }
+
+    /**
+     * SMS adapter auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jclaw.channel.sms.SmsAdapter")
+    static class SmsAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jclaw.channel.sms.SmsAdapter smsAdapter() {
+            var config = new io.jclaw.channel.sms.SmsConfig(
+                    System.getenv("TWILIO_ACCOUNT_SID"),
+                    System.getenv("TWILIO_AUTH_TOKEN"),
+                    System.getenv("TWILIO_FROM_NUMBER"),
+                    null,
+                    System.getenv("TWILIO_ACCOUNT_SID") != null);
+            return new io.jclaw.channel.sms.SmsAdapter(config);
+        }
+    }
+
+    /**
+     * Audit auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jclaw.audit.AuditLogger")
+    static class AuditAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(type = "io.jclaw.audit.AuditLogger")
+        public io.jclaw.audit.InMemoryAuditLogger inMemoryAuditLogger() {
+            return new io.jclaw.audit.InMemoryAuditLogger();
+        }
+    }
+
+    /**
+     * Orchestration port auto-configuration.
+     */
+    @Bean
+    @ConditionalOnMissingBean(type = "io.jclaw.tools.bridge.embabel.AgentOrchestrationPort")
+    public io.jclaw.tools.bridge.embabel.NoOpOrchestrationPort noOpOrchestrationPort() {
+        return new io.jclaw.tools.bridge.embabel.NoOpOrchestrationPort();
     }
 
     /**

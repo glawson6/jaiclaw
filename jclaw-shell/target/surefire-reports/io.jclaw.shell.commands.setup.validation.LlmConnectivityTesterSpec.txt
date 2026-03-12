@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: io.jclaw.shell.commands.setup.validation.LlmConnectivityTesterSpec
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.099 s -- in io.jclaw.shell.commands.setup.validation.LlmConnectivityTesterSpec
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.096 s -- in io.jclaw.shell.commands.setup.validation.LlmConnectivityTesterSpec

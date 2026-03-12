@@ -1,6 +1,9 @@
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/hook/HookHandler.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/hook/HookName.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/hook/HookRegistration.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/mcp/McpToolDefinition.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/mcp/McpToolProvider.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/mcp/McpToolResult.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/model/AgentIdentity.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/model/AssistantMessage.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/model/Message.java
@@ -15,6 +18,9 @@
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/plugin/PluginLifecycle.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/skill/SkillDefinition.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/skill/SkillMetadata.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tenant/DefaultTenantContext.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tenant/TenantContext.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tenant/TenantContextHolder.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tool/ToolCallback.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tool/ToolContext.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-core/src/main/java/io/jclaw/core/tool/ToolDefinition.java

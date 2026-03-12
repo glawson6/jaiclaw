@@ -34,6 +34,12 @@
         <module>jclaw-channel-telegram</module>
         <module>jclaw-channel-slack</module>
         <module>jclaw-channel-discord</module>
+        <module>jclaw-documents</module>
+        <module>jclaw-security</module>
+        <module>jclaw-channel-email</module>
+        <module>jclaw-channel-sms</module>
+        <module>jclaw-media</module>
+        <module>jclaw-audit</module>
         <module>jclaw-spring-boot-starter</module>
         <module>jclaw-gateway-app</module>
         <module>jclaw-shell</module>
@@ -123,6 +129,36 @@
             <dependency>
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-channel-discord</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-documents</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-channel-email</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-channel-sms</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-media</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-audit</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

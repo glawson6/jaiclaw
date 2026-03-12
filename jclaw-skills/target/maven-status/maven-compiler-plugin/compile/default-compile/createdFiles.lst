@@ -2,3 +2,4 @@ io/jclaw/skills/SkillLoader.class
 io/jclaw/skills/SkillPromptBuilder.class
 io/jclaw/skills/SkillEligibilityChecker.class
 io/jclaw/skills/SkillMarkdownParser.class
+io/jclaw/skills/TenantSkillRegistry.class

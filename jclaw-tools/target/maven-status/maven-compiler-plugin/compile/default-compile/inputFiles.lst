@@ -1,6 +1,10 @@
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/ToolCatalog.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/ToolRegistry.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/SpringAiToolBridge.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/embabel/AgentOrchestrationPort.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/embabel/NoOpOrchestrationPort.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/embabel/OrchestrationResult.java
+/Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/bridge/embabel/WorkflowDescriptor.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/AbstractBuiltinTool.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/BuiltinTools.java
 /Users/tap/dev/workspaces/openclaw/jclaw/jclaw-tools/src/main/java/io/jclaw/tools/builtin/FileReadTool.java

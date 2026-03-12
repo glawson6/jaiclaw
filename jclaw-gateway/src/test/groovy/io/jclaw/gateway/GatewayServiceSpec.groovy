@@ -6,6 +6,7 @@ import io.jclaw.agent.session.SessionManager
 import io.jclaw.channel.*
 import io.jclaw.core.model.AssistantMessage
 import io.jclaw.core.model.Session
+import io.jclaw.gateway.attachment.AttachmentRouter
 import spock.lang.Specification
 
 import java.util.concurrent.CompletableFuture
@@ -70,6 +71,59 @@ class GatewayServiceSpec extends Specification {
 
         then:
         future.join().content() == "async"
+    }
+
+    def "onMessage routes attachments through AttachmentRouter"() {
+        given:
+        def attachmentRouter = Mock(AttachmentRouter)
+        def gatewayWithRouter = new GatewayService(
+                agentRuntime, sessionManager, channelRegistry, "default", null, attachmentRouter)
+
+        def adapter = Mock(ChannelAdapter)
+        adapter.channelId() >> "telegram"
+        adapter.displayName() >> "Telegram"
+        adapter.sendMessage(_) >> new DeliveryResult.Success("tg_msg_1")
+        channelRegistry.register(adapter)
+
+        def session = Session.create("s1", "default:telegram:bot:user", "default")
+        sessionManager.getOrCreate("default:telegram:bot:user", "default") >> session
+        def response = new AssistantMessage("r1", "Got your PDF!", "model")
+        agentRuntime.run(_, _) >> CompletableFuture.completedFuture(response)
+
+        def pdfData = "pdf content".bytes
+        def attachment = new ChannelMessage.Attachment("report.pdf", "application/pdf", null, pdfData)
+        def msg = ChannelMessage.inbound("id1", "telegram", "bot", "user",
+                "upload this", List.of(attachment), Map.of())
+
+        when:
+        gatewayWithRouter.onMessage(msg)
+        Thread.sleep(100)
+
+        then:
+        1 * attachmentRouter.route({ it.filename() == "report.pdf" && it.type() == AttachmentType.PDF }, msg, null)
+    }
+
+    def "onMessage skips attachment routing when no router configured"() {
+        given:
+        def adapter = Mock(ChannelAdapter)
+        adapter.channelId() >> "telegram"
+        adapter.displayName() >> "Telegram"
+        adapter.sendMessage(_) >> new DeliveryResult.Success("tg_msg_1")
+        channelRegistry.register(adapter)
+
+        def session = Session.create("s1", "default:telegram:bot:user", "default")
+        sessionManager.getOrCreate(_, _) >> session
+        agentRuntime.run(_, _) >> CompletableFuture.completedFuture(new AssistantMessage("r1", "ok", "m"))
+
+        def attachment = new ChannelMessage.Attachment("file.pdf", "application/pdf", null, new byte[0])
+        def msg = ChannelMessage.inbound("id1", "telegram", "bot", "user",
+                "text", List.of(attachment), Map.of())
+
+        when:
+        gateway.onMessage(msg) // gateway has no attachment router
+
+        then:
+        noExceptionThrown()
     }
 
     def "start and stop delegate to channel registry"() {

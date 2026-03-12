@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: io.jclaw.agent.session.SessionManagerSpec
 -------------------------------------------------------------------------------
-Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in io.jclaw.agent.session.SessionManagerSpec
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.064 s -- in io.jclaw.agent.session.SessionManagerSpec

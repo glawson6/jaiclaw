@@ -230,6 +230,93 @@ OPENAI_API_KEY=sk-... \
 ```
 Leave `DISCORD_USE_GATEWAY` unset. Discord will POST interactions to `POST /webhook/discord`. The adapter handles `PING` verification automatically.
 
+### Option 6: Email (IMAP polling — works anywhere)
+
+The Email adapter polls an IMAP mailbox for new messages and replies via SMTP. Supports Gmail, Outlook, or any IMAP/SMTP provider.
+
+**Setup:**
+
+1. Enable IMAP access on your email account
+2. For Gmail: generate an [App Password](https://myaccount.google.com/apppasswords) (2FA must be enabled)
+3. Run with email credentials:
+
+```bash
+EMAIL_IMAP_HOST=imap.gmail.com \
+EMAIL_SMTP_HOST=smtp.gmail.com \
+EMAIL_USERNAME=you@gmail.com \
+EMAIL_PASSWORD=your-app-password \
+OPENAI_API_KEY=sk-... \
+./mvnw spring-boot:run -pl jclaw-gateway-app
+```
+
+4. Send an email to the configured address — the agent replies to the sender
+
+**How it works:**
+- Polls IMAP folders (default: INBOX) at a configurable interval (default: 60s)
+- Marks processed messages as SEEN to avoid re-processing
+- Parses MIME multipart messages — extracts text content and file attachments
+- Replies via SMTP with STARTTLS
+
+**Configuration options:**
+- `EMAIL_PROVIDER` — `imap` (default), `gmail`, `outlook`
+- `EMAIL_IMAP_PORT` — default 993
+- `EMAIL_SMTP_PORT` — default 587
+- `EMAIL_POLL_INTERVAL` — polling interval in seconds (default 60)
+
+### Option 7: SMS (Twilio — webhook-based)
+
+The SMS adapter uses Twilio's Messages API for outbound and receives inbound messages via Twilio webhooks.
+
+**Setup:**
+
+1. Create a Twilio account at [twilio.com](https://www.twilio.com)
+2. Get a phone number, copy Account SID, Auth Token, and phone number
+3. Run with Twilio credentials:
+
+```bash
+TWILIO_ACCOUNT_SID=AC... \
+TWILIO_AUTH_TOKEN=... \
+TWILIO_FROM_NUMBER=+15551234567 \
+OPENAI_API_KEY=sk-... \
+./mvnw spring-boot:run -pl jclaw-gateway-app
+```
+
+4. Configure your Twilio phone number's webhook URL to point to `POST /webhooks/sms` on your gateway
+5. Send an SMS to the Twilio number — the agent replies
+
+**How it works:**
+- Inbound: Twilio POSTs form-encoded webhook to `/webhooks/sms` with `From`, `Body`, `MessageSid`
+- MMS attachments: `NumMedia`, `MediaUrl0`, `MediaContentType0` fields parsed into attachments
+- Outbound: POST to Twilio Messages API with Basic auth (Account SID + Auth Token)
+
+**For local development**, use ngrok to expose the webhook:
+```bash
+ngrok http 8080
+# Then set Twilio webhook URL to: https://your-ngrok.ngrok.io/webhooks/sms
+```
+
+---
+
+## MCP Server Hosting
+
+JClaw can host MCP (Model Context Protocol) tool servers, making JClaw's tools available to external AI clients.
+
+**Endpoints:**
+```bash
+# List available MCP servers
+curl http://localhost:8080/mcp
+
+# List tools for a server
+curl http://localhost:8080/mcp/{serverName}/tools
+
+# Execute a tool
+curl -X POST http://localhost:8080/mcp/{serverName}/tools/{toolName} \
+  -H "Content-Type: application/json" \
+  -d '{"arg1": "value1"}'
+```
+
+MCP tool providers are registered via the `McpToolProvider` SPI. Any Spring bean implementing `McpToolProvider` is automatically discovered and registered.
+
 ---
 
 ## Shell Commands Reference
@@ -312,6 +399,17 @@ Ollama is always available if running locally on port 11434.
 | `DISCORD_BOT_TOKEN` | For Discord | Discord bot token |
 | `DISCORD_APPLICATION_ID` | For Discord webhook | Discord application ID (webhook mode only) |
 | `DISCORD_USE_GATEWAY` | No | Set to `true` for Gateway WebSocket mode |
+| `EMAIL_IMAP_HOST` | For Email | IMAP server hostname |
+| `EMAIL_SMTP_HOST` | For Email | SMTP server hostname |
+| `EMAIL_USERNAME` | For Email | Email account username |
+| `EMAIL_PASSWORD` | For Email | Email account password or app password |
+| `EMAIL_PROVIDER` | No | Email provider: `imap` (default), `gmail`, `outlook` |
+| `EMAIL_IMAP_PORT` | No | IMAP port (default: 993) |
+| `EMAIL_SMTP_PORT` | No | SMTP port (default: 587) |
+| `EMAIL_POLL_INTERVAL` | No | Polling interval in seconds (default: 60) |
+| `TWILIO_ACCOUNT_SID` | For SMS | Twilio Account SID |
+| `TWILIO_AUTH_TOKEN` | For SMS | Twilio Auth Token |
+| `TWILIO_FROM_NUMBER` | For SMS | Twilio phone number for outbound messages |
 
 ---
 
@@ -327,6 +425,8 @@ Ollama is always available if running locally on port 11434.
 | Slack (Events API) | Yes | Slack app + ngrok/public URL | Production |
 | Discord (Gateway) | **No** | Create app + bot + Message Content Intent (~5 min) | Community testing |
 | Discord (webhook) | Yes | Discord app + interactions endpoint | Production |
+| Email (IMAP) | **No** | Enable IMAP + app password (~3 min) | Async communication, document intake |
+| SMS (Twilio) | Yes | Twilio account + ngrok for webhook | Mobile outreach, 2-way SMS |
 | WebSocket | No | Connect to `ws://localhost:8080/ws/session/{key}` | Real-time/streaming |
 
 **Recommendation for local dev**: Start with REST API for quick validation, then Telegram polling or Slack Socket Mode for real chat UX testing. All three work without any public endpoints.
@@ -441,7 +541,12 @@ kubectl create secret generic jclaw-secrets \
   --from-literal=TELEGRAM_BOT_TOKEN=123456:ABC... \
   --from-literal=SLACK_BOT_TOKEN=xoxb-... \
   --from-literal=SLACK_SIGNING_SECRET=... \
-  --from-literal=DISCORD_BOT_TOKEN=...
+  --from-literal=DISCORD_BOT_TOKEN=... \
+  --from-literal=EMAIL_USERNAME=bot@example.com \
+  --from-literal=EMAIL_PASSWORD=... \
+  --from-literal=TWILIO_ACCOUNT_SID=AC... \
+  --from-literal=TWILIO_AUTH_TOKEN=... \
+  --from-literal=TWILIO_FROM_NUMBER=+15551234567
 ```
 
 ### Production Telegram Config

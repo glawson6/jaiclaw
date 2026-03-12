@@ -32,25 +32,31 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI / Embabel port of OpenClaw, des
 
 See `docs/ARCHITECTURE.md` for full diagrams and `docs/OPERATIONS.md` for running/deploying.
 
-### Module Dependency Graph
+### Module Dependency Graph (23 modules)
 
 ```
 jclaw-core  (pure Java — NO Spring dependency)
   ↑
-jclaw-channel-api (ChannelAdapter SPI, ChannelMessage, ChannelRegistry)
+jclaw-channel-api (ChannelAdapter SPI, ChannelMessage, attachments, ChannelRegistry)
   ↑
-jclaw-tools (ToolRegistry, built-in tools, SpringAiToolBridge)
+jclaw-tools (ToolRegistry, built-in tools, SpringAiToolBridge, Embabel bridge)
   ↑
 jclaw-agent (AgentRuntime, SessionManager, SystemPromptBuilder, JClawAgent)
-jclaw-skills (SkillLoader, SkillMarkdownParser, SkillPromptBuilder)
+jclaw-skills (SkillLoader, versioning, TenantSkillRegistry)
 jclaw-plugin-sdk (JClawPlugin SPI, PluginApi, HookRunner, PluginDiscovery)
-jclaw-memory (InMemorySearchManager, MemorySearchManager SPI)
+jclaw-memory (InMemorySearchManager, VectorStoreSearchManager)
+jclaw-security (JWT auth, TenantResolver, SecurityContext)
+jclaw-documents (PDF/HTML/text parsing, chunking pipeline)
+jclaw-media (async media analysis SPI, CompositeMediaAnalyzer)
+jclaw-audit (AuditEvent, AuditLogger SPI, InMemoryAuditLogger)
 jclaw-config (@ConfigurationProperties records)
   ↑
-jclaw-gateway (GatewayService, GatewayController, WebhookDispatcher, WebSocket)
-jclaw-channel-telegram (TelegramAdapter — Bot API webhook + sendMessage)
-jclaw-channel-slack (SlackAdapter — Events API + chat.postMessage)
-jclaw-channel-discord (DiscordAdapter — Interactions webhook + REST API)
+jclaw-gateway (GatewayService, WebSocket, MCP hosting, observability)
+jclaw-channel-telegram (Bot API polling + webhook + file downloads)
+jclaw-channel-slack (Socket Mode + Events API)
+jclaw-channel-discord (Gateway WebSocket + Interactions)
+jclaw-channel-email (IMAP polling + SMTP + MIME attachments)
+jclaw-channel-sms (Twilio REST API + webhook + MMS)
   ↑
 jclaw-spring-boot-starter (JClawAutoConfiguration — wires everything)
   ↑
@@ -69,6 +75,10 @@ jclaw-shell (Spring Shell CLI — runnable Spring Boot app)
 - **Plugin discovery** merges Spring component scanning + `ServiceLoader` + explicit registration
 - **Channel adapter pattern**: `ChannelAdapter` SPI with webhook-based inbound and REST-based outbound per platform
 - **Session key convention**: `{agentId}:{channel}:{accountId}:{peerId}` for session isolation
+- **Multi-tenancy**: `TenantContext` on ThreadLocal, JWT-based tenant resolution, per-tenant session/memory isolation
+- **MCP hosting**: `McpToolProvider` SPI → `McpServerRegistry` → REST endpoints at `/mcp/*`
+- **Skill versioning**: `SkillMetadata.version` + `tenantIds` for per-tenant skill filtering
+- **Audit trail**: `AuditLogger` SPI with bounded in-memory default implementation
 
 ### Version Alignment (Embabel 0.3.4 compatibility)
 
@@ -81,5 +91,5 @@ jclaw-shell (Spring Shell CLI — runnable Spring Boot app)
 - Test classes must end with `Spec` (configured in surefire includes)
 - Modules need `gmavenplus-plugin` + `spock-core` + `groovy` dependencies for Spock support
 - Modules mocking concrete classes need `byte-buddy` + `objenesis` test dependencies
-- 17 modules, ~165 tests across 9 modules: tools (36), agent (21), skills (21), plugin-sdk (18), memory (11), channel-api (17), gateway (11), telegram (10), slack (11), discord (9)
+- 23 modules, 339 tests across 18 modules
 - Docker images: `jclaw-gateway-app` and `jclaw-shell` — built via JKube with `-Pk8s` profile

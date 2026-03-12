@@ -38,6 +38,13 @@ public record ChannelMessage(
     ) {}
 
     /**
+     * Whether this message carries file attachments.
+     */
+    public boolean hasAttachments() {
+        return !attachments.isEmpty();
+    }
+
+    /**
      * Compute the session key for routing this message to an agent session.
      */
     public String sessionKey(String agentId) {
@@ -50,6 +57,14 @@ public record ChannelMessage(
         return new ChannelMessage(
                 id, channelId, accountId, peerId, content,
                 Instant.now(), Direction.INBOUND, List.of(), platformData);
+    }
+
+    public static ChannelMessage inbound(
+            String id, String channelId, String accountId, String peerId,
+            String content, List<Attachment> attachments, Map<String, Object> platformData) {
+        return new ChannelMessage(
+                id, channelId, accountId, peerId, content,
+                Instant.now(), Direction.INBOUND, attachments, platformData);
     }
 
     public static ChannelMessage outbound(

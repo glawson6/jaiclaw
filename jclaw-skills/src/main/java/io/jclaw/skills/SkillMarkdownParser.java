@@ -48,7 +48,10 @@ public class SkillMarkdownParser {
         Set<String> requiredBins = parseSet(frontmatter.getOrDefault("requiredBins", ""));
         Set<String> platforms = parseSet(frontmatter.getOrDefault("platforms", ""));
 
-        var metadata = new SkillMetadata(alwaysInclude, primaryEnv, requiredBins, platforms);
+        String version = frontmatter.getOrDefault("version", "1.0.0");
+        Set<String> tenantIds = parseSet(frontmatter.getOrDefault("tenantIds", ""));
+
+        var metadata = new SkillMetadata(alwaysInclude, primaryEnv, requiredBins, platforms, version, tenantIds);
         return new SkillDefinition(name, description, content, metadata);
     }
 

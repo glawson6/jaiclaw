@@ -9,6 +9,7 @@ public record Session(
         String id,
         String sessionKey,
         String agentId,
+        String tenantId,
         Instant createdAt,
         Instant lastActiveAt,
         SessionState state,
@@ -19,17 +20,21 @@ public record Session(
     }
 
     public static Session create(String id, String sessionKey, String agentId) {
-        var now = Instant.now();
-        return new Session(id, sessionKey, agentId, now, now, SessionState.ACTIVE, List.of());
+        return create(id, sessionKey, agentId, null);
+    }
+
+    public static Session create(String id, String sessionKey, String agentId, String tenantId) {
+        Instant now = Instant.now();
+        return new Session(id, sessionKey, agentId, tenantId, now, now, SessionState.ACTIVE, List.of());
     }
 
     public Session withMessage(Message message) {
-        var updated = new ArrayList<>(messages);
+        List<Message> updated = new ArrayList<>(messages);
         updated.add(message);
-        return new Session(id, sessionKey, agentId, createdAt, Instant.now(), state, updated);
+        return new Session(id, sessionKey, agentId, tenantId, createdAt, Instant.now(), state, updated);
     }
 
     public Session withState(SessionState newState) {
-        return new Session(id, sessionKey, agentId, createdAt, Instant.now(), newState, messages);
+        return new Session(id, sessionKey, agentId, tenantId, createdAt, Instant.now(), newState, messages);
     }
 }
