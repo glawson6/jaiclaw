@@ -6,6 +6,7 @@ import io.jclaw.core.model.UserMessage;
 import io.jclaw.core.skill.SkillDefinition;
 import io.jclaw.core.tool.ToolCallback;
 import io.jclaw.core.tool.ToolContext;
+import io.jclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,6 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Agent runtime — orchestrates the execution lifecycle from user input to assistant response.
  * Uses Spring AI ChatClient for LLM interaction with tool calling support.
  * Embabel's AgentPlatform can be layered on top for GOAP planning in future iterations.
+ *
+ * <p>Tools are resolved lazily from the {@link ToolRegistry} on each {@code run()} call,
+ * allowing modules (e.g. jclaw-tools-k8s) to register tools after construction.
  */
 public class AgentRuntime {
 
@@ -26,26 +30,19 @@ public class AgentRuntime {
 
     private final SessionManager sessionManager;
     private final ChatClient.Builder chatClientBuilder;
-    private final SystemPromptBuilder systemPromptBuilder;
-    private final List<org.springframework.ai.tool.ToolCallback> springToolCallbacks;
+    private final ToolRegistry toolRegistry;
+    private final List<SkillDefinition> skills;
     private final Map<String, CompletableFuture<?>> activeTasks = new ConcurrentHashMap<>();
 
     public AgentRuntime(
             SessionManager sessionManager,
             ChatClient.Builder chatClientBuilder,
-            List<ToolCallback> jclawTools,
+            ToolRegistry toolRegistry,
             List<SkillDefinition> skills) {
         this.sessionManager = sessionManager;
         this.chatClientBuilder = chatClientBuilder;
-        this.systemPromptBuilder = new SystemPromptBuilder()
-                .tools(jclawTools)
-                .skills(skills);
-
-        // Bridge JClaw tools to Spring AI
-        this.springToolCallbacks = jclawTools.stream()
-                .map(t -> (org.springframework.ai.tool.ToolCallback)
-                        new io.jclaw.tools.bridge.SpringAiToolBridge(t))
-                .toList();
+        this.toolRegistry = toolRegistry;
+        this.skills = skills;
     }
 
     /**
@@ -72,14 +69,27 @@ public class AgentRuntime {
 
     private AssistantMessage executeSync(String userInput, AgentRuntimeContext context) {
         // Record user message
-        var userMessage = new UserMessage(
+        UserMessage userMessage = new UserMessage(
                 UUID.randomUUID().toString(), userInput, "user");
         sessionManager.appendMessage(context.sessionKey(), userMessage);
 
-        // Build system prompt
+        // Resolve tools lazily from registry
+        List<ToolCallback> jclawTools = toolRegistry.resolveAll();
+
+        // Build system prompt with current tools
+        SystemPromptBuilder systemPromptBuilder = new SystemPromptBuilder()
+                .tools(jclawTools)
+                .skills(skills);
+
         String systemPrompt = systemPromptBuilder
                 .identity(context.identity())
                 .build();
+
+        // Bridge JClaw tools to Spring AI
+        List<org.springframework.ai.tool.ToolCallback> springToolCallbacks = jclawTools.stream()
+                .map(t -> (org.springframework.ai.tool.ToolCallback)
+                        new io.jclaw.tools.bridge.SpringAiToolBridge(t))
+                .toList();
 
         // Build conversation history for context
         var session = sessionManager.get(context.sessionKey()).orElse(context.session());
@@ -88,7 +98,7 @@ public class AgentRuntime {
                 .toList();
 
         // Call LLM via Spring AI ChatClient with tools
-        var chatClient = chatClientBuilder.build();
+        ChatClient chatClient = chatClientBuilder.build();
         var callSpec = chatClient.prompt()
                 .system(systemPrompt)
                 .user(userInput)
@@ -98,7 +108,7 @@ public class AgentRuntime {
         String responseContent = chatResponse.content();
 
         // Record assistant message
-        var assistantMessage = new AssistantMessage(
+        AssistantMessage assistantMessage = new AssistantMessage(
                 UUID.randomUUID().toString(),
                 responseContent != null ? responseContent : "",
                 "default"
@@ -122,7 +132,7 @@ public class AgentRuntime {
     }
 
     public void cancel(String sessionKey) {
-        var task = activeTasks.get(sessionKey);
+        CompletableFuture<?> task = activeTasks.get(sessionKey);
         if (task != null) {
             task.cancel(true);
             activeTasks.remove(sessionKey);
@@ -130,7 +140,7 @@ public class AgentRuntime {
     }
 
     public boolean isRunning(String sessionKey) {
-        var task = activeTasks.get(sessionKey);
+        CompletableFuture<?> task = activeTasks.get(sessionKey);
         return task != null && !task.isDone();
     }
 }

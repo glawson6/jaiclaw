@@ -13,5 +13,6 @@ public final class ToolCatalog {
     public static final String SECTION_WEB = "Web";
     public static final String SECTION_MEMORY = "Memory";
     public static final String SECTION_RUNTIME = "Runtime";
+    public static final String SECTION_KUBERNETES = "Kubernetes";
     public static final String SECTION_CUSTOM = "Custom";
 }

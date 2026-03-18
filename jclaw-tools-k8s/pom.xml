@@ -10,41 +10,37 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jclaw-shell</artifactId>
-    <name>JClaw :: Shell</name>
-    <description>Spring Shell CLI application</description>
+    <artifactId>jclaw-tools-k8s</artifactId>
+    <name>JClaw :: Tools :: Kubernetes</name>
+    <description>Kubernetes monitoring and management tools for JClaw agents</description>
+
+    <properties>
+        <fabric8.version>7.1.0</fabric8.version>
+    </properties>
 
     <dependencies>
-        <!-- Shell starter (auto-config + Spring Shell + Embabel shell + spring-web) -->
         <dependency>
             <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-shell</artifactId>
-            <type>pom</type>
+            <artifactId>jclaw-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-client</artifactId>
+            <version>${fabric8.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
 
-        <!-- All three AI providers -->
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-anthropic</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-openai</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-ollama</artifactId>
-            <type>pom</type>
-        </dependency>
-
-        <!-- Test -->
+        <!-- Auto-configuration -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
         </dependency>
+
+        <!-- Test: Spock + Groovy -->
         <dependency>
             <groupId>org.apache.groovy</groupId>
             <artifactId>groovy</artifactId>
@@ -63,7 +59,7 @@
         <dependency>
             <groupId>org.objenesis</groupId>
             <artifactId>objenesis</artifactId>
-            <version>3.4</version>
+            <version>3.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -71,27 +67,9 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>k8s</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.eclipse.jkube</groupId>
-                        <artifactId>kubernetes-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

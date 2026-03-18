@@ -7,6 +7,7 @@
 # Usage:
 #   ./start.sh              # start gateway via Docker Compose (default)
 #   ./start.sh shell        # start interactive CLI shell (local, requires Java 21)
+#   ./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
 #   ./start.sh gateway      # start gateway via Docker Compose
 #   ./start.sh local        # start gateway locally (no Docker, requires Java 21)
 #   ./start.sh stop         # stop Docker Compose stack
@@ -109,12 +110,13 @@ ensure_docker() {
 # ─── Image check ─────────────────────────────────────────────────────────────
 
 ensure_image() {
-    if ! docker image inspect io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT &>/dev/null; then
-        warn "Docker image not found. Building..."
+    local module="${1:-jclaw-gateway-app}"
+    if ! docker image inspect "io.jclaw/${module}:0.1.0-SNAPSHOT" &>/dev/null; then
+        warn "Docker image for ${module} not found. Building..."
         ensure_java
-        info "Running: ./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests"
-        (cd "$SCRIPT_DIR" && ./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests)
-        ok "Docker image built"
+        info "Running: ./mvnw package k8s:build -pl ${module} -am -Pk8s -DskipTests"
+        (cd "$SCRIPT_DIR" && ./mvnw package k8s:build -pl "${module}" -am -Pk8s -DskipTests)
+        ok "Docker image built: io.jclaw/${module}:0.1.0-SNAPSHOT"
     fi
 }
 
@@ -124,7 +126,7 @@ cmd_gateway() {
     header "JClaw Gateway (Docker)"
     load_env
     ensure_docker
-    ensure_image
+    ensure_image jclaw-gateway-app
 
     info "Starting gateway container..."
     docker compose -f "$COMPOSE_DIR/docker-compose.yml" up -d
@@ -171,6 +173,22 @@ cmd_shell() {
     (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl jclaw-shell -q)
 }
 
+cmd_cli() {
+    header "JClaw Interactive Shell (Docker)"
+    load_env
+    ensure_docker
+    ensure_image jclaw-shell
+
+    echo "Starting interactive shell container..."
+    echo ""
+    printf "  ${DIM}Type 'help' for available commands${NC}\n"
+    printf "  ${DIM}Type 'chat hello' to talk to the agent${NC}\n"
+    printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
+    echo ""
+
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --profile cli run --rm cli
+}
+
 cmd_local() {
     header "JClaw Gateway (Local)"
     load_env
@@ -211,6 +229,7 @@ COMMAND="${1:-gateway}"
 case "$COMMAND" in
     gateway)  cmd_gateway ;;
     shell)    cmd_shell ;;
+    cli)      cmd_cli ;;
     local)    cmd_local ;;
     stop)     cmd_stop ;;
     logs)     cmd_logs ;;
@@ -220,6 +239,7 @@ case "$COMMAND" in
         echo "Commands:"
         echo "  gateway   Start gateway via Docker Compose (default)"
         echo "  shell     Start interactive CLI shell (local Java)"
+        echo "  cli       Start interactive CLI shell (Docker, no Java needed)"
         echo "  local     Start gateway locally without Docker (local Java)"
         echo "  stop      Stop Docker Compose stack"
         echo "  logs      Tail gateway container logs"

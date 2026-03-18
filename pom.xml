@@ -26,6 +26,7 @@
         <module>jclaw-channel-api</module>
         <module>jclaw-config</module>
         <module>jclaw-tools</module>
+        <module>jclaw-tools-k8s</module>
         <module>jclaw-agent</module>
         <module>jclaw-skills</module>
         <module>jclaw-plugin-sdk</module>
@@ -41,6 +42,7 @@
         <module>jclaw-media</module>
         <module>jclaw-audit</module>
         <module>jclaw-spring-boot-starter</module>
+        <module>jclaw-starters</module>
         <module>jclaw-gateway-app</module>
         <module>jclaw-shell</module>
     </modules>
@@ -89,6 +91,11 @@
             <dependency>
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-tools-k8s</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -170,6 +177,56 @@
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-gateway-app</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- Starters -->
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-anthropic</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-openai</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-ollama</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-gateway</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-shell</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-embabel</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-personal-assistant</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-k8s-monitor</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
             </dependency>
 
             <!-- Spring Boot BOM -->

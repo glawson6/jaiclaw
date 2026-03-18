@@ -54,6 +54,9 @@ vi docker-compose/.env
 # Start the interactive CLI shell (local Java)
 ./start.sh shell
 
+# Start the interactive CLI shell (Docker, no Java needed)
+./start.sh cli
+
 # Start gateway locally without Docker
 ./start.sh local
 
@@ -154,7 +157,8 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 The shell provides a Spring Shell CLI for chatting with the agent directly in your terminal.
 
 ```bash
-./start.sh shell
+./start.sh shell       # local Java (requires Java 21)
+./start.sh cli         # Docker (no Java needed)
 ```
 
 Or with Maven directly:
@@ -167,7 +171,7 @@ ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
 
 | Script | Purpose |
 |--------|---------|
-| `start.sh` | **Daily driver** — start gateway (Docker or local) or interactive shell. Reads `docker-compose/.env` for config. |
+| `start.sh` | **Daily driver** — start gateway (Docker or local), interactive shell (local or Docker). Reads `docker-compose/.env` for config. |
 | `quickstart.sh` | **First-time Docker setup** — clones, builds image, starts stack, pulls Ollama if needed. |
 | `setup.sh` | **First-time developer setup** — installs Java 21, builds from source, launches shell or gateway. |
 
@@ -245,6 +249,20 @@ export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
 # Install to local Maven repo
 ./mvnw install -DskipTests
 ```
+
+## Docker Images
+
+Two modules produce Docker images via [Eclipse JKube](https://eclipse.dev/jkube/):
+
+```bash
+# Build gateway image
+./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests
+
+# Build shell image
+./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests
+```
+
+Images use `eclipse-temurin:21-jre` base and follow `io.jclaw/<module>:<version>` naming.
 
 ## Documentation
 

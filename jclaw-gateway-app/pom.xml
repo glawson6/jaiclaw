@@ -15,44 +15,28 @@
     <description>Standalone Spring Boot application for the JClaw gateway (REST + WebSocket + channels)</description>
 
     <dependencies>
-        <!-- JClaw auto-configuration (brings core, agent, tools, skills, plugins, memory, channel-api) -->
+        <!-- Gateway starter (auto-config + gateway library + all channel adapters + web) -->
         <dependency>
             <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-spring-boot-starter</artifactId>
-        </dependency>
-
-        <!-- Gateway library (REST controller, WebSocket, webhook dispatcher) -->
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-gateway</artifactId>
-        </dependency>
-
-        <!-- Channel adapters (on classpath → auto-configured by starter) -->
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-channel-telegram</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-channel-slack</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-channel-discord</artifactId>
+            <artifactId>jclaw-starter-gateway</artifactId>
+            <type>pom</type>
         </dependency>
 
         <!-- All three AI providers -->
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-anthropic</artifactId>
+            <type>pom</type>
         </dependency>
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-openai</artifactId>
+            <type>pom</type>
         </dependency>
         <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-ollama</artifactId>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-ollama</artifactId>
+            <type>pom</type>
         </dependency>
     </dependencies>
 

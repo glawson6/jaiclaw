@@ -6,7 +6,6 @@ import io.jclaw.channel.ChannelAdapter;
 import io.jclaw.channel.ChannelRegistry;
 import io.jclaw.config.JClawProperties;
 import io.jclaw.core.skill.SkillDefinition;
-import io.jclaw.core.tool.ToolCallback;
 import io.jclaw.memory.InMemorySearchManager;
 import io.jclaw.memory.MemorySearchManager;
 import io.jclaw.memory.VectorStoreSearchManager;
@@ -89,9 +88,8 @@ public class JClawAutoConfiguration {
             ChatClient.Builder chatClientBuilder,
             ToolRegistry toolRegistry,
             SkillLoader skillLoader) {
-        List<ToolCallback> tools = toolRegistry.resolveAll();
         List<SkillDefinition> skills = skillLoader.loadBundled();
-        return new AgentRuntime(sessionManager, chatClientBuilder, tools, skills);
+        return new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills);
     }
 
     @Bean

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jclaw</groupId>
+        <artifactId>jclaw-starters</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jclaw-starter-personal-assistant</artifactId>
+    <packaging>pom</packaging>
+    <name>JClaw :: Starter :: Personal Assistant</name>
+    <description>Opinionated JClaw starter: Anthropic + Shell CLI + all bundled skills</description>
+
+    <dependencies>
+        <!-- Anthropic as the AI provider -->
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-anthropic</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Spring Shell CLI interface -->
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-shell</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- All bundled skills (coding, web-research, system-admin, conversation, summarize) -->
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-skills</artifactId>
+        </dependency>
+    </dependencies>
+</project>

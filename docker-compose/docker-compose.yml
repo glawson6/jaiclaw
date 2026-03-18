@@ -26,6 +26,22 @@ services:
       DISCORD_USE_GATEWAY: ${DISCORD_USE_GATEWAY:-}
     restart: unless-stopped
 
+  cli:
+    image: io.jclaw/jclaw-shell:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
+    stdin_open: true
+    tty: true
+    environment:
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      OPENAI_ENABLED: ${OPENAI_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-not-set}
+      ANTHROPIC_ENABLED: ${ANTHROPIC_ENABLED:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-not-set}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+    profiles:
+      - cli
+
   ollama:
     image: ollama/ollama:latest
     ports:

@@ -1,0 +1,8 @@
+services:
+  k8s-monitor:
+    build: .
+    volumes:
+      - ~/.kube:/root/.kube:ro
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}  # optional — omit to use Shell CLI only

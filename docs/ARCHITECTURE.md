@@ -283,11 +283,14 @@ Following the taptech-ai-agent-parent patterns (JKube, shared Helm chart, ngrok 
 
 ### Docker Image Build
 
-Using Eclipse JKube (`kubernetes-maven-plugin`) with `eclipse-temurin:21-jre` base image, activated via Maven profile:
+Using Eclipse JKube (`kubernetes-maven-plugin`) with `eclipse-temurin:21-jre` base image, activated via Maven profile. Two modules produce images:
+
+- **`jclaw-gateway-app`** — production HTTP server (REST + WebSocket + all channels)
+- **`jclaw-shell`** — interactive CLI (headless/scripted use, Docker-based access)
 
 ```bash
-# Build Docker image
-./mvnw package k8s:build -pl jclaw-gateway-app -Pk8s -DskipTests
+# Build both images
+./mvnw package k8s:build -pl jclaw-gateway-app,jclaw-shell -am -Pk8s -DskipTests
 
 # Push to registry
 ./mvnw k8s:push -pl jclaw-gateway-app -Pk8s

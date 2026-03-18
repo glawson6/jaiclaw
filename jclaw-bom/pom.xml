@@ -31,6 +31,11 @@
             </dependency>
             <dependency>
                 <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-tools-k8s</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-agent</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -118,6 +123,56 @@
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-shell</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- Starters -->
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-anthropic</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-openai</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-ollama</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-gateway</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-shell</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-embabel</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-personal-assistant</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-k8s-monitor</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
             </dependency>
         </dependencies>
     </dependencyManagement>

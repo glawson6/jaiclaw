@@ -19,6 +19,7 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 ```bash
 ./start.sh              # start gateway via Docker Compose, tail logs
 ./start.sh shell        # start interactive CLI shell (local Java)
+./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
 ./start.sh local        # start gateway locally without Docker
 ./start.sh stop         # stop Docker Compose stack
 ./start.sh logs         # tail gateway container logs
@@ -65,7 +66,8 @@ Runs the gateway as a local Java process (no Docker). Useful for debugging or wh
 ### Interactive Shell
 
 ```bash
-./start.sh shell
+./start.sh shell        # local Java (requires Java 21)
+./start.sh cli          # Docker (no Java needed)
 ```
 
 Starts the Spring Shell CLI. Chat commands:
@@ -583,11 +585,14 @@ See `ARCHITECTURE.md` for the full k8s deployment view.
 Two modules produce Docker images: `jclaw-gateway-app` (production server) and `jclaw-shell` (CLI).
 
 ```bash
-# Build gateway image
-./mvnw package k8s:build -pl jclaw-gateway-app -Pk8s -DskipTests
+# Build gateway image (includes all dependencies with -am)
+./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests
 
 # Build shell image
-./mvnw package k8s:build -pl jclaw-shell -Pk8s -DskipTests
+./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests
+
+# Build both at once
+./mvnw package k8s:build -pl jclaw-gateway-app,jclaw-shell -am -Pk8s -DskipTests
 
 # Push to registry
 ./mvnw k8s:push -pl jclaw-gateway-app -Pk8s
@@ -597,6 +602,13 @@ Two modules produce Docker images: `jclaw-gateway-app` (production server) and `
 ```
 
 Images use `eclipse-temurin:21-jre` as the base. The image name follows `io.jclaw/<module>:<version>` convention.
+
+The shell Docker image can be run interactively via Docker Compose:
+```bash
+./start.sh cli
+# or directly:
+docker compose -f docker-compose/docker-compose.yml --profile cli run --rm cli
+```
 
 ### Required Secrets
 
