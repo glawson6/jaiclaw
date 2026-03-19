@@ -7,3 +7,4 @@ docker-compose/.env
 *.log
 hs_err_pid*
 META-INF/
+maven-central-deploy/

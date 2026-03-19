@@ -281,6 +281,50 @@ start_stack() {
     fi
 }
 
+# ─── Telegram setup ──────────────────────────────────────────────────────────
+
+TELEGRAM_BOT_USERNAME=""
+
+setup_telegram() {
+    local compose_dir="$JCLAW_DIR/docker-compose"
+    echo ""
+    read -rp "$(printf "${CYAN}▸${NC} Set up Telegram bot? (y/N): ")" setup_tg
+    if [[ ! "$setup_tg" =~ ^[Yy]$ ]]; then
+        return
+    fi
+
+    echo ""
+    echo "  To get a bot token:"
+    echo "    1. Open Telegram and message @BotFather"
+    echo "    2. Send /newbot and follow the prompts"
+    echo "    3. Copy the token"
+    echo ""
+    read -rp "  Enter your Telegram bot token (from @BotFather): " tg_token
+    if [ -z "$tg_token" ]; then
+        warn "No token provided. Skipping Telegram setup."
+        return
+    fi
+
+    # Validate
+    info "Validating token..."
+    local response
+    response=$(curl -sf "https://api.telegram.org/bot${tg_token}/getMe" 2>/dev/null) || {
+        warn "Token validation failed. Saving anyway — you can fix it later in .env"
+        sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$compose_dir/.env"
+        rm -f "$compose_dir/.env.bak"
+        return
+    }
+    local bot_username
+    bot_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
+    ok "Bot validated: @${bot_username}"
+
+    # Write to .env
+    sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$compose_dir/.env"
+    rm -f "$compose_dir/.env.bak"
+
+    TELEGRAM_BOT_USERNAME="$bot_username"
+}
+
 # ─── Done ─────────────────────────────────────────────────────────────────────
 
 print_success() {
@@ -302,6 +346,11 @@ print_success() {
     echo "Stop:"
     printf "  ${BOLD}docker compose -f ${compose_dir}/docker-compose.yml down${NC}\n"
     echo ""
+    if [ -n "$TELEGRAM_BOT_USERNAME" ]; then
+        echo "Telegram bot:"
+        printf "  ${BOLD}https://t.me/${TELEGRAM_BOT_USERNAME}${NC}\n"
+        echo ""
+    fi
     echo "To add API keys or channel tokens, edit:"
     printf "  ${BOLD}${compose_dir}/.env${NC}\n"
     echo ""
@@ -318,6 +367,7 @@ main() {
     check_docker
     clone_repo
     build_image
+    setup_telegram
     start_stack
 
     local total_elapsed=$(( SECONDS - total_start ))

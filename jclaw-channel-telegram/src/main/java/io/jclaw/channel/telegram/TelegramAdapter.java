@@ -180,6 +180,13 @@ public class TelegramAdapter implements ChannelAdapter {
         JsonNode messageNode = update.path("message");
         if (messageNode.isMissingNode()) return;
 
+        // Check allowed-users filter
+        String fromId = String.valueOf(messageNode.path("from").path("id").asLong());
+        if (!config.isUserAllowed(fromId)) {
+            log.debug("Dropping message from non-allowed Telegram user {}", fromId);
+            return;
+        }
+
         String chatId = String.valueOf(messageNode.path("chat").path("id").asLong());
         String updateId = String.valueOf(update.path("update_id").asLong());
 

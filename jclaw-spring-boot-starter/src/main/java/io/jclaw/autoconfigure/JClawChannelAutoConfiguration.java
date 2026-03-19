@@ -10,6 +10,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Channel adapter auto-configuration — runs after {@link JClawGatewayAutoConfiguration}
  * so that {@code WebhookDispatcher} is available for channel adapters that need it.
@@ -96,11 +100,22 @@ public class JClawChannelAutoConfiguration {
         public io.jclaw.channel.telegram.TelegramAdapter telegramAdapter(
                 JClawProperties properties,
                 io.jclaw.gateway.WebhookDispatcher webhookDispatcher) {
+            Set<String> allowedUsers = parseCommaSeparated(System.getenv("TELEGRAM_ALLOWED_USERS"));
             var config = new io.jclaw.channel.telegram.TelegramConfig(
                     System.getenv("TELEGRAM_BOT_TOKEN"),
                     System.getenv("TELEGRAM_WEBHOOK_URL"),
-                    System.getenv("TELEGRAM_BOT_TOKEN") != null);
+                    System.getenv("TELEGRAM_BOT_TOKEN") != null,
+                    30,
+                    allowedUsers);
             return new io.jclaw.channel.telegram.TelegramAdapter(config, webhookDispatcher);
+        }
+
+        private static Set<String> parseCommaSeparated(String value) {
+            if (value == null || value.isBlank()) return Set.of();
+            return Arrays.stream(value.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
         }
     }
 

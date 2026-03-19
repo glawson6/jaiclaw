@@ -10,6 +10,8 @@
 #   ./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
 #   ./start.sh gateway      # start gateway via Docker Compose
 #   ./start.sh local        # start gateway locally (no Docker, requires Java 21)
+#   ./start.sh telegram     # validate Telegram bot token → start gateway (Docker)
+#   ./start.sh telegram local  # validate Telegram bot token → start gateway (local Java)
 #   ./start.sh stop         # stop Docker Compose stack
 #   ./start.sh logs         # tail gateway container logs
 #
@@ -212,6 +214,49 @@ cmd_local() {
     (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl jclaw-gateway-app)
 }
 
+cmd_telegram() {
+    header "JClaw + Telegram"
+    load_env
+
+    # Check for bot token
+    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
+        err "TELEGRAM_BOT_TOKEN is not set."
+        echo ""
+        echo "To set up Telegram:"
+        echo "  1. Open Telegram and message @BotFather"
+        echo "  2. Send /newbot and follow the prompts"
+        echo "  3. Copy the bot token"
+        echo "  4. Add to docker-compose/.env:"
+        echo "     TELEGRAM_BOT_TOKEN=<your-token>"
+        echo ""
+        echo "Full guide: docs/TELEGRAM-SETUP.md"
+        exit 1
+    fi
+
+    # Validate token via /getMe
+    info "Validating Telegram bot token..."
+    local response
+    response=$(curl -sf "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe" 2>/dev/null) || {
+        err "Telegram token validation failed. Check your TELEGRAM_BOT_TOKEN."
+        exit 1
+    }
+    local bot_username
+    bot_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
+    ok "Bot validated: @${bot_username}"
+    echo ""
+    printf "  ${BOLD}Bot link: https://t.me/${bot_username}${NC}\n"
+    echo "  Open the link above in Telegram to chat with your bot."
+    echo ""
+
+    # Determine mode (Docker vs local)
+    local mode="$1"
+    if [ "$mode" = "local" ]; then
+        cmd_local
+    else
+        cmd_gateway
+    fi
+}
+
 cmd_stop() {
     info "Stopping JClaw..."
     docker compose -f "$COMPOSE_DIR/docker-compose.yml" down
@@ -231,18 +276,21 @@ case "$COMMAND" in
     shell)    cmd_shell ;;
     cli)      cmd_cli ;;
     local)    cmd_local ;;
+    telegram) cmd_telegram "${2:-}" ;;
     stop)     cmd_stop ;;
     logs)     cmd_logs ;;
     -h|--help|help)
         echo "Usage: ./start.sh [command]"
         echo ""
         echo "Commands:"
-        echo "  gateway   Start gateway via Docker Compose (default)"
-        echo "  shell     Start interactive CLI shell (local Java)"
-        echo "  cli       Start interactive CLI shell (Docker, no Java needed)"
-        echo "  local     Start gateway locally without Docker (local Java)"
-        echo "  stop      Stop Docker Compose stack"
-        echo "  logs      Tail gateway container logs"
+        echo "  gateway          Start gateway via Docker Compose (default)"
+        echo "  shell            Start interactive CLI shell (local Java)"
+        echo "  cli              Start interactive CLI shell (Docker, no Java needed)"
+        echo "  local            Start gateway locally without Docker (local Java)"
+        echo "  telegram         Validate Telegram bot token and start gateway (Docker)"
+        echo "  telegram local   Validate Telegram bot token and start gateway (local Java)"
+        echo "  stop             Stop Docker Compose stack"
+        echo "  logs             Tail gateway container logs"
         echo ""
         echo "Configuration is loaded from docker-compose/.env"
         echo "Edit that file to set API keys, provider, and channel tokens."
