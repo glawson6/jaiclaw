@@ -66,6 +66,10 @@ public class OnboardWizardOrchestrator {
         steps.add(new SlackStep(flowBuilder, slackValidator));
         steps.add(new DiscordStep(flowBuilder, discordValidator));
 
+        // Skills and MCP steps
+        steps.add(new SkillsStep(flowBuilder));
+        steps.add(new McpServersStep(flowBuilder));
+
         // Config location and finalization
         steps.add(new ConfigLocationStep(flowBuilder));
         steps.add(new FinalizationStep(flowBuilder, yamlWriter, envWriter));

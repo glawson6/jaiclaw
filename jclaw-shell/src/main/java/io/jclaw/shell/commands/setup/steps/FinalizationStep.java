@@ -49,6 +49,26 @@ public final class FinalizationStep implements WizardStep {
         if (result.discord() != null && result.discord().enabled()) {
             System.out.println("  Discord:     enabled");
         }
+        // Skills preview
+        OnboardResult.SkillsConfig skills = result.skillsConfig();
+        if (skills != null) {
+            String skillsDisplay = skills.enabledBundled().contains("*")
+                    ? "all bundled"
+                    : String.join(", ", skills.enabledBundled());
+            System.out.println("  Skills:      " + skillsDisplay);
+            if (skills.workspaceDir() != null) {
+                System.out.println("  Skills dir:  " + skills.workspaceDir());
+            }
+        }
+        // MCP servers preview
+        if (result.mcpServers() != null && !result.mcpServers().isEmpty()) {
+            int count = result.mcpServers().size();
+            String names = result.mcpServers().stream()
+                    .map(OnboardResult.McpServerConfig::name)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+            System.out.println("  MCP servers: " + count + " (" + names + ")");
+        }
         System.out.println("  Config dir:  " + result.configDir());
         System.out.println();
 

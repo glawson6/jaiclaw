@@ -14,7 +14,7 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 
 ## start.sh — Daily Driver
 
-`start.sh` is the recommended way to run JClaw after initial setup. It reads API keys and configuration from `docker-compose/.env`.
+`start.sh` is the recommended way to run JClaw after initial setup. It reads API keys and configuration from `$JCLAW_ENV_FILE` (default: `docker-compose/.env`). If `~/.jclawrc` exists (written by `quickstart.sh`), it is sourced automatically to set `JCLAW_ENV_FILE`.
 
 ```bash
 ./start.sh              # start gateway via Docker Compose, tail logs
@@ -23,12 +23,14 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 ./start.sh local        # start gateway locally without Docker
 ./start.sh stop         # stop Docker Compose stack
 ./start.sh logs         # tail gateway container logs
+./start.sh --force-build          # rebuild Docker image, then start gateway
+./start.sh --force-build cli      # rebuild shell Docker image, then start CLI
 ./start.sh help         # show all commands
 ```
 
 ### Configuration
 
-Edit `docker-compose/.env` to set your API keys and preferences:
+Edit your `.env` file (location shown by `~/.jclawrc`, default: `docker-compose/.env`) to set your API keys and preferences:
 
 ```bash
 AI_PROVIDER=anthropic
@@ -39,7 +41,7 @@ OPENAI_ENABLED=false
 OLLAMA_ENABLED=false
 ```
 
-Both the gateway (Docker and local) and the shell read from this file. Environment variables set in your shell override `.env` values.
+Both the gateway (Docker and local) and the shell read from this file. Environment variables set in your shell override `.env` values. Run `./quickstart.sh --reconfigure` to change the config location or re-enter API keys.
 
 ### Gateway (Docker)
 
@@ -105,6 +107,24 @@ ANTHROPIC_API_KEY=sk-ant-... ./quickstart.sh
 ```
 
 This detects Java, builds the Docker image via Maven + JKube, starts Docker Compose, and optionally pulls Ollama if no API key is set.
+
+On first run (no existing `.env`), quickstart prompts where to save configuration:
+- `~/.jclaw/.env` — recommended, persists across project clones
+- `docker-compose/.env` — project-local (original behavior)
+
+The chosen location is written to `~/.jclawrc` and respected by all scripts.
+
+To force a rebuild of the Docker image (e.g. after code changes):
+
+```bash
+./quickstart.sh --force-build
+```
+
+To re-run the full interactive setup (change provider, API keys, channels, config location):
+
+```bash
+./quickstart.sh --reconfigure
+```
 
 After quickstart completes, use `./start.sh` for subsequent runs.
 
@@ -450,6 +470,7 @@ OLLAMA_ENABLED=true
 |----------|----------|-------------|
 | `JAVA_HOME` | Yes | Path to Java 21 JDK |
 | `JCLAW_HOME` | No | Config directory override (default: `~/.jclaw/`) |
+| `JCLAW_ENV_FILE` | No | Path to `.env` file (default: `docker-compose/.env`). Auto-set by `~/.jclawrc`. |
 | `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, or `ollama` |
 | `ANTHROPIC_API_KEY` | One of these | Anthropic API key |
 | `ANTHROPIC_ENABLED` | No | Enable Anthropic provider (default: `true`) |

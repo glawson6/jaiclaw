@@ -7,7 +7,10 @@
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/jclaw/jclaw/main/quickstart.sh | bash
 #   -- or --
-#   ./quickstart.sh
+#   ./quickstart.sh              # build + start gateway (Docker)
+#   ./quickstart.sh --shell      # build + start interactive CLI shell (Docker)
+#   ./quickstart.sh --force-build  # force rebuild Docker images
+#   ./quickstart.sh --reconfigure  # re-run interactive setup (provider, keys, channels)
 #
 set -euo pipefail
 
@@ -20,6 +23,9 @@ if [ -f "./mvnw" ] && [ -f "./pom.xml" ]; then
     INSIDE_REPO=true
     JCLAW_DIR="."
 fi
+
+# Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
+[ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -160,6 +166,12 @@ clone_repo() {
 build_image() {
     header "Building Docker Image"
 
+    # Remove existing image when force-building
+    if [ "$FORCE_BUILD" = true ]; then
+        info "Force-build requested — removing existing image..."
+        docker rmi io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT 2>/dev/null || true
+    fi
+
     # Check if we can build from source (requires Java 21)
     if check_java; then
         info "Building gateway Docker image with Maven + JKube..."
@@ -203,6 +215,231 @@ build_image() {
     fi
 }
 
+build_shell_image() {
+    header "Building CLI Shell Docker Image"
+
+    # Remove existing image when force-building
+    if [ "$FORCE_BUILD" = true ]; then
+        info "Force-build requested — removing existing shell image..."
+        docker rmi io.jclaw/jclaw-shell:0.1.0-SNAPSHOT 2>/dev/null || true
+    fi
+
+    if check_java; then
+        info "Building shell Docker image with Maven + JKube..."
+        debug "Running: ./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests"
+        local start=$SECONDS
+        (cd "$JCLAW_DIR" && ./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
+            case "$line" in
+                *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
+                *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
+                *"--- "*":"*" ---"*) printf "${DIM}  ▸ %s${NC}\n" "$line" ;;
+                *"Downloading"*)    ;;
+                *"Downloaded"*)     ;;
+                *"[ERROR]"*)        printf "${RED}  %s${NC}\n" "$line" ;;
+                *"[WARNING]"*)      printf "${YELLOW}  %s${NC}\n" "$line" ;;
+            esac
+        done)
+        local elapsed=$(( SECONDS - start ))
+        local mins=$(( elapsed / 60 ))
+        local secs=$(( elapsed % 60 ))
+        if [ "$mins" -gt 0 ]; then
+            ok "Docker image built: io.jclaw/jclaw-shell:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+        else
+            ok "Docker image built: io.jclaw/jclaw-shell:0.1.0-SNAPSHOT (${secs}s)"
+        fi
+    else
+        debug "Checking for pre-built shell Docker image..."
+        if docker image inspect io.jclaw/jclaw-shell:0.1.0-SNAPSHOT &>/dev/null; then
+            ok "Shell Docker image already exists (skipping build)"
+        else
+            err "Cannot build shell Docker image — Java 21+ is required for the Maven build."
+            exit 1
+        fi
+    fi
+}
+
+launch_shell() {
+    local compose_dir="$JCLAW_DIR/docker-compose"
+
+    header "Starting JClaw Interactive Shell"
+
+    echo "Starting interactive shell container..."
+    echo ""
+    printf "  ${DIM}Type 'help' for available commands${NC}\n"
+    printf "  ${DIM}Type 'chat hello' to talk to the agent${NC}\n"
+    printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
+    echo ""
+
+    docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" --profile cli run --rm cli
+}
+
+# ─── Env file resolution ─────────────────────────────────────────────────────
+
+resolve_env_file() {
+    local compose_dir="$JCLAW_DIR/docker-compose"
+
+    # Already set (from ~/.jclawrc or environment)
+    if [ -n "${JCLAW_ENV_FILE:-}" ]; then
+        ENV_FILE="$JCLAW_ENV_FILE"
+        ok "Using config from $ENV_FILE"
+        # Create from template if missing
+        if [ ! -f "$ENV_FILE" ] && [ -f "$compose_dir/.env.example" ]; then
+            mkdir -p "$(dirname "$ENV_FILE")"
+            cp "$compose_dir/.env.example" "$ENV_FILE"
+            info "Created $ENV_FILE from template"
+        fi
+        return
+    fi
+
+    # Backward compat: project-local .env already exists
+    if [ -f "$compose_dir/.env" ]; then
+        ENV_FILE="$compose_dir/.env"
+        ok "Using existing config at $ENV_FILE"
+        return
+    fi
+
+    # First run — prompt the user
+    echo ""
+    printf "${BOLD}Where should configuration be saved?${NC}\n"
+    echo "  1. ~/.jclaw/.env (recommended — persists across projects)"
+    echo "  2. docker-compose/.env (project-local)"
+    echo ""
+    read -rp "$(printf "${CYAN}▸${NC} Choice [1]: ")" env_choice
+    env_choice="${env_choice:-1}"
+
+    case "$env_choice" in
+        1)
+            ENV_FILE="$HOME/.jclaw/.env"
+            mkdir -p "$HOME/.jclaw"
+            ;;
+        2)
+            ENV_FILE="$compose_dir/.env"
+            ;;
+        *)
+            warn "Invalid choice, using ~/.jclaw/.env"
+            ENV_FILE="$HOME/.jclaw/.env"
+            mkdir -p "$HOME/.jclaw"
+            ;;
+    esac
+
+    # Write ~/.jclawrc so all scripts find this location
+    echo "JCLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jclawrc"
+    export JCLAW_ENV_FILE="$ENV_FILE"
+    ok "Saved config location to ~/.jclawrc"
+
+    # Copy template
+    if [ ! -f "$ENV_FILE" ] && [ -f "$compose_dir/.env.example" ]; then
+        cp "$compose_dir/.env.example" "$ENV_FILE"
+        info "Created $ENV_FILE from template"
+    fi
+}
+
+# ─── Reconfigure ─────────────────────────────────────────────────────────────
+
+reconfigure() {
+    local compose_dir="$JCLAW_DIR/docker-compose"
+
+    header "JClaw Reconfigure"
+
+    # Step 1: .env location
+    echo ""
+    printf "${BOLD}Where should configuration be saved?${NC}\n"
+    local current="${JCLAW_ENV_FILE:-$compose_dir/.env}"
+    echo "  Current: $current"
+    echo ""
+    echo "  1. ~/.jclaw/.env (recommended — persists across projects)"
+    echo "  2. docker-compose/.env (project-local)"
+    echo "  3. Keep current ($current)"
+    echo ""
+    read -rp "$(printf "${CYAN}▸${NC} Choice [3]: ")" env_choice
+    env_choice="${env_choice:-3}"
+
+    case "$env_choice" in
+        1)
+            ENV_FILE="$HOME/.jclaw/.env"
+            mkdir -p "$HOME/.jclaw"
+            ;;
+        2)
+            ENV_FILE="$compose_dir/.env"
+            ;;
+        *)
+            ENV_FILE="$current"
+            ;;
+    esac
+
+    # Update ~/.jclawrc
+    echo "JCLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jclawrc"
+    export JCLAW_ENV_FILE="$ENV_FILE"
+    ok "Config location: $ENV_FILE"
+
+    # Create from template if missing
+    if [ ! -f "$ENV_FILE" ] && [ -f "$compose_dir/.env.example" ]; then
+        mkdir -p "$(dirname "$ENV_FILE")"
+        cp "$compose_dir/.env.example" "$ENV_FILE"
+    fi
+
+    # Step 2: LLM provider
+    echo ""
+    printf "${BOLD}Select LLM provider:${NC}\n"
+    echo "  1. Anthropic (Claude)"
+    echo "  2. OpenAI"
+    echo "  3. Ollama (local, free)"
+    echo ""
+    read -rp "$(printf "${CYAN}▸${NC} Choice [1]: ")" provider_choice
+    provider_choice="${provider_choice:-1}"
+
+    case "$provider_choice" in
+        1)
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=anthropic|" "$ENV_FILE"
+            sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+
+            echo ""
+            read -rp "$(printf "${CYAN}▸${NC} Anthropic API key: ")" api_key
+            if [ -n "$api_key" ]; then
+                sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=${api_key}|" "$ENV_FILE"
+                rm -f "$ENV_FILE.bak"
+                ok "Anthropic API key saved"
+            fi
+            ;;
+        2)
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=openai|" "$ENV_FILE"
+            sed -i.bak "s|^OPENAI_ENABLED=.*|OPENAI_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+
+            echo ""
+            read -rp "$(printf "${CYAN}▸${NC} OpenAI API key: ")" api_key
+            if [ -n "$api_key" ]; then
+                sed -i.bak "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${api_key}|" "$ENV_FILE"
+                rm -f "$ENV_FILE.bak"
+                ok "OpenAI API key saved"
+            fi
+            ;;
+        3)
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=ollama|" "$ENV_FILE"
+            sed -i.bak "s|^OLLAMA_ENABLED=.*|OLLAMA_ENABLED=true|" "$ENV_FILE"
+            sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=false|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+            ok "Ollama selected — will start with Docker Compose"
+            ;;
+        *)
+            warn "Invalid choice, keeping current provider"
+            ;;
+    esac
+
+    # Step 3: Telegram
+    setup_telegram
+
+    ok "Reconfiguration complete"
+    echo ""
+
+    # Restart the stack
+    info "Restarting stack with new configuration..."
+    docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" down 2>/dev/null || true
+    start_stack
+    print_success
+}
+
 # ─── Start stack ──────────────────────────────────────────────────────────────
 
 has_api_key() {
@@ -219,24 +456,18 @@ start_stack() {
         exit 1
     fi
 
-    # Create .env from example if it doesn't exist
-    if [ ! -f "$compose_dir/.env" ] && [ -f "$compose_dir/.env.example" ]; then
-        cp "$compose_dir/.env.example" "$compose_dir/.env"
-        info "Created .env from template"
-    fi
-
     # Write env-provided API keys and enable the matching provider
     if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-        sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}|" "$compose_dir/.env"
-        sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=true|" "$compose_dir/.env"
-        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=anthropic|" "$compose_dir/.env"
-        rm -f "$compose_dir/.env.bak"
+        sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}|" "$ENV_FILE"
+        sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=true|" "$ENV_FILE"
+        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=anthropic|" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
     fi
     if [ -n "${OPENAI_API_KEY:-}" ]; then
-        sed -i.bak "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_API_KEY}|" "$compose_dir/.env"
-        sed -i.bak "s|^OPENAI_ENABLED=.*|OPENAI_ENABLED=true|" "$compose_dir/.env"
-        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=openai|" "$compose_dir/.env"
-        rm -f "$compose_dir/.env.bak"
+        sed -i.bak "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_API_KEY}|" "$ENV_FILE"
+        sed -i.bak "s|^OPENAI_ENABLED=.*|OPENAI_ENABLED=true|" "$ENV_FILE"
+        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=openai|" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
     fi
 
     # Decide whether to include Ollama
@@ -246,19 +477,19 @@ start_stack() {
         ok "API key detected — skipping Ollama (you can start it later with: docker compose --profile ollama up -d)"
     else
         # No API key — enable Ollama as the provider
-        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=ollama|" "$compose_dir/.env"
-        sed -i.bak "s|^OLLAMA_ENABLED=.*|OLLAMA_ENABLED=true|" "$compose_dir/.env"
-        sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=false|" "$compose_dir/.env"
-        rm -f "$compose_dir/.env.bak"
+        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=ollama|" "$ENV_FILE"
+        sed -i.bak "s|^OLLAMA_ENABLED=.*|OLLAMA_ENABLED=true|" "$ENV_FILE"
+        sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=false|" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
     fi
 
     debug "Starting containers..."
     local start=$SECONDS
     if [ "$use_ollama" = true ]; then
         info "No API key set — starting with Ollama (local LLM). This pulls a ~3GB image on first run."
-        docker compose -f "$compose_dir/docker-compose.yml" --profile ollama up -d
+        docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" --profile ollama up -d
     else
-        docker compose -f "$compose_dir/docker-compose.yml" up -d
+        docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" up -d
     fi
     local elapsed=$(( SECONDS - start ))
     ok "Stack is running (${elapsed}s)"
@@ -269,7 +500,7 @@ start_stack() {
         info "Pulling Ollama model (this may take a few minutes on first run)..."
         debug "Running: ollama pull llama3.2"
         start=$SECONDS
-        docker compose -f "$compose_dir/docker-compose.yml" --profile ollama exec -T ollama ollama pull llama3.2 2>&1 | while IFS= read -r line; do
+        docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" --profile ollama exec -T ollama ollama pull llama3.2 2>&1 | while IFS= read -r line; do
             # Show pull progress
             case "$line" in
                 *"pulling"*|*"verifying"*|*"writing"*|*"success"*)
@@ -286,7 +517,6 @@ start_stack() {
 TELEGRAM_BOT_USERNAME=""
 
 setup_telegram() {
-    local compose_dir="$JCLAW_DIR/docker-compose"
     echo ""
     read -rp "$(printf "${CYAN}▸${NC} Set up Telegram bot? (y/N): ")" setup_tg
     if [[ ! "$setup_tg" =~ ^[Yy]$ ]]; then
@@ -310,8 +540,9 @@ setup_telegram() {
     local response
     response=$(curl -sf "https://api.telegram.org/bot${tg_token}/getMe" 2>/dev/null) || {
         warn "Token validation failed. Saving anyway — you can fix it later in .env"
-        sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$compose_dir/.env"
-        rm -f "$compose_dir/.env.bak"
+        sed -i.bak "s|^TELEGRAM_ENABLED=.*|TELEGRAM_ENABLED=true|" "$ENV_FILE"
+        sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
         return
     }
     local bot_username
@@ -319,8 +550,9 @@ setup_telegram() {
     ok "Bot validated: @${bot_username}"
 
     # Write to .env
-    sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$compose_dir/.env"
-    rm -f "$compose_dir/.env.bak"
+    sed -i.bak "s|^TELEGRAM_ENABLED=.*|TELEGRAM_ENABLED=true|" "$ENV_FILE"
+    sed -i.bak "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${tg_token}|" "$ENV_FILE"
+    rm -f "$ENV_FILE.bak"
 
     TELEGRAM_BOT_USERNAME="$bot_username"
 }
@@ -352,7 +584,7 @@ print_success() {
         echo ""
     fi
     echo "To add API keys or channel tokens, edit:"
-    printf "  ${BOLD}${compose_dir}/.env${NC}\n"
+    printf "  ${BOLD}${ENV_FILE}${NC}\n"
     echo ""
 }
 
@@ -360,15 +592,69 @@ print_success() {
 
 main() {
     local total_start=$SECONDS
+    local launch_mode=gateway
+    local do_reconfigure=false
+    FORCE_BUILD=false
+
+    # Parse arguments
+    for arg in "$@"; do
+        case "$arg" in
+            --shell)        launch_mode=shell ;;
+            --force-build)  FORCE_BUILD=true ;;
+            --reconfigure)  do_reconfigure=true ;;
+            -h|--help|help)
+                echo "Usage: ./quickstart.sh [options]"
+                echo ""
+                echo "Docker-based zero-friction JClaw launcher."
+                echo ""
+                echo "Options:"
+                echo "  --shell         Start the interactive CLI shell instead of the gateway"
+                echo "  --force-build   Force rebuild Docker images even if they exist"
+                echo "  --reconfigure   Re-run interactive setup (provider, API keys, channels)"
+                echo "  --help          Print this help"
+                exit 0
+                ;;
+            *)
+                err "Unknown option: $arg"
+                echo "Run './quickstart.sh --help' for usage."
+                exit 1
+                ;;
+        esac
+    done
 
     header "JClaw Quickstart"
     debug "JCLAW_DIR=$JCLAW_DIR  INSIDE_REPO=$INSIDE_REPO"
 
     check_docker
     clone_repo
-    build_image
-    setup_telegram
-    start_stack
+
+    # Resolve .env file location (prompt on first run, read ~/.jclawrc on subsequent runs)
+    resolve_env_file
+
+    # Reconfigure mode: full interactive re-setup
+    if [ "$do_reconfigure" = true ]; then
+        reconfigure
+
+        local total_elapsed=$(( SECONDS - total_start ))
+        local mins=$(( total_elapsed / 60 ))
+        local secs=$(( total_elapsed % 60 ))
+        if [ "$mins" -gt 0 ]; then
+            ok "Total time: ${mins}m ${secs}s"
+        else
+            ok "Total time: ${secs}s"
+        fi
+        return
+    fi
+
+    if [ "$launch_mode" = "shell" ]; then
+        build_shell_image
+        launch_shell
+    else
+        build_image
+        setup_telegram
+        start_stack
+        print_success
+    fi
 
     local total_elapsed=$(( SECONDS - total_start ))
     local mins=$(( total_elapsed / 60 ))
@@ -378,8 +664,6 @@ main() {
     else
         ok "Total time: ${secs}s"
     fi
-
-    print_success
 }
 
 main "$@"

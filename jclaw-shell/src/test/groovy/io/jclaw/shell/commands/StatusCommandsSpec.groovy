@@ -17,7 +17,7 @@ class StatusCommandsSpec extends Specification {
     SkillLoader skillLoader = Mock()
 
     JClawProperties properties = new JClawProperties(
-            null, null, null, null, null, null, null, null)
+            null, null, null, null, null, null, null, null, null)
 
     StatusCommands commands = new StatusCommands(
             properties, toolRegistry, pluginRegistry, sessionManager, skillLoader)

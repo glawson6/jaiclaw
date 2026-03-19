@@ -2,7 +2,7 @@
 #
 # JClaw Start — run the gateway (Docker) or interactive shell (local)
 #
-# Reads API keys and configuration from docker-compose/.env
+# Reads API keys and configuration from JCLAW_ENV_FILE (or docker-compose/.env)
 #
 # Usage:
 #   ./start.sh              # start gateway via Docker Compose (default)
@@ -12,6 +12,7 @@
 #   ./start.sh local        # start gateway locally (no Docker, requires Java 21)
 #   ./start.sh telegram     # validate Telegram bot token → start gateway (Docker)
 #   ./start.sh telegram local  # validate Telegram bot token → start gateway (local Java)
+#   ./start.sh --force-build gateway  # rebuild Docker image, then start gateway
 #   ./start.sh stop         # stop Docker Compose stack
 #   ./start.sh logs         # tail gateway container logs
 #
@@ -19,7 +20,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="$SCRIPT_DIR/docker-compose"
-ENV_FILE="$COMPOSE_DIR/.env"
+
+# Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
+[ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
+ENV_FILE="${JCLAW_ENV_FILE:-$COMPOSE_DIR/.env}"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -41,6 +45,7 @@ header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
 load_env() {
     if [ ! -f "$ENV_FILE" ]; then
         if [ -f "$COMPOSE_DIR/.env.example" ]; then
+            mkdir -p "$(dirname "$ENV_FILE")"
             cp "$COMPOSE_DIR/.env.example" "$ENV_FILE"
             warn "Created $ENV_FILE from template — edit it to add your API keys."
         else
@@ -63,6 +68,9 @@ load_env() {
     set +a
 
     ok "Loaded configuration from $ENV_FILE"
+    if [ ! -f "$HOME/.jclawrc" ]; then
+        info "Tip: run './quickstart.sh --reconfigure' to choose a persistent config location."
+    fi
 }
 
 # ─── Java check ──────────────────────────────────────────────────────────────
@@ -113,13 +121,19 @@ ensure_docker() {
 
 ensure_image() {
     local module="${1:-jclaw-gateway-app}"
-    if ! docker image inspect "io.jclaw/${module}:0.1.0-SNAPSHOT" &>/dev/null; then
+    local image="io.jclaw/${module}:0.1.0-SNAPSHOT"
+    if [ "$FORCE_BUILD" = true ]; then
+        info "Force-building Docker image for ${module}..."
+        docker rmi "$image" 2>/dev/null || true
+    elif docker image inspect "$image" &>/dev/null; then
+        return 0
+    else
         warn "Docker image for ${module} not found. Building..."
-        ensure_java
-        info "Running: ./mvnw package k8s:build -pl ${module} -am -Pk8s -DskipTests"
-        (cd "$SCRIPT_DIR" && ./mvnw package k8s:build -pl "${module}" -am -Pk8s -DskipTests)
-        ok "Docker image built: io.jclaw/${module}:0.1.0-SNAPSHOT"
     fi
+    ensure_java
+    info "Running: ./mvnw package k8s:build -pl ${module} -am -Pk8s -DskipTests"
+    (cd "$SCRIPT_DIR" && ./mvnw package k8s:build -pl "${module}" -am -Pk8s -DskipTests)
+    ok "Docker image built: $image"
 }
 
 # ─── Commands ────────────────────────────────────────────────────────────────
@@ -131,7 +145,7 @@ cmd_gateway() {
     ensure_image jclaw-gateway-app
 
     info "Starting gateway container..."
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" up -d
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" up -d
 
     echo ""
     ok "Gateway is running on http://localhost:${GATEWAY_PORT:-8080}"
@@ -150,7 +164,7 @@ cmd_gateway() {
 
     info "Tailing logs (Ctrl+C to detach — gateway keeps running)..."
     echo ""
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs -f gateway
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" logs -f gateway
 }
 
 cmd_shell() {
@@ -188,7 +202,7 @@ cmd_cli() {
     printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
     echo ""
 
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --profile cli run --rm cli
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" --profile cli run --rm cli
 }
 
 cmd_local() {
@@ -259,28 +273,49 @@ cmd_telegram() {
 
 cmd_stop() {
     info "Stopping JClaw..."
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" down
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" down
     ok "Stopped"
 }
 
 cmd_logs() {
-    docker compose -f "$COMPOSE_DIR/docker-compose.yml" logs -f gateway
+    docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" logs -f gateway
 }
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
-COMMAND="${1:-gateway}"
+FORCE_BUILD=false
+COMMAND=""
+EXTRA_ARGS=()
+
+# Parse global flags and command
+for arg in "$@"; do
+    case "$arg" in
+        --force-build) FORCE_BUILD=true ;;
+        *)
+            if [ -z "$COMMAND" ]; then
+                COMMAND="$arg"
+            else
+                EXTRA_ARGS+=("$arg")
+            fi
+            ;;
+    esac
+done
+
+COMMAND="${COMMAND:-gateway}"
 
 case "$COMMAND" in
     gateway)  cmd_gateway ;;
     shell)    cmd_shell ;;
     cli)      cmd_cli ;;
     local)    cmd_local ;;
-    telegram) cmd_telegram "${2:-}" ;;
+    telegram) cmd_telegram "${EXTRA_ARGS[0]:-}" ;;
     stop)     cmd_stop ;;
     logs)     cmd_logs ;;
     -h|--help|help)
-        echo "Usage: ./start.sh [command]"
+        echo "Usage: ./start.sh [options] [command]"
+        echo ""
+        echo "Options:"
+        echo "  --force-build    Force rebuild Docker images even if they exist"
         echo ""
         echo "Commands:"
         echo "  gateway          Start gateway via Docker Compose (default)"
@@ -292,8 +327,8 @@ case "$COMMAND" in
         echo "  stop             Stop Docker Compose stack"
         echo "  logs             Tail gateway container logs"
         echo ""
-        echo "Configuration is loaded from docker-compose/.env"
-        echo "Edit that file to set API keys, provider, and channel tokens."
+        echo "Configuration is loaded from \$JCLAW_ENV_FILE (default: docker-compose/.env)."
+        echo "Set JCLAW_ENV_FILE or run './quickstart.sh --reconfigure' to change."
         ;;
     *)
         err "Unknown command: $COMMAND"

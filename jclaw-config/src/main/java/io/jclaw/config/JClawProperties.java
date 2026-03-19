@@ -14,7 +14,9 @@ public record JClawProperties(
         PluginsProperties plugins,
         MemoryProperties memory,
         ModelsProperties models,
-        SessionProperties session
+        SessionProperties session,
+        McpServerProperties mcpServers,
+        ChannelsProperties channels
 ) {
     public JClawProperties {
         if (identity == null) identity = IdentityProperties.DEFAULT;
@@ -25,5 +27,7 @@ public record JClawProperties(
         if (memory == null) memory = MemoryProperties.DEFAULT;
         if (models == null) models = ModelsProperties.DEFAULT;
         if (session == null) session = SessionProperties.DEFAULT;
+        if (mcpServers == null) mcpServers = McpServerProperties.DEFAULT;
+        if (channels == null) channels = ChannelsProperties.DEFAULT;
     }
 }

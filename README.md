@@ -60,6 +60,10 @@ vi docker-compose/.env
 # Start gateway locally without Docker
 ./start.sh local
 
+# Force rebuild Docker images (after code changes)
+./start.sh --force-build
+./start.sh --force-build cli
+
 # Stop the Docker stack
 ./start.sh stop
 
@@ -171,13 +175,15 @@ ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
 
 | Script | Purpose |
 |--------|---------|
-| `start.sh` | **Daily driver** — start gateway (Docker or local), interactive shell (local or Docker). Reads `docker-compose/.env` for config. |
-| `quickstart.sh` | **First-time Docker setup** — clones, builds image, starts stack, pulls Ollama if needed. |
+| `start.sh` | **Daily driver** — start gateway (Docker or local), interactive shell (local or Docker). Reads `docker-compose/.env` for config. Use `--force-build` to rebuild Docker images. |
+| `quickstart.sh` | **First-time Docker setup** — clones, builds image, starts stack, pulls Ollama if needed. Use `--force-build` to rebuild, `--reconfigure` to re-run interactive setup. |
 | `setup.sh` | **First-time developer setup** — installs Java 21, builds from source, launches shell or gateway. |
 
 ## Configuration
 
-All configuration lives in `docker-compose/.env`. Both `start.sh` and Docker Compose read from this file.
+Configuration lives in a `.env` file. By default this is `docker-compose/.env`, but you can choose `~/.jclaw/.env` (persists across projects) during first run or via `./quickstart.sh --reconfigure`. The chosen location is saved in `~/.jclawrc` and respected by all scripts.
+
+You can also set `JCLAW_ENV_FILE` directly to point to any `.env` file.
 
 | Variable | Default | Description |
 |----------|---------|-------------|

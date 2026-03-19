@@ -32,6 +32,7 @@ public class EnvFileWriter {
         OnboardResult.TelegramConfig tg = result.telegram();
         if (tg != null && tg.enabled()) {
             sb.append("\n# Telegram\n");
+            sb.append("export TELEGRAM_ENABLED=true\n");
             sb.append("export TELEGRAM_BOT_TOKEN=").append(tg.botToken()).append("\n");
         }
 
@@ -39,6 +40,7 @@ public class EnvFileWriter {
         OnboardResult.SlackConfig slack = result.slack();
         if (slack != null && slack.enabled()) {
             sb.append("\n# Slack\n");
+            sb.append("export SLACK_ENABLED=true\n");
             sb.append("export SLACK_BOT_TOKEN=").append(slack.botToken()).append("\n");
             sb.append("export SLACK_SIGNING_SECRET=").append(slack.signingSecret()).append("\n");
             if (slack.appToken() != null && !slack.appToken().isBlank()) {
@@ -50,8 +52,20 @@ public class EnvFileWriter {
         OnboardResult.DiscordConfig discord = result.discord();
         if (discord != null && discord.enabled()) {
             sb.append("\n# Discord\n");
+            sb.append("export DISCORD_ENABLED=true\n");
             sb.append("export DISCORD_BOT_TOKEN=").append(discord.botToken()).append("\n");
             sb.append("export DISCORD_APPLICATION_ID=").append(discord.applicationId()).append("\n");
+        }
+
+        // MCP server auth tokens
+        if (result.mcpServers() != null) {
+            for (OnboardResult.McpServerConfig mcp : result.mcpServers()) {
+                if (mcp.authToken() != null && !mcp.authToken().isBlank()) {
+                    String envVar = "MCP_" + mcp.name().toUpperCase().replace("-", "_") + "_TOKEN";
+                    sb.append("\n# MCP Server: ").append(mcp.name()).append("\n");
+                    sb.append("export ").append(envVar).append("=").append(mcp.authToken()).append("\n");
+                }
+            }
         }
 
         return sb.toString();

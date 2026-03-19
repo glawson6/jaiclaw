@@ -51,6 +51,22 @@
 
     <profiles>
         <profile>
+            <id>jbang</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <!-- Fat JAR becomes *-exec.jar, original JAR stays as the
+                                 standard Maven artifact so JBang can resolve it. -->
+                            <classifier>exec</classifier>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>k8s</id>
             <build>
                 <plugins>

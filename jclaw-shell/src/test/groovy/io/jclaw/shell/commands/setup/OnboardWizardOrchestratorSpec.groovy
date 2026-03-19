@@ -23,12 +23,12 @@ class OnboardWizardOrchestratorSpec extends Specification {
             flowBuilder, llmTester, telegramValidator, slackValidator,
             discordValidator, yamlWriter, envWriter)
 
-    def "buildSteps returns all 10 wizard steps"() {
+    def "buildSteps returns all 12 wizard steps"() {
         when:
         def steps = orchestrator.buildSteps(new OnboardResult())
 
         then:
-        steps.size() == 10
+        steps.size() == 12
         steps[0].name() == "Welcome"
         steps[1].name() == "Flow Mode"
         steps[2].name() == "Existing Config"
@@ -37,8 +37,10 @@ class OnboardWizardOrchestratorSpec extends Specification {
         steps[5].name() == "Telegram"
         steps[6].name() == "Slack"
         steps[7].name() == "Discord"
-        steps[8].name() == "Config Location"
-        steps[9].name() == "Finalization"
+        steps[8].name() == "Skills"
+        steps[9].name() == "MCP Servers"
+        steps[10].name() == "Config Location"
+        steps[11].name() == "Finalization"
     }
 
     def "all steps implement WizardStep sealed interface"() {

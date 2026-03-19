@@ -1,5 +1,6 @@
 package io.jclaw.autoconfigure;
 
+import io.jclaw.config.ChannelsProperties;
 import io.jclaw.config.JClawProperties;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -7,16 +8,21 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Channel adapter auto-configuration — runs after {@link JClawGatewayAutoConfiguration}
  * so that {@code WebhookDispatcher} is available for channel adapters that need it.
+ *
+ * <p>Channel configuration is resolved from {@link ChannelsProperties} (bound to
+ * {@code jclaw.channels.*}), which participates in Spring's full property resolution
+ * (system properties, env vars, application.yml, etc.).
+ *
+ * <p>Each adapter is gated on its explicit {@code enabled} property
+ * ({@code jclaw.channels.<channel>.enabled=true}), so unconfigured channels are
+ * silently skipped.
  */
 @AutoConfiguration
 @AutoConfigureAfter(JClawGatewayAutoConfiguration.class)
@@ -27,29 +33,25 @@ public class JClawChannelAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(name = "io.jclaw.channel.email.EmailAdapter")
+    @ConditionalOnProperty(prefix = "jclaw.channels.email", name = "enabled", havingValue = "true")
     static class EmailAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        public io.jclaw.channel.email.EmailAdapter emailAdapter() {
+        public io.jclaw.channel.email.EmailAdapter emailAdapter(JClawProperties properties) {
+            var email = properties.channels().email();
             var config = new io.jclaw.channel.email.EmailConfig(
-                    System.getenv("EMAIL_PROVIDER"),
-                    System.getenv("EMAIL_IMAP_HOST"),
-                    parseIntEnv("EMAIL_IMAP_PORT", 993),
-                    System.getenv("EMAIL_SMTP_HOST"),
-                    parseIntEnv("EMAIL_SMTP_PORT", 587),
-                    System.getenv("EMAIL_USERNAME"),
-                    System.getenv("EMAIL_PASSWORD"),
-                    System.getenv("EMAIL_USERNAME") != null,
-                    parseIntEnv("EMAIL_POLL_INTERVAL", 60),
+                    email.provider(),
+                    email.imapHost(),
+                    email.imapPort(),
+                    email.smtpHost(),
+                    email.smtpPort(),
+                    email.username(),
+                    email.password(),
+                    email.enabled(),
+                    email.pollInterval(),
                     null);
             return new io.jclaw.channel.email.EmailAdapter(config);
-        }
-
-        private static int parseIntEnv(String key, int defaultValue) {
-            String val = System.getenv(key);
-            if (val == null || val.isBlank()) return defaultValue;
-            try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultValue; }
         }
     }
 
@@ -58,17 +60,19 @@ public class JClawChannelAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(name = "io.jclaw.channel.sms.SmsAdapter")
+    @ConditionalOnProperty(prefix = "jclaw.channels.sms", name = "enabled", havingValue = "true")
     static class SmsAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        public io.jclaw.channel.sms.SmsAdapter smsAdapter() {
+        public io.jclaw.channel.sms.SmsAdapter smsAdapter(JClawProperties properties) {
+            var sms = properties.channels().sms();
             var config = new io.jclaw.channel.sms.SmsConfig(
-                    System.getenv("TWILIO_ACCOUNT_SID"),
-                    System.getenv("TWILIO_AUTH_TOKEN"),
-                    System.getenv("TWILIO_FROM_NUMBER"),
-                    null,
-                    System.getenv("TWILIO_ACCOUNT_SID") != null);
+                    sms.accountSid(),
+                    sms.authToken(),
+                    sms.fromNumber(),
+                    sms.webhookPath(),
+                    sms.enabled());
             return new io.jclaw.channel.sms.SmsAdapter(config);
         }
     }
@@ -92,6 +96,7 @@ public class JClawChannelAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(name = "io.jclaw.channel.telegram.TelegramAdapter")
+    @ConditionalOnProperty(prefix = "jclaw.channels.telegram", name = "enabled", havingValue = "true")
     static class TelegramAutoConfiguration {
 
         @Bean
@@ -100,22 +105,14 @@ public class JClawChannelAutoConfiguration {
         public io.jclaw.channel.telegram.TelegramAdapter telegramAdapter(
                 JClawProperties properties,
                 io.jclaw.gateway.WebhookDispatcher webhookDispatcher) {
-            Set<String> allowedUsers = parseCommaSeparated(System.getenv("TELEGRAM_ALLOWED_USERS"));
+            var telegram = properties.channels().telegram();
             var config = new io.jclaw.channel.telegram.TelegramConfig(
-                    System.getenv("TELEGRAM_BOT_TOKEN"),
-                    System.getenv("TELEGRAM_WEBHOOK_URL"),
-                    System.getenv("TELEGRAM_BOT_TOKEN") != null,
-                    30,
-                    allowedUsers);
+                    telegram.botToken(),
+                    telegram.webhookUrl(),
+                    telegram.enabled(),
+                    telegram.pollingTimeoutSeconds(),
+                    telegram.allowedUserIds());
             return new io.jclaw.channel.telegram.TelegramAdapter(config, webhookDispatcher);
-        }
-
-        private static Set<String> parseCommaSeparated(String value) {
-            if (value == null || value.isBlank()) return Set.of();
-            return Arrays.stream(value.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .collect(Collectors.toUnmodifiableSet());
         }
     }
 
@@ -124,6 +121,7 @@ public class JClawChannelAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(name = "io.jclaw.channel.slack.SlackAdapter")
+    @ConditionalOnProperty(prefix = "jclaw.channels.slack", name = "enabled", havingValue = "true")
     static class SlackAutoConfiguration {
 
         @Bean
@@ -132,11 +130,12 @@ public class JClawChannelAutoConfiguration {
         public io.jclaw.channel.slack.SlackAdapter slackAdapter(
                 JClawProperties properties,
                 io.jclaw.gateway.WebhookDispatcher webhookDispatcher) {
+            var slack = properties.channels().slack();
             var config = new io.jclaw.channel.slack.SlackConfig(
-                    System.getenv("SLACK_BOT_TOKEN"),
-                    System.getenv("SLACK_SIGNING_SECRET"),
-                    System.getenv("SLACK_BOT_TOKEN") != null,
-                    System.getenv("SLACK_APP_TOKEN"));
+                    slack.botToken(),
+                    slack.signingSecret(),
+                    slack.enabled(),
+                    slack.appToken());
             return new io.jclaw.channel.slack.SlackAdapter(config, webhookDispatcher);
         }
     }
@@ -146,6 +145,7 @@ public class JClawChannelAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(name = "io.jclaw.channel.discord.DiscordAdapter")
+    @ConditionalOnProperty(prefix = "jclaw.channels.discord", name = "enabled", havingValue = "true")
     static class DiscordAutoConfiguration {
 
         @Bean
@@ -154,12 +154,12 @@ public class JClawChannelAutoConfiguration {
         public io.jclaw.channel.discord.DiscordAdapter discordAdapter(
                 JClawProperties properties,
                 io.jclaw.gateway.WebhookDispatcher webhookDispatcher) {
-            String useGateway = System.getenv("DISCORD_USE_GATEWAY");
+            var discord = properties.channels().discord();
             var config = new io.jclaw.channel.discord.DiscordConfig(
-                    System.getenv("DISCORD_BOT_TOKEN"),
-                    System.getenv("DISCORD_APPLICATION_ID"),
-                    System.getenv("DISCORD_BOT_TOKEN") != null,
-                    "true".equalsIgnoreCase(useGateway));
+                    discord.botToken(),
+                    discord.applicationId(),
+                    discord.enabled(),
+                    discord.useGateway());
             return new io.jclaw.channel.discord.DiscordAdapter(config, webhookDispatcher);
         }
     }

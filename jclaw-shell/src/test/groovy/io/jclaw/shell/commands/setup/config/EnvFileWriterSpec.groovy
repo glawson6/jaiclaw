@@ -52,7 +52,7 @@ class EnvFileWriterSpec extends Specification {
         !env.contains("API_KEY=")
     }
 
-    def "includes Telegram bot token when enabled"() {
+    def "includes Telegram enabled flag and bot token when enabled"() {
         given:
         def result = new OnboardResult()
         result.setLlmProvider("openai")
@@ -64,10 +64,11 @@ class EnvFileWriterSpec extends Specification {
         def env = writer.generate(result)
 
         then:
+        env.contains("export TELEGRAM_ENABLED=true")
         env.contains("export TELEGRAM_BOT_TOKEN=123456:ABC-DEF")
     }
 
-    def "includes Slack tokens when enabled"() {
+    def "includes Slack enabled flag and tokens when enabled"() {
         given:
         def result = new OnboardResult()
         result.setLlmProvider("openai")
@@ -79,12 +80,13 @@ class EnvFileWriterSpec extends Specification {
         def env = writer.generate(result)
 
         then:
+        env.contains("export SLACK_ENABLED=true")
         env.contains("export SLACK_BOT_TOKEN=xoxb-token")
         env.contains("export SLACK_SIGNING_SECRET=signing-secret")
         env.contains("export SLACK_APP_TOKEN=xapp-token")
     }
 
-    def "includes Discord tokens when enabled"() {
+    def "includes Discord enabled flag and tokens when enabled"() {
         given:
         def result = new OnboardResult()
         result.setLlmProvider("openai")
@@ -96,6 +98,7 @@ class EnvFileWriterSpec extends Specification {
         def env = writer.generate(result)
 
         then:
+        env.contains("export DISCORD_ENABLED=true")
         env.contains("export DISCORD_BOT_TOKEN=discord-bot-token")
         env.contains("export DISCORD_APPLICATION_ID=app-id-123")
     }

@@ -113,6 +113,15 @@ public class JClawGatewayAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnBean(io.jclaw.gateway.mcp.McpServerRegistry.class)
+    public io.jclaw.gateway.mcp.McpServerConfigBootstrap mcpServerConfigBootstrap(
+            JClawProperties properties,
+            io.jclaw.gateway.mcp.McpServerRegistry registry) {
+        return new io.jclaw.gateway.mcp.McpServerConfigBootstrap(properties, registry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public io.jclaw.gateway.observability.GatewayMetrics gatewayMetrics() {
         return new io.jclaw.gateway.observability.GatewayMetrics();
     }

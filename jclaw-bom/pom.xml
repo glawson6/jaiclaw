@@ -111,6 +111,36 @@
             </dependency>
             <dependency>
                 <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-compaction</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-browser</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-cron</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-voice</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-identity</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-canvas</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>

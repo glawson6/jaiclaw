@@ -10,6 +10,11 @@
       "script-ref": "io.jclaw:jclaw-gateway-app:0.1.0",
       "description": "JClaw gateway server — REST API + WebSocket + channel adapters",
       "java": "21"
+    },
+    "jclaw": {
+      "script-ref": "JClaw.java",
+      "description": "JClaw launcher — start gateway, shell, or manage containers",
+      "java": "21"
     }
   },
   "templates": {}

@@ -1,10 +1,13 @@
 package io.jclaw.shell.commands.setup;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class OnboardResult {
 
     public enum FlowMode { QUICKSTART, MANUAL }
+    public enum McpTransportType { STDIO, SSE, HTTP }
 
     // Flow
     private FlowMode flowMode = FlowMode.QUICKSTART;
@@ -26,6 +29,12 @@ public final class OnboardResult {
     private SlackConfig slack;
     private DiscordConfig discord;
 
+    // Skills
+    private SkillsConfig skillsConfig;
+
+    // MCP Servers
+    private List<McpServerConfig> mcpServers = new ArrayList<>();
+
     // Config output
     private Path configDir;
 
@@ -34,6 +43,13 @@ public final class OnboardResult {
     public record TelegramConfig(String botToken, boolean enabled) {}
     public record SlackConfig(String botToken, String signingSecret, String appToken, boolean enabled) {}
     public record DiscordConfig(String botToken, String applicationId, boolean enabled) {}
+    public record SkillsConfig(List<String> enabledBundled, String workspaceDir) {}
+    public record McpServerConfig(
+            String name, String description, McpTransportType transportType,
+            String command, List<String> args,   // stdio
+            String url,                          // sse/http
+            String authToken                     // http (nullable)
+    ) {}
 
     // --- Getters and setters ---
 
@@ -75,6 +91,12 @@ public final class OnboardResult {
 
     public Path configDir() { return configDir; }
     public void setConfigDir(Path configDir) { this.configDir = configDir; }
+
+    public SkillsConfig skillsConfig() { return skillsConfig; }
+    public void setSkillsConfig(SkillsConfig skillsConfig) { this.skillsConfig = skillsConfig; }
+
+    public List<McpServerConfig> mcpServers() { return mcpServers; }
+    public void setMcpServers(List<McpServerConfig> mcpServers) { this.mcpServers = mcpServers; }
 
     public boolean isManual() { return flowMode == FlowMode.MANUAL; }
 }

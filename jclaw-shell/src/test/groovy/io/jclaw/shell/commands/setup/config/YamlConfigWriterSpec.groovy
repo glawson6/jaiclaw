@@ -1,5 +1,6 @@
 package io.jclaw.shell.commands.setup.config
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 import io.jclaw.shell.commands.setup.OnboardResult
 import spock.lang.Specification
 
@@ -8,6 +9,11 @@ import java.nio.file.Path
 class YamlConfigWriterSpec extends Specification {
 
     YamlConfigWriter writer = new YamlConfigWriter()
+    YAMLMapper mapper = new YAMLMapper()
+
+    private Map<String, Object> parse(String yaml) {
+        mapper.readValue(yaml, Map)
+    }
 
     def "generates YAML for OpenAI provider"() {
         given:
@@ -19,15 +25,15 @@ class YamlConfigWriterSpec extends Specification {
 
         when:
         def yaml = writer.generate(result)
+        def parsed = parse(yaml)
 
         then:
-        yaml.contains("name: MyBot")
-        yaml.contains("primary: gpt-4o")
-        yaml.contains("fallbacks:")
-        yaml.contains("- gpt-4o-mini")
-        yaml.contains('api-key: ${OPENAI_API_KEY}')
-        !yaml.contains("anthropic")
-        !yaml.contains("ollama")
+        parsed.jclaw.identity.name == "MyBot"
+        parsed.jclaw.agent.agents['default'].model.primary == "gpt-4o"
+        parsed.jclaw.agent.agents['default'].model.fallbacks == ["gpt-4o-mini"]
+        parsed.spring.ai.openai.'api-key' == '${OPENAI_API_KEY}'
+        !parsed.spring.ai.containsKey("anthropic")
+        !parsed.spring.ai.containsKey("ollama")
     }
 
     def "generates YAML for Anthropic provider"() {
@@ -40,12 +46,13 @@ class YamlConfigWriterSpec extends Specification {
 
         when:
         def yaml = writer.generate(result)
+        def parsed = parse(yaml)
 
         then:
-        yaml.contains("primary: claude-sonnet-4-6")
-        yaml.contains('api-key: ${ANTHROPIC_API_KEY}')
-        yaml.contains("- claude-haiku-4-5-20251001")
-        !yaml.contains("openai")
+        parsed.jclaw.agent.agents['default'].model.primary == "claude-sonnet-4-6"
+        parsed.jclaw.agent.agents['default'].model.fallbacks == ["claude-haiku-4-5-20251001"]
+        parsed.spring.ai.anthropic.'api-key' == '${ANTHROPIC_API_KEY}'
+        !parsed.spring.ai.containsKey("openai")
     }
 
     def "generates YAML for Ollama provider without fallbacks"() {
@@ -58,12 +65,14 @@ class YamlConfigWriterSpec extends Specification {
 
         when:
         def yaml = writer.generate(result)
+        def parsed = parse(yaml)
 
         then:
-        yaml.contains("primary: llama3")
-        yaml.contains("base-url: http://localhost:11434")
-        !yaml.contains("fallbacks:")
-        !yaml.contains("api-key")
+        parsed.jclaw.agent.agents['default'].model.primary == "llama3"
+        !parsed.jclaw.agent.agents['default'].model.containsKey("fallbacks")
+        parsed.spring.ai.ollama.'base-url' == "http://localhost:11434"
+        !parsed.spring.ai.containsKey("openai")
+        !parsed.spring.ai.containsKey("anthropic")
     }
 
     def "includes server config in manual mode"() {
@@ -78,11 +87,11 @@ class YamlConfigWriterSpec extends Specification {
 
         when:
         def yaml = writer.generate(result)
+        def parsed = parse(yaml)
 
         then:
-        yaml.contains("server:")
-        yaml.contains("port: 9090")
-        yaml.contains("address: 127.0.0.1")
+        parsed.server.port == 9090
+        parsed.server.address == "127.0.0.1"
     }
 
     def "excludes server config in quickstart mode"() {
@@ -95,9 +104,51 @@ class YamlConfigWriterSpec extends Specification {
 
         when:
         def yaml = writer.generate(result)
+        def parsed = parse(yaml)
 
         then:
-        !yaml.contains("server:")
+        !parsed.containsKey("server")
+    }
+
+    def "includes enabled channels"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setTelegram(new OnboardResult.TelegramConfig("token", true))
+        result.setSlack(new OnboardResult.SlackConfig("xoxb", "secret", "xapp", true))
+        result.setDiscord(new OnboardResult.DiscordConfig("disc-token", "app-id", true))
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        parsed.jclaw.channels.telegram.enabled == true
+        parsed.jclaw.channels.telegram.'bot-token' == '${TELEGRAM_BOT_TOKEN}'
+        parsed.jclaw.channels.slack.enabled == true
+        parsed.jclaw.channels.slack.'bot-token' == '${SLACK_BOT_TOKEN}'
+        parsed.jclaw.channels.slack.'signing-secret' == '${SLACK_SIGNING_SECRET}'
+        parsed.jclaw.channels.slack.'app-token' == '${SLACK_APP_TOKEN}'
+        parsed.jclaw.channels.discord.enabled == true
+        parsed.jclaw.channels.discord.'bot-token' == '${DISCORD_BOT_TOKEN}'
+        parsed.jclaw.channels.discord.'application-id' == '${DISCORD_APPLICATION_ID}'
+    }
+
+    def "excludes channels section when none enabled"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        !parsed.jclaw.containsKey("channels")
     }
 
     def "writes YAML file to config directory"() {
@@ -115,9 +166,40 @@ class YamlConfigWriterSpec extends Specification {
         then:
         def yamlFile = tmpDir.resolve("application-local.yml")
         yamlFile.toFile().exists()
-        yamlFile.toFile().text.contains("primary: gpt-4o")
+        def parsed = parse(yamlFile.toFile().text)
+        parsed.jclaw.agent.agents['default'].model.primary == "gpt-4o"
 
         cleanup:
         tmpDir.toFile().deleteDir()
+    }
+
+    def "includes MCP server config"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+        result.setMcpServers([
+            new OnboardResult.McpServerConfig(
+                "my-server", "A test server", OnboardResult.McpTransportType.STDIO,
+                "npx", ["-y", "my-server"], null, null
+            ),
+            new OnboardResult.McpServerConfig(
+                "remote-server", "Remote", OnboardResult.McpTransportType.HTTP,
+                null, null, "https://example.com/mcp", "secret-token"
+            )
+        ])
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        parsed.jclaw.'mcp-servers'.'my-server'.type == "stdio"
+        parsed.jclaw.'mcp-servers'.'my-server'.command == "npx"
+        parsed.jclaw.'mcp-servers'.'my-server'.args == ["-y", "my-server"]
+        parsed.jclaw.'mcp-servers'.'remote-server'.type == "http"
+        parsed.jclaw.'mcp-servers'.'remote-server'.url == "https://example.com/mcp"
+        parsed.jclaw.'mcp-servers'.'remote-server'.'auth-token' == '${MCP_REMOTE_SERVER_TOKEN}'
     }
 }

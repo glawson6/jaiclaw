@@ -4,9 +4,10 @@ import java.util.List;
 
 public record SkillsProperties(
         List<String> allowBundled,
-        boolean watchWorkspace
+        boolean watchWorkspace,
+        String workspaceDir
 ) {
     public static final SkillsProperties DEFAULT = new SkillsProperties(
-            List.of("*"), true
+            List.of("*"), true, null
     );
 }

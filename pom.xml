@@ -41,6 +41,12 @@
         <module>jclaw-channel-sms</module>
         <module>jclaw-media</module>
         <module>jclaw-audit</module>
+        <module>jclaw-compaction</module>
+        <module>jclaw-browser</module>
+        <module>jclaw-cron</module>
+        <module>jclaw-voice</module>
+        <module>jclaw-identity</module>
+        <module>jclaw-canvas</module>
         <module>jclaw-spring-boot-starter</module>
         <module>jclaw-starters</module>
         <module>jclaw-gateway-app</module>
@@ -166,6 +172,36 @@
             <dependency>
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-audit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-compaction</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-browser</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-cron</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-voice</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-identity</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-canvas</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
