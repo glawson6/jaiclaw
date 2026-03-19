@@ -86,6 +86,12 @@ public class SmsAdapter implements ChannelAdapter {
      */
     public void processWebhook(Map<String, String> params) {
         String from = params.getOrDefault("From", "");
+
+        if (!config.isSenderAllowed(from)) {
+            log.debug("Dropping SMS from non-allowed sender {}", from);
+            return;
+        }
+
         String body = params.getOrDefault("Body", "");
         String messageSid = params.getOrDefault("MessageSid", UUID.randomUUID().toString());
         int numMedia = Integer.parseInt(params.getOrDefault("NumMedia", "0"));

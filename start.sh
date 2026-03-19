@@ -10,6 +10,8 @@
 #   ./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
 #   ./start.sh gateway      # start gateway via Docker Compose
 #   ./start.sh local        # start gateway locally (no Docker, requires Java 21)
+#   ./start.sh cron         # start cron-manager locally (requires Java 21)
+#   ./start.sh cron docker  # start cron-manager via Docker Compose
 #   ./start.sh telegram     # validate Telegram bot token → start gateway (Docker)
 #   ./start.sh telegram local  # validate Telegram bot token → start gateway (local Java)
 #   ./start.sh --force-build gateway  # rebuild Docker image, then start gateway
@@ -21,24 +23,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="$SCRIPT_DIR/docker-compose"
 
+# Shared helpers (colors, logging, API key resolution)
+source "$SCRIPT_DIR/scripts/common.sh"
+
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
 [ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
 ENV_FILE="${JCLAW_ENV_FILE:-$COMPOSE_DIR/.env}"
-
-# ─── Colors ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-DIM='\033[2m'
-BOLD='\033[1m'
-NC='\033[0m'
-
-info()  { printf "${CYAN}▸${NC} %s\n" "$*"; }
-ok()    { printf "${GREEN}✓${NC} %s\n" "$*"; }
-warn()  { printf "${YELLOW}!${NC} %s\n" "$*"; }
-err()   { printf "${RED}✗${NC} %s\n" "$*" >&2; }
-header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 
@@ -141,6 +131,7 @@ ensure_image() {
 cmd_gateway() {
     header "JClaw Gateway (Docker)"
     load_env
+    resolve_api_key
     ensure_docker
     ensure_image jclaw-gateway-app
 
@@ -149,11 +140,10 @@ cmd_gateway() {
 
     echo ""
     ok "Gateway is running on http://localhost:${GATEWAY_PORT:-8080}"
+    print_security_info
     echo ""
     echo "Test it:"
-    printf "  ${BOLD}curl -X POST http://localhost:${GATEWAY_PORT:-8080}/api/chat \\\\${NC}\n"
-    printf "  ${BOLD}  -H \"Content-Type: application/json\" \\\\${NC}\n"
-    printf "  ${BOLD}  -d '{\"content\": \"hello\"}'${NC}\n"
+    print_api_curl_example "${GATEWAY_PORT:-8080}"
     echo ""
     echo "View logs:"
     printf "  ${BOLD}./start.sh logs${NC}\n"
@@ -208,6 +198,7 @@ cmd_cli() {
 cmd_local() {
     header "JClaw Gateway (Local)"
     load_env
+    resolve_api_key
     ensure_java
 
     # Build if needed
@@ -218,14 +209,71 @@ cmd_local() {
     fi
 
     echo "Starting gateway on http://localhost:${SERVER_PORT:-8080}..."
+    print_security_info
     echo ""
     echo "Test with:"
-    printf "  ${BOLD}curl -X POST http://localhost:${SERVER_PORT:-8080}/api/chat \\\\${NC}\n"
-    printf "  ${BOLD}  -H \"Content-Type: application/json\" \\\\${NC}\n"
-    printf "  ${BOLD}  -d '{\"content\": \"hello\"}'${NC}\n"
+    print_api_curl_example "${SERVER_PORT:-8080}"
     echo ""
 
     (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl jclaw-gateway-app)
+}
+
+cmd_cron() {
+    local mode="${1:-local}"
+
+    if [ "$mode" = "docker" ]; then
+        header "JClaw Cron Manager (Docker)"
+        load_env
+        resolve_api_key
+        ensure_docker
+        ensure_image jclaw-cron-manager
+
+        info "Starting cron-manager container..."
+        docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" --profile cron-manager up -d cron-manager
+
+        echo ""
+        ok "Cron Manager is running on http://localhost:${CRON_MANAGER_PORT:-8090}"
+        print_security_info
+        echo ""
+        echo "Test it:"
+        local cron_key="${RESOLVED_API_KEY:-<your-api-key>}"
+        printf "  ${BOLD}curl http://localhost:${CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
+        printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
+        echo ""
+        echo "View logs:"
+        printf "  ${BOLD}docker compose -f $COMPOSE_DIR/docker-compose.yml logs -f cron-manager${NC}\n"
+        echo ""
+
+        info "Tailing logs (Ctrl+C to detach — cron-manager keeps running)..."
+        echo ""
+        docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" logs -f cron-manager
+    else
+        header "JClaw Cron Manager (Local)"
+        load_env
+        resolve_api_key
+        ensure_java
+
+        # Build if needed
+        if [ ! -f "$SCRIPT_DIR/jclaw-cron-manager/target/jclaw-cron-manager-0.1.0-SNAPSHOT.jar" ]; then
+            info "Building JClaw (first run)..."
+            (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
+            ok "Build complete"
+        fi
+
+        echo "Starting cron-manager on http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}..."
+        print_security_info
+        echo ""
+        echo "Test with:"
+        local cron_key="${RESOLVED_API_KEY:-<your-api-key>}"
+        printf "  ${BOLD}curl http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
+        printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
+        echo ""
+        printf "  ${DIM}Type 'cron-status' for cron job overview${NC}\n"
+        printf "  ${DIM}Type 'cron-list' to list all jobs${NC}\n"
+        echo ""
+
+        (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl jclaw-cron-manager)
+    fi
 }
 
 cmd_telegram() {
@@ -308,6 +356,7 @@ case "$COMMAND" in
     shell)    cmd_shell ;;
     cli)      cmd_cli ;;
     local)    cmd_local ;;
+    cron)     cmd_cron "${EXTRA_ARGS[0]:-local}" ;;
     telegram) cmd_telegram "${EXTRA_ARGS[0]:-}" ;;
     stop)     cmd_stop ;;
     logs)     cmd_logs ;;
@@ -322,6 +371,8 @@ case "$COMMAND" in
         echo "  shell            Start interactive CLI shell (local Java)"
         echo "  cli              Start interactive CLI shell (Docker, no Java needed)"
         echo "  local            Start gateway locally without Docker (local Java)"
+        echo "  cron             Start cron-manager locally (local Java)"
+        echo "  cron docker      Start cron-manager via Docker Compose"
         echo "  telegram         Validate Telegram bot token and start gateway (Docker)"
         echo "  telegram local   Validate Telegram bot token and start gateway (local Java)"
         echo "  stop             Stop Docker Compose stack"

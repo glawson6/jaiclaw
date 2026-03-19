@@ -31,6 +31,7 @@ public record McpServerProperties(Map<String, McpServerEntry> servers) {
      * @param args        command arguments (stdio only)
      * @param url         endpoint URL (sse/http only)
      * @param authToken   Bearer token for authentication (http only, nullable)
+     * @param enabled     whether this server connection is active (default true)
      */
     public record McpServerEntry(
             String description,
@@ -38,10 +39,12 @@ public record McpServerProperties(Map<String, McpServerEntry> servers) {
             String command,
             List<String> args,
             String url,
-            String authToken
+            String authToken,
+            Boolean enabled
     ) {
         public McpServerEntry {
             if (args == null) args = List.of();
+            if (enabled == null) enabled = Boolean.TRUE;
         }
     }
 }

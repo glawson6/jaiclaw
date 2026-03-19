@@ -103,6 +103,55 @@ class EnvFileWriterSpec extends Specification {
         env.contains("export DISCORD_APPLICATION_ID=app-id-123")
     }
 
+    def "includes security mode in env file"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmApiKey("sk-test")
+        result.setSecurityMode("api-key")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def env = writer.generate(result)
+
+        then:
+        env.contains("export JCLAW_SECURITY_MODE=api-key")
+        !env.contains("JCLAW_API_KEY=")
+    }
+
+    def "includes custom API key in env file when set"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmApiKey("sk-test")
+        result.setSecurityMode("api-key")
+        result.setApiKey("my-custom-key")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def env = writer.generate(result)
+
+        then:
+        env.contains("export JCLAW_SECURITY_MODE=api-key")
+        env.contains("export JCLAW_API_KEY=my-custom-key")
+    }
+
+    def "includes security mode none in env file"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmApiKey("sk-test")
+        result.setSecurityMode("none")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def env = writer.generate(result)
+
+        then:
+        env.contains("export JCLAW_SECURITY_MODE=none")
+        !env.contains("JCLAW_API_KEY=")
+    }
+
     def "excludes disabled channels"() {
         given:
         def result = new OnboardResult()

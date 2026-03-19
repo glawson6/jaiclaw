@@ -41,7 +41,7 @@ OPENAI_ENABLED=false
 OLLAMA_ENABLED=false
 ```
 
-Both the gateway (Docker and local) and the shell read from this file. Environment variables set in your shell override `.env` values. Run `./quickstart.sh --reconfigure` to change the config location or re-enter API keys.
+Both the gateway (Docker and local) and the shell read from this file. Environment variables set in your shell override `.env` values. Run `./quickstart.sh --reconfigure` to change the config location, re-enter API keys, or change the security mode.
 
 ### Gateway (Docker)
 
@@ -49,13 +49,14 @@ Both the gateway (Docker and local) and the shell read from this file. Environme
 ./start.sh
 ```
 
-Starts the Docker container, prints test commands, then tails logs. Press Ctrl+C to detach (the container keeps running). The gateway serves:
+Starts the Docker container, prints test commands (including your API key), then tails logs. Press Ctrl+C to detach (the container keeps running). The gateway serves:
 
-- `POST /api/chat` — synchronous chat
+- `POST /api/chat` — synchronous chat (requires `X-API-Key` header)
 - `GET /api/health` — health check
 - `GET /api/channels` — list registered channels
 - `POST /webhook/{channel}` — inbound webhooks
 - `WS /ws/session/{key}` — streaming WebSocket
+- `/mcp/**` — MCP server hosting (requires `X-API-Key` header)
 
 ### Gateway (Local)
 
@@ -144,12 +145,19 @@ Installs Java 21 via SDKMAN if needed, builds all modules, and launches the chos
 
 ### Onboarding Wizard
 
-The shell includes an interactive wizard that walks through LLM provider selection, API key entry, and channel configuration:
+The shell includes an interactive wizard that walks through LLM provider selection, API key entry, security mode, and channel configuration:
 
 ```bash
 ./start.sh shell
 jclaw> onboard
 ```
+
+The wizard covers:
+- LLM provider + API key + model
+- **Security mode** (API key / JWT / none) and optional custom API key
+- Gateway settings (port, bind address, assistant name — manual mode)
+- Channel setup (Telegram, Slack, Discord)
+- Skills and MCP server connections
 
 The wizard writes `application-local.yml` + `.env` to `~/.jclaw/` (or current directory). After the wizard finishes, restart the shell to activate.
 
@@ -178,10 +186,11 @@ AI_PROVIDER=ollama OLLAMA_ENABLED=true ./mvnw spring-boot:run -pl jclaw-shell
 ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-gateway-app
 ```
 
-Test:
+Test (the API key is auto-generated at `~/.jclaw/api-key` on first run — see [Security](#security) below):
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
   -d '{"content": "hello"}'
 
 curl http://localhost:8080/api/health
@@ -367,17 +376,20 @@ ngrok http 8080
 
 JClaw can host MCP (Model Context Protocol) tool servers, making JClaw's tools available to external AI clients.
 
-**Endpoints:**
+**Endpoints** (all require `X-API-Key` header in `api-key` security mode):
 ```bash
 # List available MCP servers
-curl http://localhost:8080/mcp
+curl http://localhost:8080/mcp \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)"
 
 # List tools for a server
-curl http://localhost:8080/mcp/{serverName}/tools
+curl http://localhost:8080/mcp/{serverName}/tools \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)"
 
 # Execute a tool
 curl -X POST http://localhost:8080/mcp/{serverName}/tools/{toolName} \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
   -d '{"arg1": "value1"}'
 ```
 
@@ -464,6 +476,49 @@ OLLAMA_ENABLED=true
 
 ---
 
+## Security
+
+The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. The security mode is controlled by `JCLAW_SECURITY_MODE`.
+
+### Security Modes
+
+| Mode | Description |
+|------|-------------|
+| `api-key` (default) | Requests must include `X-API-Key` header with a valid key |
+| `jwt` | Requests must include a valid JWT `Authorization: Bearer <token>` header |
+| `none` | No authentication — **development only** |
+
+### API Key Resolution
+
+When `JCLAW_SECURITY_MODE=api-key` (the default), the API key is resolved in this order:
+
+1. `JCLAW_API_KEY` environment variable
+2. Key file at `JCLAW_API_KEY_FILE` (default: `~/.jclaw/api-key`)
+3. Auto-generate a key and write it to `~/.jclaw/api-key`
+
+The launcher scripts (`start.sh`, `quickstart.sh`, `setup.sh`) resolve the API key before the JVM starts and print it in curl examples. The JVM's `ApiKeyProvider` follows the same resolution order, so both see the same key.
+
+```bash
+# View your current API key
+cat ~/.jclaw/api-key
+
+# Use a custom key
+JCLAW_API_KEY=my-custom-key ./start.sh local
+
+# Disable security (development only)
+JCLAW_SECURITY_MODE=none ./start.sh local
+```
+
+### Configuring via the Onboard Wizard
+
+The `onboard` command in the shell includes a security step:
+- **Quickstart mode**: Defaults to `api-key` with auto-generation (no prompt)
+- **Manual mode**: Prompts for security mode and optional custom API key
+
+The `--reconfigure` flag in `quickstart.sh` also includes a security step.
+
+---
+
 ## Environment Variables
 
 | Variable | Required | Description |
@@ -471,6 +526,9 @@ OLLAMA_ENABLED=true
 | `JAVA_HOME` | Yes | Path to Java 21 JDK |
 | `JCLAW_HOME` | No | Config directory override (default: `~/.jclaw/`) |
 | `JCLAW_ENV_FILE` | No | Path to `.env` file (default: `docker-compose/.env`). Auto-set by `~/.jclawrc`. |
+| `JCLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
+| `JCLAW_API_KEY` | No | Custom API key (auto-generated if not set) |
+| `JCLAW_API_KEY_FILE` | No | Path to API key file (default: `~/.jclaw/api-key`) |
 | `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, or `ollama` |
 | `ANTHROPIC_API_KEY` | One of these | Anthropic API key |
 | `ANTHROPIC_ENABLED` | No | Enable Anthropic provider (default: `true`) |
@@ -635,6 +693,7 @@ docker compose -f docker-compose/docker-compose.yml --profile cli run --rm cli
 
 ```bash
 kubectl create secret generic jclaw-secrets \
+  --from-literal=JCLAW_API_KEY=jclaw_ak_... \
   --from-literal=OPENAI_API_KEY=sk-... \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
   --from-literal=TELEGRAM_BOT_TOKEN=123456:ABC... \

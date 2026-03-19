@@ -1,6 +1,8 @@
 package io.jclaw.security;
 
 import io.jclaw.core.tenant.TenantContextHolder;
+import io.jclaw.core.tool.ToolProfile;
+import io.jclaw.core.tool.ToolProfileHolder;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,16 +18,24 @@ import java.io.IOException;
 
 /**
  * Spring Security filter that validates JWT tokens, sets the Spring Security context,
- * and propagates the tenant context to {@link TenantContextHolder}.
+ * propagates the tenant context to {@link TenantContextHolder}, and resolves the
+ * {@link ToolProfile} via {@link RoleToolProfileResolver} into {@link ToolProfileHolder}.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtTokenValidator tokenValidator;
+    private final RoleToolProfileResolver roleToolProfileResolver;
 
     public JwtAuthenticationFilter(JwtTokenValidator tokenValidator) {
+        this(tokenValidator, null);
+    }
+
+    public JwtAuthenticationFilter(JwtTokenValidator tokenValidator,
+                                   RoleToolProfileResolver roleToolProfileResolver) {
         this.tokenValidator = tokenValidator;
+        this.roleToolProfileResolver = roleToolProfileResolver;
     }
 
     @Override
@@ -52,6 +62,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Set tenant context
                 TenantContextHolder.set(validated.tenantContext());
 
+                // Set tool profile based on roles
+                if (roleToolProfileResolver != null) {
+                    ToolProfile profile = roleToolProfileResolver.resolve(validated.roles());
+                    ToolProfileHolder.set(profile);
+                }
+
                 log.debug("JWT authenticated: subject={}, tenant={}, roles={}",
                         validated.subject(),
                         validated.tenantContext().getTenantId(),
@@ -62,8 +78,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // Always clear tenant context after request completes
             TenantContextHolder.clear();
+            ToolProfileHolder.clear();
         }
     }
 }

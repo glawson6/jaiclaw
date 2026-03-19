@@ -1,0 +1,68 @@
+server:
+  port: ${JCLAW_CRON_MANAGER_PORT:8090}
+
+jclaw:
+  security:
+    mode: ${JCLAW_SECURITY_MODE:api-key}
+    api-key: ${JCLAW_API_KEY:}
+  identity:
+    name: JClaw Cron Manager
+    description: Scheduled job management agent
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Cron Agent
+        tools:
+          profile: minimal
+  tools:
+    profile: minimal
+  skills:
+    allow-bundled:
+      - "*"
+  plugins:
+    enabled: false
+
+spring:
+  application:
+    name: jclaw-cron-manager
+  config:
+    import: optional:file:${user.home}/.jclaw/application-local.yml
+  autoconfigure:
+    exclude:
+      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+      - io.jclaw.autoconfigure.JClawGatewayAutoConfiguration
+      - io.jclaw.autoconfigure.JClawChannelAutoConfiguration
+  datasource:
+    url: jdbc:h2:file:${user.home}/.jclaw/cron-manager-db;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  shell:
+    interactive:
+      enabled: true

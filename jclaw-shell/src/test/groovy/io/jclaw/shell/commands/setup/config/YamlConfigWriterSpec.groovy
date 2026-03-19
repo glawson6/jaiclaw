@@ -173,6 +173,56 @@ class YamlConfigWriterSpec extends Specification {
         tmpDir.toFile().deleteDir()
     }
 
+    def "includes security section with default api-key mode"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        parsed.jclaw.security.mode == "api-key"
+        !parsed.jclaw.security.containsKey("api-key")
+    }
+
+    def "includes security api-key placeholder when custom key set"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setSecurityMode("api-key")
+        result.setApiKey("my-custom-key")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        parsed.jclaw.security.mode == "api-key"
+        parsed.jclaw.security.'api-key' == '${JCLAW_API_KEY}'
+    }
+
+    def "includes security mode none when disabled"() {
+        given:
+        def result = new OnboardResult()
+        result.setLlmProvider("openai")
+        result.setLlmModel("gpt-4o")
+        result.setSecurityMode("none")
+        result.setConfigDir(Path.of("/tmp/jclaw-test"))
+
+        when:
+        def yaml = writer.generate(result)
+        def parsed = parse(yaml)
+
+        then:
+        parsed.jclaw.security.mode == "none"
+    }
+
     def "includes MCP server config"() {
         given:
         def result = new OnboardResult()

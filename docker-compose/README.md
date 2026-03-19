@@ -27,9 +27,10 @@ docker compose up -d
 # 4. Pull an Ollama model
 docker compose exec ollama ollama pull llama3.2
 
-# 5. Test
+# 5. Test (API key is auto-generated at ~/.jclaw/api-key on first run)
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
   -d '{"content": "hello"}'
 
 # 6. Check health

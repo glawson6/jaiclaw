@@ -18,7 +18,7 @@ class CronServiceSpec extends Specification {
     CronService service
 
     def setup() {
-        store = new CronJobStore(tempDir.resolve("cron-jobs.json"))
+        store = new JsonFileCronJobStore(tempDir.resolve("cron-jobs.json"))
         executor = new CronJobExecutor({ job -> "Response for: " + job.prompt() })
         service = new CronService(store, executor, 3, 300)
     }

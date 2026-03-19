@@ -19,6 +19,10 @@ public final class OnboardResult {
     private String llmModel;          // e.g. "gpt-4o"
     private String ollamaBaseUrl = "http://localhost:11434";
 
+    // Security
+    private String securityMode = "api-key";  // "api-key" | "jwt" | "none"
+    private String apiKey;                     // custom API key (null = auto-generate)
+
     // Gateway
     private int serverPort = 8080;
     private String bindAddress = "0.0.0.0";
@@ -70,6 +74,12 @@ public final class OnboardResult {
 
     public String ollamaBaseUrl() { return ollamaBaseUrl; }
     public void setOllamaBaseUrl(String ollamaBaseUrl) { this.ollamaBaseUrl = ollamaBaseUrl; }
+
+    public String securityMode() { return securityMode; }
+    public void setSecurityMode(String securityMode) { this.securityMode = securityMode; }
+
+    public String apiKey() { return apiKey; }
+    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
 
     public int serverPort() { return serverPort; }
     public void setServerPort(int serverPort) { this.serverPort = serverPort; }

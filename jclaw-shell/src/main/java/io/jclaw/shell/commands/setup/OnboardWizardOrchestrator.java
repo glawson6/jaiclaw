@@ -61,6 +61,9 @@ public class OnboardWizardOrchestrator {
         // Gateway only in manual mode — deferred check in step itself
         steps.add(new GatewayStep(flowBuilder));
 
+        // Security mode (api-key / jwt / none)
+        steps.add(new SecurityStep(flowBuilder));
+
         // Channel steps
         steps.add(new TelegramStep(flowBuilder, telegramValidator));
         steps.add(new SlackStep(flowBuilder, slackValidator));

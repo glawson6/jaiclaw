@@ -144,6 +144,12 @@ public class EmailAdapter implements ChannelAdapter {
 
     void processMessage(Message message) throws Exception {
         String from = ((InternetAddress) message.getFrom()[0]).getAddress();
+
+        if (!config.isSenderAllowed(from)) {
+            log.debug("Dropping email from non-allowed sender {}", from);
+            return;
+        }
+
         String subject = message.getSubject();
         String messageId = message instanceof MimeMessage mm ? mm.getMessageID() : UUID.randomUUID().toString();
 

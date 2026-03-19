@@ -56,6 +56,9 @@ public class YamlConfigWriter {
         // identity
         jclaw.put("identity", Map.of("name", result.assistantName()));
 
+        // security
+        jclaw.put("security", buildSecuritySection(result));
+
         // agent
         var defaultAgent = new LinkedHashMap<String, Object>();
         var model = new LinkedHashMap<String, Object>();
@@ -186,6 +189,15 @@ public class YamlConfigWriter {
             case "ollama" -> ai.put("ollama", Map.of("base-url", result.ollamaBaseUrl()));
         }
         return Map.of("ai", ai);
+    }
+
+    private Map<String, Object> buildSecuritySection(OnboardResult result) {
+        var security = new LinkedHashMap<String, Object>();
+        security.put("mode", result.securityMode());
+        if ("api-key".equals(result.securityMode()) && result.apiKey() != null) {
+            security.put("api-key", "${JCLAW_API_KEY}");
+        }
+        return security;
     }
 
     private Map<String, Object> buildServerSection(OnboardResult result) {

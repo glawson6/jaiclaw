@@ -7,6 +7,8 @@ import io.jclaw.channel.*;
 import io.jclaw.core.model.AssistantMessage;
 import io.jclaw.core.tenant.TenantContext;
 import io.jclaw.core.tenant.TenantContextHolder;
+import io.jclaw.core.tool.ToolProfile;
+import io.jclaw.core.tool.ToolProfileHolder;
 import io.jclaw.gateway.attachment.AttachmentRouter;
 import io.jclaw.gateway.tenant.TenantResolver;
 import org.slf4j.Logger;
@@ -91,7 +93,10 @@ public class GatewayService implements ChannelMessageHandler {
             }
 
             var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
-            var context = new AgentRuntimeContext(defaultAgentId, sessionKey, session);
+            ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+            AgentRuntimeContext context = new AgentRuntimeContext(
+                    defaultAgentId, sessionKey, session,
+                    io.jclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
 
             agentRuntime.run(message.content(), context)
                     .thenAccept(response -> deliverResponse(message, response))
@@ -115,7 +120,10 @@ public class GatewayService implements ChannelMessageHandler {
         String sessionKey = inbound.sessionKey(defaultAgentId);
 
         var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
-        var context = new AgentRuntimeContext(defaultAgentId, sessionKey, session);
+        ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+        AgentRuntimeContext context = new AgentRuntimeContext(
+                defaultAgentId, sessionKey, session,
+                io.jclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
 
         return agentRuntime.run(content, context).join();
     }
@@ -126,7 +134,10 @@ public class GatewayService implements ChannelMessageHandler {
      */
     public CompletableFuture<AssistantMessage> handleAsync(String sessionKey, String content) {
         var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
-        var context = new AgentRuntimeContext(defaultAgentId, sessionKey, session);
+        ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+        AgentRuntimeContext context = new AgentRuntimeContext(
+                defaultAgentId, sessionKey, session,
+                io.jclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
         return agentRuntime.run(content, context);
     }
 

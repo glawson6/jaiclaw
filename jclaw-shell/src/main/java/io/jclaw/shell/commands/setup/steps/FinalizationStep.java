@@ -35,6 +35,10 @@ public final class FinalizationStep implements WizardStep {
         System.out.println("  " + "─".repeat(40));
         System.out.println("  Provider:    " + result.llmProvider());
         System.out.println("  Model:       " + result.llmModel());
+        System.out.println("  Security:    " + result.securityMode()
+                + ("api-key".equals(result.securityMode()) && result.apiKey() != null
+                        ? " (custom key)" : "api-key".equals(result.securityMode())
+                        ? " (auto-generate)" : ""));
         System.out.println("  Assistant:   " + result.assistantName());
         if (result.isManual()) {
             System.out.println("  Port:        " + result.serverPort());

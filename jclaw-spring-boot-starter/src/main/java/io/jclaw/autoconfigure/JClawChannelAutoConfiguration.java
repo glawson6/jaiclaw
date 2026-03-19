@@ -50,7 +50,8 @@ public class JClawChannelAutoConfiguration {
                     email.password(),
                     email.enabled(),
                     email.pollInterval(),
-                    null);
+                    null,
+                    email.allowedSenderIds());
             return new io.jclaw.channel.email.EmailAdapter(config);
         }
     }
@@ -72,7 +73,8 @@ public class JClawChannelAutoConfiguration {
                     sms.authToken(),
                     sms.fromNumber(),
                     sms.webhookPath(),
-                    sms.enabled());
+                    sms.enabled(),
+                    sms.allowedSenderIds());
             return new io.jclaw.channel.sms.SmsAdapter(config);
         }
     }
@@ -135,7 +137,8 @@ public class JClawChannelAutoConfiguration {
                     slack.botToken(),
                     slack.signingSecret(),
                     slack.enabled(),
-                    slack.appToken());
+                    slack.appToken(),
+                    slack.allowedSenderIds());
             return new io.jclaw.channel.slack.SlackAdapter(config, webhookDispatcher);
         }
     }
@@ -159,7 +162,8 @@ public class JClawChannelAutoConfiguration {
                     discord.botToken(),
                     discord.applicationId(),
                     discord.enabled(),
-                    discord.useGateway());
+                    discord.useGateway(),
+                    discord.allowedSenderIds());
             return new io.jclaw.channel.discord.DiscordAdapter(config, webhookDispatcher);
         }
     }

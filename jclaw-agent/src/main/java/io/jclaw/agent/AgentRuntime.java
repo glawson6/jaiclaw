@@ -74,7 +74,7 @@ public class AgentRuntime {
         sessionManager.appendMessage(context.sessionKey(), userMessage);
 
         // Resolve tools lazily from registry
-        List<ToolCallback> jclawTools = toolRegistry.resolveAll();
+        List<ToolCallback> jclawTools = toolRegistry.resolveForProfile(context.toolProfile());
 
         // Build system prompt with current tools
         SystemPromptBuilder systemPromptBuilder = new SystemPromptBuilder()

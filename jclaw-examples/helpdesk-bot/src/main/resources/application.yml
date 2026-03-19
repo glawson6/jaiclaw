@@ -1,0 +1,35 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jclaw:
+  security:
+    mode: ${JCLAW_SECURITY_MODE:api-key}
+    api-key: ${JCLAW_API_KEY:}
+  identity:
+    name: Helpdesk Bot
+    description: Multi-tenant support bot with FAQ and ticket management
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Helpdesk Agent
+        tools:
+          profile: full
+
+spring:
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

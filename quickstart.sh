@@ -9,6 +9,7 @@
 #   -- or --
 #   ./quickstart.sh              # build + start gateway (Docker)
 #   ./quickstart.sh --shell      # build + start interactive CLI shell (Docker)
+#   ./quickstart.sh --cron-manager # also build + start the cron-manager sidecar
 #   ./quickstart.sh --force-build  # force rebuild Docker images
 #   ./quickstart.sh --reconfigure  # re-run interactive setup (provider, keys, channels)
 #
@@ -27,20 +28,10 @@ fi
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
 [ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
 
-# ─── Colors ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-DIM='\033[2m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Shared helpers (colors, logging, API key resolution)
+source "$JCLAW_DIR/scripts/common.sh"
 
-info()  { printf "${CYAN}▸${NC} %s\n" "$*"; }
-ok()    { printf "${GREEN}✓${NC} %s\n" "$*"; }
-warn()  { printf "${YELLOW}!${NC} %s\n" "$*"; }
-err()   { printf "${RED}✗${NC} %s\n" "$*" >&2; }
-header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
+# Extra helpers unique to quickstart
 debug() { printf "${DIM}  … %s${NC}\n" "$*"; }
 
 # Run a command with a description, showing elapsed time on completion
@@ -258,6 +249,49 @@ build_shell_image() {
     fi
 }
 
+build_cron_manager_image() {
+    header "Building Cron Manager Docker Image"
+
+    # Remove existing image when force-building
+    if [ "$FORCE_BUILD" = true ]; then
+        info "Force-build requested — removing existing cron-manager image..."
+        docker rmi io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT 2>/dev/null || true
+    fi
+
+    if check_java; then
+        info "Building cron-manager Docker image with Maven + JKube..."
+        debug "Running: ./mvnw package k8s:build -pl jclaw-cron-manager -am -Pk8s -DskipTests"
+        local start=$SECONDS
+        (cd "$JCLAW_DIR" && ./mvnw package k8s:build -pl jclaw-cron-manager -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
+            case "$line" in
+                *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
+                *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
+                *"--- "*":"*" ---"*) printf "${DIM}  ▸ %s${NC}\n" "$line" ;;
+                *"Downloading"*)    ;;
+                *"Downloaded"*)     ;;
+                *"[ERROR]"*)        printf "${RED}  %s${NC}\n" "$line" ;;
+                *"[WARNING]"*)      printf "${YELLOW}  %s${NC}\n" "$line" ;;
+            esac
+        done)
+        local elapsed=$(( SECONDS - start ))
+        local mins=$(( elapsed / 60 ))
+        local secs=$(( elapsed % 60 ))
+        if [ "$mins" -gt 0 ]; then
+            ok "Docker image built: io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+        else
+            ok "Docker image built: io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT (${secs}s)"
+        fi
+    else
+        debug "Checking for pre-built cron-manager Docker image..."
+        if docker image inspect io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT &>/dev/null; then
+            ok "Cron Manager Docker image already exists (skipping build)"
+        else
+            err "Cannot build cron-manager Docker image — Java 21+ is required for the Maven build."
+            exit 1
+        fi
+    fi
+}
+
 launch_shell() {
     local compose_dir="$JCLAW_DIR/docker-compose"
 
@@ -430,6 +464,45 @@ reconfigure() {
     # Step 3: Telegram
     setup_telegram
 
+    # Step 4: Security
+    echo ""
+    printf "${BOLD}Security mode:${NC}\n"
+    echo "  1. API Key (default — simple shared key)"
+    echo "  2. JWT (token-based authentication)"
+    echo "  3. None (disable security — development only)"
+    echo ""
+    read -rp "$(printf "${CYAN}▸${NC} Choice [1]: ")" sec_choice
+    sec_choice="${sec_choice:-1}"
+
+    case "$sec_choice" in
+        1)
+            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=api-key|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+            echo ""
+            read -rp "$(printf "${CYAN}▸${NC} Custom API key (leave blank to auto-generate): ")" custom_key
+            if [ -n "$custom_key" ]; then
+                sed -i.bak "s|^JCLAW_API_KEY=.*|JCLAW_API_KEY=${custom_key}|" "$ENV_FILE"
+                rm -f "$ENV_FILE.bak"
+                ok "Custom API key saved"
+            else
+                ok "API key will be auto-generated on startup"
+            fi
+            ;;
+        2)
+            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=jwt|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+            ok "JWT security mode selected"
+            ;;
+        3)
+            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=none|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+            warn "Security disabled — do not use in production"
+            ;;
+        *)
+            warn "Invalid choice, keeping current security mode"
+            ;;
+    esac
+
     ok "Reconfiguration complete"
     echo ""
 
@@ -562,11 +635,12 @@ setup_telegram() {
 print_success() {
     header "JClaw is Running"
 
+    resolve_api_key
+    print_security_info
+    echo ""
     echo "Test it:"
     echo ""
-    printf "  ${BOLD}curl -X POST http://localhost:8080/api/chat \\\\${NC}\n"
-    printf "  ${BOLD}  -H \"Content-Type: application/json\" \\\\${NC}\n"
-    printf "  ${BOLD}  -d '{\"content\": \"hello\"}'${NC}\n"
+    print_api_curl_example 8080
     echo ""
     echo "Health check:"
     printf "  ${BOLD}curl http://localhost:8080/api/health${NC}\n"
@@ -594,24 +668,27 @@ main() {
     local total_start=$SECONDS
     local launch_mode=gateway
     local do_reconfigure=false
+    local with_cron_manager=false
     FORCE_BUILD=false
 
     # Parse arguments
     for arg in "$@"; do
         case "$arg" in
-            --shell)        launch_mode=shell ;;
-            --force-build)  FORCE_BUILD=true ;;
-            --reconfigure)  do_reconfigure=true ;;
+            --shell)         launch_mode=shell ;;
+            --cron-manager)  with_cron_manager=true ;;
+            --force-build)   FORCE_BUILD=true ;;
+            --reconfigure)   do_reconfigure=true ;;
             -h|--help|help)
                 echo "Usage: ./quickstart.sh [options]"
                 echo ""
                 echo "Docker-based zero-friction JClaw launcher."
                 echo ""
                 echo "Options:"
-                echo "  --shell         Start the interactive CLI shell instead of the gateway"
-                echo "  --force-build   Force rebuild Docker images even if they exist"
-                echo "  --reconfigure   Re-run interactive setup (provider, API keys, channels)"
-                echo "  --help          Print this help"
+                echo "  --shell          Start the interactive CLI shell instead of the gateway"
+                echo "  --cron-manager   Also build and start the cron-manager sidecar"
+                echo "  --force-build    Force rebuild Docker images even if they exist"
+                echo "  --reconfigure    Re-run interactive setup (provider, API keys, channels)"
+                echo "  --help           Print this help"
                 exit 0
                 ;;
             *)
@@ -646,6 +723,14 @@ main() {
         return
     fi
 
+    if [ "$with_cron_manager" = true ]; then
+        build_cron_manager_image
+        # Enable cron-manager in .env
+        sed -i.bak "s|^CRON_MANAGER_ENABLED=.*|CRON_MANAGER_ENABLED=true|" "$ENV_FILE"
+        rm -f "$ENV_FILE.bak"
+        ok "Cron Manager enabled"
+    fi
+
     if [ "$launch_mode" = "shell" ]; then
         build_shell_image
         launch_shell
@@ -653,6 +738,12 @@ main() {
         build_image
         setup_telegram
         start_stack
+        if [ "$with_cron_manager" = true ]; then
+            local compose_dir="$JCLAW_DIR/docker-compose"
+            info "Starting cron-manager container..."
+            docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" --profile cron-manager up -d cron-manager
+            ok "Cron Manager running on http://localhost:${CRON_MANAGER_PORT:-8090}"
+        fi
         print_success
     fi
 

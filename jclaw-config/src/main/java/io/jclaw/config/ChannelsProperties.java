@@ -56,11 +56,20 @@ public record ChannelsProperties(
             int smtpPort,
             String username,
             String password,
-            int pollInterval
+            int pollInterval,
+            String allowedSenders
     ) {
         public static final EmailProperties DEFAULT = new EmailProperties(
-                false, "imap", null, 993, null, 587, null, null, 60
+                false, "imap", null, 993, null, 587, null, null, 60, null
         );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
     }
 
     public record SmsProperties(
@@ -68,32 +77,59 @@ public record ChannelsProperties(
             String accountSid,
             String authToken,
             String fromNumber,
-            String webhookPath
+            String webhookPath,
+            String allowedSenders
     ) {
         public static final SmsProperties DEFAULT = new SmsProperties(
-                false, null, null, null, "/webhooks/sms"
+                false, null, null, null, "/webhooks/sms", null
         );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
     }
 
     public record SlackProperties(
             boolean enabled,
             String botToken,
             String signingSecret,
-            String appToken
+            String appToken,
+            String allowedSenders
     ) {
         public static final SlackProperties DEFAULT = new SlackProperties(
-                false, null, null, null
+                false, null, null, null, null
         );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
     }
 
     public record DiscordProperties(
             boolean enabled,
             String botToken,
             String applicationId,
-            boolean useGateway
+            boolean useGateway,
+            String allowedSenders
     ) {
         public static final DiscordProperties DEFAULT = new DiscordProperties(
-                false, null, null, false
+                false, null, null, false, null
         );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
     }
 }

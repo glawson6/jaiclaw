@@ -22,6 +22,12 @@
             <type>pom</type>
         </dependency>
 
+        <!-- Code tools (file_edit, glob, grep) -->
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-code</artifactId>
+        </dependency>
+
         <!-- All three AI providers -->
         <dependency>
             <groupId>io.jclaw</groupId>

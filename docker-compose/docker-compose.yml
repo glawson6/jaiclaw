@@ -15,6 +15,10 @@ services:
       OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
 
+      # Security
+      JCLAW_SECURITY_MODE: ${JCLAW_SECURITY_MODE:-api-key}
+      JCLAW_API_KEY: ${JCLAW_API_KEY:-}
+
       # Channel adapters (all optional — set *_ENABLED=true to activate)
       TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -39,7 +43,33 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+
+      # Cron Job Manager MCP connection
+      JCLAW_CRON_MANAGER_ENABLED: ${CRON_MANAGER_ENABLED:-false}
+      JCLAW_CRON_MANAGER_URL: http://cron-manager:8090/mcp/cron-manager
     restart: unless-stopped
+
+  cron-manager:
+    image: io.jclaw/jclaw-cron-manager:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
+    ports:
+      - "${CRON_MANAGER_PORT:-8090}:8090"
+    environment:
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      OPENAI_ENABLED: ${OPENAI_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-not-set}
+      ANTHROPIC_ENABLED: ${ANTHROPIC_ENABLED:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-not-set}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      JCLAW_SECURITY_MODE: ${JCLAW_SECURITY_MODE:-api-key}
+      JCLAW_API_KEY: ${JCLAW_API_KEY:-}
+      JCLAW_CRON_MANAGER_PORT: 8090
+    volumes:
+      - cron-manager-data:/root/.jclaw
+    restart: unless-stopped
+    profiles:
+      - cron-manager
 
   cli:
     image: io.jclaw/jclaw-shell:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
@@ -69,3 +99,4 @@ services:
 
 volumes:
   ollama-data:
+  cron-manager-data:

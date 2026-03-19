@@ -1,11 +1,13 @@
 package io.jclaw.security;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,70 +15,148 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Auto-configuration for JClaw JWT security.
- * Activated when {@code jclaw.security.enabled=true} and Spring Security is on the classpath.
- * <p>
- * When disabled (the default), a permissive filter chain is configured that allows
- * all requests — this preserves backward compatibility for single-tenant/dev setups.
+ * Auto-configuration for JClaw security. Three modes:
+ * <ul>
+ *   <li>{@code api-key} (default) — auto-generated or explicit API key authentication</li>
+ *   <li>{@code jwt} — JWT token authentication with role-based tool filtering</li>
+ *   <li>{@code none} — permissive, no authentication (dev only)</li>
+ * </ul>
  */
 @AutoConfiguration
 @ConditionalOnClass(name = "org.springframework.security.web.SecurityFilterChain")
 @EnableConfigurationProperties(JClawSecurityProperties.class)
 public class JClawSecurityAutoConfiguration {
 
+    /**
+     * Always-active logger that reports the security mode at startup.
+     */
     @Bean
-    @ConditionalOnProperty(name = "jclaw.security.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(JwtTokenValidator.class)
-    public JwtTokenValidator jwtTokenValidator(JClawSecurityProperties properties) {
-        JClawSecurityProperties.JwtProperties jwt = properties.jwt();
-        if (jwt.secret() == null || jwt.secret().isBlank()) {
-            throw new IllegalStateException(
-                    "jclaw.security.jwt.secret must be set when jclaw.security.enabled=true");
+    @ConditionalOnMissingBean(SecurityModeLogger.class)
+    public SecurityModeLogger securityModeLogger(JClawSecurityProperties properties,
+                                                  ObjectProvider<ApiKeyProvider> apiKeyProvider) {
+        return new SecurityModeLogger(properties, apiKeyProvider.getIfAvailable());
+    }
+
+    // ── API Key mode (default) ──────────────────────────────────────────────
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(name = "jclaw.security.mode", havingValue = "api-key", matchIfMissing = true)
+    static class ApiKeySecurityConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(ApiKeyProvider.class)
+        ApiKeyProvider apiKeyProvider(JClawSecurityProperties properties) {
+            return new ApiKeyProvider(properties.apiKey(), properties.apiKeyFile());
         }
-        return new JwtTokenValidator(jwt.secret(), jwt.issuer(), jwt.tenantClaim(), jwt.roleClaim());
+
+        @Bean
+        @ConditionalOnMissingBean(ApiKeyAuthenticationFilter.class)
+        ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
+            return new ApiKeyAuthenticationFilter(apiKeyProvider);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(SecurityFilterChain.class)
+        SecurityFilterChain apiKeyFilterChain(HttpSecurity http,
+                                              ApiKeyAuthenticationFilter apiKeyFilter)
+                throws Exception {
+            return http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/api/health").permitAll()
+                            .requestMatchers("/webhook/**").permitAll()
+                            .requestMatchers("/api/**").authenticated()
+                            .requestMatchers("/mcp/**").authenticated()
+                            .anyRequest().permitAll()
+                    )
+                    .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                    .build();
+        }
     }
 
-    @Bean
-    @ConditionalOnProperty(name = "jclaw.security.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
-    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenValidator validator) {
-        return new JwtAuthenticationFilter(validator);
+    // ── JWT mode ────────────────────────────────────────────────────────────
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(name = "jclaw.security.mode", havingValue = "jwt")
+    static class JwtSecurityConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(JwtTokenValidator.class)
+        JwtTokenValidator jwtTokenValidator(JClawSecurityProperties properties) {
+            JClawSecurityProperties.JwtProperties jwt = properties.jwt();
+            if (jwt.secret() == null || jwt.secret().isBlank()) {
+                throw new IllegalStateException(
+                        "jclaw.security.jwt.secret must be set when jclaw.security.mode=jwt");
+            }
+            return new JwtTokenValidator(jwt.secret(), jwt.issuer(),
+                    jwt.tenantClaim(), jwt.roleClaim());
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(RoleToolProfileResolver.class)
+        RoleToolProfileResolver roleToolProfileResolver(JClawSecurityProperties properties) {
+            JClawSecurityProperties.RoleMappingProperties mapping = properties.roleMapping();
+            return new RoleToolProfileResolver(mapping.roleToProfile(), mapping.defaultProfile());
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(JwtAuthenticationFilter.class)
+        JwtAuthenticationFilter jwtAuthenticationFilter(
+                JwtTokenValidator validator,
+                ObjectProvider<RoleToolProfileResolver> resolverProvider) {
+            return new JwtAuthenticationFilter(validator, resolverProvider.getIfAvailable());
+        }
+
+        @Bean
+        @ConditionalOnProperty(name = "jclaw.security.rate-limit.enabled", havingValue = "true")
+        @ConditionalOnMissingBean(RateLimitFilter.class)
+        RateLimitFilter rateLimitFilter(JClawSecurityProperties properties) {
+            JClawSecurityProperties.RateLimitProperties rl = properties.rateLimit();
+            return new RateLimitFilter(rl.maxRequestsPerWindow(), rl.windowSeconds(),
+                    rl.cleanupIntervalSeconds());
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(SecurityFilterChain.class)
+        SecurityFilterChain jwtFilterChain(HttpSecurity http,
+                                           JwtAuthenticationFilter jwtFilter,
+                                           ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
+                throws Exception {
+            HttpSecurity builder = http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/api/health").permitAll()
+                            .requestMatchers("/webhook/**").permitAll()
+                            .requestMatchers("/api/**").authenticated()
+                            .requestMatchers("/mcp/**").authenticated()
+                            .anyRequest().permitAll()
+                    )
+                    .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+            RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
+            if (rateLimitFilter != null) {
+                builder.addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
+            }
+
+            return builder.build();
+        }
     }
 
-    /**
-     * Secured filter chain — active when jclaw.security.enabled=true.
-     * Requires JWT auth on /api/** endpoints, permits health and webhook endpoints.
-     */
-    @Bean
-    @ConditionalOnProperty(name = "jclaw.security.enabled", havingValue = "true")
-    @ConditionalOnMissingBean(SecurityFilterChain.class)
-    public SecurityFilterChain securedFilterChain(HttpSecurity http,
-                                                  JwtAuthenticationFilter jwtFilter)
-            throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/webhook/**").permitAll()
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll()
-                )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
+    // ── None mode (permissive) ──────────────────────────────────────────────
 
-    /**
-     * Permissive filter chain — active when security is disabled (default).
-     * Allows all requests, no authentication required.
-     */
-    @Bean
-    @ConditionalOnProperty(name = "jclaw.security.enabled", havingValue = "false", matchIfMissing = true)
-    @ConditionalOnMissingBean(SecurityFilterChain.class)
-    public SecurityFilterChain permissiveFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                .build();
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(name = "jclaw.security.mode", havingValue = "none")
+    static class NoneSecurityConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(SecurityFilterChain.class)
+        SecurityFilterChain permissiveFilterChain(HttpSecurity http) throws Exception {
+            return http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                    .build();
+        }
     }
 }

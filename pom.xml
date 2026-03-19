@@ -43,7 +43,9 @@
         <module>jclaw-audit</module>
         <module>jclaw-compaction</module>
         <module>jclaw-browser</module>
+        <module>jclaw-code</module>
         <module>jclaw-cron</module>
+        <module>jclaw-cron-manager</module>
         <module>jclaw-voice</module>
         <module>jclaw-identity</module>
         <module>jclaw-canvas</module>
@@ -51,6 +53,7 @@
         <module>jclaw-starters</module>
         <module>jclaw-gateway-app</module>
         <module>jclaw-shell</module>
+        <module>jclaw-examples</module>
     </modules>
 
     <properties>
@@ -186,7 +189,17 @@
             </dependency>
             <dependency>
                 <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-code</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-cron</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-cron-manager</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

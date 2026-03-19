@@ -32,11 +32,12 @@ To pre-pull the Ollama image in the background while the quickstart runs:
 docker pull ollama/ollama:latest
 ```
 
-Test with:
+Test with (the API key is auto-generated at `~/.jclaw/api-key` on first run):
 
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
   -d '{"content": "hello"}'
 ```
 
@@ -106,12 +107,13 @@ Or with environment variables directly:
 ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-gateway-app
 ```
 
-Test with curl:
+Test with curl (the gateway requires an `X-API-Key` header by default — see [Security](#security)):
 
 ```bash
 # Chat
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
   -d '{"content": "hello"}'
 
 # Health check
@@ -187,6 +189,8 @@ You can also set `JCLAW_ENV_FILE` directly to point to any `.env` file.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `JCLAW_SECURITY_MODE` | `api-key` | Security mode: `api-key`, `jwt`, or `none` |
+| `JCLAW_API_KEY` | (auto-generated) | Custom API key for `api-key` mode |
 | `AI_PROVIDER` | `anthropic` | LLM provider: `anthropic`, `openai`, or `ollama` |
 | `ANTHROPIC_API_KEY` | | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model name |
@@ -195,6 +199,20 @@ You can also set `JCLAW_ENV_FILE` directly to point to any `.env` file.
 | `GATEWAY_PORT` | `8080` | Gateway HTTP port |
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the full environment variable reference.
+
+## Security
+
+The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. On first run, a key is auto-generated at `~/.jclaw/api-key` and printed in the curl examples by the launcher scripts.
+
+```bash
+# Disable security for local development
+JCLAW_SECURITY_MODE=none ./start.sh local
+
+# Use a custom API key
+JCLAW_API_KEY=my-custom-key ./start.sh local
+```
+
+The `onboard` wizard and `quickstart.sh --reconfigure` also allow configuring the security mode interactively. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full details.
 
 ## Shell Commands
 

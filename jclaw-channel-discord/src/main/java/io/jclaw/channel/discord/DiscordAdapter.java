@@ -347,6 +347,12 @@ public class DiscordAdapter implements ChannelAdapter {
             return;
         }
 
+        String authorId = author.path("id").asText();
+        if (!config.isSenderAllowed(authorId)) {
+            log.debug("Dropping message from non-allowed Discord user {}", authorId);
+            return;
+        }
+
         String content = data.path("content").asText("");
         if (content.isBlank()) {
             return;

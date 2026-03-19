@@ -38,6 +38,11 @@ public class McpServerConfigBootstrap implements SmartInitializingSingleton {
             String name = entry.getKey();
             McpServerProperties.McpServerEntry config = entry.getValue();
 
+            if (!config.enabled()) {
+                log.debug("Skipping disabled MCP server: {}", name);
+                continue;
+            }
+
             try {
                 McpToolProvider provider = McpTransportFactory.create(name, config);
                 registry.register(provider);

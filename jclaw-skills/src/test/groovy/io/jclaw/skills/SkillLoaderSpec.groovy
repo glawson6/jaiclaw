@@ -109,8 +109,8 @@ Custom content
         def skills = loader.loadBundled()
 
         then:
-        skills.size() == 6
-        skills.collect { it.name() } as Set == ["coding", "web-research", "system-admin", "conversation", "summarize", "k8s-monitoring"] as Set
+        skills.size() == 7
+        skills.collect { it.name() } as Set == ["coding", "web-research", "system-admin", "conversation", "summarize", "k8s-monitoring", "jclaw-developer"] as Set
     }
 
     def "bundled skills have correct alwaysInclude flags"() {

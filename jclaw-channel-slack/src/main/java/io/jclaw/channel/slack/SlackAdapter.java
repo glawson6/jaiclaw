@@ -289,6 +289,12 @@ public class SlackAdapter implements ChannelAdapter {
 
         // Only handle message events (not bot messages or subtypes)
         if ("message".equals(eventType) && !event.has("subtype") && !event.has("bot_id")) {
+            String userId = event.path("user").asText();
+            if (!config.isSenderAllowed(userId)) {
+                log.debug("Dropping message from non-allowed Slack user {}", userId);
+                return;
+            }
+
             String text = event.path("text").asText();
             String channel = event.path("channel").asText();
             String teamId = payload.path("team_id").asText();

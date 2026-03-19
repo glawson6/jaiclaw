@@ -8,37 +8,29 @@
 # Usage:
 #   ./setup.sh              # build + run shell
 #   ./setup.sh --gateway    # build + run gateway instead
+#   ./setup.sh --cron-manager # build + run cron-manager
 #   ./setup.sh --build-only # build only, don't launch
 #
 set -euo pipefail
 
-# ─── Colors ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
-
-info()  { printf "${CYAN}▸${NC} %s\n" "$*"; }
-ok()    { printf "${GREEN}✓${NC} %s\n" "$*"; }
-warn()  { printf "${YELLOW}!${NC} %s\n" "$*"; }
-err()   { printf "${RED}✗${NC} %s\n" "$*" >&2; }
-header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
+# Shared helpers (colors, logging, API key resolution)
+source "$(dirname "$0")/scripts/common.sh"
 
 # ─── Parse args ───────────────────────────────────────────────────────────────
 
 MODE="shell"
 for arg in "$@"; do
     case "$arg" in
-        --gateway)    MODE="gateway" ;;
-        --build-only) MODE="build-only" ;;
+        --gateway)      MODE="gateway" ;;
+        --cron-manager) MODE="cron-manager" ;;
+        --build-only)   MODE="build-only" ;;
         --help|-h)
-            echo "Usage: ./setup.sh [--gateway|--build-only]"
+            echo "Usage: ./setup.sh [--gateway|--cron-manager|--build-only]"
             echo ""
             echo "Options:"
-            echo "  --gateway     Build and run the gateway server instead of the shell"
-            echo "  --build-only  Build only, don't launch anything"
+            echo "  --gateway       Build and run the gateway server instead of the shell"
+            echo "  --cron-manager  Build and run the cron-manager"
+            echo "  --build-only    Build only, don't launch anything"
             echo ""
             exit 0
             ;;
@@ -163,15 +155,36 @@ launch_shell() {
 launch_gateway() {
     header "Starting JClaw Gateway"
 
+    resolve_api_key
+
     echo "The gateway server is starting on port 8080."
+    print_security_info
     echo ""
     echo "Test with:"
-    printf "  ${BOLD}curl -X POST http://localhost:8080/api/chat \\\\${NC}\n"
-    printf "  ${BOLD}  -H \"Content-Type: application/json\" \\\\${NC}\n"
-    printf "  ${BOLD}  -d '{\"content\": \"hello\"}'${NC}\n"
+    print_api_curl_example 8080
     echo ""
 
     ./mvnw spring-boot:run -pl jclaw-gateway-app -q
+}
+
+launch_cron_manager() {
+    header "Starting JClaw Cron Manager"
+
+    resolve_api_key
+
+    echo "The cron-manager is starting on port 8090."
+    print_security_info
+    echo ""
+    echo "Test with:"
+    local cron_key="${RESOLVED_API_KEY:-<your-api-key>}"
+    printf "  ${BOLD}curl http://localhost:8090/mcp \\\\${NC}\n"
+    printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
+    echo ""
+    printf "  ${DIM}Type 'cron-status' for cron job overview${NC}\n"
+    printf "  ${DIM}Type 'cron-list' to list all jobs${NC}\n"
+    echo ""
+
+    ./mvnw spring-boot:run -pl jclaw-cron-manager
 }
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -183,9 +196,10 @@ main() {
     build
 
     case "$MODE" in
-        shell)      launch_shell ;;
-        gateway)    launch_gateway ;;
-        build-only) ok "Build finished. Run with: ./mvnw spring-boot:run -pl jclaw-shell" ;;
+        shell)        launch_shell ;;
+        gateway)      launch_gateway ;;
+        cron-manager) launch_cron_manager ;;
+        build-only)   ok "Build finished. Run with: ./mvnw spring-boot:run -pl jclaw-shell" ;;
     esac
 }
 

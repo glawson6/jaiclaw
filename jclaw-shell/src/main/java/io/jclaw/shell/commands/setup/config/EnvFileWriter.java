@@ -16,6 +16,14 @@ public class EnvFileWriter {
         sb.append("# Source this file before running JClaw: source ").append(
                 ConfigLocation.envFile(result.configDir())).append("\n\n");
 
+        // Security
+        sb.append("# Security\n");
+        sb.append("export JCLAW_SECURITY_MODE=").append(result.securityMode()).append("\n");
+        if ("api-key".equals(result.securityMode()) && result.apiKey() != null && !result.apiKey().isBlank()) {
+            sb.append("export JCLAW_API_KEY=").append(result.apiKey()).append("\n");
+        }
+        sb.append("\n");
+
         // LLM provider key
         if (result.llmApiKey() != null && !result.llmApiKey().isBlank()) {
             String envVar = switch (result.llmProvider()) {

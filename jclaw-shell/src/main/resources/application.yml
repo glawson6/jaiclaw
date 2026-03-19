@@ -1,4 +1,6 @@
 jclaw:
+  security:
+    mode: none
   identity:
     name: JClaw
     description: Personal AI assistant
