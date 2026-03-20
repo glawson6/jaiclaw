@@ -7,6 +7,7 @@
 #   Logging (info, ok, warn, err, header)
 #   resolve_api_key    — mirrors ApiKeyProvider logic; sets RESOLVED_API_KEY
 #   print_api_curl_example <port>  — prints a curl snippet with the resolved key
+#   print_api_httpie_example <port> — prints an httpie snippet with the resolved key
 #   print_security_info            — prints current security mode + key info
 #
 
@@ -71,6 +72,19 @@ print_api_curl_example() {
     printf "  ${BOLD}  -H \"Content-Type: application/json\" \\\\${NC}\n"
     printf "  ${BOLD}  -H \"X-API-Key: ${key}\" \\\\${NC}\n"
     printf "  ${BOLD}  -d '{\"content\": \"hello\"}'${NC}\n"
+}
+
+# ─── HTTPie Example ──────────────────────────────────────────────────────────
+#
+# Prints a ready-to-paste httpie command with the API key header.
+# Usage: print_api_httpie_example [port]
+#
+print_api_httpie_example() {
+    local port="${1:-8080}"
+    local key="${RESOLVED_API_KEY:-<your-api-key>}"
+    printf "  ${BOLD}http POST http://localhost:${port}/api/chat \\\\${NC}\n"
+    printf "  ${BOLD}  X-API-Key:${key} \\\\${NC}\n"
+    printf "  ${BOLD}  content=hello${NC}\n"
 }
 
 # ─── Security Info ────────────────────────────────────────────────────────────

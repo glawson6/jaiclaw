@@ -73,9 +73,10 @@ Set API keys in `.env`:
 ```
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=...
 ```
 
-All three providers (OpenAI, Anthropic, Ollama) can be active simultaneously.
+All four providers (OpenAI, Anthropic, Google Gemini, Ollama) can be active simultaneously.
 
 ### Channel Adapters
 

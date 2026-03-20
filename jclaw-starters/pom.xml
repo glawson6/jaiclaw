@@ -19,6 +19,7 @@
         <module>jclaw-starter-anthropic</module>
         <module>jclaw-starter-openai</module>
         <module>jclaw-starter-ollama</module>
+        <module>jclaw-starter-gemini</module>
         <module>jclaw-starter-gateway</module>
         <module>jclaw-starter-shell</module>
         <module>jclaw-starter-embabel</module>

@@ -22,7 +22,8 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────────┐     │
 │  │ starter-gateway  │  │  starter-shell   │  │  starter-anthropic     │     │
 │  │ starter-embabel  │  │ starter-personal │  │  starter-openai        │     │
-│  │                  │  │   -assistant     │  │  starter-ollama        │     │
+│  │                  │  │   -assistant     │  │  starter-gemini        │     │
+│  │                  │  │                  │  │  starter-ollama        │     │
 │  └────────┬─────────┘  └────────┬─────────┘  │  starter-k8s-monitor  │     │
 │           │                     │             └────────────┬───────────┘     │
 ├───────────┼─────────────────────┼──────────────────────────┼────────────────┤
@@ -182,8 +183,8 @@ One JVM runs everything. The Spring Shell CLI is the user interface.
                               ┌───────────┼───────────┐
                               ▼           ▼           ▼
                         ┌──────────┐ ┌────────┐ ┌──────────┐
-                        │  OpenAI  │ │Anthropic│ │  Ollama  │
-                        └──────────┘ └────────┘ └──────────┘
+                        │  OpenAI  │ │Anthropic│ │ Gemini │ │  Ollama  │
+                        └──────────┘ └────────┘ └────────┘ └──────────┘
 ```
 
 ### Multi-Process Mode (production / gateway)
@@ -485,6 +486,8 @@ AnthropicChatAutoConfiguration        ─── creates ──→  ChatModel (An
    or
 OpenAiChatAutoConfiguration           ─── creates ──→  ChatModel (OpenAI)
    or
+GoogleGenAiChatAutoConfiguration      ─── creates ──→  ChatModel (Gemini)
+   or
 OllamaChatAutoConfiguration           ─── creates ──→  ChatModel (Ollama)
           │
           ▼
@@ -613,6 +616,9 @@ spring:
       api-key: ${OPENAI_API_KEY:}
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
     ollama:
       base-url: http://ollama.infra:11434
 ```

@@ -186,6 +186,12 @@
             </dependency>
             <dependency>
                 <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-gemini</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-starter-gateway</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>

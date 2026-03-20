@@ -28,7 +28,7 @@
             <artifactId>jclaw-code</artifactId>
         </dependency>
 
-        <!-- All three AI providers -->
+        <!-- All four AI providers -->
         <dependency>
             <groupId>io.jclaw</groupId>
             <artifactId>jclaw-starter-anthropic</artifactId>
@@ -42,6 +42,11 @@
         <dependency>
             <groupId>io.jclaw</groupId>
             <artifactId>jclaw-starter-ollama</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-starter-gemini</artifactId>
             <type>pom</type>
         </dependency>
     </dependencies>

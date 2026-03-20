@@ -24,6 +24,9 @@ ANTHROPIC_API_KEY=sk-ant-... ./quickstart.sh
 
 # With OpenAI
 OPENAI_API_KEY=sk-... ./quickstart.sh
+
+# With Google Gemini
+GEMINI_API_KEY=... ./quickstart.sh
 ```
 
 To pre-pull the Ollama image in the background while the quickstart runs:
@@ -49,7 +52,7 @@ After the initial build, use `start.sh` to run the gateway or interactive shell.
 # Edit API keys (one time)
 vi docker-compose/.env
 
-# Start the gateway (Docker) — tails logs automatically
+# Start the gateway locally (default) — requires Java 21
 ./start.sh
 
 # Start the interactive CLI shell (local Java)
@@ -58,11 +61,14 @@ vi docker-compose/.env
 # Start the interactive CLI shell (Docker, no Java needed)
 ./start.sh cli
 
-# Start gateway locally without Docker
-./start.sh local
+# Start gateway via Docker Compose
+./start.sh docker
 
-# Force rebuild Docker images (after code changes)
+# Force rebuild from source (after code changes)
 ./start.sh --force-build
+
+# Force rebuild Docker images
+./start.sh --force-build docker
 ./start.sh --force-build cli
 
 # Stop the Docker stack
@@ -97,8 +103,8 @@ Or run the gateway instead:
 For HTTP/WebSocket access or to connect messaging channels:
 
 ```bash
-./start.sh           # Docker (reads docker-compose/.env)
-./start.sh local     # local Java (reads docker-compose/.env)
+./start.sh           # local Java (default, reads docker-compose/.env)
+./start.sh docker    # Docker Compose (reads docker-compose/.env)
 ```
 
 Or with environment variables directly:
@@ -191,10 +197,11 @@ You can also set `JCLAW_ENV_FILE` directly to point to any `.env` file.
 |----------|---------|-------------|
 | `JCLAW_SECURITY_MODE` | `api-key` | Security mode: `api-key`, `jwt`, or `none` |
 | `JCLAW_API_KEY` | (auto-generated) | Custom API key for `api-key` mode |
-| `AI_PROVIDER` | `anthropic` | LLM provider: `anthropic`, `openai`, or `ollama` |
+| `AI_PROVIDER` | `anthropic` | LLM provider: `anthropic`, `openai`, `ollama`, or `google-genai` |
 | `ANTHROPIC_API_KEY` | | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model name |
 | `OPENAI_API_KEY` | | OpenAI API key |
+| `GEMINI_API_KEY` | | Google Gemini API key |
 | `OLLAMA_ENABLED` | `false` | Enable Ollama local LLM |
 | `GATEWAY_PORT` | `8080` | Gateway HTTP port |
 

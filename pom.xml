@@ -64,7 +64,7 @@
 
         <!-- Aligned with Embabel 0.3.4 compatibility -->
         <spring-boot.version>3.5.6</spring-boot.version>
-        <spring-ai.version>1.1.1</spring-ai.version>
+        <spring-ai.version>1.1.3</spring-ai.version>
         <embabel-agent.version>0.3.4</embabel-agent.version>
         <spring-shell.version>3.4.0</spring-shell.version>
 
@@ -244,6 +244,12 @@
             <dependency>
                 <groupId>io.jclaw</groupId>
                 <artifactId>jclaw-starter-ollama</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-gemini</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>

@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 #
-# JClaw Start — run the gateway (Docker) or interactive shell (local)
+# JClaw Start — run the gateway (local or Docker) or interactive shell
 #
 # Reads API keys and configuration from JCLAW_ENV_FILE (or docker-compose/.env)
 #
 # Usage:
-#   ./start.sh              # start gateway via Docker Compose (default)
+#   ./start.sh              # start gateway locally (default, requires Java 21)
 #   ./start.sh shell        # start interactive CLI shell (local, requires Java 21)
 #   ./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
-#   ./start.sh gateway      # start gateway via Docker Compose
-#   ./start.sh local        # start gateway locally (no Docker, requires Java 21)
+#   ./start.sh docker       # start gateway via Docker Compose
+#   ./start.sh gateway      # start gateway via Docker Compose (alias for docker)
+#   ./start.sh local        # start gateway locally (explicit, same as default)
 #   ./start.sh cron         # start cron-manager locally (requires Java 21)
 #   ./start.sh cron docker  # start cron-manager via Docker Compose
-#   ./start.sh telegram     # validate Telegram bot token → start gateway (Docker)
-#   ./start.sh telegram local  # validate Telegram bot token → start gateway (local Java)
-#   ./start.sh --force-build gateway  # rebuild Docker image, then start gateway
+#   ./start.sh telegram     # validate Telegram bot token → start gateway (local)
+#   ./start.sh telegram docker  # validate Telegram bot token → start gateway (Docker)
+#   ./start.sh --force-build          # rebuild from source, then start gateway locally
+#   ./start.sh --force-build docker  # rebuild Docker image, then start gateway
 #   ./start.sh stop         # stop Docker Compose stack
 #   ./start.sh logs         # tail gateway container logs
 #
@@ -63,6 +65,23 @@ load_env() {
     fi
 }
 
+# ─── Sync API key to .env ────────────────────────────────────────────────────
+#
+# After resolve_api_key generates or reads a key, write it to the .env file so
+# Docker Compose can pass it to the container. Without this, the container
+# generates its own key (different from the host's) and the curl example fails.
+#
+sync_api_key_to_env() {
+    if [ -n "${RESOLVED_API_KEY:-}" ] && [ -f "$ENV_FILE" ]; then
+        local current
+        current=$(grep "^JCLAW_API_KEY=" "$ENV_FILE" | cut -d= -f2)
+        if [ "$current" != "$RESOLVED_API_KEY" ]; then
+            sed -i.bak "s|^JCLAW_API_KEY=.*|JCLAW_API_KEY=${RESOLVED_API_KEY}|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        fi
+    fi
+}
+
 # ─── Java check ──────────────────────────────────────────────────────────────
 
 ensure_java() {
@@ -107,6 +126,21 @@ ensure_docker() {
     fi
 }
 
+# ─── Local build ────────────────────────────────────────────────────────────
+
+ensure_local_build() {
+    local jar="$1"
+    if [ "$FORCE_BUILD" = true ]; then
+        info "Force-building JClaw from source..."
+        (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
+        ok "Build complete"
+    elif [ ! -f "$jar" ]; then
+        info "Building JClaw (first run)..."
+        (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
+        ok "Build complete"
+    fi
+}
+
 # ─── Image check ─────────────────────────────────────────────────────────────
 
 ensure_image() {
@@ -132,6 +166,7 @@ cmd_gateway() {
     header "JClaw Gateway (Docker)"
     load_env
     resolve_api_key
+    sync_api_key_to_env
     ensure_docker
     ensure_image jclaw-gateway-app
 
@@ -144,6 +179,9 @@ cmd_gateway() {
     echo ""
     echo "Test it:"
     print_api_curl_example "${GATEWAY_PORT:-8080}"
+    echo ""
+    echo "Or with httpie:"
+    print_api_httpie_example "${GATEWAY_PORT:-8080}"
     echo ""
     echo "View logs:"
     printf "  ${BOLD}./start.sh logs${NC}\n"
@@ -161,13 +199,7 @@ cmd_shell() {
     header "JClaw Interactive Shell"
     load_env
     ensure_java
-
-    # Build if needed
-    if [ ! -f "$SCRIPT_DIR/jclaw-shell/target/jclaw-shell-0.1.0-SNAPSHOT.jar" ]; then
-        info "Building JClaw (first run)..."
-        (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
-        ok "Build complete"
-    fi
+    ensure_local_build "$SCRIPT_DIR/jclaw-shell/target/jclaw-shell-0.1.0-SNAPSHOT.jar"
 
     echo "Starting interactive shell..."
     echo ""
@@ -200,19 +232,16 @@ cmd_local() {
     load_env
     resolve_api_key
     ensure_java
-
-    # Build if needed
-    if [ ! -f "$SCRIPT_DIR/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar" ]; then
-        info "Building JClaw (first run)..."
-        (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
-        ok "Build complete"
-    fi
+    ensure_local_build "$SCRIPT_DIR/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar"
 
     echo "Starting gateway on http://localhost:${SERVER_PORT:-8080}..."
     print_security_info
     echo ""
     echo "Test with:"
     print_api_curl_example "${SERVER_PORT:-8080}"
+    echo ""
+    echo "Or with httpie:"
+    print_api_httpie_example "${SERVER_PORT:-8080}"
     echo ""
 
     (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl jclaw-gateway-app)
@@ -240,6 +269,9 @@ cmd_cron() {
         printf "  ${BOLD}curl http://localhost:${CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
         printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
         echo ""
+        echo "Or with httpie:"
+        printf "  ${BOLD}http http://localhost:${CRON_MANAGER_PORT:-8090}/mcp X-API-Key:${cron_key}${NC}\n"
+        echo ""
         echo "View logs:"
         printf "  ${BOLD}docker compose -f $COMPOSE_DIR/docker-compose.yml logs -f cron-manager${NC}\n"
         echo ""
@@ -253,12 +285,7 @@ cmd_cron() {
         resolve_api_key
         ensure_java
 
-        # Build if needed
-        if [ ! -f "$SCRIPT_DIR/jclaw-cron-manager/target/jclaw-cron-manager-0.1.0-SNAPSHOT.jar" ]; then
-            info "Building JClaw (first run)..."
-            (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
-            ok "Build complete"
-        fi
+        ensure_local_build "$SCRIPT_DIR/jclaw-cron-manager/target/jclaw-cron-manager-0.1.0-SNAPSHOT.jar"
 
         echo "Starting cron-manager on http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}..."
         print_security_info
@@ -267,6 +294,9 @@ cmd_cron() {
         local cron_key="${RESOLVED_API_KEY:-<your-api-key>}"
         printf "  ${BOLD}curl http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
         printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
+        echo ""
+        echo "Or with httpie:"
+        printf "  ${BOLD}http http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}/mcp X-API-Key:${cron_key}${NC}\n"
         echo ""
         printf "  ${DIM}Type 'cron-status' for cron job overview${NC}\n"
         printf "  ${DIM}Type 'cron-list' to list all jobs${NC}\n"
@@ -310,12 +340,12 @@ cmd_telegram() {
     echo "  Open the link above in Telegram to chat with your bot."
     echo ""
 
-    # Determine mode (Docker vs local)
+    # Determine mode (local vs Docker)
     local mode="$1"
-    if [ "$mode" = "local" ]; then
-        cmd_local
-    else
+    if [ "$mode" = "docker" ]; then
         cmd_gateway
+    else
+        cmd_local
     fi
 }
 
@@ -349,13 +379,13 @@ for arg in "$@"; do
     esac
 done
 
-COMMAND="${COMMAND:-gateway}"
+COMMAND="${COMMAND:-local}"
 
 case "$COMMAND" in
-    gateway)  cmd_gateway ;;
+    local)    cmd_local ;;
     shell)    cmd_shell ;;
     cli)      cmd_cli ;;
-    local)    cmd_local ;;
+    docker|gateway)  cmd_gateway ;;
     cron)     cmd_cron "${EXTRA_ARGS[0]:-local}" ;;
     telegram) cmd_telegram "${EXTRA_ARGS[0]:-}" ;;
     stop)     cmd_stop ;;
@@ -364,17 +394,18 @@ case "$COMMAND" in
         echo "Usage: ./start.sh [options] [command]"
         echo ""
         echo "Options:"
-        echo "  --force-build    Force rebuild Docker images even if they exist"
+        echo "  --force-build    Force rebuild (local JARs or Docker images)"
         echo ""
         echo "Commands:"
-        echo "  gateway          Start gateway via Docker Compose (default)"
+        echo "  (default)        Start gateway locally (requires Java 21)"
         echo "  shell            Start interactive CLI shell (local Java)"
         echo "  cli              Start interactive CLI shell (Docker, no Java needed)"
-        echo "  local            Start gateway locally without Docker (local Java)"
+        echo "  docker           Start gateway via Docker Compose"
+        echo "  local            Start gateway locally (same as default)"
         echo "  cron             Start cron-manager locally (local Java)"
         echo "  cron docker      Start cron-manager via Docker Compose"
-        echo "  telegram         Validate Telegram bot token and start gateway (Docker)"
-        echo "  telegram local   Validate Telegram bot token and start gateway (local Java)"
+        echo "  telegram         Validate Telegram bot token and start gateway (local)"
+        echo "  telegram docker  Validate Telegram bot token and start gateway (Docker)"
         echo "  stop             Stop Docker Compose stack"
         echo "  logs             Tail gateway container logs"
         echo ""

@@ -16,7 +16,7 @@ JClaw's goal is to combine the best of both: OpenClaw's breadth of channels/tool
 |---|---|---|---|
 | **Language** | TypeScript/Node.js | Java 21 / Spring Boot 3.5 | By design |
 | **Messaging Channels** | 25+ (WhatsApp, iMessage, Signal, IRC, Twitch, Nostr, LINE, Matrix, Google Chat, etc.) | 6 (Telegram, Slack, Discord, Email, SMS, WebSocket) | 19+ channels missing |
-| **LLM Providers** | 20+ (Anthropic, OpenAI, Ollama, Mistral, Bedrock, Qwen, Moonshot, GLM, Venice, LiteLLM, OpenRouter, etc.) | 3 (Anthropic, OpenAI, Ollama) | 17+ missing (can add via Spring AI starters) |
+| **LLM Providers** | 20+ (Anthropic, OpenAI, Ollama, Mistral, Bedrock, Qwen, Moonshot, GLM, Venice, LiteLLM, OpenRouter, etc.) | 4 (Anthropic, OpenAI, Gemini, Ollama) | 16+ missing (can add via Spring AI starters) |
 | **Built-in Tools** | browser, canvas, exec, file ops, sessions, memory, cron, nodes (camera/screen/location) | 5 core (file read/write, shell exec, web fetch, web search) + 9 k8s | Browser, Canvas, Cron, Device node tools missing |
 | **Skills** | 50+ bundled (1password, apple-notes, github, notion, obsidian, spotify, trello, weather, etc.) | 6 bundled (coding, conversation, web-research, system-admin, summarize, k8s-monitoring) | 44+ skills missing |
 | **Memory** | Markdown-first files + vector search + auto-compaction + daily logs + long-term curated | In-memory BM25 + VectorStore (Spring AI) | Workspace memory, auto-compaction, daily logs missing |
@@ -51,7 +51,7 @@ JClaw's goal is to combine the best of both: OpenClaw's breadth of channels/tool
 | **Human-in-the-Loop** | None | Confirmation dialogs, form-based input, typed requests, conditional awaiting | HITL missing from JClaw |
 | **Guardrails** | None | Input/output guardrails, structural validation, path-to-completion validation | Guardrails missing |
 | **Blackboard** | None (tool context only) | Typed shared memory, boolean conditions, named bindings, built-in blackboard tools | Shared state missing |
-| **LLM Providers** | 3 via Spring AI starters | 11 (Anthropic, OpenAI, Ollama, Bedrock, DeepSeek, Gemini, Google GenAI, Mistral, LM Studio, Docker models) | Embabel has more providers |
+| **LLM Providers** | 4 via Spring AI starters | 11 (Anthropic, OpenAI, Ollama, Bedrock, DeepSeek, Gemini, Google GenAI, Mistral, LM Studio, Docker models) | Embabel has more providers |
 | **Multi-Model** | Single provider per runtime | Per-action model selection, role-based mapping, cost-optimized mixing | Model mixing missing from JClaw |
 | **Structured Output** | Text generation only | `createObject(prompt, Class)` — JSON-to-Java object mapping | Structured output missing |
 | **Subagents** | None | `@RunSubagent`, nested agent invocation, supervisor patterns | Subagent orchestration missing |

@@ -59,7 +59,7 @@ Data flow:
 
 - Java 21+
 - JClaw built and installed (`./mvnw install -DskipTests` from project root)
-- Anthropic/OpenAI API key OR Ollama running locally
+- Anthropic/OpenAI/Gemini API key OR Ollama running locally
 - Slack app (optional — for Slack delivery)
 
 ## Configuration

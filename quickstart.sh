@@ -417,7 +417,8 @@ reconfigure() {
     printf "${BOLD}Select LLM provider:${NC}\n"
     echo "  1. Anthropic (Claude)"
     echo "  2. OpenAI"
-    echo "  3. Ollama (local, free)"
+    echo "  3. Google Gemini"
+    echo "  4. Ollama (local, free)"
     echo ""
     read -rp "$(printf "${CYAN}▸${NC} Choice [1]: ")" provider_choice
     provider_choice="${provider_choice:-1}"
@@ -450,6 +451,19 @@ reconfigure() {
             fi
             ;;
         3)
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=google-genai|" "$ENV_FILE"
+            sed -i.bak "s|^GEMINI_ENABLED=.*|GEMINI_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+
+            echo ""
+            read -rp "$(printf "${CYAN}▸${NC} Gemini API key (from https://aistudio.google.com/apikey): ")" api_key
+            if [ -n "$api_key" ]; then
+                sed -i.bak "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=${api_key}|" "$ENV_FILE"
+                rm -f "$ENV_FILE.bak"
+                ok "Gemini API key saved"
+            fi
+            ;;
+        4)
             sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=ollama|" "$ENV_FILE"
             sed -i.bak "s|^OLLAMA_ENABLED=.*|OLLAMA_ENABLED=true|" "$ENV_FILE"
             sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=false|" "$ENV_FILE"
@@ -506,6 +520,12 @@ reconfigure() {
     ok "Reconfiguration complete"
     echo ""
 
+    # Source the .env file so start_stack() sees the values we just wrote
+    # (without this, has_api_key() checks shell env — which is empty — and falls back to Ollama)
+    set -a
+    source "$ENV_FILE"
+    set +a
+
     # Restart the stack
     info "Restarting stack with new configuration..."
     docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" down 2>/dev/null || true
@@ -516,7 +536,9 @@ reconfigure() {
 # ─── Start stack ──────────────────────────────────────────────────────────────
 
 has_api_key() {
-    [ -n "${OPENAI_API_KEY:-}" ] || [ -n "${ANTHROPIC_API_KEY:-}" ]
+    { [ -n "${OPENAI_API_KEY:-}" ] && [ "${OPENAI_API_KEY}" != "not-set" ]; } ||
+    { [ -n "${ANTHROPIC_API_KEY:-}" ] && [ "${ANTHROPIC_API_KEY}" != "not-set" ]; } ||
+    { [ -n "${GEMINI_API_KEY:-}" ] && [ "${GEMINI_API_KEY}" != "not-set" ]; }
 }
 
 start_stack() {
@@ -529,27 +551,43 @@ start_stack() {
         exit 1
     fi
 
-    # Write env-provided API keys and enable the matching provider
-    if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-        sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}|" "$ENV_FILE"
-        sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=true|" "$ENV_FILE"
-        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=anthropic|" "$ENV_FILE"
-        rm -f "$ENV_FILE.bak"
-    fi
-    if [ -n "${OPENAI_API_KEY:-}" ]; then
-        sed -i.bak "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=${OPENAI_API_KEY}|" "$ENV_FILE"
-        sed -i.bak "s|^OPENAI_ENABLED=.*|OPENAI_ENABLED=true|" "$ENV_FILE"
-        sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=openai|" "$ENV_FILE"
-        rm -f "$ENV_FILE.bak"
-    fi
+    # Source the .env file so we can read the configured provider and keys
+    set -a
+    source "$ENV_FILE"
+    set +a
 
-    # Decide whether to include Ollama
+    # Read the configured provider from .env (may have been set by reconfigure)
+    local configured_provider
+    configured_provider=$(grep "^AI_PROVIDER=" "$ENV_FILE" | cut -d= -f2)
+
+    # Decide whether to include Ollama based on the configured provider
     local use_ollama=true
-    if has_api_key; then
+    if [ "$configured_provider" = "ollama" ]; then
+        # Explicitly configured for Ollama
+        use_ollama=true
+    elif [ "$configured_provider" = "anthropic" ] || [ "$configured_provider" = "openai" ] || [ "$configured_provider" = "google-genai" ]; then
+        # A cloud provider is configured — skip Ollama
         use_ollama=false
-        ok "API key detected — skipping Ollama (you can start it later with: docker compose --profile ollama up -d)"
+        ok "Provider '$configured_provider' configured — skipping Ollama (you can start it later with: docker compose --profile ollama up -d)"
+    elif has_api_key; then
+        # No explicit provider but an API key exists — auto-detect
+        use_ollama=false
+        if [ -n "${ANTHROPIC_API_KEY:-}" ] && [ "${ANTHROPIC_API_KEY}" != "not-set" ]; then
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=anthropic|" "$ENV_FILE"
+            sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        elif [ -n "${OPENAI_API_KEY:-}" ] && [ "${OPENAI_API_KEY}" != "not-set" ]; then
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=openai|" "$ENV_FILE"
+            sed -i.bak "s|^OPENAI_ENABLED=.*|OPENAI_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        elif [ -n "${GEMINI_API_KEY:-}" ] && [ "${GEMINI_API_KEY}" != "not-set" ]; then
+            sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=google-genai|" "$ENV_FILE"
+            sed -i.bak "s|^GEMINI_ENABLED=.*|GEMINI_ENABLED=true|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        fi
+        ok "API key detected — skipping Ollama"
     else
-        # No API key — enable Ollama as the provider
+        # No API key and no configured cloud provider — fall back to Ollama
         sed -i.bak "s|^AI_PROVIDER=.*|AI_PROVIDER=ollama|" "$ENV_FILE"
         sed -i.bak "s|^OLLAMA_ENABLED=.*|OLLAMA_ENABLED=true|" "$ENV_FILE"
         sed -i.bak "s|^ANTHROPIC_ENABLED=.*|ANTHROPIC_ENABLED=false|" "$ENV_FILE"
@@ -641,6 +679,9 @@ print_success() {
     echo "Test it:"
     echo ""
     print_api_curl_example 8080
+    echo ""
+    echo "Or with httpie:"
+    print_api_httpie_example 8080
     echo ""
     echo "Health check:"
     printf "  ${BOLD}curl http://localhost:8080/api/health${NC}\n"

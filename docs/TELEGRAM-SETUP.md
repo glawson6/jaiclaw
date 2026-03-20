@@ -10,9 +10,11 @@ Connect JClaw to Telegram so users can chat with your agent directly in the Tele
    ```
    TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
    ```
-4. Start JClaw with Telegram:
+4. Start JClaw with Telegram (runs locally by default):
    ```bash
    ./start.sh telegram
+   # Or via Docker:
+   ./start.sh telegram docker
    ```
 5. Open the bot link printed in the console and send a message
 
@@ -126,7 +128,7 @@ ngrok http 8080
 
 # Terminal 2: Set the ngrok URL and start JClaw
 export TELEGRAM_WEBHOOK_URL=https://abc123.ngrok-free.app/webhook/telegram
-./start.sh telegram local
+./start.sh telegram
 ```
 
 #### Webhook with a reverse proxy (production)
@@ -236,7 +238,7 @@ Telegram token validation failed
 - Check that the gateway is running: `curl http://localhost:8080/api/health`
 - Check JClaw logs for errors: `./start.sh logs`
 - Verify the bot token is being passed to the container: check `docker-compose/.env`
-- Ensure an LLM provider is configured (Anthropic, OpenAI, or Ollama)
+- Ensure an LLM provider is configured (Anthropic, OpenAI, Google Gemini, or Ollama)
 
 ### File/image handling
 

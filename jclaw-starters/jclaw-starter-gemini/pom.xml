@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jclaw</groupId>
+        <artifactId>jclaw-starters</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jclaw-starter-gemini</artifactId>
+    <packaging>pom</packaging>
+    <name>JClaw :: Starter :: Gemini</name>
+    <description>JClaw starter with Google Gemini (GenAI) as the AI model provider</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.jclaw</groupId>
+            <artifactId>jclaw-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-google-genai</artifactId>
+        </dependency>
+    </dependencies>
+</project>

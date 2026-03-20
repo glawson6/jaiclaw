@@ -163,6 +163,9 @@ launch_gateway() {
     echo "Test with:"
     print_api_curl_example 8080
     echo ""
+    echo "Or with httpie:"
+    print_api_httpie_example 8080
+    echo ""
 
     ./mvnw spring-boot:run -pl jclaw-gateway-app -q
 }

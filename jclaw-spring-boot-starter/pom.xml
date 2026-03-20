@@ -124,5 +124,10 @@
             <artifactId>spring-ai-starter-model-ollama</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-google-genai</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 </project>

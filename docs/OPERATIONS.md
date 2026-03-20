@@ -3,8 +3,8 @@
 ## Prerequisites
 
 - Java 21 (Oracle or Temurin) — for local builds and the shell
-- Docker — for `quickstart.sh` and `start.sh gateway`
-- At least one LLM provider API key (Anthropic, OpenAI, or Ollama)
+- Docker — for `quickstart.sh` and `start.sh docker`
+- At least one LLM provider API key (Anthropic, OpenAI, Google Gemini, or Ollama)
 
 ```bash
 export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
@@ -17,13 +17,15 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 `start.sh` is the recommended way to run JClaw after initial setup. It reads API keys and configuration from `$JCLAW_ENV_FILE` (default: `docker-compose/.env`). If `~/.jclawrc` exists (written by `quickstart.sh`), it is sourced automatically to set `JCLAW_ENV_FILE`.
 
 ```bash
-./start.sh              # start gateway via Docker Compose, tail logs
+./start.sh              # start gateway locally (default, requires Java 21)
 ./start.sh shell        # start interactive CLI shell (local Java)
 ./start.sh cli          # start interactive CLI shell (Docker, no Java needed)
-./start.sh local        # start gateway locally without Docker
+./start.sh docker       # start gateway via Docker Compose
+./start.sh local        # start gateway locally (same as default)
 ./start.sh stop         # stop Docker Compose stack
 ./start.sh logs         # tail gateway container logs
-./start.sh --force-build          # rebuild Docker image, then start gateway
+./start.sh --force-build          # rebuild from source, then start gateway locally
+./start.sh --force-build docker   # rebuild Docker image, then start gateway
 ./start.sh --force-build cli      # rebuild shell Docker image, then start CLI
 ./start.sh help         # show all commands
 ```
@@ -43,13 +45,13 @@ OLLAMA_ENABLED=false
 
 Both the gateway (Docker and local) and the shell read from this file. Environment variables set in your shell override `.env` values. Run `./quickstart.sh --reconfigure` to change the config location, re-enter API keys, or change the security mode.
 
-### Gateway (Docker)
+### Gateway (Local — default)
 
 ```bash
 ./start.sh
 ```
 
-Starts the Docker container, prints test commands (including your API key), then tails logs. Press Ctrl+C to detach (the container keeps running). The gateway serves:
+Runs the gateway as a local Java process (no Docker). This is the default because code tools (file editing, search) operate on your local filesystem. Useful for development and debugging. The gateway serves:
 
 - `POST /api/chat` — synchronous chat (requires `X-API-Key` header)
 - `GET /api/health` — health check
@@ -58,13 +60,13 @@ Starts the Docker container, prints test commands (including your API key), then
 - `WS /ws/session/{key}` — streaming WebSocket
 - `/mcp/**` — MCP server hosting (requires `X-API-Key` header)
 
-### Gateway (Local)
+### Gateway (Docker)
 
 ```bash
-./start.sh local
+./start.sh docker
 ```
 
-Runs the gateway as a local Java process (no Docker). Useful for debugging or when you need to attach a debugger.
+Starts the Docker container, prints test commands (including your API key), then tails logs. Press Ctrl+C to detach (the container keeps running).
 
 ### Interactive Shell
 
@@ -178,6 +180,9 @@ AI_PROVIDER=openai OPENAI_ENABLED=true OPENAI_API_KEY=sk-... ./mvnw spring-boot:
 
 # With Ollama (free, local)
 AI_PROVIDER=ollama OLLAMA_ENABLED=true ./mvnw spring-boot:run -pl jclaw-shell
+
+# With Google Gemini
+AI_PROVIDER=google-genai GEMINI_ENABLED=true GEMINI_API_KEY=... ./mvnw spring-boot:run -pl jclaw-shell
 ```
 
 ### Gateway
@@ -438,6 +443,19 @@ ANTHROPIC_MODEL=claude-opus-4-5 ANTHROPIC_API_KEY=sk-ant-... ./start.sh shell
 AI_PROVIDER=openai OPENAI_ENABLED=true OPENAI_API_KEY=sk-... ./start.sh shell
 ```
 
+### Google Gemini
+
+```bash
+AI_PROVIDER=google-genai GEMINI_ENABLED=true GEMINI_API_KEY=... ./start.sh shell
+```
+
+Override the model (default: `gemini-2.0-flash`):
+```bash
+GEMINI_MODEL=gemini-2.0-flash-lite GEMINI_ENABLED=true GEMINI_API_KEY=... ./start.sh shell
+```
+
+Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
+
 ### Ollama (local, free)
 
 **Native install:**
@@ -461,7 +479,7 @@ docker compose --profile ollama exec ollama ollama pull llama3.2
 
 ### Multiple Providers
 
-All three can be configured simultaneously in `docker-compose/.env`:
+All four can be configured simultaneously in `docker-compose/.env`:
 
 ```bash
 AI_PROVIDER=anthropic
@@ -469,6 +487,8 @@ ANTHROPIC_ENABLED=true
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_ENABLED=true
 OPENAI_API_KEY=sk-...
+GEMINI_ENABLED=true
+GEMINI_API_KEY=...
 OLLAMA_ENABLED=true
 ```
 
@@ -529,12 +549,15 @@ The `--reconfigure` flag in `quickstart.sh` also includes a security step.
 | `JCLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
 | `JCLAW_API_KEY` | No | Custom API key (auto-generated if not set) |
 | `JCLAW_API_KEY_FILE` | No | Path to API key file (default: `~/.jclaw/api-key`) |
-| `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, or `ollama` |
+| `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, `google-genai`, or `ollama` |
 | `ANTHROPIC_API_KEY` | One of these | Anthropic API key |
 | `ANTHROPIC_ENABLED` | No | Enable Anthropic provider (default: `true`) |
 | `ANTHROPIC_MODEL` | No | Anthropic model name (default: `claude-sonnet-4-5`) |
 | `OPENAI_API_KEY` | One of these | OpenAI API key |
 | `OPENAI_ENABLED` | No | Enable OpenAI provider (default: `false`) |
+| `GEMINI_API_KEY` | One of these | Google Gemini API key |
+| `GEMINI_ENABLED` | No | Enable Google Gemini provider (default: `false`) |
+| `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.0-flash`) |
 | `OLLAMA_ENABLED` | No | Enable Ollama provider (default: `false`) |
 | `OLLAMA_BASE_URL` | No | Ollama API URL (default: `http://localhost:11434`) |
 | `GATEWAY_PORT` | No | Gateway HTTP port (default: `8080`) |
@@ -696,6 +719,7 @@ kubectl create secret generic jclaw-secrets \
   --from-literal=JCLAW_API_KEY=jclaw_ak_... \
   --from-literal=OPENAI_API_KEY=sk-... \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+  --from-literal=GEMINI_API_KEY=... \
   --from-literal=TELEGRAM_BOT_TOKEN=123456:ABC... \
   --from-literal=SLACK_BOT_TOKEN=xoxb-... \
   --from-literal=SLACK_SIGNING_SECRET=... \
@@ -733,7 +757,7 @@ The adapter will call `setWebhook` on startup to register with Telegram.
 - Delete webhook to switch to polling: `curl https://api.telegram.org/bot<TOKEN>/deleteWebhook`
 
 ### No LLM configured
-If no ChatClient.Builder bean is available (no API keys set, no Ollama running), `AgentRuntime` won't be created. The `chat` command will return: "No LLM configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or enable Ollama."
+If no ChatClient.Builder bean is available (no API keys set, no Ollama running), `AgentRuntime` won't be created. The `chat` command will return: "No LLM configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or enable Ollama."
 
 ### Port conflicts
 Default ports:

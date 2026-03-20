@@ -43,6 +43,13 @@ spring:
     ollama:
       enabled: ${OLLAMA_ENABLED:false}
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    google:
+      genai:
+        enabled: ${GEMINI_ENABLED:false}
+        api-key: ${GEMINI_API_KEY:not-set}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-2.0-flash}
   shell:
     interactive:
       enabled: true
