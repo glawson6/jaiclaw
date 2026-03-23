@@ -297,6 +297,7 @@ Images use `eclipse-temurin:21-jre` base and follow `io.jclaw/<module>:<version>
 
 ## Documentation
 
+- [What Is Agentic AI?](docs/WHAT-IS-AGENTIC-AI.md) — Plain-English explainer for non-technical audiences
 - [Operations Guide](docs/OPERATIONS.md) — Running, configuring, deploying
 - [Architecture](docs/ARCHITECTURE.md) — Module graph, message flow, k8s deployment
 
