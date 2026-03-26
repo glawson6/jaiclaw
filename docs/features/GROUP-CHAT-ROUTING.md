@@ -1,6 +1,6 @@
 # Group Chat Routing
 
-Module: `jclaw-gateway` (enhanced)
+Module: `jaiclaw-gateway` (enhanced)
 
 ## Overview
 
@@ -13,7 +13,7 @@ Adds intelligent message routing for group chats. Agents can be configured to re
 Determines whether a message should be processed and which agent should handle it.
 
 ```java
-RoutingService routing = new RoutingService(bindings, "default-agent", "jclaw");
+RoutingService routing = new RoutingService(bindings, "default-agent", "jaiclaw");
 
 // Check if message should be processed
 boolean process = routing.shouldProcess(chatType, channel, peerId, messageText);
@@ -47,8 +47,8 @@ Extracts @mentions from messages with channel-specific syntax:
 |---------|---------------|---------|
 | Slack | `<@USER_ID>` | `<@U123ABC> hello` |
 | Discord | `<@USER_ID>` | `<@123456789> hello` |
-| Telegram | `@username` or `/cmd@bot` | `@jclaw check status` |
-| Default | `@name` | `@jclaw what's up` |
+| Telegram | `@username` or `/cmd@bot` | `@jaiclaw check status` |
+| Default | `@name` | `@jaiclaw what's up` |
 
 ```java
 MentionParser parser = new MentionParser();
@@ -62,7 +62,7 @@ boolean mentioned = parser.isMentioned("slack", "<@U123> help", "U123");
 
 ## Chat Types
 
-The `ChatType` enum (in `jclaw-core`):
+The `ChatType` enum (in `jaiclaw-core`):
 
 | Type | Description |
 |------|-------------|

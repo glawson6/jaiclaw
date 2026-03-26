@@ -1,4 +1,4 @@
-# JClaw Operations Guide
+# JaiClaw Operations Guide
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 
 ## start.sh — Daily Driver
 
-`start.sh` is the recommended way to run JClaw after initial setup. It reads API keys and configuration from `$JCLAW_ENV_FILE` (default: `docker-compose/.env`). If `~/.jclawrc` exists (written by `quickstart.sh`), it is sourced automatically to set `JCLAW_ENV_FILE`.
+`start.sh` is the recommended way to run JaiClaw after initial setup. It reads API keys and configuration from `$JAICLAW_ENV_FILE` (default: `docker-compose/.env`). If `~/.jaiclawrc` exists (written by `quickstart.sh`), it is sourced automatically to set `JAICLAW_ENV_FILE`.
 
 ```bash
 ./start.sh              # start gateway locally (default, requires Java 21)
@@ -32,7 +32,7 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 
 ### Configuration
 
-Edit your `.env` file (location shown by `~/.jclawrc`, default: `docker-compose/.env`) to set your API keys and preferences:
+Edit your `.env` file (location shown by `~/.jaiclawrc`, default: `docker-compose/.env`) to set your API keys and preferences:
 
 ```bash
 AI_PROVIDER=anthropic
@@ -78,24 +78,24 @@ Starts the Docker container, prints test commands (including your API key), then
 Starts the Spring Shell CLI. Chat commands:
 
 ```
-jclaw> chat hello                  # send a message to the agent
-jclaw> chat what time is it?       # multi-word messages work naturally
-jclaw> new-session                 # start a fresh conversation
-jclaw> sessions                    # list all sessions
-jclaw> session-history             # show messages in current session
+jaiclaw> chat hello                  # send a message to the agent
+jaiclaw> chat what time is it?       # multi-word messages work naturally
+jaiclaw> new-session                 # start a fresh conversation
+jaiclaw> sessions                    # list all sessions
+jaiclaw> session-history             # show messages in current session
 ```
 
 Other commands:
 
 ```
-jclaw> status                      # system status (identity, tools, sessions)
-jclaw> config                      # current configuration
-jclaw> models                      # configured LLM providers
-jclaw> tools                       # available tools
-jclaw> skills                      # loaded skills
-jclaw> plugins                     # loaded plugins
-jclaw> onboard                     # interactive setup wizard
-jclaw> help                        # all available commands
+jaiclaw> status                      # system status (identity, tools, sessions)
+jaiclaw> config                      # current configuration
+jaiclaw> models                      # configured LLM providers
+jaiclaw> tools                       # available tools
+jaiclaw> skills                      # loaded skills
+jaiclaw> plugins                     # loaded plugins
+jaiclaw> onboard                     # interactive setup wizard
+jaiclaw> help                        # all available commands
 ```
 
 ---
@@ -105,17 +105,17 @@ jclaw> help                        # all available commands
 For a fresh clone with no Java installed:
 
 ```bash
-git clone https://github.com/jclaw/jclaw.git && cd jclaw
+git clone https://github.com/jaiclaw/jaiclaw.git && cd jaiclaw
 ANTHROPIC_API_KEY=sk-ant-... ./quickstart.sh
 ```
 
 This detects Java, builds the Docker image via Maven + JKube, starts Docker Compose, and optionally pulls Ollama if no API key is set.
 
 On first run (no existing `.env`), quickstart prompts where to save configuration:
-- `~/.jclaw/.env` — recommended, persists across project clones
+- `~/.jaiclaw/.env` — recommended, persists across project clones
 - `docker-compose/.env` — project-local (original behavior)
 
-The chosen location is written to `~/.jclawrc` and respected by all scripts.
+The chosen location is written to `~/.jaiclawrc` and respected by all scripts.
 
 To force a rebuild of the Docker image (e.g. after code changes):
 
@@ -151,7 +151,7 @@ The shell includes an interactive wizard that walks through LLM provider selecti
 
 ```bash
 ./start.sh shell
-jclaw> onboard
+jaiclaw> onboard
 ```
 
 The wizard covers:
@@ -161,7 +161,7 @@ The wizard covers:
 - Channel setup (Telegram, Slack, Discord)
 - Skills and MCP server connections
 
-The wizard writes `application-local.yml` + `.env` to `~/.jclaw/` (or current directory). After the wizard finishes, restart the shell to activate.
+The wizard writes `application-local.yml` + `.env` to `~/.jaiclaw/` (or current directory). After the wizard finishes, restart the shell to activate.
 
 ---
 
@@ -173,29 +173,29 @@ If you prefer to pass environment variables directly instead of using `docker-co
 
 ```bash
 # With Anthropic (default)
-ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
+ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-shell
 
 # With OpenAI
-AI_PROVIDER=openai OPENAI_ENABLED=true OPENAI_API_KEY=sk-... ./mvnw spring-boot:run -pl jclaw-shell
+AI_PROVIDER=openai OPENAI_ENABLED=true OPENAI_API_KEY=sk-... ./mvnw spring-boot:run -pl jaiclaw-shell
 
 # With Ollama (free, local)
-AI_PROVIDER=ollama OLLAMA_ENABLED=true ./mvnw spring-boot:run -pl jclaw-shell
+AI_PROVIDER=ollama OLLAMA_ENABLED=true ./mvnw spring-boot:run -pl jaiclaw-shell
 
 # With Google Gemini
-AI_PROVIDER=google-genai GEMINI_ENABLED=true GEMINI_API_KEY=... ./mvnw spring-boot:run -pl jclaw-shell
+AI_PROVIDER=google-genai GEMINI_ENABLED=true GEMINI_API_KEY=... ./mvnw spring-boot:run -pl jaiclaw-shell
 ```
 
 ### Gateway
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-gateway-app
+ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
-Test (the API key is auto-generated at `~/.jclaw/api-key` on first run — see [Security](#security) below):
+Test (the API key is auto-generated at `~/.jaiclaw/api-key` on first run — see [Security](#security) below):
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)" \
   -d '{"content": "hello"}'
 
 curl http://localhost:8080/api/health
@@ -216,7 +216,7 @@ The Telegram adapter supports **long polling mode** for local development. It ca
 ```bash
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 4. Open Telegram, find your bot, send it a message
@@ -231,9 +231,9 @@ ANTHROPIC_API_KEY=sk-ant-... \
 **Switching to webhook mode (production):**
 ```bash
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF... \
-TELEGRAM_WEBHOOK_URL=https://jclaw.taptech.net/webhook/telegram \
+TELEGRAM_WEBHOOK_URL=https://jaiclaw.taptech.net/webhook/telegram \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 ### Option 4: Slack (local dev — no public endpoint needed)
@@ -251,7 +251,7 @@ The Slack adapter supports **Socket Mode** for local development. It connects to
 SLACK_BOT_TOKEN=xoxb-... \
 SLACK_APP_TOKEN=xapp-... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 5. Invite the bot to a channel, send it a message
@@ -268,7 +268,7 @@ ANTHROPIC_API_KEY=sk-ant-... \
 SLACK_BOT_TOKEN=xoxb-... \
 SLACK_SIGNING_SECRET=... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 Leave `SLACK_APP_TOKEN` unset. Slack will POST events to `POST /webhook/slack`. The adapter handles `url_verification` challenges automatically.
 
@@ -288,7 +288,7 @@ The Discord adapter supports **Gateway WebSocket** mode for local development. I
 DISCORD_BOT_TOKEN=... \
 DISCORD_USE_GATEWAY=true \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 6. Send a message in a channel where the bot has access
@@ -306,7 +306,7 @@ ANTHROPIC_API_KEY=sk-ant-... \
 DISCORD_BOT_TOKEN=... \
 DISCORD_APPLICATION_ID=... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 Leave `DISCORD_USE_GATEWAY` unset. Discord will POST interactions to `POST /webhook/discord`. The adapter handles `PING` verification automatically.
 
@@ -326,7 +326,7 @@ EMAIL_SMTP_HOST=smtp.gmail.com \
 EMAIL_USERNAME=you@gmail.com \
 EMAIL_PASSWORD=your-app-password \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 4. Send an email to the configured address — the agent replies to the sender
@@ -358,7 +358,7 @@ TWILIO_ACCOUNT_SID=AC... \
 TWILIO_AUTH_TOKEN=... \
 TWILIO_FROM_NUMBER=+15551234567 \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 4. Configure your Twilio phone number's webhook URL to point to `POST /webhooks/sms` on your gateway
@@ -379,22 +379,22 @@ ngrok http 8080
 
 ## MCP Server Hosting
 
-JClaw can host MCP (Model Context Protocol) tool servers, making JClaw's tools available to external AI clients.
+JaiClaw can host MCP (Model Context Protocol) tool servers, making JaiClaw's tools available to external AI clients.
 
 **Endpoints** (all require `X-API-Key` header in `api-key` security mode):
 ```bash
 # List available MCP servers
 curl http://localhost:8080/mcp \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)"
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)"
 
 # List tools for a server
 curl http://localhost:8080/mcp/{serverName}/tools \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)"
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)"
 
 # Execute a tool
 curl -X POST http://localhost:8080/mcp/{serverName}/tools/{toolName} \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)" \
   -d '{"arg1": "value1"}'
 ```
 
@@ -414,7 +414,7 @@ Once the shell is running, the following commands are available:
 | `sessions` | List all active sessions |
 | `session-history` | Show messages in the current (or specified) session |
 | `status` | Show system status (identity, tools, plugins, sessions) |
-| `config` | Show current JClaw configuration |
+| `config` | Show current JaiClaw configuration |
 | `models` | Show configured LLM providers |
 | `tools` | List available tools |
 | `plugins` | List loaded plugins |
@@ -498,7 +498,7 @@ OLLAMA_ENABLED=true
 
 ## Security
 
-The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. The security mode is controlled by `JCLAW_SECURITY_MODE`.
+The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. The security mode is controlled by `JAICLAW_SECURITY_MODE`.
 
 ### Security Modes
 
@@ -510,23 +510,23 @@ The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentica
 
 ### API Key Resolution
 
-When `JCLAW_SECURITY_MODE=api-key` (the default), the API key is resolved in this order:
+When `JAICLAW_SECURITY_MODE=api-key` (the default), the API key is resolved in this order:
 
-1. `JCLAW_API_KEY` environment variable
-2. Key file at `JCLAW_API_KEY_FILE` (default: `~/.jclaw/api-key`)
-3. Auto-generate a key and write it to `~/.jclaw/api-key`
+1. `JAICLAW_API_KEY` environment variable
+2. Key file at `JAICLAW_API_KEY_FILE` (default: `~/.jaiclaw/api-key`)
+3. Auto-generate a key and write it to `~/.jaiclaw/api-key`
 
 The launcher scripts (`start.sh`, `quickstart.sh`, `setup.sh`) resolve the API key before the JVM starts and print it in curl examples. The JVM's `ApiKeyProvider` follows the same resolution order, so both see the same key.
 
 ```bash
 # View your current API key
-cat ~/.jclaw/api-key
+cat ~/.jaiclaw/api-key
 
 # Use a custom key
-JCLAW_API_KEY=my-custom-key ./start.sh local
+JAICLAW_API_KEY=my-custom-key ./start.sh local
 
 # Disable security (development only)
-JCLAW_SECURITY_MODE=none ./start.sh local
+JAICLAW_SECURITY_MODE=none ./start.sh local
 ```
 
 ### Configuring via the Onboard Wizard
@@ -544,11 +544,11 @@ The `--reconfigure` flag in `quickstart.sh` also includes a security step.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `JAVA_HOME` | Yes | Path to Java 21 JDK |
-| `JCLAW_HOME` | No | Config directory override (default: `~/.jclaw/`) |
-| `JCLAW_ENV_FILE` | No | Path to `.env` file (default: `docker-compose/.env`). Auto-set by `~/.jclawrc`. |
-| `JCLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
-| `JCLAW_API_KEY` | No | Custom API key (auto-generated if not set) |
-| `JCLAW_API_KEY_FILE` | No | Path to API key file (default: `~/.jclaw/api-key`) |
+| `JAICLAW_HOME` | No | Config directory override (default: `~/.jaiclaw/`) |
+| `JAICLAW_ENV_FILE` | No | Path to `.env` file (default: `docker-compose/.env`). Auto-set by `~/.jaiclawrc`. |
+| `JAICLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
+| `JAICLAW_API_KEY` | No | Custom API key (auto-generated if not set) |
+| `JAICLAW_API_KEY_FILE` | No | Path to API key file (default: `~/.jaiclaw/api-key`) |
 | `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, `google-genai`, or `ollama` |
 | `ANTHROPIC_API_KEY` | One of these | Anthropic API key |
 | `ANTHROPIC_ENABLED` | No | Enable Anthropic provider (default: `true`) |
@@ -605,22 +605,22 @@ The `--reconfigure` flag in `quickstart.sh` also includes a security step.
 
 ## Running Multiple Instances
 
-Each JClaw instance stores configuration in a **config directory** (default: `~/.jclaw/`). To run multiple independent instances — for example, separate personal/work assistants, or a dev/test instance alongside production — point each to a different config directory using the `JCLAW_HOME` environment variable.
+Each JaiClaw instance stores configuration in a **config directory** (default: `~/.jaiclaw/`). To run multiple independent instances — for example, separate personal/work assistants, or a dev/test instance alongside production — point each to a different config directory using the `JAICLAW_HOME` environment variable.
 
 ### Shell Instances
 
 ```bash
 # Instance 1: personal assistant
-JCLAW_HOME=~/.jclaw-personal ./mvnw spring-boot:run -pl jclaw-shell
-# Run onboard wizard → configures OpenAI + Telegram in ~/.jclaw-personal/
+JAICLAW_HOME=~/.jaiclaw-personal ./mvnw spring-boot:run -pl jaiclaw-shell
+# Run onboard wizard → configures OpenAI + Telegram in ~/.jaiclaw-personal/
 
 # Instance 2: work assistant
-JCLAW_HOME=~/.jclaw-work ./mvnw spring-boot:run -pl jclaw-shell
-# Run onboard wizard → configures Anthropic + Slack in ~/.jclaw-work/
+JAICLAW_HOME=~/.jaiclaw-work ./mvnw spring-boot:run -pl jaiclaw-shell
+# Run onboard wizard → configures Anthropic + Slack in ~/.jaiclaw-work/
 
 # Instance 3: dev/test (free, local LLM)
-JCLAW_HOME=~/.jclaw-dev ./mvnw spring-boot:run -pl jclaw-shell
-# Run onboard wizard → configures Ollama in ~/.jclaw-dev/
+JAICLAW_HOME=~/.jaiclaw-dev ./mvnw spring-boot:run -pl jaiclaw-shell
+# Run onboard wizard → configures Ollama in ~/.jaiclaw-dev/
 ```
 
 Each config directory contains its own `application-local.yml` and `.env`, so LLM providers, channel connections, and all settings are fully isolated.
@@ -628,7 +628,7 @@ Each config directory contains its own `application-local.yml` and `.env`, so LL
 After the wizard writes config, source the correct `.env` for each instance:
 
 ```bash
-source ~/.jclaw-personal/.env && JCLAW_HOME=~/.jclaw-personal ./mvnw spring-boot:run -pl jclaw-shell
+source ~/.jaiclaw-personal/.env && JAICLAW_HOME=~/.jaiclaw-personal ./mvnw spring-boot:run -pl jaiclaw-shell
 ```
 
 ### Gateway Instances
@@ -637,18 +637,18 @@ For multiple gateway instances, also assign different ports:
 
 ```bash
 # Production gateway on port 8080
-source ~/.jclaw-prod/.env
-JCLAW_HOME=~/.jclaw-prod SERVER_PORT=8080 ./mvnw spring-boot:run -pl jclaw-gateway-app
+source ~/.jaiclaw-prod/.env
+JAICLAW_HOME=~/.jaiclaw-prod SERVER_PORT=8080 ./mvnw spring-boot:run -pl jaiclaw-gateway-app
 
 # Staging gateway on port 8081
-source ~/.jclaw-staging/.env
-JCLAW_HOME=~/.jclaw-staging SERVER_PORT=8081 ./mvnw spring-boot:run -pl jclaw-gateway-app
+source ~/.jaiclaw-staging/.env
+JAICLAW_HOME=~/.jaiclaw-staging SERVER_PORT=8081 ./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 ### How It Works
 
-- `JCLAW_HOME` overrides the default `~/.jclaw/` config directory
-- The shell auto-imports `${JCLAW_HOME}/application-local.yml` via `spring.config.import`
+- `JAICLAW_HOME` overrides the default `~/.jaiclaw/` config directory
+- The shell auto-imports `${JAICLAW_HOME}/application-local.yml` via `spring.config.import`
 - Each instance's `.env` file contains `export` statements for its API keys and tokens
 - Sessions are in-memory and isolated per JVM process
 - Each instance can use different LLM providers, models, and channel connections
@@ -665,7 +665,7 @@ JCLAW_HOME=~/.jclaw-staging SERVER_PORT=8081 ./mvnw spring-boot:run -pl jclaw-ga
 ./mvnw test -o
 
 # Run tests for one module
-./mvnw test -pl jclaw-channel-telegram -o
+./mvnw test -pl jaiclaw-channel-telegram -o
 
 # Install to local Maven repo (needed for offline single-module builds)
 ./mvnw install -DskipTests
@@ -684,26 +684,26 @@ See `ARCHITECTURE.md` for the full k8s deployment view.
 
 ### Docker Image Build (JKube)
 
-Two modules produce Docker images: `jclaw-gateway-app` (production server) and `jclaw-shell` (CLI).
+Two modules produce Docker images: `jaiclaw-gateway-app` (production server) and `jaiclaw-shell` (CLI).
 
 ```bash
 # Build gateway image (includes all dependencies with -am)
-./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app -am -Pk8s -DskipTests
 
 # Build shell image
-./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-shell -am -Pk8s -DskipTests
 
 # Build both at once
-./mvnw package k8s:build -pl jclaw-gateway-app,jclaw-shell -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app,jaiclaw-shell -am -Pk8s -DskipTests
 
 # Push to registry
-./mvnw k8s:push -pl jclaw-gateway-app -Pk8s
+./mvnw k8s:push -pl jaiclaw-gateway-app -Pk8s
 
 # Deploy
-./mvnw k8s:resource k8s:apply -pl jclaw-gateway-app -Pk8s
+./mvnw k8s:resource k8s:apply -pl jaiclaw-gateway-app -Pk8s
 ```
 
-Images use `eclipse-temurin:21-jre` as the base. The image name follows `io.jclaw/<module>:<version>` convention.
+Images use `eclipse-temurin:21-jre` as the base. The image name follows `io.jaiclaw/<module>:<version>` convention.
 
 The shell Docker image can be run interactively via Docker Compose:
 ```bash
@@ -715,8 +715,8 @@ docker compose -f docker-compose/docker-compose.yml --profile cli run --rm cli
 ### Required Secrets
 
 ```bash
-kubectl create secret generic jclaw-secrets \
-  --from-literal=JCLAW_API_KEY=jclaw_ak_... \
+kubectl create secret generic jaiclaw-secrets \
+  --from-literal=JAICLAW_API_KEY=jaiclaw_ak_... \
   --from-literal=OPENAI_API_KEY=sk-... \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
   --from-literal=GEMINI_API_KEY=... \
@@ -736,7 +736,7 @@ kubectl create secret generic jclaw-secrets \
 For production, set the webhook URL so Telegram pushes updates directly instead of polling:
 
 ```bash
-TELEGRAM_WEBHOOK_URL=https://jclaw.taptech.net/webhook/telegram
+TELEGRAM_WEBHOOK_URL=https://jaiclaw.taptech.net/webhook/telegram
 ```
 
 The adapter will call `setWebhook` on startup to register with Telegram.

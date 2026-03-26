@@ -1,21 +1,21 @@
-# JClaw Examples
+# JaiClaw Examples
 
-10 example applications demonstrating JClaw framework capabilities. Each is a standalone Spring Boot app that can be built and run independently.
+10 example applications demonstrating JaiClaw framework capabilities. Each is a standalone Spring Boot app that can be built and run independently.
 
 ## Overview
 
 | # | Example | Category | Modules | Description |
 |---|---------|----------|---------|-------------|
-| 1 | [daily-briefing](../jclaw-examples/daily-briefing/) | Cron | Cron, Telegram, Email | Scheduled morning briefing with news and weather |
-| 2 | [sales-report](../jclaw-examples/sales-report/) | Cron | Cron, Canvas | Weekly sales dashboard with HTML report |
-| 3 | [price-monitor](../jclaw-examples/price-monitor/) | Cron | Cron, Browser, SMS | Hourly price checker with SMS alerts |
-| 4 | [code-review-bot](../jclaw-examples/code-review-bot/) | Embabel | Embabel, Canvas, Plugin | GOAP-orchestrated PR code review |
-| 5 | [travel-planner](../jclaw-examples/travel-planner/) | Embabel | Embabel, Browser, Voice | Multi-step trip planning with GOAP |
-| 6 | [compliance-checker](../jclaw-examples/compliance-checker/) | Embabel | Embabel, Documents, Audit | Document compliance verification |
-| 7 | [document-qa](../jclaw-examples/document-qa/) | Documents | Documents, Memory, Compaction | PDF ingestion and semantic search Q&A |
-| 8 | [meeting-assistant](../jclaw-examples/meeting-assistant/) | Voice | Voice, Identity, Slack | Meeting transcription and summary |
-| 9 | [helpdesk-bot](../jclaw-examples/helpdesk-bot/) | Security | Gateway, Security | Multi-tenant support bot |
-| 10 | [content-pipeline](../jclaw-examples/content-pipeline/) | Media | Media, Documents, Plugin | Multi-modal content analysis |
+| 1 | [daily-briefing](../jaiclaw-examples/daily-briefing/) | Cron | Cron, Telegram, Email | Scheduled morning briefing with news and weather |
+| 2 | [sales-report](../jaiclaw-examples/sales-report/) | Cron | Cron, Canvas | Weekly sales dashboard with HTML report |
+| 3 | [price-monitor](../jaiclaw-examples/price-monitor/) | Cron | Cron, Browser, SMS | Hourly price checker with SMS alerts |
+| 4 | [code-review-bot](../jaiclaw-examples/code-review-bot/) | Embabel | Embabel, Canvas, Plugin | GOAP-orchestrated PR code review |
+| 5 | [travel-planner](../jaiclaw-examples/travel-planner/) | Embabel | Embabel, Browser, Voice | Multi-step trip planning with GOAP |
+| 6 | [compliance-checker](../jaiclaw-examples/compliance-checker/) | Embabel | Embabel, Documents, Audit | Document compliance verification |
+| 7 | [document-qa](../jaiclaw-examples/document-qa/) | Documents | Documents, Memory, Compaction | PDF ingestion and semantic search Q&A |
+| 8 | [meeting-assistant](../jaiclaw-examples/meeting-assistant/) | Voice | Voice, Identity, Slack | Meeting transcription and summary |
+| 9 | [helpdesk-bot](../jaiclaw-examples/helpdesk-bot/) | Security | Gateway, Security | Multi-tenant support bot |
+| 10 | [content-pipeline](../jaiclaw-examples/content-pipeline/) | Media | Media, Documents, Plugin | Multi-modal content analysis |
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
 ./mvnw install -DskipTests
 
 # Run any example
-cd jclaw-examples/daily-briefing
+cd jaiclaw-examples/daily-briefing
 ANTHROPIC_API_KEY=sk-ant-... ../../mvnw spring-boot:run
 ```
 
@@ -35,7 +35,7 @@ ANTHROPIC_API_KEY=sk-ant-... ../../mvnw spring-boot:run
 
 ### 1. Daily Briefing
 
-**Modules:** jclaw-cron, jclaw-channel-telegram, jclaw-channel-email
+**Modules:** jaiclaw-cron, jaiclaw-channel-telegram, jaiclaw-channel-email
 
 Scheduled morning briefing that runs at 7 AM on weekdays. The agent fetches weather and news via custom tools, then delivers a formatted digest to Telegram and Email.
 
@@ -50,7 +50,7 @@ CronService → CronJob("0 7 * * MON-FRI") → AgentRuntime → WeatherTool + Ne
 
 ### 2. Sales Report
 
-**Modules:** jclaw-cron, jclaw-canvas
+**Modules:** jaiclaw-cron, jaiclaw-canvas
 
 Weekly sales dashboard generated every Monday at 9 AM. The agent collects sales data via a custom tool and renders an HTML dashboard using the Canvas module.
 
@@ -64,7 +64,7 @@ CronService → CronJob("0 9 * * MON") → AgentRuntime → SalesFetchTool → C
 
 ### 3. Price Monitor
 
-**Modules:** jclaw-cron, jclaw-browser, jclaw-channel-sms
+**Modules:** jaiclaw-cron, jaiclaw-browser, jaiclaw-channel-sms
 
 Hourly price checker that monitors product pages. When prices drop below a target, it sends SMS alerts via Twilio.
 
@@ -82,7 +82,7 @@ CronService → CronJob("0 * * * *") → AgentRuntime → PriceCheckTool → SMS
 
 ### 4. Code Review Bot
 
-**Modules:** jclaw-starter-embabel, jclaw-canvas, jclaw-plugin-sdk
+**Modules:** jaiclaw-starter-embabel, jaiclaw-canvas, jaiclaw-plugin-sdk
 
 GOAP-orchestrated code review. The Embabel planner automatically chains two actions: analyze the diff, then generate a structured review.
 
@@ -90,7 +90,7 @@ GOAP-orchestrated code review. The Embabel planner automatically chains two acti
 - `CodeReviewAgent` — `@Agent` with `@Action` and `@AchievesGoal`
 - `DiffAnalysis` — blackboard domain object (intermediate state)
 - `ReviewComplete` — goal condition
-- `CodeReviewPlugin` — `JClawPlugin` that registers a `GetDiffTool`
+- `CodeReviewPlugin` — `JaiClawPlugin` that registers a `GetDiffTool`
 
 ```
 GOAP Planner: String(diff) → analyzeDiff → DiffAnalysis → generateReview → ReviewComplete
@@ -98,7 +98,7 @@ GOAP Planner: String(diff) → analyzeDiff → DiffAnalysis → generateReview �
 
 ### 5. Travel Planner
 
-**Modules:** jclaw-starter-embabel, jclaw-browser, jclaw-voice
+**Modules:** jaiclaw-starter-embabel, jaiclaw-browser, jaiclaw-voice
 
 Multi-step trip planning. The GOAP planner researches flights and hotels (potentially in parallel), then assembles a complete itinerary with budget analysis.
 
@@ -116,7 +116,7 @@ GOAP Planner: TravelRequest → searchFlights → FlightOptions
 
 ### 6. Compliance Checker
 
-**Modules:** jclaw-starter-embabel, jclaw-documents, jclaw-audit
+**Modules:** jaiclaw-starter-embabel, jaiclaw-documents, jaiclaw-audit
 
 GOAP-based document compliance verification. Extracts policy rules from a compliance document, then checks target documents against those rules with full audit trail.
 
@@ -135,7 +135,7 @@ GOAP Planner: String(policy) → extractPolicy → PolicyDocument → checkCompl
 
 ### 7. Document Q&A
 
-**Modules:** jclaw-documents, jclaw-memory, jclaw-compaction
+**Modules:** jaiclaw-documents, jaiclaw-memory, jaiclaw-compaction
 
 PDF ingestion and semantic search Q&A. Documents are parsed, chunked, and indexed. Questions are answered by searching for relevant passages and synthesizing answers with citations.
 
@@ -150,7 +150,7 @@ User → "question?" → search_documents → relevant passages → LLM → answ
 
 ### 8. Meeting Assistant
 
-**Modules:** jclaw-voice, jclaw-identity, jclaw-channel-slack
+**Modules:** jaiclaw-voice, jaiclaw-identity, jaiclaw-channel-slack
 
 Meeting transcription and summarization. Processes audio recordings via STT, identifies speakers with cross-channel identity linking, and delivers summaries to Slack.
 
@@ -164,7 +164,7 @@ Audio file → TranscriptionTool (STT) → transcript → LLM → summary + acti
 
 ### 9. Helpdesk Bot
 
-**Modules:** jclaw-gateway, jclaw-security
+**Modules:** jaiclaw-gateway, jaiclaw-security
 
 Multi-tenant support bot with FAQ search and ticket creation. Demonstrates API key authentication and per-tenant session isolation.
 
@@ -178,12 +178,12 @@ User → X-API-Key auth → tenant resolution → FaqTool → answer or TicketTo
 
 ### 10. Content Pipeline
 
-**Modules:** jclaw-media, jclaw-documents, jclaw-plugin-sdk
+**Modules:** jaiclaw-media, jaiclaw-documents, jaiclaw-plugin-sdk
 
 Multi-modal content analysis pipeline. A plugin registers tools for image analysis and metadata extraction, processing images, audio, and documents into structured metadata.
 
 **Key classes:**
-- `ContentAnalysisPlugin` — `JClawPlugin` registering AnalyzeImageTool and ExtractMetadataTool
+- `ContentAnalysisPlugin` — `JaiClawPlugin` registering AnalyzeImageTool and ExtractMetadataTool
 
 ```
 Image/PDF/Audio → ContentAnalysisPlugin → analyze_image / extract_metadata → structured metadata
@@ -197,10 +197,10 @@ Image/PDF/Audio → ContentAnalysisPlugin → analyze_image / extract_metadata �
 export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
 
 # Compile all examples
-./mvnw compile -pl jclaw-examples -am
+./mvnw compile -pl jaiclaw-examples -am
 
 # Package all examples
-./mvnw package -pl jclaw-examples -am -DskipTests
+./mvnw package -pl jaiclaw-examples -am -DskipTests
 ```
 
 ## Project Structure
@@ -211,11 +211,11 @@ Each example follows the same layout:
 example-name/
   pom.xml                          Maven POM with example-specific dependencies
   README.md                        How to build, configure, and run
-  src/main/java/io/jclaw/examples/
+  src/main/java/io/jaiclaw/examples/
     ExampleApplication.java        @SpringBootApplication entry point
     *Tool.java                     Custom ToolCallback implementations
     *Agent.java                    Embabel @Agent classes (Embabel examples only)
-    *Plugin.java                   JClawPlugin implementations (plugin examples only)
+    *Plugin.java                   JaiClawPlugin implementations (plugin examples only)
     *CronConfig.java               Cron job registration (cron examples only)
   src/main/resources/
     application.yml                Spring Boot configuration

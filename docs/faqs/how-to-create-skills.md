@@ -1,6 +1,6 @@
 # How to Create Skills
 
-JClaw skills are modular knowledge packages that extend the agent with specialized workflows and domain expertise. Each skill is a single `SKILL.md` file inside a named directory.
+JaiClaw skills are modular knowledge packages that extend the agent with specialized workflows and domain expertise. Each skill is a single `SKILL.md` file inside a named directory.
 
 ## Skill Directory Structure
 
@@ -10,8 +10,8 @@ skill-name/
 ```
 
 Skills can live in two locations:
-- **Bundled**: `src/main/resources/skills/{name}/SKILL.md` — shipped with JClaw
-- **Workspace**: `.jclaw/skills/{name}/SKILL.md` — project-specific or custom
+- **Bundled**: `src/main/resources/skills/{name}/SKILL.md` — shipped with JaiClaw
+- **Workspace**: `.jaiclaw/skills/{name}/SKILL.md` — project-specific or custom
 
 ## SKILL.md File Format
 
@@ -90,7 +90,7 @@ The body after the frontmatter is the skill's instructions — what the LLM read
 
 ## Using the Skill Creator CLI
 
-JClaw includes a `jclaw-skill-creator` module that automates skill generation via an LLM.
+JaiClaw includes a `jaiclaw-skill-creator` module that automates skill generation via an LLM.
 
 ### Interactive Mode
 
@@ -101,7 +101,7 @@ Start a guided conversation to create a skill:
 skill-create --name my-skill --output-dir ./skills
 
 # Non-interactive from command line (standalone JAR)
-java -jar jclaw-skill-creator.jar skill-create --name my-skill
+java -jar jaiclaw-skill-creator.jar skill-create --name my-skill
 ```
 
 Commands during the interactive session:

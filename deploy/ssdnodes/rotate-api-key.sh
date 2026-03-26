@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rotate-api-key.sh — Generate a new JClaw API key and restart gateway
+# rotate-api-key.sh — Generate a new JaiClaw API key and restart gateway
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,9 +10,9 @@ if [ ! -f "${ENV_FILE}" ]; then
     exit 1
 fi
 
-NEW_KEY="jclaw_ak_$(openssl rand -hex 16)"
+NEW_KEY="jaiclaw_ak_$(openssl rand -hex 16)"
 
-sed -i "s/^JCLAW_API_KEY=.*/JCLAW_API_KEY=${NEW_KEY}/" "${ENV_FILE}"
+sed -i "s/^JAICLAW_API_KEY=.*/JAICLAW_API_KEY=${NEW_KEY}/" "${ENV_FILE}"
 
 echo "==> API key rotated"
 echo "==> New key: ${NEW_KEY}"

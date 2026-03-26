@@ -1,6 +1,6 @@
 # Browser Automation
 
-Module: `jclaw-browser`
+Module: `jaiclaw-browser`
 
 ## Overview
 
@@ -11,7 +11,7 @@ Browser automation enables agents to navigate web pages, interact with elements,
 Playwright must be on the classpath and browsers installed:
 
 ```bash
-# Add to your pom.xml (already included in jclaw-browser)
+# Add to your pom.xml (already included in jaiclaw-browser)
 # <dependency>
 #     <groupId>com.microsoft.playwright</groupId>
 #     <artifactId>playwright</artifactId>

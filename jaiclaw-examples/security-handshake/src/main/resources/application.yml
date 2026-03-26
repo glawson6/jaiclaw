@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: security-handshake-demo
+  ai:
+    anthropic:
+      chat:
+        options:
+          model: claude-sonnet-4-20250514
+
+jaiclaw:
+  security:
+    handshake:
+      mode: HTTP_CLIENT
+      mcp-server-url: http://localhost:8080/mcp/security
+      bootstrap: api-key
+      api-key: ${HANDSHAKE_API_KEY:demo-key-12345}
+      server:
+        enabled: true
+        mcp-server-name: security
+        token-ttl-seconds: 3600

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# JClaw Bootstrap — zero-prerequisite launcher (no Docker required)
+# JaiClaw Bootstrap — zero-prerequisite launcher (no Docker required)
 #
 # Installs JBang (if needed) → JBang installs Java 21 → Maven builds the
 # gateway JAR → JBang launches the gateway in-process.
@@ -19,8 +19,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
-# JClaw.java already reads JCLAW_ENV_FILE from the environment
-[ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
+# JaiClaw.java already reads JAICLAW_ENV_FILE from the environment
+[ -f "$HOME/.jaiclawrc" ] && source "$HOME/.jaiclawrc"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -112,11 +112,11 @@ ensure_java() {
 
 # ─── Step 3: Maven build ─────────────────────────────────────────────────────
 
-MARKER_FILE="$SCRIPT_DIR/apps/jclaw-gateway-app/target/.jclaw-installed"
+MARKER_FILE="$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/.jaiclaw-installed"
 
 needs_build() {
     # Check if the install marker exists and the gateway JAR is present
-    local gateway_jar="$SCRIPT_DIR/apps/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    local gateway_jar="$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
     if [ -f "$MARKER_FILE" ] && [ -f "$gateway_jar" ]; then
         return 1  # no build needed
     fi
@@ -124,7 +124,7 @@ needs_build() {
 }
 
 maven_build() {
-    header "Building JClaw"
+    header "Building JaiClaw"
 
     if ! needs_build; then
         ok "Gateway JAR already built (use --force-build to rebuild)"
@@ -149,7 +149,7 @@ maven_build() {
     done)
 
     # Verify the build succeeded
-    local gateway_jar="$SCRIPT_DIR/apps/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    local gateway_jar="$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
     if [ ! -f "$gateway_jar" ]; then
         err "Build failed — gateway JAR not found at $gateway_jar"
         echo ""
@@ -175,15 +175,15 @@ maven_build() {
 # ─── Step 4: Launch gateway via JBang ─────────────────────────────────────────
 
 launch_gateway() {
-    header "Starting JClaw Gateway"
+    header "Starting JaiClaw Gateway"
 
     info "Launching gateway (no Docker)..."
     echo ""
-    (cd "$SCRIPT_DIR" && jbang JClaw.java "$@")
+    (cd "$SCRIPT_DIR" && jbang JaiClaw.java "$@")
 }
 
 launch_shell() {
-    header "Starting JClaw Interactive Shell"
+    header "Starting JaiClaw Interactive Shell"
 
     echo "Starting interactive shell..."
     echo ""
@@ -192,7 +192,7 @@ launch_shell() {
     printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
     echo ""
 
-    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jclaw-shell -q)
+    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-shell -q)
 }
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ launch_shell() {
 print_help() {
     echo "Usage: ./bootstrap.sh [options] [-- gateway-args...]"
     echo ""
-    echo "Zero-prerequisite JClaw launcher. Installs JBang + Java 21 automatically."
+    echo "Zero-prerequisite JaiClaw launcher. Installs JBang + Java 21 automatically."
     echo ""
     echo "Options:"
     echo "  --shell          Start the interactive CLI shell instead of the gateway"
@@ -220,10 +220,10 @@ print_help() {
     echo "  ./bootstrap.sh -- telegram         # build + start with Telegram"
     echo "  ./bootstrap.sh --skip-build        # start without building"
     echo ""
-    echo "Configuration: edit \$JCLAW_ENV_FILE (default: docker-compose/.env) to set API keys and channel tokens."
+    echo "Configuration: edit \$JAICLAW_ENV_FILE (default: docker-compose/.env) to set API keys and channel tokens."
     echo "Run './quickstart.sh --reconfigure' to change the config location."
     echo ""
-    echo "For Docker-based deployment, use: ./quickstart.sh or jbang JClawDocker.java"
+    echo "For Docker-based deployment, use: ./quickstart.sh or jbang JaiClawDocker.java"
 }
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -259,7 +259,7 @@ main() {
 
     local total_start=$SECONDS
 
-    header "JClaw Bootstrap"
+    header "JaiClaw Bootstrap"
 
     # Step 1: JBang
     ensure_jbang
@@ -278,7 +278,7 @@ main() {
     # Step 4: Launch
     if [ "$build_only" = true ]; then
         local total_elapsed=$(( SECONDS - total_start ))
-        ok "Done (${total_elapsed}s). Start the gateway with: jbang JClaw.java"
+        ok "Done (${total_elapsed}s). Start the gateway with: jbang JaiClaw.java"
     elif [ "$launch_mode" = "shell" ]; then
         launch_shell
     else

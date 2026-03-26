@@ -3,8 +3,8 @@
 # Usage: ssh root@<vm-ip> 'bash -s' < deploy/ssdnodes/vm-setup.sh
 set -euo pipefail
 
-DEPLOY_USER="jclaw"
-DEPLOY_DIR="/opt/jclaw"
+DEPLOY_USER="jaiclaw"
+DEPLOY_DIR="/opt/jaiclaw"
 
 echo "==> Updating system"
 apt update && apt upgrade -y
@@ -61,17 +61,17 @@ chown caddy:caddy /var/log/caddy
 
 # ── Systemd service ───────────────────────────────────────────
 echo "==> Installing systemd service"
-cat > /etc/systemd/system/jclaw.service <<'EOF'
+cat > /etc/systemd/system/jaiclaw.service <<'EOF'
 [Unit]
-Description=JClaw Gateway
+Description=JaiClaw Gateway
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-User=jclaw
-WorkingDirectory=/opt/jclaw
+User=jaiclaw
+WorkingDirectory=/opt/jaiclaw
 ExecStart=/usr/bin/docker compose up -d gateway watchtower
 ExecStop=/usr/bin/docker compose down
 TimeoutStartSec=120
@@ -81,11 +81,11 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable jclaw
+systemctl enable jaiclaw
 
 # ── Daily backup cron ─────────────────────────────────────────
 echo "==> Installing daily backup cron"
-(crontab -u "${DEPLOY_USER}" -l 2>/dev/null || true; echo "0 3 * * * /opt/jclaw/backup.sh") | sort -u | crontab -u "${DEPLOY_USER}" -
+(crontab -u "${DEPLOY_USER}" -l 2>/dev/null || true; echo "0 3 * * * /opt/jaiclaw/backup.sh") | sort -u | crontab -u "${DEPLOY_USER}" -
 
 echo ""
 echo "========================================="

@@ -1,6 +1,6 @@
 # Canvas (A2UI)
 
-Module: `jclaw-canvas`
+Module: `jaiclaw-canvas`
 
 ## Overview
 
@@ -73,7 +73,7 @@ CanvasConfig config = new CanvasConfig(
 );
 ```
 
-## Core Type (in jclaw-core)
+## Core Type (in jaiclaw-core)
 
 ```java
 public record CanvasAction(String type, Map<String, Object> params) {}

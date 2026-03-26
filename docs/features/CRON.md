@@ -1,6 +1,6 @@
 # Cron Job Scheduling
 
-Module: `jclaw-cron`
+Module: `jaiclaw-cron`
 
 ## Overview
 
@@ -73,8 +73,8 @@ service.stop();
 | `CronScheduleComputer` | Parses cron expressions, computes next fire time |
 | `CronJobStore` | JSON file persistence for job definitions |
 | `CronJobExecutor` | Executes jobs via a configurable `Function<CronJob, String>` |
-| `CronJob` | Job definition record (in `jclaw-core`) |
-| `CronJobResult` | Sealed interface: Success/Failure (in `jclaw-core`) |
+| `CronJob` | Job definition record (in `jaiclaw-core`) |
+| `CronJobResult` | Sealed interface: Success/Failure (in `jaiclaw-core`) |
 
 ## Design
 

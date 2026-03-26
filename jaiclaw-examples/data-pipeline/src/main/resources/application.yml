@@ -1,0 +1,32 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  identity:
+    name: Data Pipeline Orchestrator
+    description: ETL pipeline management agent with audit trail and approval gates
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Data Pipeline Agent
+        tools:
+          profile: full
+        tool-loop:
+          mode: explicit
+          max-iterations: 20
+          require-approval: true
+  plugins:
+    enabled: true
+
+spring:
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}

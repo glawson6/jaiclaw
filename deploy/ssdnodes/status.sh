@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# status.sh — Quick health check of all JClaw services
+# status.sh — Quick health check of all JaiClaw services
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"

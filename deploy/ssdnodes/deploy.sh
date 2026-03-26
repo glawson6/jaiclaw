@@ -4,14 +4,14 @@
 set -euo pipefail
 
 REGISTRY="tooling.taptech.net:8082"
-IMAGE_PREFIX="io.jclaw"
+IMAGE_PREFIX="io.jaiclaw"
 VERSION="${1:-0.1.0-SNAPSHOT}"
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 cd "${DEPLOY_DIR}"
 
 echo "==> Pulling gateway image (${VERSION})"
-docker pull "${REGISTRY}/${IMAGE_PREFIX}/jclaw-gateway-app:${VERSION}"
+docker pull "${REGISTRY}/${IMAGE_PREFIX}/jaiclaw-gateway-app:${VERSION}"
 
 echo "==> Restarting gateway"
 docker compose up -d gateway

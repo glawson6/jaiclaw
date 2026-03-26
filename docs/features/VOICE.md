@@ -1,6 +1,6 @@
 # Voice — TTS/STT
 
-Module: `jclaw-voice`
+Module: `jaiclaw-voice`
 
 ## Overview
 
@@ -93,7 +93,7 @@ VoiceConfig config = new VoiceConfig(
 );
 ```
 
-## Core Types (in jclaw-core)
+## Core Types (in jaiclaw-core)
 
 | Type | Fields |
 |------|--------|

@@ -1,4 +1,4 @@
-# JClaw
+# JaiClaw
 
 Java/Spring AI personal assistant framework. Embeddable agent runtime with tool execution, skills, plugins, memory, and multi-channel messaging (Telegram, Slack, Discord, Email, SMS).
 
@@ -9,8 +9,8 @@ Built on Java 21, Spring Boot 3.5, Spring AI 1.1, and Spring Shell 3.4.
 ### Option 1: Docker (easiest — just needs Docker)
 
 ```bash
-git clone https://github.com/jclaw/jclaw.git
-cd jclaw
+git clone https://github.com/jaiclaw/jaiclaw.git
+cd jaiclaw
 ./quickstart.sh
 ```
 
@@ -35,12 +35,12 @@ To pre-pull the Ollama image in the background while the quickstart runs:
 docker pull ollama/ollama:latest
 ```
 
-Test with (the API key is auto-generated at `~/.jclaw/api-key` on first run):
+Test with (the API key is auto-generated at `~/.jaiclaw/api-key` on first run):
 
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)" \
   -d '{"content": "hello"}'
 ```
 
@@ -81,15 +81,15 @@ vi docker-compose/.env
 ### Option 3: setup.sh (first-time developer setup)
 
 ```bash
-git clone https://github.com/jclaw/jclaw.git
-cd jclaw
+git clone https://github.com/jaiclaw/jaiclaw.git
+cd jaiclaw
 ./setup.sh
 ```
 
 The setup script installs Java 21 via SDKMAN (if needed), builds all modules, and launches the interactive shell. Run the onboarding wizard to configure your LLM provider:
 
 ```bash
-jclaw> onboard
+jaiclaw> onboard
 ```
 
 Or run the gateway instead:
@@ -110,7 +110,7 @@ For HTTP/WebSocket access or to connect messaging channels:
 Or with environment variables directly:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-gateway-app
+ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 Test with curl (the gateway requires an `X-API-Key` header by default — see [Security](#security)):
@@ -119,7 +119,7 @@ Test with curl (the gateway requires an `X-API-Key` header by default — see [S
 # Chat
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)" \
   -d '{"content": "hello"}'
 
 # Health check
@@ -147,19 +147,19 @@ Add channel tokens to `docker-compose/.env` and restart, or pass as environment 
 # Telegram (polling mode — no webhook needed)
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 
 # Slack (Socket Mode — no webhook needed)
 SLACK_BOT_TOKEN=xoxb-... \
 SLACK_APP_TOKEN=xapp-... \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 
 # Discord (Gateway mode — no webhook needed)
 DISCORD_BOT_TOKEN=... \
 DISCORD_USE_GATEWAY=true \
 ANTHROPIC_API_KEY=sk-ant-... \
-./mvnw spring-boot:run -pl jclaw-gateway-app
+./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions including Email, SMS, and production webhook configuration.
@@ -176,7 +176,7 @@ The shell provides a Spring Shell CLI for chatting with the agent directly in yo
 Or with Maven directly:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
+ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-shell
 ```
 
 ## Scripts
@@ -189,14 +189,14 @@ ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jclaw-shell
 
 ## Configuration
 
-Configuration lives in a `.env` file. By default this is `docker-compose/.env`, but you can choose `~/.jclaw/.env` (persists across projects) during first run or via `./quickstart.sh --reconfigure`. The chosen location is saved in `~/.jclawrc` and respected by all scripts.
+Configuration lives in a `.env` file. By default this is `docker-compose/.env`, but you can choose `~/.jaiclaw/.env` (persists across projects) during first run or via `./quickstart.sh --reconfigure`. The chosen location is saved in `~/.jaiclawrc` and respected by all scripts.
 
-You can also set `JCLAW_ENV_FILE` directly to point to any `.env` file.
+You can also set `JAICLAW_ENV_FILE` directly to point to any `.env` file.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `JCLAW_SECURITY_MODE` | `api-key` | Security mode: `api-key`, `jwt`, or `none` |
-| `JCLAW_API_KEY` | (auto-generated) | Custom API key for `api-key` mode |
+| `JAICLAW_SECURITY_MODE` | `api-key` | Security mode: `api-key`, `jwt`, or `none` |
+| `JAICLAW_API_KEY` | (auto-generated) | Custom API key for `api-key` mode |
 | `AI_PROVIDER` | `anthropic` | LLM provider: `anthropic`, `openai`, `ollama`, or `google-genai` |
 | `ANTHROPIC_API_KEY` | | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model name |
@@ -209,14 +209,14 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the full environment variable r
 
 ## Security
 
-The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. On first run, a key is auto-generated at `~/.jclaw/api-key` and printed in the curl examples by the launcher scripts.
+The gateway protects `/api/chat` and `/mcp/**` endpoints with API key authentication by default. On first run, a key is auto-generated at `~/.jaiclaw/api-key` and printed in the curl examples by the launcher scripts.
 
 ```bash
 # Disable security for local development
-JCLAW_SECURITY_MODE=none ./start.sh local
+JAICLAW_SECURITY_MODE=none ./start.sh local
 
 # Use a custom API key
-JCLAW_API_KEY=my-custom-key ./start.sh local
+JAICLAW_API_KEY=my-custom-key ./start.sh local
 ```
 
 The `onboard` wizard and `quickstart.sh --reconfigure` also allow configuring the security mode interactively. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full details.
@@ -240,27 +240,27 @@ The `onboard` wizard and `quickstart.sh --reconfigure` also allow configuring th
 ## Project Structure
 
 ```
-jclaw-core              Pure Java domain model (no Spring dependency)
-jclaw-channel-api       ChannelAdapter SPI, attachments, channel registry
-jclaw-config            @ConfigurationProperties records
-jclaw-tools             Tool registry + built-in tools + Spring AI bridge + Embabel bridge
-jclaw-agent             Agent runtime, session management, prompt building
-jclaw-skills            Skill loader + versioning + tenant-aware registry
-jclaw-plugin-sdk        Plugin SPI, hooks, discovery
-jclaw-memory            Memory search (in-memory + vector store)
-jclaw-security          JWT auth, tenant resolution, SecurityContext
-jclaw-documents         Document parsing (PDF, HTML, text) + chunking pipeline
-jclaw-gateway           REST + WebSocket + webhook + MCP + observability (library)
-jclaw-channel-telegram  Telegram adapter (polling + webhook + file attachments)
-jclaw-channel-slack     Slack adapter (Socket Mode + Events API)
-jclaw-channel-discord   Discord adapter (Gateway + Interactions)
-jclaw-channel-email     Email adapter (IMAP polling + SMTP + MIME attachments)
-jclaw-channel-sms       SMS/MMS adapter (Twilio REST API + webhook)
-jclaw-media             Async media analysis SPI (vision/audio LLM pipeline)
-jclaw-audit             Audit logging SPI + in-memory implementation
-jclaw-spring-boot-starter  Auto-configuration for all modules
-jclaw-gateway-app       Standalone gateway server (runnable)
-jclaw-shell             Spring Shell CLI (runnable)
+jaiclaw-core              Pure Java domain model (no Spring dependency)
+jaiclaw-channel-api       ChannelAdapter SPI, attachments, channel registry
+jaiclaw-config            @ConfigurationProperties records
+jaiclaw-tools             Tool registry + built-in tools + Spring AI bridge + Embabel bridge
+jaiclaw-agent             Agent runtime, session management, prompt building
+jaiclaw-skills            Skill loader + versioning + tenant-aware registry
+jaiclaw-plugin-sdk        Plugin SPI, hooks, discovery
+jaiclaw-memory            Memory search (in-memory + vector store)
+jaiclaw-security          JWT auth, tenant resolution, SecurityContext
+jaiclaw-documents         Document parsing (PDF, HTML, text) + chunking pipeline
+jaiclaw-gateway           REST + WebSocket + webhook + MCP + observability (library)
+jaiclaw-channel-telegram  Telegram adapter (polling + webhook + file attachments)
+jaiclaw-channel-slack     Slack adapter (Socket Mode + Events API)
+jaiclaw-channel-discord   Discord adapter (Gateway + Interactions)
+jaiclaw-channel-email     Email adapter (IMAP polling + SMTP + MIME attachments)
+jaiclaw-channel-sms       SMS/MMS adapter (Twilio REST API + webhook)
+jaiclaw-media             Async media analysis SPI (vision/audio LLM pipeline)
+jaiclaw-audit             Audit logging SPI + in-memory implementation
+jaiclaw-spring-boot-starter  Auto-configuration for all modules
+jaiclaw-gateway-app       Standalone gateway server (runnable)
+jaiclaw-shell             Spring Shell CLI (runnable)
 ```
 
 ## Building from Source
@@ -287,13 +287,13 @@ Two modules produce Docker images via [Eclipse JKube](https://eclipse.dev/jkube/
 
 ```bash
 # Build gateway image
-./mvnw package k8s:build -pl jclaw-gateway-app -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app -am -Pk8s -DskipTests
 
 # Build shell image
-./mvnw package k8s:build -pl jclaw-shell -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-shell -am -Pk8s -DskipTests
 ```
 
-Images use `eclipse-temurin:21-jre` base and follow `io.jclaw/<module>:<version>` naming.
+Images use `eclipse-temurin:21-jre` base and follow `io.jaiclaw/<module>:<version>` naming.
 
 ## Documentation
 

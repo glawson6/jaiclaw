@@ -1,7 +1,7 @@
 services:
   gateway:
-    image: tooling.taptech.net:8082/io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT
-    container_name: jclaw-gateway
+    image: tooling.taptech.net:8082/io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT
+    container_name: jaiclaw-gateway
     restart: unless-stopped
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
@@ -21,8 +21,8 @@ services:
         max-file: "5"
 
   cron-manager:
-    image: tooling.taptech.net:8082/io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT
-    container_name: jclaw-cron-manager
+    image: tooling.taptech.net:8082/io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT
+    container_name: jaiclaw-cron-manager
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CRON_MANAGER_PORT:-8090}:8090"
@@ -30,7 +30,7 @@ services:
     environment:
       - JAVA_OPTS=-Xmx512m -Xms256m
     volumes:
-      - ./data/cron-manager-db:/root/.jclaw/cron-manager-db
+      - ./data/cron-manager-db:/root/.jaiclaw/cron-manager-db
     profiles:
       - cron
     logging:
@@ -41,7 +41,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    container_name: jclaw-ollama
+    container_name: jaiclaw-ollama
     restart: unless-stopped
     ports:
       - "127.0.0.1:11434:11434"
@@ -61,12 +61,12 @@ services:
 
   watchtower:
     image: containrrr/watchtower
-    container_name: jclaw-watchtower
+    container_name: jaiclaw-watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /home/jclaw/.docker/config.json:/config.json:ro
-    command: --interval 300 --cleanup jclaw-gateway jclaw-cron-manager
+      - /home/jaiclaw/.docker/config.json:/config.json:ro
+    command: --interval 300 --cleanup jaiclaw-gateway jaiclaw-cron-manager
     environment:
       - DOCKER_CONFIG=/
     logging:

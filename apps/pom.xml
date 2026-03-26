@@ -5,18 +5,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.jclaw</groupId>
-        <artifactId>jclaw-parent</artifactId>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jclaw-apps</artifactId>
+    <artifactId>jaiclaw-apps</artifactId>
     <packaging>pom</packaging>
-    <name>JClaw :: Apps</name>
+    <name>JaiClaw :: Apps</name>
 
     <modules>
-        <module>jclaw-gateway-app</module>
-        <module>jclaw-shell</module>
-        <module>jclaw-cron-manager-app</module>
+        <module>jaiclaw-gateway-app</module>
+        <module>jaiclaw-shell</module>
+        <module>jaiclaw-cron-manager-app</module>
     </modules>
 </project>

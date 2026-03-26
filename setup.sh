@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# JClaw Developer Setup — build from source and launch the shell
+# JaiClaw Developer Setup — build from source and launch the shell
 #
 # Installs Java 21 via SDKMAN if not present, builds all modules,
 # and starts the interactive shell with the onboarding wizard.
@@ -39,8 +39,8 @@ done
 
 # ─── Ensure we're in the project root ─────────────────────────────────────────
 
-if [ ! -f "pom.xml" ] || [ ! -d "core/jclaw-core" ]; then
-    err "Run this script from the JClaw project root directory."
+if [ ! -f "pom.xml" ] || [ ! -d "core/jaiclaw-core" ]; then
+    err "Run this script from the JaiClaw project root directory."
     exit 1
 fi
 
@@ -128,7 +128,7 @@ ensure_java() {
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 build() {
-    header "Building JClaw"
+    header "Building JaiClaw"
 
     info "Building all modules (this may take a few minutes on first run)..."
     ./mvnw install -DskipTests -q
@@ -139,21 +139,21 @@ build() {
 # ─── Launch ───────────────────────────────────────────────────────────────────
 
 launch_shell() {
-    header "Starting JClaw Shell"
+    header "Starting JaiClaw Shell"
 
     echo "The interactive shell is starting. Run the onboarding wizard to configure:"
     echo ""
-    printf "  ${BOLD}jclaw> onboard${NC}\n"
+    printf "  ${BOLD}jaiclaw> onboard${NC}\n"
     echo ""
 
     warn "After onboarding completes, restart the shell to activate your LLM configuration."
     echo ""
 
-    ./mvnw spring-boot:run -pl :jclaw-shell -q
+    ./mvnw spring-boot:run -pl :jaiclaw-shell -q
 }
 
 launch_gateway() {
-    header "Starting JClaw Gateway"
+    header "Starting JaiClaw Gateway"
 
     resolve_api_key
 
@@ -167,11 +167,11 @@ launch_gateway() {
     print_api_httpie_example 8080
     echo ""
 
-    ./mvnw spring-boot:run -pl :jclaw-gateway-app -q
+    ./mvnw spring-boot:run -pl :jaiclaw-gateway-app -q
 }
 
 launch_cron_manager() {
-    header "Starting JClaw Cron Manager"
+    header "Starting JaiClaw Cron Manager"
 
     resolve_api_key
 
@@ -187,13 +187,13 @@ launch_cron_manager() {
     printf "  ${DIM}Type 'cron-list' to list all jobs${NC}\n"
     echo ""
 
-    ./mvnw spring-boot:run -pl :jclaw-cron-manager
+    ./mvnw spring-boot:run -pl :jaiclaw-cron-manager
 }
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 main() {
-    header "JClaw Developer Setup"
+    header "JaiClaw Developer Setup"
 
     ensure_java
     build
@@ -202,7 +202,7 @@ main() {
         shell)        launch_shell ;;
         gateway)      launch_gateway ;;
         cron-manager) launch_cron_manager ;;
-        build-only)   ok "Build finished. Run with: ./mvnw spring-boot:run -pl :jclaw-shell" ;;
+        build-only)   ok "Build finished. Run with: ./mvnw spring-boot:run -pl :jaiclaw-shell" ;;
     esac
 }
 

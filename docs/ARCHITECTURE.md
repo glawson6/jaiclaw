@@ -1,8 +1,8 @@
-# JClaw Architecture
+# JaiClaw Architecture
 
 ## Overview
 
-JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, Email, SMS), a plugin system, tool execution, skills, memory, document processing, audit logging, and MCP server hosting.
+JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, Email, SMS), a plugin system, tool execution, skills, memory, document processing, audit logging, and MCP server hosting.
 
 ---
 
@@ -13,7 +13,7 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │                          RUNNABLE APPS  (Layer 7)                            │
 │                                                                              │
 │  ┌───────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐  │
-│  │ jclaw-gateway-app │  │    jclaw-shell   │  │     jclaw-examples       │  │
+│  │ jaiclaw-gateway-app │  │    jaiclaw-shell   │  │     jaiclaw-examples       │  │
 │  │ REST + WS + Chans │  │ Spring Shell CLI │  │  10 standalone apps      │  │
 │  └────────┬──────────┘  └────────┬─────────┘  └────────────┬─────────────┘  │
 ├───────────┼──────────────────────┼──────────────────────────┼────────────────┤
@@ -30,17 +30,17 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │           │          AUTO-CONFIG  (Layer 5)                 │                │
 │                                                                              │
 │  ┌────────┴─────────────────────┴──────────────────────────┴─────────────┐  │
-│  │                   jclaw-spring-boot-starter                           │  │
+│  │                   jaiclaw-spring-boot-starter                           │  │
 │  │                                                                       │  │
-│  │  Phase 1: JClawAutoConfiguration          (core beans)                │  │
-│  │  Phase 2: JClawGatewayAutoConfiguration   (gateway + MCP)             │  │
-│  │  Phase 3: JClawChannelAutoConfiguration   (channel adapters)          │  │
+│  │  Phase 1: JaiClawAutoConfiguration          (core beans)                │  │
+│  │  Phase 2: JaiClawGatewayAutoConfiguration   (gateway + MCP)             │  │
+│  │  Phase 3: JaiClawChannelAutoConfiguration   (channel adapters)          │  │
 │  └────────┬──────────────────────────────────────────────────────────────┘  │
 ├───────────┼─────────────────────────────────────────────────────────────────┤
 │           │       GATEWAY + CHANNELS  (Layer 4)                             │
 │                                                                              │
 │  ┌────────┴──────────────┐  ┌────────────────────────────────────────────┐  │
-│  │    jclaw-gateway      │  │            Channel Adapters                │  │
+│  │    jaiclaw-gateway      │  │            Channel Adapters                │  │
 │  │                       │  │                                            │  │
 │  │  REST API + WebSocket │  │  ┌──────────┐ ┌────────┐ ┌─────────┐     │  │
 │  │  MCP hosting          │  │  │ Telegram │ │ Slack  │ │ Discord │     │  │
@@ -53,31 +53,31 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │           │       FEATURE MODULES  (Layer 3)       │                        │
 │                                                                              │
 │  ┌────────┴──────────────────────────────┐  ┌──────┴──────────────────────┐ │
-│  │          jclaw-agent                  │  │      jclaw-security         │ │
+│  │          jaiclaw-agent                  │  │      jaiclaw-security         │ │
 │  │  AgentRuntime, SessionManager         │  │  JWT auth, TenantResolver   │ │
-│  │  SystemPromptBuilder, JClawAgent      │  └─────────────────────────────┘ │
+│  │  SystemPromptBuilder, JaiClawAgent      │  └─────────────────────────────┘ │
 │  └────────┬──────────────────────────────┘                                  │
 │           │                                                                  │
 │  ┌────────┴────────┐ ┌──────────────┐ ┌──────────────┐ ┌───────────────┐   │
-│  │  jclaw-skills   │ │jclaw-plugin  │ │ jclaw-memory │ │ jclaw-config  │   │
+│  │  jaiclaw-skills   │ │jaiclaw-plugin  │ │ jaiclaw-memory │ │ jaiclaw-config  │   │
 │  │  SkillLoader    │ │  -sdk        │ │ SearchManager│ │ @ConfigProps  │   │
-│  │  versioning     │ │ JClawPlugin  │ │ VectorStore  │ │               │   │
+│  │  versioning     │ │ JaiClawPlugin  │ │ VectorStore  │ │               │   │
 │  └─────────────────┘ │ PluginApi    │ └──────────────┘ └───────────────┘   │
 │                      └──────────────┘                                       │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐   │
-│  │  jclaw-docs  │ │ jclaw-media  │ │ jclaw-audit  │ │jclaw-compaction │   │
+│  │  jaiclaw-docs  │ │ jaiclaw-media  │ │ jaiclaw-audit  │ │jaiclaw-compaction │   │
 │  │  PDF / HTML  │ │ vision/audio │ │ AuditLogger  │ │ context window  │   │
 │  │  parsing     │ │ analysis     │ │              │ │ summarization   │   │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘   │
 │                                                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐   │
-│  │jclaw-browser │ │ jclaw-cron   │ │ jclaw-voice  │ │ jclaw-identity  │   │
+│  │jaiclaw-browser │ │ jaiclaw-cron   │ │ jaiclaw-voice  │ │ jaiclaw-identity  │   │
 │  │ Playwright   │ │ scheduler    │ │ TTS / STT    │ │ cross-channel   │   │
 │  │ automation   │ │ virtual thr  │ │              │ │ user linking    │   │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘   │
 │                                                                              │
 │  ┌──────────────┐ ┌──────────────┐                                          │
-│  │ jclaw-canvas │ │  jclaw-code  │                                          │
+│  │ jaiclaw-canvas │ │  jaiclaw-code  │                                          │
 │  │ A2UI / HTML  │ │  file edit   │                                          │
 │  │ artifacts    │ │  code tools  │                                          │
 │  └──────────────┘ └──────────────┘                                          │
@@ -85,7 +85,7 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │                      TOOL LAYER  (Layer 2)                                   │
 │                                                                              │
 │  ┌──────────────────────────────────────┐  ┌─────────────────────────────┐  │
-│  │           jclaw-tools               │  │     jclaw-tools-k8s        │  │
+│  │           jaiclaw-tools               │  │     jaiclaw-tools-k8s        │  │
 │  │  ToolRegistry, built-in tools       │  │  Fabric8 Kubernetes tools  │  │
 │  │  SpringAiToolBridge, EmbabelBridge  │  └─────────────────────────────┘  │
 │  └────────┬─────────────────────────────┘                                   │
@@ -93,14 +93,14 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 │           │       CHANNEL SPI  (Layer 1)                                    │
 │                                                                              │
 │  ┌────────┴──────────────────────────────────────────────────────────────┐  │
-│  │                      jclaw-channel-api                                │  │
+│  │                      jaiclaw-channel-api                                │  │
 │  │  ChannelAdapter SPI, ChannelMessage, attachments, ChannelRegistry     │  │
 │  └────────┬──────────────────────────────────────────────────────────────┘  │
 ├───────────┼──────────────────────────────────────────────────────────────────┤
 │           │       CORE  (Layer 0) — Pure Java, no Spring                    │
 │                                                                              │
 │  ┌────────┴──────────────────────────────────────────────────────────────┐  │
-│  │                        jclaw-core                                     │  │
+│  │                        jaiclaw-core                                     │  │
 │  │  Records: Message, Session, CronJob, ToolResult, DeliveryResult       │  │
 │  │  Sealed interfaces: Message, ToolResult, DeliveryResult               │  │
 │  │  Enums: ToolProfile, PluginKind, HookName                             │  │
@@ -113,45 +113,45 @@ JClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework
 ## Module Dependency Graph
 
 ```
-jclaw-core  (pure Java — NO Spring dependency)
+jaiclaw-core  (pure Java — NO Spring dependency)
   |
-  +---> jclaw-channel-api  (ChannelAdapter SPI, ChannelMessage, attachments)
+  +---> jaiclaw-channel-api  (ChannelAdapter SPI, ChannelMessage, attachments)
   |       |
-  |       +---> jclaw-channel-telegram  (Bot API polling + webhook + file downloads)
-  |       +---> jclaw-channel-slack     (Socket Mode + Events API)
-  |       +---> jclaw-channel-discord   (Gateway WebSocket + Interactions)
-  |       +---> jclaw-channel-email     (IMAP polling + SMTP + MIME attachments)
-  |       +---> jclaw-channel-sms       (Twilio REST API + webhook + MMS)
+  |       +---> jaiclaw-channel-telegram  (Bot API polling + webhook + file downloads)
+  |       +---> jaiclaw-channel-slack     (Socket Mode + Events API)
+  |       +---> jaiclaw-channel-discord   (Gateway WebSocket + Interactions)
+  |       +---> jaiclaw-channel-email     (IMAP polling + SMTP + MIME attachments)
+  |       +---> jaiclaw-channel-sms       (Twilio REST API + webhook + MMS)
   |
-  +---> jclaw-tools  (ToolRegistry, built-in tools, SpringAiToolBridge, Embabel bridge)
+  +---> jaiclaw-tools  (ToolRegistry, built-in tools, SpringAiToolBridge, Embabel bridge)
   |       |
-  |       +---> jclaw-tools-k8s  (Fabric8 Kubernetes tools)
-  |       +---> jclaw-agent  (AgentRuntime, SessionManager, SystemPromptBuilder)
+  |       +---> jaiclaw-tools-k8s  (Fabric8 Kubernetes tools)
+  |       +---> jaiclaw-agent  (AgentRuntime, SessionManager, SystemPromptBuilder)
   |
-  +---> jclaw-skills  (SkillLoader, versioning, TenantSkillRegistry)
-  +---> jclaw-plugin-sdk  (JClawPlugin SPI, PluginApi, HookRunner, PluginDiscovery)
-  +---> jclaw-memory  (MemorySearchManager SPI, InMemorySearchManager, VectorStore)
-  +---> jclaw-security  (JWT auth, TenantResolver, SecurityContext)
-  +---> jclaw-documents  (PDF/HTML/text parsing, chunking pipeline)
-  +---> jclaw-media  (async media analysis SPI, CompositeMediaAnalyzer)
-  +---> jclaw-audit  (AuditEvent, AuditLogger SPI, InMemoryAuditLogger)
-  +---> jclaw-compaction  (context window compaction via summarization)
-  +---> jclaw-browser  (Playwright-based browser automation)
-  +---> jclaw-cron  (cron job scheduling, JSON persistence, virtual threads)
-  +---> jclaw-voice  (TTS/STT SPI, OpenAI provider)
-  +---> jclaw-identity  (cross-channel identity linking, JSON persistence)
-  +---> jclaw-canvas  (A2UI artifact rendering, HTML file management)
-  +---> jclaw-code  (file editing, code generation tools)
-  +---> jclaw-config  (@ConfigurationProperties records)
+  +---> jaiclaw-skills  (SkillLoader, versioning, TenantSkillRegistry)
+  +---> jaiclaw-plugin-sdk  (JaiClawPlugin SPI, PluginApi, HookRunner, PluginDiscovery)
+  +---> jaiclaw-memory  (MemorySearchManager SPI, InMemorySearchManager, VectorStore)
+  +---> jaiclaw-security  (JWT auth, TenantResolver, SecurityContext)
+  +---> jaiclaw-documents  (PDF/HTML/text parsing, chunking pipeline)
+  +---> jaiclaw-media  (async media analysis SPI, CompositeMediaAnalyzer)
+  +---> jaiclaw-audit  (AuditEvent, AuditLogger SPI, InMemoryAuditLogger)
+  +---> jaiclaw-compaction  (context window compaction via summarization)
+  +---> jaiclaw-browser  (Playwright-based browser automation)
+  +---> jaiclaw-cron  (cron job scheduling, JSON persistence, virtual threads)
+  +---> jaiclaw-voice  (TTS/STT SPI, OpenAI provider)
+  +---> jaiclaw-identity  (cross-channel identity linking, JSON persistence)
+  +---> jaiclaw-canvas  (A2UI artifact rendering, HTML file management)
+  +---> jaiclaw-code  (file editing, code generation tools)
+  +---> jaiclaw-config  (@ConfigurationProperties records)
           |
-          +---> jclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
+          +---> jaiclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
           |
-          +---> jclaw-spring-boot-starter  (auto-configuration wiring)
+          +---> jaiclaw-spring-boot-starter  (auto-configuration wiring)
           |       |
-          |       +---> jclaw-gateway-app  (standalone gateway server)
-          |       +---> jclaw-shell  (Spring Shell CLI)
+          |       +---> jaiclaw-gateway-app  (standalone gateway server)
+          |       +---> jaiclaw-shell  (Spring Shell CLI)
           |
-          +---> jclaw-examples  (10 standalone example applications)
+          +---> jaiclaw-examples  (10 standalone example applications)
 ```
 
 ---
@@ -200,7 +200,7 @@ Two deployments: **gateway** (handles all channel I/O) and **app** (handles AI/t
          │            │            │             │            │             │
          ▼            ▼            ▼             ▼            ▼             ▼
     ┌────────────────────────────────────────────────────┐
-    │              JCLAW GATEWAY (Deployment)            │
+    │              JAICLAW GATEWAY (Deployment)            │
     │              Replicas: 2+, stateless               │
     │                                                    │
     │  ┌──────────────────────────────────────────────┐  │
@@ -232,7 +232,7 @@ Two deployments: **gateway** (handles all channel I/O) and **app** (handles AI/t
                           │
                           ▼
     ┌─────────────────────────────────────────────────────┐
-    │              JCLAW APP (Deployment)                  │
+    │              JAICLAW APP (Deployment)                  │
     │              Replicas: 2+, stateless                │
     │                                                     │
     │  ┌───────────────────────────────────────────────┐  │
@@ -262,7 +262,7 @@ Two deployments: **gateway** (handles all channel I/O) and **app** (handles AI/t
 
 ## Channel Adapter Architecture
 
-Each messaging platform is integrated via a **ChannelAdapter** — a simple interface in `jclaw-channel-api`:
+Each messaging platform is integrated via a **ChannelAdapter** — a simple interface in `jaiclaw-channel-api`:
 
 ```java
 public interface ChannelAdapter {
@@ -281,14 +281,14 @@ Adapters are discovered via Spring component scanning and registered in a `Chann
 
 | Channel   | Inbound                                          | Outbound                 | Auth           | Module                    |
 |-----------|--------------------------------------------------|--------------------------|----------------|---------------------------|
-| Telegram  | **Polling** (local) or Webhook (prod)            | Bot API `sendMessage`    | Bot token      | `jclaw-channel-telegram`  |
-| Slack     | **Socket Mode** (local) or Events API (prod)     | `chat.postMessage`       | Bot + app token| `jclaw-channel-slack`     |
-| Discord   | **Gateway WebSocket** (local) or Webhook (prod)  | REST `channels/{id}/msg` | Bot token      | `jclaw-channel-discord`   |
-| Email     | **IMAP polling** (configurable interval)         | SMTP `Transport.send`    | Username/pass  | `jclaw-channel-email`     |
-| SMS       | **Twilio webhook** POST                          | Twilio Messages API      | Account SID    | `jclaw-channel-sms`       |
-| Web UI    | WebSocket `/ws/session/{id}`                     | WebSocket                | JWT / session  | `jclaw-gateway` (built-in)|
-| REST API  | `POST /api/chat`                                 | JSON response            | API key / JWT  | `jclaw-gateway` (built-in)|
-| MCP       | `POST /mcp/{server}/tools/{tool}`                | JSON response            | API key / JWT  | `jclaw-gateway` (built-in)|
+| Telegram  | **Polling** (local) or Webhook (prod)            | Bot API `sendMessage`    | Bot token      | `jaiclaw-channel-telegram`  |
+| Slack     | **Socket Mode** (local) or Events API (prod)     | `chat.postMessage`       | Bot + app token| `jaiclaw-channel-slack`     |
+| Discord   | **Gateway WebSocket** (local) or Webhook (prod)  | REST `channels/{id}/msg` | Bot token      | `jaiclaw-channel-discord`   |
+| Email     | **IMAP polling** (configurable interval)         | SMTP `Transport.send`    | Username/pass  | `jaiclaw-channel-email`     |
+| SMS       | **Twilio webhook** POST                          | Twilio Messages API      | Account SID    | `jaiclaw-channel-sms`       |
+| Web UI    | WebSocket `/ws/session/{id}`                     | WebSocket                | JWT / session  | `jaiclaw-gateway` (built-in)|
+| REST API  | `POST /api/chat`                                 | JSON response            | API key / JWT  | `jaiclaw-gateway` (built-in)|
+| MCP       | `POST /mcp/{server}/tools/{tool}`                | JSON response            | API key / JWT  | `jaiclaw-gateway` (built-in)|
 
 **Dual-mode adapters**: All three messaging adapters support a local-dev mode that requires no public endpoint:
 - **Telegram**: `webhookUrl` blank → long polling via `getUpdates`
@@ -355,7 +355,7 @@ Following the taptech-ai-agent-parent patterns (JKube, shared Helm chart, ngrok 
 ┌────────────────────────── k8s cluster ──────────────────────────┐
 │                                                                 │
 │  ┌──────────────────────┐     ┌──────────────────────┐         │
-│  │ jclaw-gateway        │     │ jclaw-app             │         │
+│  │ jaiclaw-gateway        │     │ jaiclaw-app             │         │
 │  │ (Deployment)         │     │ (Deployment)          │         │
 │  │                      │     │                       │         │
 │  │ - webhook receivers  │────▶│ - agent runtime       │         │
@@ -369,7 +369,7 @@ Following the taptech-ai-agent-parent patterns (JKube, shared Helm chart, ngrok 
 │             │                             │                     │
 │  ┌──────────▼───────────┐                 │                     │
 │  │ ngrok Ingress        │                 │                     │
-│  │ jclaw.taptech.net    │                 │                     │
+│  │ jaiclaw.taptech.net    │                 │                     │
 │  │ (webhooks + WS)      │                 │                     │
 │  └──────────────────────┘                 │                     │
 │                                           │                     │
@@ -398,18 +398,18 @@ Following the taptech-ai-agent-parent patterns (JKube, shared Helm chart, ngrok 
 
 Using Eclipse JKube (`kubernetes-maven-plugin`) with `eclipse-temurin:21-jre` base image, activated via Maven profile. Two modules produce images:
 
-- **`jclaw-gateway-app`** — production HTTP server (REST + WebSocket + all channels)
-- **`jclaw-shell`** — interactive CLI (headless/scripted use, Docker-based access)
+- **`jaiclaw-gateway-app`** — production HTTP server (REST + WebSocket + all channels)
+- **`jaiclaw-shell`** — interactive CLI (headless/scripted use, Docker-based access)
 
 ```bash
 # Build both images
-./mvnw package k8s:build -pl jclaw-gateway-app,jclaw-shell -am -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app,jaiclaw-shell -am -Pk8s -DskipTests
 
 # Push to registry
-./mvnw k8s:push -pl jclaw-gateway-app -Pk8s
+./mvnw k8s:push -pl jaiclaw-gateway-app -Pk8s
 
 # Deploy to k8s
-./mvnw k8s:resource k8s:apply -pl jclaw-gateway-app -Pk8s
+./mvnw k8s:resource k8s:apply -pl jaiclaw-gateway-app -Pk8s
 ```
 
 ### Helm Chart
@@ -417,21 +417,21 @@ Using Eclipse JKube (`kubernetes-maven-plugin`) with `eclipse-temurin:21-jre` ba
 Shared Helm chart at `helm/spring-boot-app/` with `workloadType` toggle:
 
 ```yaml
-# values-jclaw-gateway-app.yaml
+# values-jaiclaw-gateway-app.yaml
 workloadType: deployment
 replicaCount: 2
 image:
-  repository: registry.taptech.net/jclaw-gateway-app
+  repository: registry.taptech.net/jaiclaw-gateway-app
   tag: latest
 service:
   port: 8080
 ingress:
   enabled: true
-  host: jclaw.taptech.net
+  host: jaiclaw.taptech.net
 env:
   - name: SPRING_PROFILES_ACTIVE
     value: "gateway"
-  - name: JCLAW_SECURITY_MODE
+  - name: JAICLAW_SECURITY_MODE
     value: "api-key"
 ```
 
@@ -441,34 +441,34 @@ env:
 
 | Component                        | Status       | Module                       |
 |----------------------------------|--------------|------------------------------|
-| Core domain model                | Done         | `jclaw-core`                 |
-| Agent runtime + sessions         | Done         | `jclaw-agent`                |
-| Tool system + built-in tools     | Done         | `jclaw-tools`                |
-| Embabel orchestration bridge     | Done         | `jclaw-tools` (bridge/embabel) |
-| Skills system + versioning       | Done         | `jclaw-skills`               |
-| Tenant-aware skill registry      | Done         | `jclaw-skills`               |
-| Plugin system + hooks            | Done         | `jclaw-plugin-sdk`           |
-| Memory search (in-memory + vector)| Done        | `jclaw-memory`               |
-| Multi-tenancy + JWT auth         | Done         | `jclaw-core` + `jclaw-security` |
-| Document parsing + chunking      | Done         | `jclaw-documents`            |
-| Media analysis SPI               | Done         | `jclaw-media`                |
-| Audit logging SPI                | Done         | `jclaw-audit`                |
-| Auto-configuration               | Done         | `jclaw-spring-boot-starter`  |
-| Spring Shell CLI                 | Done         | `jclaw-shell`                |
-| Interactive onboarding wizard    | Done         | `jclaw-shell`                |
-| Channel adapter SPI + attachments| Done         | `jclaw-channel-api`          |
-| Gateway (REST + WS + webhooks)   | Done         | `jclaw-gateway`              |
-| MCP server hosting               | Done         | `jclaw-gateway` (mcp/)       |
-| Observability (metrics + health) | Done         | `jclaw-gateway` (observability/) |
-| Telegram adapter (poll + webhook)| Done         | `jclaw-channel-telegram`     |
-| Slack adapter                    | Done         | `jclaw-channel-slack`        |
-| Discord adapter                  | Done         | `jclaw-channel-discord`      |
-| Email adapter (IMAP + SMTP)      | Done         | `jclaw-channel-email`        |
-| SMS adapter (Twilio)             | Done         | `jclaw-channel-sms`          |
-| Standalone gateway app           | Done         | `jclaw-gateway-app`          |
+| Core domain model                | Done         | `jaiclaw-core`                 |
+| Agent runtime + sessions         | Done         | `jaiclaw-agent`                |
+| Tool system + built-in tools     | Done         | `jaiclaw-tools`                |
+| Embabel orchestration bridge     | Done         | `jaiclaw-tools` (bridge/embabel) |
+| Skills system + versioning       | Done         | `jaiclaw-skills`               |
+| Tenant-aware skill registry      | Done         | `jaiclaw-skills`               |
+| Plugin system + hooks            | Done         | `jaiclaw-plugin-sdk`           |
+| Memory search (in-memory + vector)| Done        | `jaiclaw-memory`               |
+| Multi-tenancy + JWT auth         | Done         | `jaiclaw-core` + `jaiclaw-security` |
+| Document parsing + chunking      | Done         | `jaiclaw-documents`            |
+| Media analysis SPI               | Done         | `jaiclaw-media`                |
+| Audit logging SPI                | Done         | `jaiclaw-audit`                |
+| Auto-configuration               | Done         | `jaiclaw-spring-boot-starter`  |
+| Spring Shell CLI                 | Done         | `jaiclaw-shell`                |
+| Interactive onboarding wizard    | Done         | `jaiclaw-shell`                |
+| Channel adapter SPI + attachments| Done         | `jaiclaw-channel-api`          |
+| Gateway (REST + WS + webhooks)   | Done         | `jaiclaw-gateway`              |
+| MCP server hosting               | Done         | `jaiclaw-gateway` (mcp/)       |
+| Observability (metrics + health) | Done         | `jaiclaw-gateway` (observability/) |
+| Telegram adapter (poll + webhook)| Done         | `jaiclaw-channel-telegram`     |
+| Slack adapter                    | Done         | `jaiclaw-channel-slack`        |
+| Discord adapter                  | Done         | `jaiclaw-channel-discord`      |
+| Email adapter (IMAP + SMTP)      | Done         | `jaiclaw-channel-email`        |
+| SMS adapter (Twilio)             | Done         | `jaiclaw-channel-sms`          |
+| Standalone gateway app           | Done         | `jaiclaw-gateway-app`          |
 | Docker image build (JKube)       | Done         | `-Pk8s` profile in POMs      |
 | **Helm chart**                   | **Needed**   | `helm/spring-boot-app/`      |
-| **Redis session store**          | **Planned**  | `jclaw-agent` (swap in-mem)  |
+| **Redis session store**          | **Planned**  | `jaiclaw-agent` (swap in-mem)  |
 | **Kafka event bus**              | **Optional** | cross-cutting                |
 
 ---
@@ -495,12 +495,12 @@ ChatClientAutoConfiguration           ─── creates ──→  ChatClient.Bu
   @ConditionalOnClass(ChatClient)                       (requires ChatModel)
 ```
 
-### Phase 2 — JClawAutoConfiguration
+### Phase 2 — JaiClawAutoConfiguration
 
-`@AutoConfigureAfter(ChatClientAutoConfiguration)` — core JClaw beans.
+`@AutoConfigureAfter(ChatClientAutoConfiguration)` — core JaiClaw beans.
 
 ```
-JClawAutoConfiguration
+JaiClawAutoConfiguration
   │
   ├── toolRegistry            ToolRegistry (+ built-in tools)
   ├── sessionManager          SessionManager
@@ -515,14 +515,14 @@ JClawAutoConfiguration
   └── noOpOrchestrationPort   NoOpOrchestrationPort       @ConditionalOnMissingBean(AgentOrchestrationPort)
 ```
 
-### Phase 3 — JClawGatewayAutoConfiguration
+### Phase 3 — JaiClawGatewayAutoConfiguration
 
-`@AutoConfigureAfter(JClawAutoConfiguration)` — gateway HTTP/WS layer. Entire class is gated on:
-- `@ConditionalOnClass(GatewayService)` — `jclaw-gateway` must be on the classpath
+`@AutoConfigureAfter(JaiClawAutoConfiguration)` — gateway HTTP/WS layer. Entire class is gated on:
+- `@ConditionalOnClass(GatewayService)` — `jaiclaw-gateway` must be on the classpath
 - `@ConditionalOnBean(AgentRuntime)` — an LLM provider must be configured
 
 ```
-JClawGatewayAutoConfiguration
+JaiClawGatewayAutoConfiguration
   │
   ├── webhookDispatcher       WebhookDispatcher
   ├── jwtTenantResolver       JwtTenantResolver
@@ -539,12 +539,12 @@ JClawGatewayAutoConfiguration
   └── gatewayHealthIndicator  GatewayHealthIndicator       (UP/DEGRADED based on channel adapter status)
 ```
 
-### Phase 4 — JClawChannelAutoConfiguration
+### Phase 4 — JaiClawChannelAutoConfiguration
 
-`@AutoConfigureAfter(JClawGatewayAutoConfiguration)` — channel adapters. Each adapter is in a nested `@Configuration` gated on `@ConditionalOnClass` (adapter JAR on classpath) and `@ConditionalOnBean(WebhookDispatcher)` (gateway must be active).
+`@AutoConfigureAfter(JaiClawGatewayAutoConfiguration)` — channel adapters. Each adapter is in a nested `@Configuration` gated on `@ConditionalOnClass` (adapter JAR on classpath) and `@ConditionalOnBean(WebhookDispatcher)` (gateway must be active).
 
 ```
-JClawChannelAutoConfiguration
+JaiClawChannelAutoConfiguration
   │
   ├── TelegramAutoConfiguration   ─── creates ──→  TelegramAdapter     @ConditionalOnClass + @ConditionalOnBean(WebhookDispatcher)
   ├── SlackAutoConfiguration      ─── creates ──→  SlackAdapter         @ConditionalOnClass + @ConditionalOnBean(WebhookDispatcher)
@@ -577,19 +577,19 @@ ChatModel (Spring AI)
 ### application.yml (gateway profile)
 
 ```yaml
-jclaw:
+jaiclaw:
   identity:
-    name: "JClaw"
+    name: "JaiClaw"
   security:
     mode: api-key                  # api-key (default), jwt, or none
-    # api-key: ${JCLAW_API_KEY}   # optional — auto-generated if not set
+    # api-key: ${JAICLAW_API_KEY}   # optional — auto-generated if not set
   agent:
     default-agent: default
   channels:
     telegram:
       enabled: true
       bot-token: ${TELEGRAM_BOT_TOKEN}
-      webhook-url: https://jclaw.taptech.net/webhook/telegram
+      webhook-url: https://jaiclaw.taptech.net/webhook/telegram
     slack:
       enabled: true
       bot-token: ${SLACK_BOT_TOKEN}

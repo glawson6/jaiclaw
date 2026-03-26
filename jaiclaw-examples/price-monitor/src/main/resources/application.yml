@@ -1,0 +1,40 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:api-key}
+  identity:
+    name: Price Monitor Bot
+    description: Monitors product prices and sends alerts on price drops
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Price Monitor Agent
+        tools:
+          profile: full
+  channels:
+    sms:
+      enabled: ${SMS_ENABLED:false}
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
+
+spring:
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

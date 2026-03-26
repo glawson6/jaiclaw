@@ -1,6 +1,6 @@
-# Agentic Workflow in JClaw
+# Agentic Workflow in JaiClaw
 
-This document covers how JClaw implements agentic workflows — autonomous AI agents that use tools iteratively, with human-in-the-loop approval, lifecycle hooks, context compaction, and workspace memory.
+This document covers how JaiClaw implements agentic workflows — autonomous AI agents that use tools iteratively, with human-in-the-loop approval, lifecycle hooks, context compaction, and workspace memory.
 
 ## Architecture Overview
 
@@ -28,7 +28,7 @@ This document covers how JClaw implements agentic workflows — autonomous AI ag
 
 ## Two Tool Loop Modes
 
-JClaw supports two modes for executing tool calls, configured per agent via `jclaw.agent.agents.<name>.tool-loop.mode`:
+JaiClaw supports two modes for executing tool calls, configured per agent via `jaiclaw.agent.agents.<name>.tool-loop.mode`:
 
 ### Spring AI Mode (default)
 
@@ -48,7 +48,7 @@ tool-loop:
   mode: explicit
 ```
 
-Uses JClaw's `ExplicitToolLoop`, which calls `ChatModel` directly and manages each tool call iteration manually. This enables:
+Uses JaiClaw's `ExplicitToolLoop`, which calls `ChatModel` directly and manages each tool call iteration manually. This enables:
 
 - **BEFORE_TOOL_CALL / AFTER_TOOL_CALL hooks** at each iteration
 - **Human-in-the-loop approval** before tool execution
@@ -80,24 +80,24 @@ Uses JClaw's `ExplicitToolLoop`, which calls `ChatModel` directly and manages ea
 
 ## SPI Interfaces
 
-All agentic capabilities are defined as SPIs in `jclaw-core`, allowing the agent runtime to use them without hard dependencies on implementation modules.
+All agentic capabilities are defined as SPIs in `jaiclaw-core`, allowing the agent runtime to use them without hard dependencies on implementation modules.
 
 ### ContextCompactor
 
 ```java
-// jclaw-core/src/main/java/io/jclaw/core/agent/ContextCompactor.java
+// jaiclaw-core/src/main/java/io/jaiclaw/core/agent/ContextCompactor.java
 public interface ContextCompactor {
     List<Message> compactIfNeeded(List<Message> messages, int contextWindowSize,
                                   Function<String, String> llmCall);
 }
 ```
 
-Checks if the conversation exceeds the token budget and summarizes older messages via an LLM call. Implementation: `CompactionServiceAdapter` in `jclaw-compaction`.
+Checks if the conversation exceeds the token budget and summarizes older messages via an LLM call. Implementation: `CompactionServiceAdapter` in `jaiclaw-compaction`.
 
 ### AgentHookDispatcher
 
 ```java
-// jclaw-core/src/main/java/io/jclaw/core/agent/AgentHookDispatcher.java
+// jaiclaw-core/src/main/java/io/jaiclaw/core/agent/AgentHookDispatcher.java
 public interface AgentHookDispatcher {
     <E, C> void fireVoid(HookName hookName, E event, C context);
     <E, C> E fireModifying(HookName hookName, E event, C context);
@@ -110,7 +110,7 @@ Dispatches lifecycle events to registered hook handlers. Void hooks run in paral
 ### ToolApprovalHandler
 
 ```java
-// jclaw-core/src/main/java/io/jclaw/core/agent/ToolApprovalHandler.java
+// jaiclaw-core/src/main/java/io/jaiclaw/core/agent/ToolApprovalHandler.java
 public interface ToolApprovalHandler {
     CompletableFuture<ToolApprovalDecision> requestApproval(
             String toolName, Map<String, Object> parameters, String sessionKey);
@@ -130,17 +130,17 @@ sealed interface ToolApprovalDecision {
 ### MemoryProvider
 
 ```java
-// jclaw-core/src/main/java/io/jclaw/core/agent/MemoryProvider.java
+// jaiclaw-core/src/main/java/io/jaiclaw/core/agent/MemoryProvider.java
 public interface MemoryProvider {
     String loadMemory(String workspaceDir);
 }
 ```
 
-Loads workspace-specific memory content into the system prompt. Implementation: `WorkspaceMemoryProvider` in `jclaw-memory`.
+Loads workspace-specific memory content into the system prompt. Implementation: `WorkspaceMemoryProvider` in `jaiclaw-memory`.
 
 ## Hook System
 
-JClaw defines 16 lifecycle hook events covering the full agent execution pipeline:
+JaiClaw defines 16 lifecycle hook events covering the full agent execution pipeline:
 
 | Hook Name | Type | Event Object | When |
 |-----------|------|-------------|------|
@@ -188,7 +188,7 @@ public void register(PluginApi api) {
 Enable approval gates by setting `require-approval: true` in the tool loop config:
 
 ```yaml
-jclaw:
+jaiclaw:
   agent:
     agents:
       default:
@@ -223,7 +223,7 @@ The `Modified` decision allows the approval handler to alter tool parameters bef
 When conversations grow long, compaction summarizes older messages to stay within the LLM's context window:
 
 ```yaml
-jclaw:
+jaiclaw:
   compaction:
     enabled: true
     trigger-threshold: 50000    # token count threshold
@@ -257,7 +257,7 @@ Streaming uses Spring AI mode (ChatClient's built-in streaming). Text chunks are
 ## Configuration Reference
 
 ```yaml
-jclaw:
+jaiclaw:
   agent:
     default-agent: default
     agents:
@@ -307,11 +307,11 @@ Demonstrates **Spring AI tool loop + streaming + prompt customization**. The age
 
 ## Plugin Development Guide
 
-Plugins implement `JClawPlugin` and register tools + hooks via `PluginApi`:
+Plugins implement `JaiClawPlugin` and register tools + hooks via `PluginApi`:
 
 ```java
 @Component
-public class MyPlugin implements JClawPlugin {
+public class MyPlugin implements JaiClawPlugin {
 
     @Override
     public PluginDefinition definition() {
@@ -354,5 +354,5 @@ static class MyTool implements ToolCallback {
 
 Plugins are discovered via:
 1. **Spring component scanning** (`@Component` annotation)
-2. **ServiceLoader** (`META-INF/services/io.jclaw.plugin.JClawPlugin`)
+2. **ServiceLoader** (`META-INF/services/io.jaiclaw.plugin.JaiClawPlugin`)
 3. **Explicit registration** via `PluginDiscovery` API

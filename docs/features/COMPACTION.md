@@ -1,6 +1,6 @@
 # Context Compaction
 
-Module: `jclaw-compaction`
+Module: `jaiclaw-compaction`
 
 ## Overview
 
@@ -55,5 +55,5 @@ The `llmFunction` is a `Function<String, String>` that sends a prompt to the LLM
 | `TokenEstimator` | Estimates token count for text, messages, and message lists |
 | `CompactionSummarizer` | Formats messages and calls LLM for summarization |
 | `IdentifierPreserver` | Extracts and validates preservation of key identifiers |
-| `CompactionConfig` | Configuration record (in `jclaw-core`) |
-| `CompactionResult` | Result record with summary, token counts, messages removed (in `jclaw-core`) |
+| `CompactionConfig` | Configuration record (in `jaiclaw-core`) |
+| `CompactionResult` | Result record with summary, token counts, messages removed (in `jaiclaw-core`) |

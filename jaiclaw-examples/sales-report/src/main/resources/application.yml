@@ -1,0 +1,37 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:api-key}
+  identity:
+    name: Sales Report Bot
+    description: Generates weekly sales dashboards
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Sales Agent
+        tools:
+          profile: full
+  skills:
+    allow-bundled:
+      - summarize
+
+spring:
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

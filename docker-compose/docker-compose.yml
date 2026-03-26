@@ -1,7 +1,7 @@
 services:
 
   gateway:
-    image: io.jclaw/jclaw-gateway-app:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
+    image: io.jaiclaw/jaiclaw-gateway-app:${JAICLAW_VERSION:-0.1.0-SNAPSHOT}
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     environment:
@@ -16,8 +16,8 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
 
       # Security
-      JCLAW_SECURITY_MODE: ${JCLAW_SECURITY_MODE:-api-key}
-      JCLAW_API_KEY: ${JCLAW_API_KEY:-}
+      JAICLAW_SECURITY_MODE: ${JAICLAW_SECURITY_MODE:-api-key}
+      JAICLAW_API_KEY: ${JAICLAW_API_KEY:-}
 
       # Channel adapters (all optional — set *_ENABLED=true to activate)
       TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
@@ -45,12 +45,12 @@ services:
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
 
       # Cron Job Manager MCP connection
-      JCLAW_CRON_MANAGER_ENABLED: ${CRON_MANAGER_ENABLED:-false}
-      JCLAW_CRON_MANAGER_URL: http://cron-manager:8090/mcp/cron-manager
+      JAICLAW_CRON_MANAGER_ENABLED: ${CRON_MANAGER_ENABLED:-false}
+      JAICLAW_CRON_MANAGER_URL: http://cron-manager:8090/mcp/cron-manager
     restart: unless-stopped
 
   cron-manager:
-    image: io.jclaw/jclaw-cron-manager:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
+    image: io.jaiclaw/jaiclaw-cron-manager:${JAICLAW_VERSION:-0.1.0-SNAPSHOT}
     ports:
       - "${CRON_MANAGER_PORT:-8090}:8090"
     environment:
@@ -62,17 +62,17 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
       OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      JCLAW_SECURITY_MODE: ${JCLAW_SECURITY_MODE:-api-key}
-      JCLAW_API_KEY: ${JCLAW_API_KEY:-}
-      JCLAW_CRON_MANAGER_PORT: 8090
+      JAICLAW_SECURITY_MODE: ${JAICLAW_SECURITY_MODE:-api-key}
+      JAICLAW_API_KEY: ${JAICLAW_API_KEY:-}
+      JAICLAW_CRON_MANAGER_PORT: 8090
     volumes:
-      - cron-manager-data:/root/.jclaw
+      - cron-manager-data:/root/.jaiclaw
     restart: unless-stopped
     profiles:
       - cron-manager
 
   cli:
-    image: io.jclaw/jclaw-shell:${JCLAW_VERSION:-0.1.0-SNAPSHOT}
+    image: io.jaiclaw/jaiclaw-shell:${JAICLAW_VERSION:-0.1.0-SNAPSHOT}
     stdin_open: true
     tty: true
     environment:

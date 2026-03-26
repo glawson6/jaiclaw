@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# JClaw shared helpers — sourced by start.sh, quickstart.sh, setup.sh
+# JaiClaw shared helpers — sourced by start.sh, quickstart.sh, setup.sh
 #
 # Provides:
 #   Colors (RED, GREEN, YELLOW, CYAN, DIM, BOLD, NC)
@@ -30,18 +30,18 @@ header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
 # ─── API Key Resolution ──────────────────────────────────────────────────────
 #
 # Mirrors the Java ApiKeyProvider lookup order:
-#   1. JCLAW_API_KEY env var
-#   2. Key file (JCLAW_API_KEY_FILE or ~/.jclaw/api-key)
+#   1. JAICLAW_API_KEY env var
+#   2. Key file (JAICLAW_API_KEY_FILE or ~/.jaiclaw/api-key)
 #   3. Generate + write to key file
 #
 # After this function returns, RESOLVED_API_KEY is set.
 #
 resolve_api_key() {
-    local key_file="${JCLAW_API_KEY_FILE:-$HOME/.jclaw/api-key}"
+    local key_file="${JAICLAW_API_KEY_FILE:-$HOME/.jaiclaw/api-key}"
 
     # 1. Explicit env var
-    if [ -n "${JCLAW_API_KEY:-}" ]; then
-        RESOLVED_API_KEY="$JCLAW_API_KEY"
+    if [ -n "${JAICLAW_API_KEY:-}" ]; then
+        RESOLVED_API_KEY="$JAICLAW_API_KEY"
         return
     fi
 
@@ -54,7 +54,7 @@ resolve_api_key() {
     fi
 
     # 3. Generate + write
-    RESOLVED_API_KEY="jclaw_ak_$(openssl rand -hex 16)"
+    RESOLVED_API_KEY="jaiclaw_ak_$(openssl rand -hex 16)"
     mkdir -p "$(dirname "$key_file")"
     printf '%s' "$RESOLVED_API_KEY" > "$key_file"
     chmod 600 "$key_file"
@@ -92,7 +92,7 @@ print_api_httpie_example() {
 # Prints the active security mode and key (if applicable).
 #
 print_security_info() {
-    local mode="${JCLAW_SECURITY_MODE:-api-key}"
+    local mode="${JAICLAW_SECURITY_MODE:-api-key}"
     case "$mode" in
         api-key)
             ok "Security: API key mode"

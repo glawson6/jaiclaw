@@ -1,4 +1,4 @@
-jclaw.yourdomain.com {
+jaiclaw.yourdomain.com {
     reverse_proxy localhost:8080
 
     @websocket {
@@ -14,7 +14,7 @@ jclaw.yourdomain.com {
     }
 
     log {
-        output file /var/log/caddy/jclaw-access.log {
+        output file /var/log/caddy/jaiclaw-access.log {
             roll_size 50mb
             roll_keep 5
         }

@@ -1,6 +1,6 @@
 # Workspace Memory
 
-Module: `jclaw-memory` (enhanced)
+Module: `jaiclaw-memory` (enhanced)
 
 ## Overview
 

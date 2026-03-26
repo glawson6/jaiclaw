@@ -1,11 +1,11 @@
 # How to Load Skills
 
-JClaw supports four skill loading scenarios, all controlled via `jclaw.skills.*` configuration properties.
+JaiClaw supports four skill loading scenarios, all controlled via `jaiclaw.skills.*` configuration properties.
 
 ## Configuration Properties
 
 ```yaml
-jclaw:
+jaiclaw:
   skills:
     # Which bundled skills to include. Default: ["*"] (all)
     # ["*"] = all bundled, [] = none, ["coding", "github"] = only those
@@ -13,7 +13,7 @@ jclaw:
       - "*"
 
     # External directory for custom/override skills. Default: null (none)
-    workspace-dir: /opt/jclaw/skills
+    workspace-dir: /opt/jaiclaw/skills
 ```
 
 ## Scenarios
@@ -23,24 +23,24 @@ jclaw:
 Use all bundled skills and add custom ones from a workspace directory.
 
 ```yaml
-jclaw:
+jaiclaw:
   skills:
     allow-bundled:
       - "*"
-    workspace-dir: /opt/jclaw/skills
+    workspace-dir: /opt/jaiclaw/skills
 ```
 
-Any custom skills placed in `/opt/jclaw/skills/` are loaded alongside the bundled ones.
+Any custom skills placed in `/opt/jaiclaw/skills/` are loaded alongside the bundled ones.
 
 ### 2. Replace — Only your own
 
 Disable all bundled skills and load only custom ones.
 
 ```yaml
-jclaw:
+jaiclaw:
   skills:
     allow-bundled: []
-    workspace-dir: /opt/jclaw/skills
+    workspace-dir: /opt/jaiclaw/skills
 ```
 
 ### 3. Selective — Cherry-pick bundled + your own
@@ -48,13 +48,13 @@ jclaw:
 Include only specific bundled skills, plus any custom ones.
 
 ```yaml
-jclaw:
+jaiclaw:
   skills:
     allow-bundled:
       - coding
       - conversation
       - web-research
-    workspace-dir: /opt/jclaw/skills
+    workspace-dir: /opt/jaiclaw/skills
 ```
 
 ### 4. Override — Replace a specific bundled skill
@@ -62,19 +62,19 @@ jclaw:
 Provide a skill with the **same name** as a bundled skill in your workspace directory. The workspace version wins.
 
 ```yaml
-jclaw:
+jaiclaw:
   skills:
     allow-bundled:
       - "*"
-    workspace-dir: /opt/jclaw/skills
+    workspace-dir: /opt/jaiclaw/skills
 ```
 
-Place a custom `coding/SKILL.md` in `/opt/jclaw/skills/` to override the bundled `coding` skill.
+Place a custom `coding/SKILL.md` in `/opt/jaiclaw/skills/` to override the bundled `coding` skill.
 
 ## Workspace Directory Structure
 
 ```
-/opt/jclaw/skills/
+/opt/jaiclaw/skills/
 ├── my-custom-skill/
 │   └── SKILL.md
 ├── coding/                  # overrides bundled "coding" skill

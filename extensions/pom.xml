@@ -5,32 +5,32 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.jclaw</groupId>
-        <artifactId>jclaw-parent</artifactId>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jclaw-extensions</artifactId>
+    <artifactId>jaiclaw-extensions</artifactId>
     <packaging>pom</packaging>
-    <name>JClaw :: Extensions</name>
+    <name>JaiClaw :: Extensions</name>
 
     <modules>
-        <module>jclaw-documents</module>
-        <module>jclaw-media</module>
-        <module>jclaw-audit</module>
-        <module>jclaw-compaction</module>
-        <module>jclaw-browser</module>
-        <module>jclaw-code</module>
-        <module>jclaw-cron</module>
-        <module>jclaw-voice</module>
-        <module>jclaw-identity</module>
-        <module>jclaw-canvas</module>
-        <module>jclaw-docstore</module>
-        <module>jclaw-docstore-telegram</module>
-        <module>jclaw-subscription</module>
-        <module>jclaw-subscription-telegram</module>
-        <module>jclaw-tools-k8s</module>
-        <module>jclaw-tools-security</module>
-        <module>jclaw-cron-manager</module>
+        <module>jaiclaw-documents</module>
+        <module>jaiclaw-media</module>
+        <module>jaiclaw-audit</module>
+        <module>jaiclaw-compaction</module>
+        <module>jaiclaw-browser</module>
+        <module>jaiclaw-code</module>
+        <module>jaiclaw-cron</module>
+        <module>jaiclaw-voice</module>
+        <module>jaiclaw-identity</module>
+        <module>jaiclaw-canvas</module>
+        <module>jaiclaw-docstore</module>
+        <module>jaiclaw-docstore-telegram</module>
+        <module>jaiclaw-subscription</module>
+        <module>jaiclaw-subscription-telegram</module>
+        <module>jaiclaw-tools-k8s</module>
+        <module>jaiclaw-tools-security</module>
+        <module>jaiclaw-cron-manager</module>
     </modules>
 </project>

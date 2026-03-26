@@ -1,6 +1,6 @@
 # Identity Linking
 
-Module: `jclaw-identity`
+Module: `jaiclaw-identity`
 
 ## Overview
 
@@ -39,7 +39,7 @@ service.unlink("telegram", "12345");
 | `IdentityLinkService` | Link/unlink operations, auto UUID generation |
 | `IdentityLinkStore` | JSON file persistence, ConcurrentHashMap for fast lookup |
 | `IdentityResolver` | Resolves channel+userId → canonical user ID |
-| `IdentityLink` | Record: canonicalUserId, channel, channelUserId (in `jclaw-core`) |
+| `IdentityLink` | Record: canonicalUserId, channel, channelUserId (in `jaiclaw-core`) |
 
 ## Storage
 

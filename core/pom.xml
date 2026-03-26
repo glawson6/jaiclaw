@@ -5,25 +5,25 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.jclaw</groupId>
-        <artifactId>jclaw-parent</artifactId>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jclaw-core-modules</artifactId>
+    <artifactId>jaiclaw-core-modules</artifactId>
     <packaging>pom</packaging>
-    <name>JClaw :: Core Modules</name>
+    <name>JaiClaw :: Core Modules</name>
 
     <modules>
-        <module>jclaw-core</module>
-        <module>jclaw-channel-api</module>
-        <module>jclaw-config</module>
-        <module>jclaw-tools</module>
-        <module>jclaw-agent</module>
-        <module>jclaw-skills</module>
-        <module>jclaw-plugin-sdk</module>
-        <module>jclaw-memory</module>
-        <module>jclaw-security</module>
-        <module>jclaw-gateway</module>
+        <module>jaiclaw-core</module>
+        <module>jaiclaw-channel-api</module>
+        <module>jaiclaw-config</module>
+        <module>jaiclaw-tools</module>
+        <module>jaiclaw-agent</module>
+        <module>jaiclaw-skills</module>
+        <module>jaiclaw-plugin-sdk</module>
+        <module>jaiclaw-memory</module>
+        <module>jaiclaw-security</module>
+        <module>jaiclaw-gateway</module>
     </modules>
 </project>

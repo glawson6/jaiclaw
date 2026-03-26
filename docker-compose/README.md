@@ -1,12 +1,12 @@
-# JClaw Docker Compose
+# JaiClaw Docker Compose
 
-Run the complete JClaw stack locally with Docker Compose.
+Run the complete JaiClaw stack locally with Docker Compose.
 
 ## Services
 
 | Service | Description | Port |
 |---------|-------------|------|
-| `gateway` | JClaw gateway (REST API + WebSocket + channel adapters) | 8080 |
+| `gateway` | JaiClaw gateway (REST API + WebSocket + channel adapters) | 8080 |
 | `ollama` | Local LLM server (free, no API key needed) | 11434 |
 
 ## Quick Start
@@ -14,7 +14,7 @@ Run the complete JClaw stack locally with Docker Compose.
 ```bash
 # 1. Build the Docker image with Maven (from project root)
 export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
-./mvnw package k8s:build -pl jclaw-gateway-app -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app -Pk8s -DskipTests
 
 # 2. Copy and edit the env file
 cd docker-compose
@@ -27,10 +27,10 @@ docker compose up -d
 # 4. Pull an Ollama model
 docker compose exec ollama ollama pull llama3.2
 
-# 5. Test (API key is auto-generated at ~/.jclaw/api-key on first run)
+# 5. Test (API key is auto-generated at ~/.jaiclaw/api-key on first run)
 curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $(cat ~/.jclaw/api-key)" \
+  -H "X-API-Key: $(cat ~/.jaiclaw/api-key)" \
   -d '{"content": "hello"}'
 
 # 6. Check health
@@ -43,16 +43,16 @@ Images are built with Maven using the JKube `-Pk8s` profile, not by Docker Compo
 
 ```bash
 # Gateway image
-./mvnw package k8s:build -pl jclaw-gateway-app -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app -Pk8s -DskipTests
 
 # Shell image (optional)
-./mvnw package k8s:build -pl jclaw-shell -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-shell -Pk8s -DskipTests
 ```
 
 After code changes, rebuild the image and restart:
 
 ```bash
-./mvnw package k8s:build -pl jclaw-gateway-app -Pk8s -DskipTests
+./mvnw package k8s:build -pl jaiclaw-gateway-app -Pk8s -DskipTests
 docker compose up -d gateway
 ```
 

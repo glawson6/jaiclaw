@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# JClaw Start — run the gateway (local or Docker) or interactive shell
+# JaiClaw Start — run the gateway (local or Docker) or interactive shell
 #
-# Reads API keys and configuration from JCLAW_ENV_FILE (or docker-compose/.env)
+# Reads API keys and configuration from JAICLAW_ENV_FILE (or docker-compose/.env)
 #
 # Usage:
 #   ./start.sh              # start gateway locally (default, requires Java 21)
@@ -29,8 +29,8 @@ COMPOSE_DIR="$SCRIPT_DIR/docker-compose"
 source "$SCRIPT_DIR/scripts/common.sh"
 
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
-[ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
-ENV_FILE="${JCLAW_ENV_FILE:-$COMPOSE_DIR/.env}"
+[ -f "$HOME/.jaiclawrc" ] && source "$HOME/.jaiclawrc"
+ENV_FILE="${JAICLAW_ENV_FILE:-$COMPOSE_DIR/.env}"
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ load_env() {
     set +a
 
     ok "Loaded configuration from $ENV_FILE"
-    if [ ! -f "$HOME/.jclawrc" ]; then
+    if [ ! -f "$HOME/.jaiclawrc" ]; then
         info "Tip: run './quickstart.sh --reconfigure' to choose a persistent config location."
     fi
 }
@@ -74,9 +74,9 @@ load_env() {
 sync_api_key_to_env() {
     if [ -n "${RESOLVED_API_KEY:-}" ] && [ -f "$ENV_FILE" ]; then
         local current
-        current=$(grep "^JCLAW_API_KEY=" "$ENV_FILE" | cut -d= -f2)
+        current=$(grep "^JAICLAW_API_KEY=" "$ENV_FILE" | cut -d= -f2)
         if [ "$current" != "$RESOLVED_API_KEY" ]; then
-            sed -i.bak "s|^JCLAW_API_KEY=.*|JCLAW_API_KEY=${RESOLVED_API_KEY}|" "$ENV_FILE"
+            sed -i.bak "s|^JAICLAW_API_KEY=.*|JAICLAW_API_KEY=${RESOLVED_API_KEY}|" "$ENV_FILE"
             rm -f "$ENV_FILE.bak"
         fi
     fi
@@ -131,11 +131,11 @@ ensure_docker() {
 ensure_local_build() {
     local jar="$1"
     if [ "$FORCE_BUILD" = true ]; then
-        info "Force-building JClaw from source..."
+        info "Force-building JaiClaw from source..."
         (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
         ok "Build complete"
     elif [ ! -f "$jar" ]; then
-        info "Building JClaw (first run)..."
+        info "Building JaiClaw (first run)..."
         (cd "$SCRIPT_DIR" && ./mvnw install -DskipTests -q)
         ok "Build complete"
     fi
@@ -144,8 +144,8 @@ ensure_local_build() {
 # ─── Image check ─────────────────────────────────────────────────────────────
 
 ensure_image() {
-    local module="${1:-jclaw-gateway-app}"
-    local image="io.jclaw/${module}:0.1.0-SNAPSHOT"
+    local module="${1:-jaiclaw-gateway-app}"
+    local image="io.jaiclaw/${module}:0.1.0-SNAPSHOT"
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-building Docker image for ${module}..."
         docker rmi "$image" 2>/dev/null || true
@@ -163,12 +163,12 @@ ensure_image() {
 # ─── Commands ────────────────────────────────────────────────────────────────
 
 cmd_gateway() {
-    header "JClaw Gateway (Docker)"
+    header "JaiClaw Gateway (Docker)"
     load_env
     resolve_api_key
     sync_api_key_to_env
     ensure_docker
-    ensure_image jclaw-gateway-app
+    ensure_image jaiclaw-gateway-app
 
     info "Starting gateway container..."
     docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" up -d
@@ -196,10 +196,10 @@ cmd_gateway() {
 }
 
 cmd_shell() {
-    header "JClaw Interactive Shell"
+    header "JaiClaw Interactive Shell"
     load_env
     ensure_java
-    ensure_local_build "$SCRIPT_DIR/apps/jclaw-shell/target/jclaw-shell-0.1.0-SNAPSHOT.jar"
+    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-0.1.0-SNAPSHOT.jar"
 
     echo "Starting interactive shell..."
     echo ""
@@ -208,14 +208,14 @@ cmd_shell() {
     printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
     echo ""
 
-    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jclaw-shell -q)
+    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-shell -q)
 }
 
 cmd_cli() {
-    header "JClaw Interactive Shell (Docker)"
+    header "JaiClaw Interactive Shell (Docker)"
     load_env
     ensure_docker
-    ensure_image jclaw-shell
+    ensure_image jaiclaw-shell
 
     echo "Starting interactive shell container..."
     echo ""
@@ -228,11 +228,11 @@ cmd_cli() {
 }
 
 cmd_local() {
-    header "JClaw Gateway (Local)"
+    header "JaiClaw Gateway (Local)"
     load_env
     resolve_api_key
     ensure_java
-    ensure_local_build "$SCRIPT_DIR/apps/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
 
     echo "Starting gateway on http://localhost:${SERVER_PORT:-8080}..."
     print_security_info
@@ -244,18 +244,18 @@ cmd_local() {
     print_api_httpie_example "${SERVER_PORT:-8080}"
     echo ""
 
-    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jclaw-gateway-app)
+    (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-gateway-app)
 }
 
 cmd_cron() {
     local mode="${1:-local}"
 
     if [ "$mode" = "docker" ]; then
-        header "JClaw Cron Manager (Docker)"
+        header "JaiClaw Cron Manager (Docker)"
         load_env
         resolve_api_key
         ensure_docker
-        ensure_image jclaw-cron-manager
+        ensure_image jaiclaw-cron-manager
 
         info "Starting cron-manager container..."
         docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" --profile cron-manager up -d cron-manager
@@ -280,34 +280,34 @@ cmd_cron() {
         echo ""
         docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" logs -f cron-manager
     else
-        header "JClaw Cron Manager (Local)"
+        header "JaiClaw Cron Manager (Local)"
         load_env
         resolve_api_key
         ensure_java
 
-        ensure_local_build "$SCRIPT_DIR/apps/jclaw-cron-manager/target/jclaw-cron-manager-0.1.0-SNAPSHOT.jar"
+        ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-0.1.0-SNAPSHOT.jar"
 
-        echo "Starting cron-manager on http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}..."
+        echo "Starting cron-manager on http://localhost:${JAICLAW_CRON_MANAGER_PORT:-8090}..."
         print_security_info
         echo ""
         echo "Test with:"
         local cron_key="${RESOLVED_API_KEY:-<your-api-key>}"
-        printf "  ${BOLD}curl http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
+        printf "  ${BOLD}curl http://localhost:${JAICLAW_CRON_MANAGER_PORT:-8090}/mcp \\\\${NC}\n"
         printf "  ${BOLD}  -H \"X-API-Key: ${cron_key}\"${NC}\n"
         echo ""
         echo "Or with httpie:"
-        printf "  ${BOLD}http http://localhost:${JCLAW_CRON_MANAGER_PORT:-8090}/mcp X-API-Key:${cron_key}${NC}\n"
+        printf "  ${BOLD}http http://localhost:${JAICLAW_CRON_MANAGER_PORT:-8090}/mcp X-API-Key:${cron_key}${NC}\n"
         echo ""
         printf "  ${DIM}Type 'cron-status' for cron job overview${NC}\n"
         printf "  ${DIM}Type 'cron-list' to list all jobs${NC}\n"
         echo ""
 
-        (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jclaw-cron-manager)
+        (cd "$SCRIPT_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-cron-manager)
     fi
 }
 
 cmd_telegram() {
-    header "JClaw + Telegram"
+    header "JaiClaw + Telegram"
     load_env
 
     # Check for bot token
@@ -350,7 +350,7 @@ cmd_telegram() {
 }
 
 cmd_stop() {
-    info "Stopping JClaw..."
+    info "Stopping JaiClaw..."
     docker compose -f "$COMPOSE_DIR/docker-compose.yml" --env-file "$ENV_FILE" down
     ok "Stopped"
 }
@@ -409,8 +409,8 @@ case "$COMMAND" in
         echo "  stop             Stop Docker Compose stack"
         echo "  logs             Tail gateway container logs"
         echo ""
-        echo "Configuration is loaded from \$JCLAW_ENV_FILE (default: docker-compose/.env)."
-        echo "Set JCLAW_ENV_FILE or run './quickstart.sh --reconfigure' to change."
+        echo "Configuration is loaded from \$JAICLAW_ENV_FILE (default: docker-compose/.env)."
+        echo "Set JAICLAW_ENV_FILE or run './quickstart.sh --reconfigure' to change."
         ;;
     *)
         err "Unknown command: $COMMAND"

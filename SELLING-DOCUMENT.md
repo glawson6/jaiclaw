@@ -1,4 +1,4 @@
-# JClaw: The Enterprise Java AI Agent Platform
+# JaiClaw: The Enterprise Java AI Agent Platform
 
 **Build production AI agents in the language your team already knows.**
 
@@ -19,18 +19,18 @@ Adopting LangChain, CrewAI, or AutoGen means:
 - Re-implementing security, multi-tenancy, audit logging, and rate limiting in a language your security team hasn't vetted
 - Accepting that only 2% of organizations have deployed agentic AI at scale — and most failures stem from production infrastructure gaps, not AI model quality
 
-**JClaw eliminates this entire problem.** It's a Java 21 / Spring Boot AI agent platform that drops into your existing stack as a Maven dependency.
+**JaiClaw eliminates this entire problem.** It's a Java 21 / Spring Boot AI agent platform that drops into your existing stack as a Maven dependency.
 
 ---
 
-## What JClaw Is
+## What JaiClaw Is
 
-JClaw is an embeddable, multi-channel AI agent runtime built on Spring Boot 3.5 and Spring AI. It provides everything between "I have an LLM API key" and "I have a production-grade AI assistant serving users across Telegram, Slack, Discord, Email, SMS, and Signal — with multi-tenancy, JWT security, formal audit trails, and a plugin system."
+JaiClaw is an embeddable, multi-channel AI agent runtime built on Spring Boot 3.5 and Spring AI. It provides everything between "I have an LLM API key" and "I have a production-grade AI assistant serving users across Telegram, Slack, Discord, Email, SMS, and Signal — with multi-tenancy, JWT security, formal audit trails, and a plugin system."
 
 ```
 Your existing Spring Boot app
   └── pom.xml
-        └── <dependency>jclaw-spring-boot-starter</dependency>
+        └── <dependency>jaiclaw-spring-boot-starter</dependency>
               ↓
         Auto-configured: AgentRuntime, ToolRegistry, SessionManager,
         ChannelAdapters, PluginSystem, Skills, Memory, Audit, MCP...
@@ -46,8 +46,8 @@ One dependency. Zero configuration required to start. Full production capability
 
 ```xml
 <dependency>
-    <groupId>io.jclaw</groupId>
-    <artifactId>jclaw-starter-anthropic</artifactId>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-starter-anthropic</artifactId>
     <type>pom</type>
 </dependency>
 ```
@@ -72,7 +72,7 @@ You now have a working AI assistant with built-in tools (file read/write, shell 
 ### 4. Add channels
 
 ```yaml
-jclaw:
+jaiclaw:
   channels:
     telegram:
       enabled: true
@@ -86,17 +86,17 @@ Your agent is now reachable on Telegram and Slack simultaneously, with per-user 
 
 ---
 
-## Why Java Teams Choose JClaw
+## Why Java Teams Choose JaiClaw
 
 ### 1. Zero-Friction Adoption for Java Shops
 
-JClaw speaks Spring Boot natively. `@ConfigurationProperties` for typed config. `@ConditionalOnBean` for modular activation. `@ConditionalOnClass` for optional feature loading. Your Java engineers are immediately productive — no new language, no new build system, no new deployment pipeline.
+JaiClaw speaks Spring Boot natively. `@ConfigurationProperties` for typed config. `@ConditionalOnBean` for modular activation. `@ConditionalOnClass` for optional feature loading. Your Java engineers are immediately productive — no new language, no new build system, no new deployment pipeline.
 
 **Compare:** LangChain requires Python expertise, pip dependency resolution, ASGI servers, and a separate Docker image pipeline. Even LangChain4j and Spring AI (bare) give you model access but leave you to build everything else: session management, channel integration, tools, plugins, security, and audit.
 
 ### 2. Compile-Time Safety That Prevents Production Incidents
 
-JClaw's domain model uses Java 21 sealed interfaces and records:
+JaiClaw's domain model uses Java 21 sealed interfaces and records:
 
 ```java
 public sealed interface DeliveryResult {
@@ -111,7 +111,7 @@ Python frameworks rely on runtime type hints that are never enforced. A `TypeErr
 
 ### 3. Enterprise Security Built In — Not Bolted On
 
-JClaw ships three security layers:
+JaiClaw ships three security layers:
 
 | Layer | What It Does | Python Equivalent |
 |-------|-------------|-------------------|
@@ -119,11 +119,11 @@ JClaw ships three security layers:
 | **Per-sender rate limiting** | HTTP 429 with `Retry-After` headers, identified by JWT subject or IP. Background cleanup via virtual threads. | Manual implementation required |
 | **ECDH cryptographic handshake** | Tool-driven P-256/X25519 key exchange for agent-to-MCP-server authentication. HMAC-SHA256 challenge-response. JDK-native crypto. | Does not exist in any AI framework |
 
-Your security team doesn't need to vet a new language ecosystem. JClaw runs on the same JVM security model they've already approved.
+Your security team doesn't need to vet a new language ecosystem. JaiClaw runs on the same JVM security model they've already approved.
 
 ### 4. Multi-Tenancy Is Architectural — Not an Afterthought
 
-JClaw propagates tenant context through every layer:
+JaiClaw propagates tenant context through every layer:
 
 ```
 JWT → TenantContext (ThreadLocal) → Session isolation → Memory isolation
@@ -136,14 +136,14 @@ Session keys encode tenant boundaries: `{agentId}:{channel}:{accountId}:{peerId}
 
 ### 5. 39 Fine-Grained Modules — Take Only What You Need
 
-JClaw is not a monolith. It's 39 modules with explicit dependency boundaries:
+JaiClaw is not a monolith. It's 39 modules with explicit dependency boundaries:
 
 ```
-Need just tools + Spring AI bridge?        → jclaw-tools (1 module)
-Need a personal assistant with Telegram?   → jclaw-starter-personal-assistant (starter POM)
-Need a multi-channel gateway?              → jclaw-starter-gateway (all channels)
-Need K8s monitoring?                       → jclaw-starter-k8s-monitor (9 kubectl tools + triage skill)
-Need GOAP multi-step planning?             → jclaw-starter-embabel (Embabel integration)
+Need just tools + Spring AI bridge?        → jaiclaw-tools (1 module)
+Need a personal assistant with Telegram?   → jaiclaw-starter-personal-assistant (starter POM)
+Need a multi-channel gateway?              → jaiclaw-starter-gateway (all channels)
+Need K8s monitoring?                       → jaiclaw-starter-k8s-monitor (9 kubectl tools + triage skill)
+Need GOAP multi-step planning?             → jaiclaw-starter-embabel (Embabel integration)
 ```
 
 **Compare:** LangChain is `pip install langchain` — one monolithic package. You get everything whether you need it or not, and dependency conflicts are a constant pain point.
@@ -154,31 +154,31 @@ Need GOAP multi-step planning?             → jclaw-starter-embabel (Embabel in
 
 ### Developer Productivity Agent
 
-**Starter:** `jclaw-starter-anthropic` + Spring Shell
+**Starter:** `jaiclaw-starter-anthropic` + Spring Shell
 
 A coding assistant with file read/write, shell execution, glob/grep search, and context window compaction. Runs locally as a Spring Shell CLI — no Docker, no cloud, no API keys beyond the LLM provider.
 
-**Modules used:** jclaw-tools, jclaw-code, jclaw-compaction, jclaw-shell
+**Modules used:** jaiclaw-tools, jaiclaw-code, jaiclaw-compaction, jaiclaw-shell
 
 ### Multi-Channel Customer Support Bot
 
-**Starter:** `jclaw-starter-gateway`
+**Starter:** `jaiclaw-starter-gateway`
 
 A helpdesk bot connected to Telegram, Slack, and Email simultaneously. FAQ search + ticket creation tools. JWT-authenticated API with per-tenant session isolation. Formal audit trail for compliance.
 
-**Modules used:** jclaw-gateway, jclaw-channel-telegram, jclaw-channel-slack, jclaw-channel-email, jclaw-security, jclaw-audit
+**Modules used:** jaiclaw-gateway, jaiclaw-channel-telegram, jaiclaw-channel-slack, jaiclaw-channel-email, jaiclaw-security, jaiclaw-audit
 
 ### Scheduled Business Intelligence
 
-**Starter:** `jclaw-starter-anthropic` + jclaw-cron + jclaw-canvas
+**Starter:** `jaiclaw-starter-anthropic` + jaiclaw-cron + jaiclaw-canvas
 
 A daily briefing agent that runs at 7 AM, fetches weather and news via custom tools, generates an HTML dashboard on Canvas, and delivers a formatted digest to Telegram and Email.
 
-**Modules used:** jclaw-cron, jclaw-canvas, jclaw-channel-telegram, jclaw-channel-email
+**Modules used:** jaiclaw-cron, jaiclaw-canvas, jaiclaw-channel-telegram, jaiclaw-channel-email
 
 ### GOAP-Orchestrated Code Review
 
-**Starter:** `jclaw-starter-embabel`
+**Starter:** `jaiclaw-starter-embabel`
 
 An Embabel-powered agent that receives a GitHub PR diff, uses GOAP planning to chain analysis and review actions, and generates a structured code review with inline comments — deterministic, observable, and auditable.
 
@@ -186,41 +186,41 @@ An Embabel-powered agent that receives a GitHub PR diff, uses GOAP planning to c
 GOAP Planner: String(diff) → analyzeDiff → DiffAnalysis → generateReview → ReviewComplete
 ```
 
-**Modules used:** jclaw-starter-embabel, jclaw-plugin-sdk, jclaw-canvas
+**Modules used:** jaiclaw-starter-embabel, jaiclaw-plugin-sdk, jaiclaw-canvas
 
 ### Platform Engineering K8s Monitor
 
-**Starter:** `jclaw-starter-k8s-monitor`
+**Starter:** `jaiclaw-starter-k8s-monitor`
 
 A Telegram-connected K8s monitoring agent with 9 Fabric8 kubectl tools, a behavioral triage skill with mutation safety protocols, and escalation guidelines. One Maven dependency gives your SRE team an AI-powered ops assistant.
 
 ```xml
 <dependency>
-    <groupId>io.jclaw</groupId>
-    <artifactId>jclaw-starter-k8s-monitor</artifactId>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-starter-k8s-monitor</artifactId>
     <type>pom</type>
 </dependency>
 ```
 
-**Modules used:** jclaw-tools-k8s, jclaw-skills, jclaw-channel-telegram
+**Modules used:** jaiclaw-tools-k8s, jaiclaw-skills, jaiclaw-channel-telegram
 
 ### Document Compliance Verification
 
-**Starter:** `jclaw-starter-embabel` + jclaw-documents + jclaw-audit
+**Starter:** `jaiclaw-starter-embabel` + jaiclaw-documents + jaiclaw-audit
 
 A GOAP-planned compliance checker that extracts policy rules from regulatory documents (PDF, HTML), evaluates target documents against those rules, generates a pass/fail compliance report with findings and scores, and logs every step to a tamper-evident audit trail.
 
-**Modules used:** jclaw-documents, jclaw-audit, jclaw-starter-embabel
+**Modules used:** jaiclaw-documents, jaiclaw-audit, jaiclaw-starter-embabel
 
 ---
 
 ## Multi-Agent Flows with Embabel
 
-JClaw integrates with Embabel, Rod Johnson's GOAP-based agent planning framework. When `jclaw-starter-embabel` is on the classpath, JClaw replaces simple ReAct loops with A*-planned action sequences.
+JaiClaw integrates with Embabel, Rod Johnson's GOAP-based agent planning framework. When `jaiclaw-starter-embabel` is on the classpath, JaiClaw replaces simple ReAct loops with A*-planned action sequences.
 
 ### What GOAP Gives You That ReAct Doesn't
 
-| | ReAct (LangChain, CrewAI) | GOAP (JClaw + Embabel) |
+| | ReAct (LangChain, CrewAI) | GOAP (JaiClaw + Embabel) |
 |---|---|---|
 | **Planning** | LLM decides next action at each step | A* finds optimal action sequence upfront |
 | **Determinism** | Non-deterministic (LLM whim) | Deterministic given the same preconditions |
@@ -253,7 +253,7 @@ The GOAP planner identifies that flights and hotels can be searched in parallel,
 
 ## The MCP Ecosystem
 
-JClaw supports the Model Context Protocol in both directions:
+JaiClaw supports the Model Context Protocol in both directions:
 
 **As MCP Client (3 transports):**
 - **Stdio** — subprocess management with JSON-RPC over stdin/stdout
@@ -263,7 +263,7 @@ JClaw supports the Model Context Protocol in both directions:
 Connect to any MCP-compatible tool server — filesystem, database, API wrappers — with YAML configuration:
 
 ```yaml
-jclaw:
+jaiclaw:
   mcp-servers:
     filesystem:
       transport: stdio
@@ -273,7 +273,7 @@ jclaw:
 
 **As MCP Server:**
 
-Expose JClaw's tool registry to external LLMs via REST endpoints at `/mcp/*`. Any tool registered in JClaw becomes available to Claude Desktop, Cursor, or any MCP-compatible client.
+Expose JaiClaw's tool registry to external LLMs via REST endpoints at `/mcp/*`. Any tool registered in JaiClaw becomes available to Claude Desktop, Cursor, or any MCP-compatible client.
 
 ---
 
@@ -283,25 +283,25 @@ Expose JClaw's tool registry to external LLMs via REST endpoints at `/mcp/*`. An
 
 LangChain is a Python library for chaining LLM calls. LangChain4j brings similar abstractions to Java. Both provide model access and RAG primitives.
 
-**JClaw provides everything above that:** session management, multi-tenancy, 6 channel adapters, plugin system with 16 lifecycle hooks, skills system, audit logging, rate limiting, JWT security, MCP hosting, cron scheduling, browser automation, voice TTS/STT, cross-channel identity linking, and Spring Boot auto-configuration.
+**JaiClaw provides everything above that:** session management, multi-tenancy, 6 channel adapters, plugin system with 16 lifecycle hooks, skills system, audit logging, rate limiting, JWT security, MCP hosting, cron scheduling, browser automation, voice TTS/STT, cross-channel identity linking, and Spring Boot auto-configuration.
 
-You could build all of this on top of LangChain4j. JClaw means you don't have to.
+You could build all of this on top of LangChain4j. JaiClaw means you don't have to.
 
 ### vs. Spring AI (bare)
 
-Spring AI provides the model abstraction layer — `ChatClient`, `VectorStore`, `ToolCallback`. JClaw builds on Spring AI and adds the agent runtime, session management, tool registry with profile filtering, channel adapters, gateway, and every feature module listed above.
+Spring AI provides the model abstraction layer — `ChatClient`, `VectorStore`, `ToolCallback`. JaiClaw builds on Spring AI and adds the agent runtime, session management, tool registry with profile filtering, channel adapters, gateway, and every feature module listed above.
 
-Spring AI is the JDBC. JClaw is the Spring Data JPA.
+Spring AI is the JDBC. JaiClaw is the Spring Data JPA.
 
 ### vs. CrewAI / AutoGen (Python)
 
 CrewAI uses role-based delegation between LLM agents. AutoGen uses LLM-to-LLM conversation. Both are Python-only, single-tenant, and lack production infrastructure (security, audit, rate limiting, channel adapters).
 
-JClaw replaces their multi-agent patterns with Embabel's GOAP planning — provably correct, deterministic, and observable — while providing the production infrastructure they lack.
+JaiClaw replaces their multi-agent patterns with Embabel's GOAP planning — provably correct, deterministic, and observable — while providing the production infrastructure they lack.
 
 ### vs. Building from Scratch
 
-A team building a production AI agent on Spring Boot typically spends 3-6 months implementing session management, context window handling, tool registration, channel integration, security, and deployment. JClaw ships all of this as tested, documented, modular components.
+A team building a production AI agent on Spring Boot typically spends 3-6 months implementing session management, context window handling, tool registration, channel integration, security, and deployment. JaiClaw ships all of this as tested, documented, modular components.
 
 ---
 
@@ -319,7 +319,7 @@ JKube-integrated Docker image builds — no separate Dockerfile. Helm chart for 
 
 ---
 
-## Who JClaw Is For
+## Who JaiClaw Is For
 
 **Enterprise Java teams** building internal AI assistants, customer-facing chatbots, or automated workflows — who need multi-tenancy, security, and audit compliance without leaving the JVM.
 
@@ -334,8 +334,8 @@ JKube-integrated Docker image builds — no separate Dockerfile. Helm chart for 
 ## Getting Started
 
 ```bash
-git clone https://github.com/jclaw/jclaw.git
-cd jclaw
+git clone https://github.com/jaiclaw/jaiclaw.git
+cd jaiclaw
 export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
 ./mvnw install -DskipTests
 

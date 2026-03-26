@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# JClaw Quickstart — zero-friction launcher (local Java or Docker)
+# JaiClaw Quickstart — zero-friction launcher (local Java or Docker)
 #
 # Prerequisites: Java 21+ (preferred) or Docker
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/jclaw/jclaw/main/quickstart.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/jaiclaw/jaiclaw/main/quickstart.sh | bash
 #   -- or --
 #   ./quickstart.sh              # build + start gateway (auto-detect: Java → Docker)
 #   ./quickstart.sh --local      # build + start gateway locally (requires Java 21)
@@ -17,21 +17,21 @@
 #
 set -euo pipefail
 
-JCLAW_REPO="https://github.com/jclaw/jclaw.git"
-JCLAW_DIR="${JCLAW_DIR:-jclaw}"
+JAICLAW_REPO="https://github.com/jaiclaw/jaiclaw.git"
+JAICLAW_DIR="${JAICLAW_DIR:-jaiclaw}"
 
-# Detect if we're already inside the JClaw repo (./quickstart.sh vs curl | bash)
+# Detect if we're already inside the JaiClaw repo (./quickstart.sh vs curl | bash)
 INSIDE_REPO=false
 if [ -f "./mvnw" ] && [ -f "./pom.xml" ]; then
     INSIDE_REPO=true
-    JCLAW_DIR="."
+    JAICLAW_DIR="."
 fi
 
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
-[ -f "$HOME/.jclawrc" ] && source "$HOME/.jclawrc"
+[ -f "$HOME/.jaiclawrc" ] && source "$HOME/.jaiclawrc"
 
 # Shared helpers (colors, logging, API key resolution)
-source "$JCLAW_DIR/scripts/common.sh"
+source "$JAICLAW_DIR/scripts/common.sh"
 
 # Extra helpers unique to quickstart
 debug() { printf "${DIM}  … %s${NC}\n" "$*"; }
@@ -142,14 +142,14 @@ check_java() {
 
 clone_repo() {
     if [ "$INSIDE_REPO" = true ]; then
-        ok "Running from JClaw source directory ($(pwd))"
+        ok "Running from JaiClaw source directory ($(pwd))"
         return 0
     fi
 
-    if [ -d "$JCLAW_DIR/.git" ]; then
-        run_step "Pulling latest changes..." git -C "$JCLAW_DIR" pull --ff-only 2>/dev/null || warn "Could not pull latest (offline?). Using existing code."
+    if [ -d "$JAICLAW_DIR/.git" ]; then
+        run_step "Pulling latest changes..." git -C "$JAICLAW_DIR" pull --ff-only 2>/dev/null || warn "Could not pull latest (offline?). Using existing code."
     else
-        run_step "Cloning JClaw repository..." git clone "$JCLAW_REPO" "$JCLAW_DIR"
+        run_step "Cloning JaiClaw repository..." git clone "$JAICLAW_REPO" "$JAICLAW_DIR"
     fi
     ok "Source code ready"
 }
@@ -162,16 +162,16 @@ build_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing image..."
-        docker rmi io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT 2>/dev/null || true
     fi
 
     # Check if we can build from source (requires Java 21)
     if check_java; then
         info "Building gateway Docker image with Maven + JKube..."
         info "This may take several minutes on the first run (downloading dependencies + compiling)."
-        debug "Running: ./mvnw package k8s:build -pl :jclaw-gateway-app -am -Pk8s -DskipTests"
+        debug "Running: ./mvnw package k8s:build -pl :jaiclaw-gateway-app -am -Pk8s -DskipTests"
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw package k8s:build -pl :jclaw-gateway-app -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw package k8s:build -pl :jaiclaw-gateway-app -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
             # Show Maven phase transitions and key events
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
@@ -187,14 +187,14 @@ build_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT (${secs}s)"
         fi
     else
         # No Java — check if the image already exists
         debug "Checking for pre-built Docker image..."
-        if docker image inspect io.jclaw/jclaw-gateway-app:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT &>/dev/null; then
             ok "Docker image already exists (skipping build)"
         else
             err "Cannot build Docker image — Java 21+ is required for the Maven build."
@@ -214,14 +214,14 @@ build_shell_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing shell image..."
-        docker rmi io.jclaw/jclaw-shell:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT 2>/dev/null || true
     fi
 
     if check_java; then
         info "Building shell Docker image with Maven + JKube..."
-        debug "Running: ./mvnw package k8s:build -pl :jclaw-shell -am -Pk8s -DskipTests"
+        debug "Running: ./mvnw package k8s:build -pl :jaiclaw-shell -am -Pk8s -DskipTests"
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw package k8s:build -pl :jclaw-shell -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw package k8s:build -pl :jaiclaw-shell -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
                 *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
@@ -236,13 +236,13 @@ build_shell_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jclaw/jclaw-shell:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jclaw/jclaw-shell:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT (${secs}s)"
         fi
     else
         debug "Checking for pre-built shell Docker image..."
-        if docker image inspect io.jclaw/jclaw-shell:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT &>/dev/null; then
             ok "Shell Docker image already exists (skipping build)"
         else
             err "Cannot build shell Docker image — Java 21+ is required for the Maven build."
@@ -257,14 +257,14 @@ build_cron_manager_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing cron-manager image..."
-        docker rmi io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT 2>/dev/null || true
     fi
 
     if check_java; then
         info "Building cron-manager Docker image with Maven + JKube..."
-        debug "Running: ./mvnw package k8s:build -pl :jclaw-cron-manager -am -Pk8s -DskipTests"
+        debug "Running: ./mvnw package k8s:build -pl :jaiclaw-cron-manager -am -Pk8s -DskipTests"
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw package k8s:build -pl :jclaw-cron-manager -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw package k8s:build -pl :jaiclaw-cron-manager -am -Pk8s -DskipTests 2>&1 | while IFS= read -r line; do
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
                 *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
@@ -279,13 +279,13 @@ build_cron_manager_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT (${secs}s)"
         fi
     else
         debug "Checking for pre-built cron-manager Docker image..."
-        if docker image inspect io.jclaw/jclaw-cron-manager:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT &>/dev/null; then
             ok "Cron Manager Docker image already exists (skipping build)"
         else
             err "Cannot build cron-manager Docker image — Java 21+ is required for the Maven build."
@@ -295,9 +295,9 @@ build_cron_manager_image() {
 }
 
 launch_shell() {
-    local compose_dir="$JCLAW_DIR/docker-compose"
+    local compose_dir="$JAICLAW_DIR/docker-compose"
 
-    header "Starting JClaw Interactive Shell"
+    header "Starting JaiClaw Interactive Shell"
 
     echo "Starting interactive shell container..."
     echo ""
@@ -312,15 +312,15 @@ launch_shell() {
 # ─── Local (Java) build + launch ─────────────────────────────────────────────
 
 build_local() {
-    header "Building JClaw (Local)"
+    header "Building JaiClaw (Local)"
 
-    local jar="$JCLAW_DIR/apps/jclaw-gateway-app/target/jclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
-        info "Building JClaw from source with Maven..."
+        info "Building JaiClaw from source with Maven..."
         info "This may take several minutes on the first run (downloading dependencies + compiling)."
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw install -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw install -DskipTests 2>&1 | while IFS= read -r line; do
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
                 *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
@@ -340,19 +340,19 @@ build_local() {
             ok "Build complete (${secs}s)"
         fi
     else
-        ok "JClaw already built (use --force-build to rebuild)"
+        ok "JaiClaw already built (use --force-build to rebuild)"
     fi
 }
 
 build_shell_local() {
-    header "Building JClaw Shell (Local)"
+    header "Building JaiClaw Shell (Local)"
 
-    local jar="$JCLAW_DIR/apps/jclaw-shell/target/jclaw-shell-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-0.1.0-SNAPSHOT.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
-        info "Building JClaw Shell from source..."
+        info "Building JaiClaw Shell from source..."
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw install -pl :jclaw-shell -am -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw install -pl :jaiclaw-shell -am -DskipTests 2>&1 | while IFS= read -r line; do
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
                 *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
@@ -366,12 +366,12 @@ build_shell_local() {
         local elapsed=$(( SECONDS - start ))
         ok "Shell build complete (${elapsed}s)"
     else
-        ok "JClaw Shell already built (use --force-build to rebuild)"
+        ok "JaiClaw Shell already built (use --force-build to rebuild)"
     fi
 }
 
 start_local() {
-    header "Starting JClaw (Local)"
+    header "Starting JaiClaw (Local)"
 
     # Source the .env file so Spring picks up the configured provider and keys
     set -a
@@ -391,11 +391,11 @@ start_local() {
     print_api_httpie_example "$port"
     echo ""
 
-    (cd "$JCLAW_DIR" && ./mvnw spring-boot:run -pl :jclaw-gateway-app)
+    (cd "$JAICLAW_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-gateway-app)
 }
 
 launch_shell_local() {
-    header "Starting JClaw Interactive Shell (Local)"
+    header "Starting JaiClaw Interactive Shell (Local)"
 
     # Source the .env file
     set -a
@@ -409,18 +409,18 @@ launch_shell_local() {
     printf "  ${DIM}Type 'onboard' to run the setup wizard${NC}\n"
     echo ""
 
-    (cd "$JCLAW_DIR" && ./mvnw spring-boot:run -pl :jclaw-shell -q)
+    (cd "$JAICLAW_DIR" && ./mvnw spring-boot:run -pl :jaiclaw-shell -q)
 }
 
 build_cron_manager_local() {
     header "Building Cron Manager (Local)"
 
-    local jar="$JCLAW_DIR/apps/jclaw-cron-manager/target/jclaw-cron-manager-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-0.1.0-SNAPSHOT.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
         info "Building Cron Manager from source..."
         local start=$SECONDS
-        (cd "$JCLAW_DIR" && ./mvnw install -pl :jclaw-cron-manager -am -DskipTests 2>&1 | while IFS= read -r line; do
+        (cd "$JAICLAW_DIR" && ./mvnw install -pl :jaiclaw-cron-manager -am -DskipTests 2>&1 | while IFS= read -r line; do
             case "$line" in
                 *"BUILD SUCCESS"*)  printf "${GREEN}  ▸ %s${NC}\n" "$line" ;;
                 *"BUILD FAILURE"*)  printf "${RED}  ▸ %s${NC}\n" "$line" ;;
@@ -441,11 +441,11 @@ build_cron_manager_local() {
 # ─── Env file resolution ─────────────────────────────────────────────────────
 
 resolve_env_file() {
-    local compose_dir="$JCLAW_DIR/docker-compose"
+    local compose_dir="$JAICLAW_DIR/docker-compose"
 
-    # Already set (from ~/.jclawrc or environment)
-    if [ -n "${JCLAW_ENV_FILE:-}" ]; then
-        ENV_FILE="$JCLAW_ENV_FILE"
+    # Already set (from ~/.jaiclawrc or environment)
+    if [ -n "${JAICLAW_ENV_FILE:-}" ]; then
+        ENV_FILE="$JAICLAW_ENV_FILE"
         ok "Using config from $ENV_FILE"
         # Create from template if missing
         if [ ! -f "$ENV_FILE" ] && [ -f "$compose_dir/.env.example" ]; then
@@ -466,7 +466,7 @@ resolve_env_file() {
     # First run — prompt the user
     echo ""
     printf "${BOLD}Where should configuration be saved?${NC}\n"
-    echo "  1. ~/.jclaw/.env (recommended — persists across projects)"
+    echo "  1. ~/.jaiclaw/.env (recommended — persists across projects)"
     echo "  2. docker-compose/.env (project-local)"
     echo ""
     read -rp "$(printf "${CYAN}▸${NC} Choice [1]: ")" env_choice
@@ -474,23 +474,23 @@ resolve_env_file() {
 
     case "$env_choice" in
         1)
-            ENV_FILE="$HOME/.jclaw/.env"
-            mkdir -p "$HOME/.jclaw"
+            ENV_FILE="$HOME/.jaiclaw/.env"
+            mkdir -p "$HOME/.jaiclaw"
             ;;
         2)
             ENV_FILE="$compose_dir/.env"
             ;;
         *)
-            warn "Invalid choice, using ~/.jclaw/.env"
-            ENV_FILE="$HOME/.jclaw/.env"
-            mkdir -p "$HOME/.jclaw"
+            warn "Invalid choice, using ~/.jaiclaw/.env"
+            ENV_FILE="$HOME/.jaiclaw/.env"
+            mkdir -p "$HOME/.jaiclaw"
             ;;
     esac
 
-    # Write ~/.jclawrc so all scripts find this location
-    echo "JCLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jclawrc"
-    export JCLAW_ENV_FILE="$ENV_FILE"
-    ok "Saved config location to ~/.jclawrc"
+    # Write ~/.jaiclawrc so all scripts find this location
+    echo "JAICLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jaiclawrc"
+    export JAICLAW_ENV_FILE="$ENV_FILE"
+    ok "Saved config location to ~/.jaiclawrc"
 
     # Copy template
     if [ ! -f "$ENV_FILE" ] && [ -f "$compose_dir/.env.example" ]; then
@@ -502,17 +502,17 @@ resolve_env_file() {
 # ─── Reconfigure ─────────────────────────────────────────────────────────────
 
 reconfigure() {
-    local compose_dir="$JCLAW_DIR/docker-compose"
+    local compose_dir="$JAICLAW_DIR/docker-compose"
 
-    header "JClaw Reconfigure"
+    header "JaiClaw Reconfigure"
 
     # Step 1: .env location
     echo ""
     printf "${BOLD}Where should configuration be saved?${NC}\n"
-    local current="${JCLAW_ENV_FILE:-$compose_dir/.env}"
+    local current="${JAICLAW_ENV_FILE:-$compose_dir/.env}"
     echo "  Current: $current"
     echo ""
-    echo "  1. ~/.jclaw/.env (recommended — persists across projects)"
+    echo "  1. ~/.jaiclaw/.env (recommended — persists across projects)"
     echo "  2. docker-compose/.env (project-local)"
     echo "  3. Keep current ($current)"
     echo ""
@@ -521,8 +521,8 @@ reconfigure() {
 
     case "$env_choice" in
         1)
-            ENV_FILE="$HOME/.jclaw/.env"
-            mkdir -p "$HOME/.jclaw"
+            ENV_FILE="$HOME/.jaiclaw/.env"
+            mkdir -p "$HOME/.jaiclaw"
             ;;
         2)
             ENV_FILE="$compose_dir/.env"
@@ -532,9 +532,9 @@ reconfigure() {
             ;;
     esac
 
-    # Update ~/.jclawrc
-    echo "JCLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jclawrc"
-    export JCLAW_ENV_FILE="$ENV_FILE"
+    # Update ~/.jaiclawrc
+    echo "JAICLAW_ENV_FILE=\"$ENV_FILE\"" > "$HOME/.jaiclawrc"
+    export JAICLAW_ENV_FILE="$ENV_FILE"
     ok "Config location: $ENV_FILE"
 
     # Create from template if missing
@@ -621,12 +621,12 @@ reconfigure() {
 
     case "$sec_choice" in
         1)
-            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=api-key|" "$ENV_FILE"
+            sed -i.bak "s|^JAICLAW_SECURITY_MODE=.*|JAICLAW_SECURITY_MODE=api-key|" "$ENV_FILE"
             rm -f "$ENV_FILE.bak"
             echo ""
             read -rp "$(printf "${CYAN}▸${NC} Custom API key (leave blank to auto-generate): ")" custom_key
             if [ -n "$custom_key" ]; then
-                sed -i.bak "s|^JCLAW_API_KEY=.*|JCLAW_API_KEY=${custom_key}|" "$ENV_FILE"
+                sed -i.bak "s|^JAICLAW_API_KEY=.*|JAICLAW_API_KEY=${custom_key}|" "$ENV_FILE"
                 rm -f "$ENV_FILE.bak"
                 ok "Custom API key saved"
             else
@@ -634,12 +634,12 @@ reconfigure() {
             fi
             ;;
         2)
-            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=jwt|" "$ENV_FILE"
+            sed -i.bak "s|^JAICLAW_SECURITY_MODE=.*|JAICLAW_SECURITY_MODE=jwt|" "$ENV_FILE"
             rm -f "$ENV_FILE.bak"
             ok "JWT security mode selected"
             ;;
         3)
-            sed -i.bak "s|^JCLAW_SECURITY_MODE=.*|JCLAW_SECURITY_MODE=none|" "$ENV_FILE"
+            sed -i.bak "s|^JAICLAW_SECURITY_MODE=.*|JAICLAW_SECURITY_MODE=none|" "$ENV_FILE"
             rm -f "$ENV_FILE.bak"
             warn "Security disabled — do not use in production"
             ;;
@@ -673,9 +673,9 @@ has_api_key() {
 }
 
 start_stack() {
-    header "Starting JClaw"
+    header "Starting JaiClaw"
 
-    local compose_dir="$JCLAW_DIR/docker-compose"
+    local compose_dir="$JAICLAW_DIR/docker-compose"
 
     if [ ! -d "$compose_dir" ]; then
         err "Docker compose directory not found: $compose_dir"
@@ -802,7 +802,7 @@ setup_telegram() {
 # ─── Done ─────────────────────────────────────────────────────────────────────
 
 print_success() {
-    header "JClaw is Running"
+    header "JaiClaw is Running"
 
     resolve_api_key
     print_security_info
@@ -818,7 +818,7 @@ print_success() {
     printf "  ${BOLD}curl http://localhost:8080/api/health${NC}\n"
     echo ""
     if [ "${RUN_MODE:-docker}" = "docker" ]; then
-        local compose_dir="${JCLAW_DIR}/docker-compose"
+        local compose_dir="${JAICLAW_DIR}/docker-compose"
         echo "View logs:"
         printf "  ${BOLD}docker compose -f ${compose_dir}/docker-compose.yml logs -f gateway${NC}\n"
         echo ""
@@ -862,7 +862,7 @@ main() {
             -h|--help|help)
                 echo "Usage: ./quickstart.sh [options]"
                 echo ""
-                echo "Zero-friction JClaw launcher (local Java or Docker)."
+                echo "Zero-friction JaiClaw launcher (local Java or Docker)."
                 echo ""
                 echo "Options:"
                 echo "  --local          Run locally with Java 21 (no Docker required)"
@@ -884,8 +884,8 @@ main() {
         esac
     done
 
-    header "JClaw Quickstart"
-    debug "JCLAW_DIR=$JCLAW_DIR  INSIDE_REPO=$INSIDE_REPO"
+    header "JaiClaw Quickstart"
+    debug "JAICLAW_DIR=$JAICLAW_DIR  INSIDE_REPO=$INSIDE_REPO"
 
     # Auto-detect run mode: prefer local Java, fall back to Docker
     if [ "$RUN_MODE" = "auto" ]; then
@@ -915,7 +915,7 @@ main() {
 
     clone_repo
 
-    # Resolve .env file location (prompt on first run, read ~/.jclawrc on subsequent runs)
+    # Resolve .env file location (prompt on first run, read ~/.jaiclawrc on subsequent runs)
     resolve_env_file
 
     # Reconfigure mode: full interactive re-setup (Docker only — uses docker compose)
@@ -973,7 +973,7 @@ main() {
             setup_telegram
             start_stack
             if [ "$with_cron_manager" = true ]; then
-                local compose_dir="$JCLAW_DIR/docker-compose"
+                local compose_dir="$JAICLAW_DIR/docker-compose"
                 info "Starting cron-manager container..."
                 docker compose -f "$compose_dir/docker-compose.yml" --env-file "$ENV_FILE" --profile cron-manager up -d cron-manager
                 ok "Cron Manager running on http://localhost:${CRON_MANAGER_PORT:-8090}"

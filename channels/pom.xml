@@ -5,22 +5,22 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.jclaw</groupId>
-        <artifactId>jclaw-parent</artifactId>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jclaw-channels</artifactId>
+    <artifactId>jaiclaw-channels</artifactId>
     <packaging>pom</packaging>
-    <name>JClaw :: Channels</name>
+    <name>JaiClaw :: Channels</name>
 
     <modules>
-        <module>jclaw-channel-telegram</module>
-        <module>jclaw-channel-slack</module>
-        <module>jclaw-channel-discord</module>
-        <module>jclaw-channel-email</module>
-        <module>jclaw-channel-sms</module>
-        <module>jclaw-channel-signal</module>
-        <module>jclaw-channel-teams</module>
+        <module>jaiclaw-channel-telegram</module>
+        <module>jaiclaw-channel-slack</module>
+        <module>jaiclaw-channel-discord</module>
+        <module>jaiclaw-channel-email</module>
+        <module>jaiclaw-channel-sms</module>
+        <module>jaiclaw-channel-signal</module>
+        <module>jaiclaw-channel-teams</module>
     </modules>
 </project>

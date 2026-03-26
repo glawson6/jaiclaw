@@ -1,6 +1,6 @@
 # Telegram Bot Setup Guide
 
-Connect JClaw to Telegram so users can chat with your agent directly in the Telegram app.
+Connect JaiClaw to Telegram so users can chat with your agent directly in the Telegram app.
 
 ## Quick Start (2 minutes)
 
@@ -10,7 +10,7 @@ Connect JClaw to Telegram so users can chat with your agent directly in the Tele
    ```
    TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
    ```
-4. Start JClaw with Telegram (runs locally by default):
+4. Start JaiClaw with Telegram (runs locally by default):
    ```bash
    ./start.sh telegram
    # Or via Docker:
@@ -30,13 +30,13 @@ BotFather is Telegram's official bot for creating and managing bots.
 
 Send `/newbot` to BotFather. It will ask two questions:
 
-1. **Bot name** — a display name (e.g., "My JClaw Assistant"). This can contain spaces.
-2. **Bot username** — a unique handle ending in `bot` (e.g., `my_jclaw_bot`). No spaces, must be globally unique.
+1. **Bot name** — a display name (e.g., "My JaiClaw Assistant"). This can contain spaces.
+2. **Bot username** — a unique handle ending in `bot` (e.g., `my_jaiclaw_bot`). No spaces, must be globally unique.
 
 BotFather responds with:
 
 ```
-Done! Congratulations on your new bot. You will find it at t.me/my_jclaw_bot.
+Done! Congratulations on your new bot. You will find it at t.me/my_jaiclaw_bot.
 You can now add a description, about section and profile picture for your bot...
 
 Use this token to access the HTTP API:
@@ -58,9 +58,9 @@ While in the BotFather chat, you can also:
 | `/setuserpic` | Profile picture for the bot |
 | `/setcommands` | Custom command menu (e.g., `/help`, `/reset`) |
 
-## Configure JClaw
+## Configure JaiClaw
 
-Choose one of these methods to provide the bot token to JClaw:
+Choose one of these methods to provide the bot token to JaiClaw:
 
 ### Option A: docker-compose/.env file (recommended)
 
@@ -94,11 +94,11 @@ The onboard wizard includes a Telegram setup step that prompts for the token.
 
 ## Polling vs. Webhook Mode
 
-JClaw supports two ways of receiving messages from Telegram:
+JaiClaw supports two ways of receiving messages from Telegram:
 
 ### Polling (default)
 
-- JClaw periodically calls Telegram's `getUpdates` API to fetch new messages
+- JaiClaw periodically calls Telegram's `getUpdates` API to fetch new messages
 - No public URL required — works behind NAT, firewalls, and on localhost
 - Best for: **local development, testing, and simple deployments**
 - Enabled when `TELEGRAM_WEBHOOK_URL` is blank or not set (the default)
@@ -116,7 +116,7 @@ To enable webhook mode, set the webhook URL:
 TELEGRAM_WEBHOOK_URL=https://your-domain.com/webhook/telegram
 ```
 
-JClaw automatically registers the webhook with Telegram on startup and deletes it if you switch back to polling.
+JaiClaw automatically registers the webhook with Telegram on startup and deletes it if you switch back to polling.
 
 #### Webhook with ngrok (local development)
 
@@ -126,14 +126,14 @@ If you want to test webhook mode locally:
 # Terminal 1: Start ngrok
 ngrok http 8080
 
-# Terminal 2: Set the ngrok URL and start JClaw
+# Terminal 2: Set the ngrok URL and start JaiClaw
 export TELEGRAM_WEBHOOK_URL=https://abc123.ngrok-free.app/webhook/telegram
 ./start.sh telegram
 ```
 
 #### Webhook with a reverse proxy (production)
 
-Configure your reverse proxy (nginx, Caddy, Traefik) to forward `/webhook/telegram` to JClaw's port:
+Configure your reverse proxy (nginx, Caddy, Traefik) to forward `/webhook/telegram` to JaiClaw's port:
 
 ```nginx
 # nginx example
@@ -164,18 +164,18 @@ Expected response:
   "result": {
     "id": 123456,
     "is_bot": true,
-    "first_name": "My JClaw Assistant",
-    "username": "my_jclaw_bot"
+    "first_name": "My JaiClaw Assistant",
+    "username": "my_jaiclaw_bot"
   }
 }
 ```
 
 ### Send a test message
 
-1. Start JClaw: `./start.sh telegram`
+1. Start JaiClaw: `./start.sh telegram`
 2. Open your bot in Telegram: `https://t.me/<bot_username>`
 3. Send `/start` or any message
-4. The bot should respond through JClaw's agent
+4. The bot should respond through JaiClaw's agent
 
 ## How It Works
 
@@ -187,7 +187,7 @@ Telegram Bot API
     │
     ▼ (polling: getUpdates / webhook: HTTP POST)
     │
-TelegramAdapter (jclaw-channel-telegram)
+TelegramAdapter (jaiclaw-channel-telegram)
     │
     ▼ ChannelMessage
     │
@@ -222,9 +222,9 @@ Telegram token validation failed
 409 Conflict: terminated by other getUpdates request
 ```
 
-- Another instance of JClaw (or another bot framework) is polling with the same token
-- Stop all other instances before starting JClaw
-- If using Docker, check for orphan containers: `docker ps | grep jclaw`
+- Another instance of JaiClaw (or another bot framework) is polling with the same token
+- Stop all other instances before starting JaiClaw
+- If using Docker, check for orphan containers: `docker ps | grep jaiclaw`
 
 ### Webhook not receiving messages
 
@@ -236,13 +236,13 @@ Telegram token validation failed
 ### Bot not responding
 
 - Check that the gateway is running: `curl http://localhost:8080/api/health`
-- Check JClaw logs for errors: `./start.sh logs`
+- Check JaiClaw logs for errors: `./start.sh logs`
 - Verify the bot token is being passed to the container: check `docker-compose/.env`
 - Ensure an LLM provider is configured (Anthropic, OpenAI, Google Gemini, or Ollama)
 
 ### File/image handling
 
-- JClaw downloads files from Telegram's servers using the bot token
+- JaiClaw downloads files from Telegram's servers using the bot token
 - Large files (>20MB) may fail — Telegram's Bot API has a 20MB download limit
 - For file uploads (bot → user), the limit is 50MB
 

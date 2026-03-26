@@ -1,7 +1,0 @@
-server:
-  port: 8080
-
-logging:
-  level:
-    io.jclaw: DEBUG
-    root: INFO
