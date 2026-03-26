@@ -78,6 +78,16 @@
             </build>
         </profile>
         <profile>
+            <id>cron</id>
+            <dependencies>
+                <dependency>
+                    <groupId>io.jclaw</groupId>
+                    <artifactId>jclaw-starter-cron</artifactId>
+                    <type>pom</type>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>k8s</id>
             <build>
                 <plugins>

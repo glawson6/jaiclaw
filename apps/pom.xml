@@ -17,6 +17,6 @@
     <modules>
         <module>jclaw-gateway-app</module>
         <module>jclaw-shell</module>
-        <module>jclaw-cron-manager</module>
+        <module>jclaw-cron-manager-app</module>
     </modules>
 </project>

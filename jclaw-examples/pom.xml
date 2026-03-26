@@ -33,5 +33,6 @@
         <module>data-pipeline</module>
         <module>code-scaffolder</module>
         <module>telegram-docstore</module>
+        <module>system-monitor</module>
     </modules>
 </project>

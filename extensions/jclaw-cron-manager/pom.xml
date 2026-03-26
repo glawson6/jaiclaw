@@ -6,13 +6,13 @@
 
     <parent>
         <groupId>io.jclaw</groupId>
-        <artifactId>jclaw-apps</artifactId>
+        <artifactId>jclaw-extensions</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>jclaw-cron-manager</artifactId>
-    <name>JClaw :: Cron Manager</name>
-    <description>Standalone Spring Boot app for managing and executing scheduled cron jobs with full agent capabilities</description>
+    <name>JClaw :: Extensions :: Cron Manager</name>
+    <description>Reusable cron job management library — scheduling, batch execution, persistence, and MCP tools</description>
 
     <dependencies>
         <!-- JClaw auto-config (brings agent, tools, skills, config, memory, plugin-sdk, channel-api) -->
@@ -27,22 +27,10 @@
             <artifactId>jclaw-cron</artifactId>
         </dependency>
 
-        <!-- MCP hosting (McpServerRegistry, McpController — library, not app) -->
+        <!-- MCP hosting (McpServerRegistry, McpController — for standalone config provision) -->
         <dependency>
             <groupId>io.jclaw</groupId>
             <artifactId>jclaw-gateway</artifactId>
-        </dependency>
-
-        <!-- Embedded web server for MCP endpoints -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- Spring Shell CLI -->
-        <dependency>
-            <groupId>org.springframework.shell</groupId>
-            <artifactId>spring-shell-starter</artifactId>
         </dependency>
 
         <!-- Spring Batch for execution lifecycle tracking -->
@@ -64,21 +52,10 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- AI providers (all three, selectable via AI_PROVIDER env var) -->
+        <!-- Spring Boot auto-configuration support -->
         <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-anthropic</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-openai</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jclaw</groupId>
-            <artifactId>jclaw-starter-ollama</artifactId>
-            <type>pom</type>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
 
         <!-- Test -->
@@ -118,10 +95,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>

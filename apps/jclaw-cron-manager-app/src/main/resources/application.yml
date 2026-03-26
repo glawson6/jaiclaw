@@ -2,6 +2,9 @@ server:
   port: ${JCLAW_CRON_MANAGER_PORT:8090}
 
 jclaw:
+  cron:
+    manager:
+      enabled: true
   security:
     mode: ${JCLAW_SECURITY_MODE:api-key}
     api-key: ${JCLAW_API_KEY:}

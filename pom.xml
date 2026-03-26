@@ -312,6 +312,17 @@
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-starter-cron</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jclaw</groupId>
+                <artifactId>jclaw-cron-manager-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Third-party libraries -->
             <dependency>

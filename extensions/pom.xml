@@ -31,5 +31,6 @@
         <module>jclaw-subscription-telegram</module>
         <module>jclaw-tools-k8s</module>
         <module>jclaw-tools-security</module>
+        <module>jclaw-cron-manager</module>
     </modules>
 </project>

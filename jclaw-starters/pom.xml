@@ -25,5 +25,6 @@
         <module>jclaw-starter-embabel</module>
         <module>jclaw-starter-personal-assistant</module>
         <module>jclaw-starter-k8s-monitor</module>
+        <module>jclaw-starter-cron</module>
     </modules>
 </project>

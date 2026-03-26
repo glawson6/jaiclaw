@@ -3,14 +3,12 @@ package io.jclaw.cronmanager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.stereotype.Component;
 
 /**
  * Lifecycle management for the Cron Job Manager.
  * Initializes the manager on startup (crash recovery + scheduler start)
  * and gracefully shuts down on application stop.
  */
-@Component
 public class CronManagerLifecycle implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(CronManagerLifecycle.class);
