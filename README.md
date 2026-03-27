@@ -1,4 +1,4 @@
-# JaiClaw
+# JaiClaw *(pronounced "Jay-Claw")*
 
 Java/Spring AI personal assistant framework. Embeddable agent runtime with tool execution, skills, plugins, memory, and multi-channel messaging (Telegram, Slack, Discord, Email, SMS).
 
