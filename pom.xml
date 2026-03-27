@@ -198,6 +198,11 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-calendar</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-voice</artifactId>
                 <version>${project.version}</version>
             </dependency>

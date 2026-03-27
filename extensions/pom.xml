@@ -32,5 +32,6 @@
         <module>jaiclaw-tools-k8s</module>
         <module>jaiclaw-tools-security</module>
         <module>jaiclaw-cron-manager</module>
+        <module>jaiclaw-calendar</module>
     </modules>
 </project>

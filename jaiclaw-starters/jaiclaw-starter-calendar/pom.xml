@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-starters</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-starter-calendar</artifactId>
+    <packaging>pom</packaging>
+    <name>JaiClaw :: Starter :: Calendar</name>
+    <description>JaiClaw starter for calendar management with event CRUD, scheduling, and MCP tools</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-calendar</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+    </dependencies>
+</project>

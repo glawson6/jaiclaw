@@ -26,5 +26,6 @@
         <module>jaiclaw-starter-personal-assistant</module>
         <module>jaiclaw-starter-k8s-monitor</module>
         <module>jaiclaw-starter-cron</module>
+        <module>jaiclaw-starter-calendar</module>
     </modules>
 </project>

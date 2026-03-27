@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: jaiclaw-calendar-server
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: calendar
+        version: 0.1.0
+
+server:
+  port: 8283
+
+jaiclaw:
+  calendar:
+    enabled: true
+    provider: in-memory
+    default-tenant-id: default
+    default-calendar-name: default
+    minimum-event-duration-minutes: 30
+    # Redis provider configuration:
+    # provider: redis
+    # redis:
+    #   refresh-on-startup: false
+    #   init-tenants: default
+
+# To use Redis, set provider to 'redis' and configure Spring Data Redis:
+# spring:
+#   data:
+#     redis:
+#       host: localhost
+#       port: 6379
