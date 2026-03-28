@@ -2,6 +2,8 @@ package io.jaiclaw.cron;
 
 import io.jaiclaw.core.model.CronJob;
 import io.jaiclaw.core.model.CronJobResult;
+import io.jaiclaw.core.tenant.DefaultTenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,11 @@ public class CronJobExecutor {
         String runId = UUID.randomUUID().toString();
         log.info("Executing cron job '{}' (id={}, runId={})", job.name(), job.id(), runId);
 
+        // Set tenant context from job's tenantId if present
+        if (job.tenantId() != null && !job.tenantId().isBlank()) {
+            TenantContextHolder.set(new DefaultTenantContext(job.tenantId(), job.tenantId()));
+        }
+
         try {
             String response = agentRunner.apply(job);
             log.info("Cron job '{}' completed successfully", job.name());
@@ -38,6 +45,10 @@ public class CronJobExecutor {
         } catch (Exception e) {
             log.error("Cron job '{}' failed: {}", job.name(), e.getMessage(), e);
             return new CronJobResult.Failure(job.id(), runId, e.getMessage(), Instant.now());
+        } finally {
+            if (job.tenantId() != null && !job.tenantId().isBlank()) {
+                TenantContextHolder.clear();
+            }
         }
     }
 }

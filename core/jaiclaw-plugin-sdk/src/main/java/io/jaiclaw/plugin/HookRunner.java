@@ -2,6 +2,7 @@ package io.jaiclaw.plugin;
 
 import io.jaiclaw.core.hook.HookName;
 import io.jaiclaw.core.hook.HookRegistration;
+import io.jaiclaw.core.tenant.TenantContextPropagator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,14 +40,14 @@ public class HookRunner {
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             var futures = handlers.stream()
-                    .map(h -> CompletableFuture.runAsync(() -> {
+                    .map(h -> CompletableFuture.runAsync(TenantContextPropagator.wrap(() -> {
                         try {
                             ((HookRegistration<E, C>) h).handler().handle(event, context);
                         } catch (Exception e) {
                             log.warn("Hook handler {} for {} failed: {}",
                                     h.pluginId(), hookName, e.getMessage(), e);
                         }
-                    }, executor))
+                    }), executor))
                     .toArray(CompletableFuture[]::new);
 
             CompletableFuture.allOf(futures).join();

@@ -1,5 +1,6 @@
 package io.jaiclaw.cronmanager.persistence.h2;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.cron.CronJobStore;
 import io.jaiclaw.cronmanager.persistence.CronExecutionStore;
 import io.jaiclaw.cronmanager.persistence.CronJobDefinitionStore;
@@ -18,13 +19,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class H2PersistenceAutoConfiguration {
 
     @Bean
-    CronJobDefinitionStore cronJobDefinitionStore(JdbcTemplate jdbc) {
-        return new H2CronJobDefinitionStore(jdbc);
+    CronJobDefinitionStore cronJobDefinitionStore(JdbcTemplate jdbc, TenantGuard tenantGuard) {
+        return new H2CronJobDefinitionStore(jdbc, tenantGuard);
     }
 
     @Bean
-    CronExecutionStore cronExecutionStore(JdbcTemplate jdbc) {
-        return new H2CronExecutionStore(jdbc);
+    CronExecutionStore cronExecutionStore(JdbcTemplate jdbc, TenantGuard tenantGuard) {
+        return new H2CronExecutionStore(jdbc, tenantGuard);
     }
 
     @Bean

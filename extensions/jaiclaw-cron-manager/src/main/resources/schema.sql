@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS cron_job_definitions (
     model           VARCHAR(255),
     system_prompt   CLOB,
     tool_profile    VARCHAR(64) NOT NULL DEFAULT 'MINIMAL',
-    skills          VARCHAR(2048) DEFAULT ''
+    skills          VARCHAR(2048) DEFAULT '',
+    tenant_id       VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS cron_execution_history (
@@ -24,8 +25,11 @@ CREATE TABLE IF NOT EXISTS cron_execution_history (
     status          VARCHAR(32) NOT NULL,
     result          CLOB,
     started_at      TIMESTAMP NOT NULL,
-    completed_at    TIMESTAMP
+    completed_at    TIMESTAMP,
+    tenant_id       VARCHAR(255)
 );
 
 CREATE INDEX IF NOT EXISTS idx_exec_job_id ON cron_execution_history (job_id);
 CREATE INDEX IF NOT EXISTS idx_exec_status ON cron_execution_history (status);
+CREATE INDEX IF NOT EXISTS idx_def_tenant_id ON cron_job_definitions (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_exec_tenant_id ON cron_execution_history (tenant_id);

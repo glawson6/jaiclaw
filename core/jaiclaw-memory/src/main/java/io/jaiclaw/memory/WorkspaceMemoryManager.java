@@ -1,5 +1,6 @@
 package io.jaiclaw.memory;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,9 @@ import java.nio.file.StandardOpenOption;
 /**
  * Manages workspace-based memory: reads/writes MEMORY.md and daily log files.
  * Memory is stored as human-readable markdown in the workspace directory.
+ * <p>
+ * In MULTI-tenant mode, memory files are stored per-tenant: {@code {baseDir}/{tenantId}/MEMORY.md}.
+ * In SINGLE-tenant mode, paths remain flat: {@code {baseDir}/MEMORY.md}.
  */
 public class WorkspaceMemoryManager {
 
@@ -19,13 +23,19 @@ public class WorkspaceMemoryManager {
     private static final String MEMORY_FILE = "MEMORY.md";
 
     private final Path workspaceDir;
+    private final TenantGuard tenantGuard;
 
     public WorkspaceMemoryManager(Path workspaceDir) {
+        this(workspaceDir, null);
+    }
+
+    public WorkspaceMemoryManager(Path workspaceDir, TenantGuard tenantGuard) {
         this.workspaceDir = workspaceDir;
+        this.tenantGuard = tenantGuard;
     }
 
     public String readMemory() {
-        Path memoryFile = workspaceDir.resolve(MEMORY_FILE);
+        Path memoryFile = resolveDir().resolve(MEMORY_FILE);
         if (!Files.exists(memoryFile)) return "";
         try {
             return Files.readString(memoryFile, StandardCharsets.UTF_8);
@@ -37,8 +47,9 @@ public class WorkspaceMemoryManager {
 
     public void writeMemory(String content) {
         try {
-            Files.createDirectories(workspaceDir);
-            Files.writeString(workspaceDir.resolve(MEMORY_FILE), content,
+            Path dir = resolveDir();
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve(MEMORY_FILE), content,
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             log.error("Failed to write MEMORY.md: {}", e.getMessage());
@@ -64,6 +75,14 @@ public class WorkspaceMemoryManager {
     }
 
     public Path getWorkspaceDir() {
+        return workspaceDir;
+    }
+
+    private Path resolveDir() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.resolveTenantPrefix();
+            return workspaceDir.resolve(tenantId);
+        }
         return workspaceDir;
     }
 }

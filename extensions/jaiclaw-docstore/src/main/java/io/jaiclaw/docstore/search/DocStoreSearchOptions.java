@@ -26,4 +26,27 @@ public record DocStoreSearchOptions(
     public DocStoreSearchOptions {
         if (maxResults <= 0) maxResults = 10;
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String scopeId;
+        private int maxResults;
+        private Set<String> filterTags;
+        private String filterMimeType;
+        private Instant after;
+        private Instant before;
+
+        public Builder scopeId(String scopeId) { this.scopeId = scopeId; return this; }
+        public Builder maxResults(int maxResults) { this.maxResults = maxResults; return this; }
+        public Builder filterTags(Set<String> filterTags) { this.filterTags = filterTags; return this; }
+        public Builder filterMimeType(String filterMimeType) { this.filterMimeType = filterMimeType; return this; }
+        public Builder after(Instant after) { this.after = after; return this; }
+        public Builder before(Instant before) { this.before = before; return this; }
+
+        public DocStoreSearchOptions build() {
+            return new DocStoreSearchOptions(
+                    scopeId, maxResults, filterTags, filterMimeType, after, before);
+        }
+    }
 }

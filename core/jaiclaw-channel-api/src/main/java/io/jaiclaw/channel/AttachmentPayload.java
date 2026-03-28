@@ -45,4 +45,24 @@ public record AttachmentPayload(
                 bytes.length
         );
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String filename;
+        private AttachmentType type;
+        private byte[] bytes;
+        private String mimeType;
+        private long sizeBytes;
+
+        public Builder filename(String filename) { this.filename = filename; return this; }
+        public Builder type(AttachmentType type) { this.type = type; return this; }
+        public Builder bytes(byte[] bytes) { this.bytes = bytes; return this; }
+        public Builder mimeType(String mimeType) { this.mimeType = mimeType; return this; }
+        public Builder sizeBytes(long sizeBytes) { this.sizeBytes = sizeBytes; return this; }
+
+        public AttachmentPayload build() {
+            return new AttachmentPayload(filename, type, bytes, mimeType, sizeBytes);
+        }
+    }
 }

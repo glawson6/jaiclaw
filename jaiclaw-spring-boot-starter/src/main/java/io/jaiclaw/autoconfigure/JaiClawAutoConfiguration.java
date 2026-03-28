@@ -1,14 +1,25 @@
 package io.jaiclaw.autoconfigure;
 
 import io.jaiclaw.agent.AgentRuntime;
+import io.jaiclaw.agent.delegate.AgentLoopDelegate;
+import io.jaiclaw.agent.delegate.AgentLoopDelegateRegistry;
 import io.jaiclaw.agent.session.SessionManager;
+import io.jaiclaw.agent.tenant.DefaultTenantChatModelFactory;
+import io.jaiclaw.agent.tenant.TenantAgentRuntimeFactory;
+import io.jaiclaw.agent.tenant.TenantChatModelFactory;
 import io.jaiclaw.channel.ChannelAdapter;
 import io.jaiclaw.channel.ChannelRegistry;
 import io.jaiclaw.config.JaiClawProperties;
+import io.jaiclaw.config.TenantAgentConfigService;
+import io.jaiclaw.config.TenantEnvLoader;
+import io.jaiclaw.config.prompt.SystemPromptLoaderFactory;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory.ProxyConfig;
 import io.jaiclaw.core.skill.SkillDefinition;
+import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantMode;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.memory.InMemorySearchManager;
 import io.jaiclaw.memory.MemorySearchManager;
 import io.jaiclaw.memory.VectorStoreSearchManager;
@@ -31,6 +42,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 import java.net.Authenticator;
@@ -127,6 +139,27 @@ public class JaiClawAutoConfiguration {
         }
     }
 
+    // --- Tenant configuration ---
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantProperties tenantProperties(JaiClawProperties properties) {
+        var cfg = properties.tenant();
+        return new TenantProperties(cfg.mode(), cfg.defaultTenantId());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantGuard tenantGuard(TenantProperties tenantProperties) {
+        TenantGuard guard = new TenantGuard(tenantProperties);
+        if (guard.isMultiTenant()) {
+            log.info("JaiClaw tenant mode: MULTI — strict isolation enabled");
+        } else {
+            log.info("JaiClaw tenant mode: SINGLE — shared data space");
+        }
+        return guard;
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public ToolRegistry toolRegistry() {
@@ -137,8 +170,8 @@ public class JaiClawAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public SessionManager sessionManager() {
-        return new SessionManager();
+    public SessionManager sessionManager(TenantGuard tenantGuard) {
+        return new SessionManager(tenantGuard);
     }
 
     @Bean
@@ -158,14 +191,15 @@ public class JaiClawAutoConfiguration {
     @ConditionalOnClass(name = "org.springframework.ai.vectorstore.VectorStore")
     @ConditionalOnBean(type = "org.springframework.ai.vectorstore.VectorStore")
     public VectorStoreSearchManager vectorStoreSearchManager(
-            org.springframework.ai.vectorstore.VectorStore vectorStore) {
-        return new VectorStoreSearchManager(vectorStore);
+            org.springframework.ai.vectorstore.VectorStore vectorStore,
+            TenantGuard tenantGuard) {
+        return new VectorStoreSearchManager(vectorStore, tenantGuard);
     }
 
     @Bean
     @ConditionalOnMissingBean(MemorySearchManager.class)
-    public InMemorySearchManager inMemorySearchManager() {
-        return new InMemorySearchManager();
+    public InMemorySearchManager inMemorySearchManager(TenantGuard tenantGuard) {
+        return new InMemorySearchManager(tenantGuard);
     }
 
     // --- SPI adapter beans ---
@@ -190,8 +224,65 @@ public class JaiClawAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(MemoryProvider.class)
     @ConditionalOnClass(name = "io.jaiclaw.memory.WorkspaceMemoryProvider")
-    public MemoryProvider memoryProvider() {
-        return new io.jaiclaw.memory.WorkspaceMemoryProvider();
+    public MemoryProvider memoryProvider(TenantGuard tenantGuard) {
+        return new io.jaiclaw.memory.WorkspaceMemoryProvider(tenantGuard);
+    }
+
+    // --- Per-tenant configuration beans ---
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SystemPromptLoaderFactory systemPromptLoaderFactory() {
+        return new SystemPromptLoaderFactory();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantEnvLoader tenantEnvLoader(ResourceLoader resourceLoader) {
+        return new TenantEnvLoader(resourceLoader);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantAgentConfigService tenantAgentConfigService(JaiClawProperties properties,
+                                                              TenantEnvLoader envLoader,
+                                                              ResourceLoader resourceLoader) {
+        return new TenantAgentConfigService(
+                properties.tenant(), properties.agent(), envLoader, resourceLoader);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(ChatModel.class)
+    public TenantChatModelFactory tenantChatModelFactory(JaiClawProperties properties,
+                                                         ChatModel defaultChatModel) {
+        // Default factory delegates to the singleton ChatModel for all tenants.
+        // Applications can override with a bean that creates per-tenant models.
+        return new DefaultTenantChatModelFactory(properties.models(), request -> defaultChatModel);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean({TenantChatModelFactory.class, ChatClient.Builder.class})
+    public TenantAgentRuntimeFactory tenantAgentRuntimeFactory(
+            TenantChatModelFactory chatModelFactory,
+            ToolRegistry toolRegistry,
+            SkillLoader skillLoader,
+            JaiClawProperties properties,
+            SystemPromptLoaderFactory promptLoaderFactory) {
+        List<SkillDefinition> skills = skillLoader.loadConfigured(
+                properties.skills().allowBundled(),
+                properties.skills().workspaceDir());
+        return new TenantAgentRuntimeFactory(
+                chatModelFactory, toolRegistry, skills, promptLoaderFactory);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AgentLoopDelegateRegistry agentLoopDelegateRegistry(
+            ObjectProvider<List<AgentLoopDelegate>> delegatesProvider) {
+        List<AgentLoopDelegate> delegates = delegatesProvider.getIfAvailable();
+        return new AgentLoopDelegateRegistry(delegates != null ? delegates : List.of());
     }
 
     // --- AgentRuntime with full SPI wiring ---
@@ -205,21 +296,26 @@ public class JaiClawAutoConfiguration {
             ToolRegistry toolRegistry,
             SkillLoader skillLoader,
             JaiClawProperties properties,
+            TenantGuard tenantGuard,
             ObjectProvider<ChatModel> chatModelProvider,
             ObjectProvider<ContextCompactor> compactorProvider,
             ObjectProvider<AgentHookDispatcher> hooksProvider,
             ObjectProvider<MemoryProvider> memoryProviderProvider,
             ObjectProvider<ToolApprovalHandler> approvalHandlerProvider,
-            ObjectProvider<AgentOrchestrationPort> orchestrationPortProvider) {
+            ObjectProvider<AgentOrchestrationPort> orchestrationPortProvider,
+            ObjectProvider<TenantAgentRuntimeFactory> tenantRuntimeFactoryProvider,
+            ObjectProvider<AgentLoopDelegateRegistry> delegateRegistryProvider) {
 
         List<SkillDefinition> skills = skillLoader.loadConfigured(
                 properties.skills().allowBundled(),
                 properties.skills().workspaceDir());
 
         // Resolve tool loop config from properties
-        var agentConfig = properties.agent().agents().getOrDefault(
-                properties.agent().defaultAgent(),
-                io.jaiclaw.config.AgentProperties.AgentConfig.DEFAULT);
+        var agents = properties.agent().agents();
+        var agentConfig = agents != null
+                ? agents.getOrDefault(properties.agent().defaultAgent(),
+                        io.jaiclaw.config.AgentProperties.AgentConfig.DEFAULT)
+                : io.jaiclaw.config.AgentProperties.AgentConfig.DEFAULT;
         ToolLoopConfig toolLoopConfig = agentConfig.toolLoop().toConfig();
 
         return new AgentRuntime(
@@ -233,7 +329,10 @@ public class JaiClawAutoConfiguration {
                 hooksProvider.getIfAvailable(),
                 memoryProviderProvider.getIfAvailable(),
                 approvalHandlerProvider.getIfAvailable(),
-                orchestrationPortProvider.getIfAvailable()
+                orchestrationPortProvider.getIfAvailable(),
+                tenantRuntimeFactoryProvider.getIfAvailable(),
+                delegateRegistryProvider.getIfAvailable(),
+                tenantGuard
         );
     }
 

@@ -46,6 +46,30 @@ public record JaiClawSecurityProperties(
         if (rateLimit == null) rateLimit = new RateLimitProperties();
     }
 
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private boolean enabled;
+        private String mode;
+        private String apiKey;
+        private String apiKeyFile;
+        private JwtProperties jwt;
+        private RoleMappingProperties roleMapping;
+        private RateLimitProperties rateLimit;
+
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder mode(String mode) { this.mode = mode; return this; }
+        public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
+        public Builder apiKeyFile(String apiKeyFile) { this.apiKeyFile = apiKeyFile; return this; }
+        public Builder jwt(JwtProperties jwt) { this.jwt = jwt; return this; }
+        public Builder roleMapping(RoleMappingProperties roleMapping) { this.roleMapping = roleMapping; return this; }
+        public Builder rateLimit(RateLimitProperties rateLimit) { this.rateLimit = rateLimit; return this; }
+
+        public JaiClawSecurityProperties build() {
+            return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, jwt, roleMapping, rateLimit);
+        }
+    }
+
     public record JwtProperties(
             String secret,
             String issuer,
@@ -85,6 +109,24 @@ public record JaiClawSecurityProperties(
             if (maxRequestsPerWindow <= 0) maxRequestsPerWindow = 60;
             if (windowSeconds <= 0) windowSeconds = 60;
             if (cleanupIntervalSeconds <= 0) cleanupIntervalSeconds = 300;
+        }
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private boolean enabled;
+            private int maxRequestsPerWindow;
+            private int windowSeconds;
+            private int cleanupIntervalSeconds;
+
+            public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+            public Builder maxRequestsPerWindow(int maxRequestsPerWindow) { this.maxRequestsPerWindow = maxRequestsPerWindow; return this; }
+            public Builder windowSeconds(int windowSeconds) { this.windowSeconds = windowSeconds; return this; }
+            public Builder cleanupIntervalSeconds(int cleanupIntervalSeconds) { this.cleanupIntervalSeconds = cleanupIntervalSeconds; return this; }
+
+            public RateLimitProperties build() {
+                return new RateLimitProperties(enabled, maxRequestsPerWindow, windowSeconds, cleanupIntervalSeconds);
+            }
         }
     }
 }

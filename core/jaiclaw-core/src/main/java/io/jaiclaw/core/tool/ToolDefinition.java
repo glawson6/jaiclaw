@@ -32,4 +32,24 @@ public record ToolDefinition(
     public boolean isAvailableIn(ToolProfile profile) {
         return profile == ToolProfile.FULL || profiles.contains(profile);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String name;
+        private String description;
+        private String section;
+        private String inputSchema;
+        private Set<ToolProfile> profiles;
+
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder section(String section) { this.section = section; return this; }
+        public Builder inputSchema(String inputSchema) { this.inputSchema = inputSchema; return this; }
+        public Builder profiles(Set<ToolProfile> profiles) { this.profiles = profiles; return this; }
+
+        public ToolDefinition build() {
+            return new ToolDefinition(name, description, section, inputSchema, profiles);
+        }
+    }
 }

@@ -2,6 +2,7 @@ package io.jaiclaw.identity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.model.IdentityLink;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,44 +22,72 @@ public class IdentityLinkStore {
     private final Path storePath;
     private final Map<String, IdentityLink> linksByChannelKey = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final TenantGuard tenantGuard;
 
     public IdentityLinkStore(Path storePath) {
+        this(storePath, null);
+    }
+
+    public IdentityLinkStore(Path storePath, TenantGuard tenantGuard) {
         this.storePath = storePath;
+        this.tenantGuard = tenantGuard;
         load();
     }
 
     public void link(String canonicalUserId, String channel, String channelUserId) {
-        IdentityLink link = new IdentityLink(canonicalUserId, channel, channelUserId);
-        linksByChannelKey.put(channelKey(channel, channelUserId), link);
+        String tenantId = resolveTenantId();
+        IdentityLink link = new IdentityLink(canonicalUserId, channel, channelUserId, tenantId);
+        linksByChannelKey.put(channelKey(channel, channelUserId, tenantId), link);
         persist();
     }
 
     public void unlink(String channel, String channelUserId) {
-        linksByChannelKey.remove(channelKey(channel, channelUserId));
+        String tenantId = resolveTenantId();
+        linksByChannelKey.remove(channelKey(channel, channelUserId, tenantId));
         persist();
     }
 
     public Optional<String> resolveCanonicalId(String channel, String channelUserId) {
-        IdentityLink link = linksByChannelKey.get(channelKey(channel, channelUserId));
+        String tenantId = resolveTenantId();
+        IdentityLink link = linksByChannelKey.get(channelKey(channel, channelUserId, tenantId));
         return link != null ? Optional.of(link.canonicalUserId()) : Optional.empty();
     }
 
     public List<IdentityLink> getLinksForUser(String canonicalUserId) {
-        return linksByChannelKey.values().stream()
+        return filteredLinks()
                 .filter(link -> link.canonicalUserId().equals(canonicalUserId))
                 .toList();
     }
 
     public List<IdentityLink> listAll() {
-        return List.copyOf(linksByChannelKey.values());
+        return filteredLinks().toList();
     }
 
     public int size() {
         return linksByChannelKey.size();
     }
 
-    private String channelKey(String channel, String channelUserId) {
+    private String channelKey(String channel, String channelUserId, String tenantId) {
+        if (tenantId != null) {
+            return tenantId + ":" + channel + ":" + channelUserId;
+        }
         return channel + ":" + channelUserId;
+    }
+
+    private String resolveTenantId() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            return tenantGuard.requireTenantIfMulti();
+        }
+        return null;
+    }
+
+    private java.util.stream.Stream<IdentityLink> filteredLinks() {
+        java.util.stream.Stream<IdentityLink> stream = linksByChannelKey.values().stream();
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            stream = stream.filter(link -> tenantId.equals(link.tenantId()));
+        }
+        return stream;
     }
 
     private void load() {
@@ -66,7 +95,7 @@ public class IdentityLinkStore {
         try {
             IdentityLink[] links = mapper.readValue(storePath.toFile(), IdentityLink[].class);
             for (IdentityLink link : links) {
-                linksByChannelKey.put(channelKey(link.channel(), link.channelUserId()), link);
+                linksByChannelKey.put(channelKey(link.channel(), link.channelUserId(), link.tenantId()), link);
             }
             log.info("Loaded {} identity links from {}", linksByChannelKey.size(), storePath);
         } catch (IOException e) {

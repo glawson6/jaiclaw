@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.core.model.CronJob;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +24,15 @@ public class JsonFileCronJobStore implements CronJobStore {
     private final Path storePath;
     private final Map<String, CronJob> jobs = new ConcurrentHashMap<>();
     private final ObjectMapper mapper;
+    private final TenantGuard tenantGuard;
 
     public JsonFileCronJobStore(Path storePath) {
+        this(storePath, null);
+    }
+
+    public JsonFileCronJobStore(Path storePath, TenantGuard tenantGuard) {
         this.storePath = storePath;
+        this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper();
         this.mapper.registerModule(new JavaTimeModule());
         this.mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -40,24 +47,47 @@ public class JsonFileCronJobStore implements CronJobStore {
 
     @Override
     public Optional<CronJob> get(String id) {
-        return Optional.ofNullable(jobs.get(id));
+        CronJob job = jobs.get(id);
+        if (job != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(job.tenantId())) {
+                return Optional.empty();
+            }
+        }
+        return Optional.ofNullable(job);
     }
 
     @Override
     public List<CronJob> listAll() {
-        return List.copyOf(jobs.values());
+        return tenantFiltered().toList();
     }
 
     @Override
     public List<CronJob> listEnabled() {
-        return jobs.values().stream().filter(CronJob::enabled).toList();
+        return tenantFiltered().filter(CronJob::enabled).toList();
     }
 
     @Override
     public boolean remove(String id) {
+        CronJob job = jobs.get(id);
+        if (job != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(job.tenantId())) {
+                return false;
+            }
+        }
         boolean removed = jobs.remove(id) != null;
         if (removed) persist();
         return removed;
+    }
+
+    private java.util.stream.Stream<CronJob> tenantFiltered() {
+        java.util.stream.Stream<CronJob> stream = jobs.values().stream();
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            stream = stream.filter(j -> tenantId.equals(j.tenantId()));
+        }
+        return stream;
     }
 
     @Override

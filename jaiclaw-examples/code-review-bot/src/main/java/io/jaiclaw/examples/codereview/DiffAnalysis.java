@@ -28,4 +28,23 @@ public record DiffAnalysis(
         @JsonProperty("severity")
         @JsonPropertyDescription("Overall severity: low, medium, or high")
         String severity
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String summary;
+        private List<String> issues;
+        private List<String> suggestions;
+        private String severity;
+
+        public Builder summary(String summary) { this.summary = summary; return this; }
+        public Builder issues(List<String> issues) { this.issues = issues; return this; }
+        public Builder suggestions(List<String> suggestions) { this.suggestions = suggestions; return this; }
+        public Builder severity(String severity) { this.severity = severity; return this; }
+
+        public DiffAnalysis build() {
+            return new DiffAnalysis(summary, issues, suggestions, severity);
+        }
+    }
+}

@@ -51,4 +51,25 @@ public record TelegramConfig(
     }
 
     public static final TelegramConfig DISABLED = new TelegramConfig("", "", false);
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String botToken;
+        private String webhookUrl;
+        private boolean enabled;
+        private int pollingTimeoutSeconds;
+        private Set<String> allowedUserIds;
+
+        public Builder botToken(String botToken) { this.botToken = botToken; return this; }
+        public Builder webhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder pollingTimeoutSeconds(int pollingTimeoutSeconds) { this.pollingTimeoutSeconds = pollingTimeoutSeconds; return this; }
+        public Builder allowedUserIds(Set<String> allowedUserIds) { this.allowedUserIds = allowedUserIds; return this; }
+
+        public TelegramConfig build() {
+            return new TelegramConfig(
+                    botToken, webhookUrl, enabled, pollingTimeoutSeconds, allowedUserIds);
+        }
+    }
 }

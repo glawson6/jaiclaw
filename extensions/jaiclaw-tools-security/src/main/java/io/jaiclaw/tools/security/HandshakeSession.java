@@ -34,6 +34,9 @@ public class HandshakeSession {
     private String sessionToken;
     private boolean completed;
 
+    // Tenant context
+    private String tenantId;
+
     public HandshakeSession(String handshakeId) {
         this.handshakeId = handshakeId;
         this.createdAt = Instant.now();
@@ -83,4 +86,7 @@ public class HandshakeSession {
 
     public boolean isCompleted() { return completed; }
     public void setCompleted(boolean completed) { this.completed = completed; }
+
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 }

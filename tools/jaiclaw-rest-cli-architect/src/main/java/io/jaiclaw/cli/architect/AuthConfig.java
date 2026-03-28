@@ -37,4 +37,35 @@ public record AuthConfig(
         if (type == null) type = "none";
         if (scopes == null) scopes = List.of();
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String type;
+        private String headerName;
+        private String headerValuePrefix;
+        private String envVar;
+        private String usernameEnv;
+        private String passwordEnv;
+        private String tokenUrl;
+        private String clientIdEnv;
+        private String clientSecretEnv;
+        private List<String> scopes;
+
+        public Builder type(String type) { this.type = type; return this; }
+        public Builder headerName(String headerName) { this.headerName = headerName; return this; }
+        public Builder headerValuePrefix(String headerValuePrefix) { this.headerValuePrefix = headerValuePrefix; return this; }
+        public Builder envVar(String envVar) { this.envVar = envVar; return this; }
+        public Builder usernameEnv(String usernameEnv) { this.usernameEnv = usernameEnv; return this; }
+        public Builder passwordEnv(String passwordEnv) { this.passwordEnv = passwordEnv; return this; }
+        public Builder tokenUrl(String tokenUrl) { this.tokenUrl = tokenUrl; return this; }
+        public Builder clientIdEnv(String clientIdEnv) { this.clientIdEnv = clientIdEnv; return this; }
+        public Builder clientSecretEnv(String clientSecretEnv) { this.clientSecretEnv = clientSecretEnv; return this; }
+        public Builder scopes(List<String> scopes) { this.scopes = scopes; return this; }
+
+        public AuthConfig build() {
+            return new AuthConfig(
+                    type, headerName, headerValuePrefix, envVar, usernameEnv, passwordEnv, tokenUrl, clientIdEnv, clientSecretEnv, scopes);
+        }
+    }
 }

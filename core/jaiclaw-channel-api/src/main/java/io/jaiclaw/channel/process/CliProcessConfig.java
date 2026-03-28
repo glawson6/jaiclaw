@@ -35,4 +35,27 @@ public record CliProcessConfig(
     public boolean useTcp() {
         return tcpPort > 0;
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String command;
+        private List<String> args;
+        private String workingDir;
+        private int tcpPort;
+        private int healthCheckIntervalSeconds;
+        private int maxRestarts;
+
+        public Builder command(String command) { this.command = command; return this; }
+        public Builder args(List<String> args) { this.args = args; return this; }
+        public Builder workingDir(String workingDir) { this.workingDir = workingDir; return this; }
+        public Builder tcpPort(int tcpPort) { this.tcpPort = tcpPort; return this; }
+        public Builder healthCheckIntervalSeconds(int healthCheckIntervalSeconds) { this.healthCheckIntervalSeconds = healthCheckIntervalSeconds; return this; }
+        public Builder maxRestarts(int maxRestarts) { this.maxRestarts = maxRestarts; return this; }
+
+        public CliProcessConfig build() {
+            return new CliProcessConfig(
+                    command, args, workingDir, tcpPort, healthCheckIntervalSeconds, maxRestarts);
+        }
+    }
 }

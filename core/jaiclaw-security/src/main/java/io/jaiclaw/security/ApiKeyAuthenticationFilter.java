@@ -1,5 +1,8 @@
 package io.jaiclaw.security;
 
+import io.jaiclaw.core.tenant.DefaultTenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantGuard;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,11 +28,18 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthenticationFilter.class);
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String API_KEY_PARAM = "api_key";
+    private static final String TENANT_ID_HEADER = "X-Tenant-Id";
 
     private final ApiKeyProvider apiKeyProvider;
+    private final TenantGuard tenantGuard;
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
+        this(apiKeyProvider, null);
+    }
+
+    public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard) {
         this.apiKeyProvider = apiKeyProvider;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
@@ -62,6 +72,20 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // In MULTI mode, require X-Tenant-Id header and set TenantContext
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = request.getHeader(TENANT_ID_HEADER);
+            if (tenantId == null || tenantId.isBlank()) {
+                log.debug("Multi-tenant mode: missing X-Tenant-Id header for request to {}",
+                        request.getRequestURI());
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"missing_tenant_id\",\"message\":\"X-Tenant-Id header is required in multi-tenant mode\"}");
+                return;
+            }
+            TenantContextHolder.set(new DefaultTenantContext(tenantId, tenantId));
+        }
+
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken("api-key-user", null, List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -70,6 +94,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             SecurityContextHolder.clearContext();
+            if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+                TenantContextHolder.clear();
+            }
         }
     }
 

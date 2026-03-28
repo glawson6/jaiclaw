@@ -21,6 +21,10 @@
         </dependency>
         <dependency>
             <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-tools</artifactId>
         </dependency>
         <dependency>

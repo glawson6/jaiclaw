@@ -1,5 +1,7 @@
 package io.jaiclaw.security;
 
+import io.jaiclaw.core.tenant.TenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -92,15 +94,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String resolveSender(HttpServletRequest request) {
+        // Include tenantId in rate limit key when tenant context is set
+        String tenantPrefix = "";
+        TenantContext tenantCtx = TenantContextHolder.get();
+        if (tenantCtx != null) {
+            tenantPrefix = tenantCtx.getTenantId() + ":";
+        }
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof String subject) {
-            return "jwt:" + subject;
+            return tenantPrefix + "jwt:" + subject;
         }
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return "ip:" + forwarded.split(",")[0].trim();
+            return tenantPrefix + "ip:" + forwarded.split(",")[0].trim();
         }
-        return "ip:" + request.getRemoteAddr();
+        return tenantPrefix + "ip:" + request.getRemoteAddr();
     }
 
     private static class SenderWindow {

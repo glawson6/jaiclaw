@@ -19,4 +19,22 @@ public record CheckoutResult(
     public CheckoutResult {
         if (metadata == null) metadata = Map.of();
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String checkoutUrl;
+        private String sessionId;
+        private String provider;
+        private Map<String, String> metadata;
+
+        public Builder checkoutUrl(String checkoutUrl) { this.checkoutUrl = checkoutUrl; return this; }
+        public Builder sessionId(String sessionId) { this.sessionId = sessionId; return this; }
+        public Builder provider(String provider) { this.provider = provider; return this; }
+        public Builder metadata(Map<String, String> metadata) { this.metadata = metadata; return this; }
+
+        public CheckoutResult build() {
+            return new CheckoutResult(checkoutUrl, sessionId, provider, metadata);
+        }
+    }
 }

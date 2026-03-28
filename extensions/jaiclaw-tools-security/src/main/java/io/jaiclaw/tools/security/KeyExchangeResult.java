@@ -28,4 +28,26 @@ public record KeyExchangeResult(
         @JsonProperty("keyFingerprint")
         @JsonPropertyDescription("SHA-256 fingerprint of the shared secret")
         String keyFingerprint
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String handshakeId;
+        private String algorithm;
+        private String serverPublicKey;
+        private boolean sharedSecretEstablished;
+        private String keyFingerprint;
+
+        public Builder handshakeId(String handshakeId) { this.handshakeId = handshakeId; return this; }
+        public Builder algorithm(String algorithm) { this.algorithm = algorithm; return this; }
+        public Builder serverPublicKey(String serverPublicKey) { this.serverPublicKey = serverPublicKey; return this; }
+        public Builder sharedSecretEstablished(boolean sharedSecretEstablished) { this.sharedSecretEstablished = sharedSecretEstablished; return this; }
+        public Builder keyFingerprint(String keyFingerprint) { this.keyFingerprint = keyFingerprint; return this; }
+
+        public KeyExchangeResult build() {
+            return new KeyExchangeResult(
+                    handshakeId, algorithm, serverPublicKey, sharedSecretEstablished, keyFingerprint);
+        }
+    }
+}

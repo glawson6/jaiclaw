@@ -8,6 +8,7 @@ import io.jaiclaw.calendar.provider.RedisCalendarProvider;
 import io.jaiclaw.calendar.service.CalendarService;
 import io.jaiclaw.calendar.tool.CalendarTools;
 import io.jaiclaw.calendar.util.CalendarEventValidator;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +57,9 @@ public class JaiClawCalendarAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(CalendarProvider.class)
-    public CalendarProvider calendarProvider(CalendarProperties properties) {
+    public CalendarProvider calendarProvider(CalendarProperties properties, TenantGuard tenantGuard) {
         InMemoryCalendarProvider provider = new InMemoryCalendarProvider();
+        provider.setTenantGuard(tenantGuard);
         if ("in-memory".equals(properties.provider())) {
             provider.initialize();
         }

@@ -82,4 +82,33 @@ public record ChannelMessage(
                 id, channelId, accountId, peerId, content,
                 Instant.now(), Direction.OUTBOUND, attachments, Map.of());
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String id;
+        private String channelId;
+        private String accountId;
+        private String peerId;
+        private String content;
+        private Instant timestamp;
+        private Direction direction;
+        private List<Attachment> attachments;
+        private Map<String, Object> platformData;
+
+        public Builder id(String id) { this.id = id; return this; }
+        public Builder channelId(String channelId) { this.channelId = channelId; return this; }
+        public Builder accountId(String accountId) { this.accountId = accountId; return this; }
+        public Builder peerId(String peerId) { this.peerId = peerId; return this; }
+        public Builder content(String content) { this.content = content; return this; }
+        public Builder timestamp(Instant timestamp) { this.timestamp = timestamp; return this; }
+        public Builder direction(Direction direction) { this.direction = direction; return this; }
+        public Builder attachments(List<Attachment> attachments) { this.attachments = attachments; return this; }
+        public Builder platformData(Map<String, Object> platformData) { this.platformData = platformData; return this; }
+
+        public ChannelMessage build() {
+            return new ChannelMessage(
+                    id, channelId, accountId, peerId, content, timestamp, direction, attachments, platformData);
+        }
+    }
 }

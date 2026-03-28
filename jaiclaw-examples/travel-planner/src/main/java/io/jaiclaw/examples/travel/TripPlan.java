@@ -24,4 +24,23 @@ public record TripPlan(
         @JsonProperty("itinerary")
         @JsonPropertyDescription("Day-by-day itinerary")
         String itinerary
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String summary;
+        private double totalCost;
+        private boolean withinBudget;
+        private String itinerary;
+
+        public Builder summary(String summary) { this.summary = summary; return this; }
+        public Builder totalCost(double totalCost) { this.totalCost = totalCost; return this; }
+        public Builder withinBudget(boolean withinBudget) { this.withinBudget = withinBudget; return this; }
+        public Builder itinerary(String itinerary) { this.itinerary = itinerary; return this; }
+
+        public TripPlan build() {
+            return new TripPlan(summary, totalCost, withinBudget, itinerary);
+        }
+    }
+}

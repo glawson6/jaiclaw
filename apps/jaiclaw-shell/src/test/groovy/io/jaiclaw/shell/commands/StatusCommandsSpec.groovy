@@ -16,8 +16,7 @@ class StatusCommandsSpec extends Specification {
     SessionManager sessionManager = new SessionManager()
     SkillLoader skillLoader = Mock()
 
-    JaiClawProperties properties = new JaiClawProperties(
-            null, null, null, null, null, null, null, null, null, null, null)
+    JaiClawProperties properties = JaiClawProperties.builder().build()
 
     StatusCommands commands = new StatusCommands(
             properties, toolRegistry, pluginRegistry, sessionManager, skillLoader)

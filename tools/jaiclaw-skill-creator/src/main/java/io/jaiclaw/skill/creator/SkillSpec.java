@@ -69,4 +69,24 @@ public record SkillSpec(
         }
         return List.of(value.toString());
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String name;
+        private String description;
+        private List<String> platforms;
+        private List<String> requiredBins;
+        private String purpose;
+
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder platforms(List<String> platforms) { this.platforms = platforms; return this; }
+        public Builder requiredBins(List<String> requiredBins) { this.requiredBins = requiredBins; return this; }
+        public Builder purpose(String purpose) { this.purpose = purpose; return this; }
+
+        public SkillSpec build() {
+            return new SkillSpec(name, description, platforms, requiredBins, purpose);
+        }
+    }
 }

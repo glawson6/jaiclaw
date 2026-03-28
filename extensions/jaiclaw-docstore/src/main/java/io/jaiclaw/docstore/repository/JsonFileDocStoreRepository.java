@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 /**
  * JSON file-backed DocStore repository. Loads from disk on startup,
@@ -26,13 +28,28 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
     private final Path storePath;
     private final ObjectMapper mapper;
     private final Map<String, DocStoreEntry> entries = new ConcurrentHashMap<>();
+    private final TenantGuard tenantGuard;
 
     public JsonFileDocStoreRepository(Path storagePath) {
+        this(storagePath, null);
+    }
+
+    public JsonFileDocStoreRepository(Path storagePath, TenantGuard tenantGuard) {
         this.storePath = storagePath.resolve("docstore.json");
+        this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
+    }
+
+    private Stream<DocStoreEntry> tenantFiltered() {
+        Stream<DocStoreEntry> stream = entries.values().stream();
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            stream = stream.filter(e -> tenantId.equals(e.tenantId()));
+        }
+        return stream;
     }
 
     @Override
@@ -43,25 +60,47 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public Optional<DocStoreEntry> findById(String id) {
-        return Optional.ofNullable(entries.get(id));
+        DocStoreEntry entry = entries.get(id);
+        if (entry != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(entry.tenantId())) {
+                return Optional.empty();
+            }
+        }
+        return Optional.ofNullable(entry);
     }
 
     @Override
     public void deleteById(String id) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            DocStoreEntry entry = entries.get(id);
+            if (entry == null) return;
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(entry.tenantId())) return;
+        }
         entries.remove(id);
         flushToDisk();
     }
 
     @Override
     public DocStoreEntry update(String id, UnaryOperator<DocStoreEntry> mutator) {
-        var updated = entries.computeIfPresent(id, (k, v) -> mutator.apply(v));
+        DocStoreEntry updated;
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            updated = entries.computeIfPresent(id, (k, v) -> {
+                if (!tenantId.equals(v.tenantId())) return v; // no-op for wrong tenant
+                return mutator.apply(v);
+            });
+        } else {
+            updated = entries.computeIfPresent(id, (k, v) -> mutator.apply(v));
+        }
         if (updated != null) flushToDisk();
         return updated;
     }
 
     @Override
     public List<DocStoreEntry> findByUserId(String userId, int limit, int offset) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> userId.equals(e.userId()))
                 .sorted(Comparator.comparing(DocStoreEntry::indexedAt).reversed())
                 .skip(offset)
@@ -71,7 +110,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public List<DocStoreEntry> findByChatId(String chatId, int limit, int offset) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> chatId.equals(e.chatId()))
                 .sorted(Comparator.comparing(DocStoreEntry::indexedAt).reversed())
                 .skip(offset)
@@ -81,7 +120,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public List<DocStoreEntry> findByTags(Set<String> tags, String scopeId) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> matchesScope(e, scopeId))
                 .filter(e -> e.tags() != null && !Collections.disjoint(e.tags(), tags))
                 .sorted(Comparator.comparing(DocStoreEntry::indexedAt).reversed())
@@ -90,7 +129,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public List<DocStoreEntry> findByMimeTypePrefix(String mimeTypePrefix, String scopeId) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> matchesScope(e, scopeId))
                 .filter(e -> e.mimeType() != null && e.mimeType().startsWith(mimeTypePrefix))
                 .sorted(Comparator.comparing(DocStoreEntry::indexedAt).reversed())
@@ -99,7 +138,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public List<DocStoreEntry> findRecent(String scopeId, int limit) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> matchesScope(e, scopeId))
                 .sorted(Comparator.comparing(DocStoreEntry::indexedAt).reversed())
                 .limit(limit)
@@ -108,7 +147,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
 
     @Override
     public long count(String scopeId) {
-        return entries.values().stream()
+        return tenantFiltered()
                 .filter(e -> matchesScope(e, scopeId))
                 .count();
     }

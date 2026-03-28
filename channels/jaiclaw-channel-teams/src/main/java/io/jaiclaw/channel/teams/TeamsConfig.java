@@ -41,4 +41,27 @@ public record TeamsConfig(
     }
 
     public static final TeamsConfig DISABLED = new TeamsConfig("", "", false, "", false, Set.of());
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String appId;
+        private String appSecret;
+        private boolean enabled;
+        private String tenantId;
+        private boolean skipJwtValidation;
+        private Set<String> allowedSenderIds;
+
+        public Builder appId(String appId) { this.appId = appId; return this; }
+        public Builder appSecret(String appSecret) { this.appSecret = appSecret; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder tenantId(String tenantId) { this.tenantId = tenantId; return this; }
+        public Builder skipJwtValidation(boolean skipJwtValidation) { this.skipJwtValidation = skipJwtValidation; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public TeamsConfig build() {
+            return new TeamsConfig(
+                    appId, appSecret, enabled, tenantId, skipJwtValidation, allowedSenderIds);
+        }
+    }
 }

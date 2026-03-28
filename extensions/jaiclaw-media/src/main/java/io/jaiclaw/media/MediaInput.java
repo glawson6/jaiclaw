@@ -42,4 +42,22 @@ public record MediaInput(
     public long sizeBytes() {
         return data.length;
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private byte[] data;
+        private String mimeType;
+        private String filename;
+        private Map<String, String> metadata;
+
+        public Builder data(byte[] data) { this.data = data; return this; }
+        public Builder mimeType(String mimeType) { this.mimeType = mimeType; return this; }
+        public Builder filename(String filename) { this.filename = filename; return this; }
+        public Builder metadata(Map<String, String> metadata) { this.metadata = metadata; return this; }
+
+        public MediaInput build() {
+            return new MediaInput(data, mimeType, filename, metadata);
+        }
+    }
 }

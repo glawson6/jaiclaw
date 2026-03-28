@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.subscription.Subscription;
 import io.jaiclaw.subscription.SubscriptionRepository;
 import io.jaiclaw.subscription.SubscriptionStatus;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  * JSON file-backed subscription repository. Loads from disk on startup,
@@ -30,30 +32,52 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
     private final Path storePath;
     private final ObjectMapper mapper;
     private final Map<String, Subscription> subscriptions = new ConcurrentHashMap<>();
+    private final TenantGuard tenantGuard;
 
     public JsonFileSubscriptionRepository(Path storagePath) {
+        this(storagePath, null);
+    }
+
+    public JsonFileSubscriptionRepository(Path storagePath, TenantGuard tenantGuard) {
         this.storePath = storagePath.resolve("subscriptions.json");
+        this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
     }
 
+    private Stream<Subscription> tenantFiltered() {
+        Stream<Subscription> stream = subscriptions.values().stream();
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            stream = stream.filter(s -> tenantId.equals(s.tenantId()));
+        }
+        return stream;
+    }
+
     @Override
     public Optional<Subscription> findById(String id) {
-        return Optional.ofNullable(subscriptions.get(id));
+        Subscription sub = subscriptions.get(id);
+        if (sub != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(sub.tenantId())) {
+                return Optional.empty();
+            }
+        }
+        return Optional.ofNullable(sub);
     }
 
     @Override
     public List<Subscription> findByUserId(String userId) {
-        return subscriptions.values().stream()
+        return tenantFiltered()
                 .filter(s -> userId.equals(s.userId()))
                 .toList();
     }
 
     @Override
     public List<Subscription> findExpired(Instant before) {
-        return subscriptions.values().stream()
+        return tenantFiltered()
                 .filter(s -> s.status() == SubscriptionStatus.ACTIVE || s.status() == SubscriptionStatus.PAST_DUE)
                 .filter(s -> s.expiresAt() != null && s.expiresAt().isBefore(before))
                 .toList();
@@ -68,6 +92,12 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
 
     @Override
     public void deleteById(String id) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            Subscription sub = subscriptions.get(id);
+            if (sub == null) return;
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(sub.tenantId())) return;
+        }
         subscriptions.remove(id);
         flushToDisk();
     }

@@ -46,4 +46,24 @@ public record DiscordConfig(
     }
 
     public static final DiscordConfig DISABLED = new DiscordConfig("", "", false, false, Set.of());
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String botToken;
+        private String applicationId;
+        private boolean enabled;
+        private boolean useGateway;
+        private Set<String> allowedSenderIds;
+
+        public Builder botToken(String botToken) { this.botToken = botToken; return this; }
+        public Builder applicationId(String applicationId) { this.applicationId = applicationId; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder useGateway(boolean useGateway) { this.useGateway = useGateway; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public DiscordConfig build() {
+            return new DiscordConfig(botToken, applicationId, enabled, useGateway, allowedSenderIds);
+        }
+    }
 }

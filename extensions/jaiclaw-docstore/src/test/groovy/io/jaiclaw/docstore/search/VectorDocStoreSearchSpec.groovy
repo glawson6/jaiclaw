@@ -96,7 +96,7 @@ class VectorDocStoreSearchSpec extends Specification {
                 ["finance", "quarterly"], ["Acme Corp"], [:], AnalysisResult.AnalysisLevel.LLM)
         def entry = new DocStoreEntry("e1", DocStoreEntry.EntryType.FILE, "report.pdf",
                 "application/pdf", 1000L, null, "telegram", null, null,
-                "user1", "chat1", Instant.now(), Set.of(), "A report", null, analysis)
+                "user1", "chat1", Instant.now(), Set.of(), "A report", null, analysis, null)
 
         when:
         search.index(entry)
@@ -116,6 +116,6 @@ class VectorDocStoreSearchSpec extends Specification {
                                      Set<String> tags = Set.of()) {
         new DocStoreEntry(id, DocStoreEntry.EntryType.FILE, filename,
                 "application/pdf", 1000L, null, "telegram", null, null,
-                "user1", "chat1", Instant.now(), tags, description, null, null)
+                "user1", "chat1", Instant.now(), tags, description, null, null, null)
     }
 }

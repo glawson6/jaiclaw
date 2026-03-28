@@ -26,4 +26,23 @@ public record ComplianceReport(
         @JsonProperty("score")
         @JsonPropertyDescription("Compliance score from 0 to 100")
         int score
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private boolean compliant;
+        private List<String> findings;
+        private String summary;
+        private int score;
+
+        public Builder compliant(boolean compliant) { this.compliant = compliant; return this; }
+        public Builder findings(List<String> findings) { this.findings = findings; return this; }
+        public Builder summary(String summary) { this.summary = summary; return this; }
+        public Builder score(int score) { this.score = score; return this; }
+
+        public ComplianceReport build() {
+            return new ComplianceReport(compliant, findings, summary, score);
+        }
+    }
+}

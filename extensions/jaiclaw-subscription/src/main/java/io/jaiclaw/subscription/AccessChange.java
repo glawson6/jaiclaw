@@ -21,4 +21,24 @@ public record AccessChange(
     public AccessChange {
         if (effectiveAt == null) effectiveAt = Instant.now();
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String userId;
+        private String groupId;
+        private AccessChangeType type;
+        private Instant effectiveAt;
+        private String reason;
+
+        public Builder userId(String userId) { this.userId = userId; return this; }
+        public Builder groupId(String groupId) { this.groupId = groupId; return this; }
+        public Builder type(AccessChangeType type) { this.type = type; return this; }
+        public Builder effectiveAt(Instant effectiveAt) { this.effectiveAt = effectiveAt; return this; }
+        public Builder reason(String reason) { this.reason = reason; return this; }
+
+        public AccessChange build() {
+            return new AccessChange(userId, groupId, type, effectiveAt, reason);
+        }
+    }
 }

@@ -1,6 +1,6 @@
 package io.jaiclaw.memory;
 
-import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -22,9 +22,15 @@ public class VectorStoreSearchManager implements MemorySearchManager {
     private static final String TENANT_ID_KEY = "tenantId";
 
     private final VectorStore vectorStore;
+    private final TenantGuard tenantGuard;
 
     public VectorStoreSearchManager(VectorStore vectorStore) {
+        this(vectorStore, null);
+    }
+
+    public VectorStoreSearchManager(VectorStore vectorStore, TenantGuard tenantGuard) {
         this.vectorStore = vectorStore;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
@@ -36,11 +42,14 @@ public class VectorStoreSearchManager implements MemorySearchManager {
                 .topK(options.maxResults())
                 .similarityThreshold(options.minScore());
 
-        // Apply tenant filter if a tenant context is active
+        // Apply tenant filter — in MULTI mode this is mandatory (fail-closed)
         String tenantId = resolveTenantId();
         if (tenantId != null) {
             FilterExpressionBuilder fb = new FilterExpressionBuilder();
             builder.filterExpression(fb.eq(TENANT_ID_KEY, tenantId).build());
+        } else if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            // Fail-closed: MULTI mode requires a tenant filter
+            return List.of();
         }
 
         List<Document> docs = vectorStore.similaritySearch(builder.build());
@@ -64,6 +73,10 @@ public class VectorStoreSearchManager implements MemorySearchManager {
         String tenantId = resolveTenantId();
         if (tenantId != null) {
             metadata.put(TENANT_ID_KEY, tenantId);
+        } else if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            // Fail-closed: MULTI mode requires tenant context for document indexing
+            log.warn("Skipping document indexing — no tenant context in MULTI mode: {}", path);
+            return;
         }
 
         Document doc = new Document(content, metadata);
@@ -98,7 +111,6 @@ public class VectorStoreSearchManager implements MemorySearchManager {
     }
 
     private String resolveTenantId() {
-        var ctx = TenantContextHolder.get();
-        return ctx != null ? ctx.getTenantId() : null;
+        return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
     }
 }

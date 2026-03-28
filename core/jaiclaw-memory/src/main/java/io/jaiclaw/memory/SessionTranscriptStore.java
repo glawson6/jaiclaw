@@ -1,6 +1,7 @@
 package io.jaiclaw.memory;
 
 import io.jaiclaw.core.model.Message;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,20 +15,36 @@ import java.util.List;
 
 /**
  * Persists session transcripts as JSONL files.
- * Each line is a JSON object with timestamp, role, and content.
+ * <p>
+ * In SINGLE mode: {@code sessions/{sessionKey}.jsonl}.
+ * In MULTI mode: {@code sessions/{tenantId}/{sessionKey}.jsonl}.
  */
 public class SessionTranscriptStore {
 
     private static final Logger log = LoggerFactory.getLogger(SessionTranscriptStore.class);
 
-    private final Path sessionsDir;
+    private final Path baseDir;
+    private final TenantGuard tenantGuard;
 
     public SessionTranscriptStore(Path workspaceDir) {
-        this.sessionsDir = workspaceDir.resolve("sessions");
+        this(workspaceDir, null);
+    }
+
+    public SessionTranscriptStore(Path workspaceDir, TenantGuard tenantGuard) {
+        this.baseDir = workspaceDir;
+        this.tenantGuard = tenantGuard;
+    }
+
+    private Path resolveSessionsDir() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            return baseDir.resolve("sessions").resolve(tenantGuard.resolveTenantPrefix());
+        }
+        return baseDir.resolve("sessions");
     }
 
     public void appendMessage(String sessionKey, Message message) {
         try {
+            Path sessionsDir = resolveSessionsDir();
             Files.createDirectories(sessionsDir);
             Path transcriptFile = sessionsDir.resolve(sanitizeFileName(sessionKey) + ".jsonl");
 
@@ -57,7 +74,7 @@ public class SessionTranscriptStore {
     }
 
     public List<String> readTranscript(String sessionKey) {
-        Path transcriptFile = sessionsDir.resolve(sanitizeFileName(sessionKey) + ".jsonl");
+        Path transcriptFile = resolveSessionsDir().resolve(sanitizeFileName(sessionKey) + ".jsonl");
         if (!Files.exists(transcriptFile)) return List.of();
         try {
             return Files.readAllLines(transcriptFile, StandardCharsets.UTF_8);
@@ -68,11 +85,11 @@ public class SessionTranscriptStore {
     }
 
     public boolean exists(String sessionKey) {
-        return Files.exists(sessionsDir.resolve(sanitizeFileName(sessionKey) + ".jsonl"));
+        return Files.exists(resolveSessionsDir().resolve(sanitizeFileName(sessionKey) + ".jsonl"));
     }
 
     public Path getSessionsDir() {
-        return sessionsDir;
+        return resolveSessionsDir();
     }
 
     private String sanitizeFileName(String sessionKey) {

@@ -40,4 +40,26 @@ public record CronJobDefinition(
     public CronJobDefinition withCronJob(CronJob updated) {
         return new CronJobDefinition(updated, provider, model, systemPrompt, toolProfile, skills);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private CronJob cronJob;
+        private String provider;
+        private String model;
+        private String systemPrompt;
+        private ToolProfile toolProfile;
+        private List<String> skills;
+
+        public Builder cronJob(CronJob cronJob) { this.cronJob = cronJob; return this; }
+        public Builder provider(String provider) { this.provider = provider; return this; }
+        public Builder model(String model) { this.model = model; return this; }
+        public Builder systemPrompt(String systemPrompt) { this.systemPrompt = systemPrompt; return this; }
+        public Builder toolProfile(ToolProfile toolProfile) { this.toolProfile = toolProfile; return this; }
+        public Builder skills(List<String> skills) { this.skills = skills; return this; }
+
+        public CronJobDefinition build() {
+            return new CronJobDefinition(cronJob, provider, model, systemPrompt, toolProfile, skills);
+        }
+    }
 }

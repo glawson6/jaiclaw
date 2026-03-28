@@ -1,5 +1,6 @@
 package io.jaiclaw.canvas;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,30 +13,51 @@ import java.util.UUID;
 
 /**
  * Manages agent-generated HTML files for the canvas.
- * Files are written to a temp directory and served by the canvas host.
+ * <p>
+ * In SINGLE mode: {@code {canvasDir}/{id}.html}.
+ * In MULTI mode: {@code {canvasDir}/{tenantId}/{id}.html}.
  */
 public class CanvasFileManager {
 
     private static final Logger log = LoggerFactory.getLogger(CanvasFileManager.class);
 
     private final Path canvasDir;
+    private final TenantGuard tenantGuard;
 
     public CanvasFileManager() {
-        try {
-            this.canvasDir = Files.createTempDirectory("jaiclaw-canvas-");
-            log.info("Canvas files directory: {}", canvasDir);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create canvas temp directory", e);
-        }
+        this(null, null);
     }
 
     public CanvasFileManager(Path canvasDir) {
-        this.canvasDir = canvasDir;
+        this(canvasDir, null);
+    }
+
+    public CanvasFileManager(Path canvasDir, TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
         try {
-            Files.createDirectories(canvasDir);
+            if (canvasDir == null) {
+                this.canvasDir = Files.createTempDirectory("jaiclaw-canvas-");
+            } else {
+                this.canvasDir = canvasDir;
+                Files.createDirectories(canvasDir);
+            }
+            log.info("Canvas files directory: {}", this.canvasDir);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create canvas directory", e);
         }
+    }
+
+    private Path resolveDir() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            Path tenantDir = canvasDir.resolve(tenantGuard.resolveTenantPrefix());
+            try {
+                Files.createDirectories(tenantDir);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to create tenant canvas directory", e);
+            }
+            return tenantDir;
+        }
+        return canvasDir;
     }
 
     public String writeHtml(String html) {
@@ -45,7 +67,7 @@ public class CanvasFileManager {
     public String writeHtml(String id, String html) {
         String fileName = id + ".html";
         try {
-            Files.writeString(canvasDir.resolve(fileName), html, StandardCharsets.UTF_8);
+            Files.writeString(resolveDir().resolve(fileName), html, StandardCharsets.UTF_8);
             return fileName;
         } catch (IOException e) {
             log.error("Failed to write canvas HTML {}: {}", fileName, e.getMessage());
@@ -54,7 +76,7 @@ public class CanvasFileManager {
     }
 
     public Optional<String> readHtml(String fileName) {
-        Path file = canvasDir.resolve(fileName);
+        Path file = resolveDir().resolve(fileName);
         if (!Files.exists(file)) return Optional.empty();
         try {
             return Optional.of(Files.readString(file, StandardCharsets.UTF_8));

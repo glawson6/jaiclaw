@@ -2,6 +2,7 @@ package io.jaiclaw.cronmanager;
 
 import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.session.SessionManager;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.cron.CronJobExecutor;
 import io.jaiclaw.cron.CronJobStore;
 import io.jaiclaw.cron.CronService;
@@ -46,8 +47,9 @@ class CronManagerAutoConfiguration {
     }
 
     @Bean
-    CronService cronService(CronJobStore cronJobStore, CronJobExecutor cronJobExecutor) {
-        return new CronService(cronJobStore, cronJobExecutor, 5, 600);
+    CronService cronService(CronJobStore cronJobStore, CronJobExecutor cronJobExecutor,
+                            TenantGuard tenantGuard) {
+        return new CronService(cronJobStore, cronJobExecutor, 5, 600, tenantGuard);
     }
 
     @Bean
@@ -63,9 +65,10 @@ class CronManagerAutoConfiguration {
                                                 CronExecutionStore executionStore,
                                                 CronService cronService,
                                                 CronBatchJobFactory batchJobFactory,
-                                                JobLauncher jobLauncher) {
+                                                JobLauncher jobLauncher,
+                                                TenantGuard tenantGuard) {
         return new CronJobManagerService(definitionStore, executionStore, cronService,
-                batchJobFactory, jobLauncher);
+                batchJobFactory, jobLauncher, tenantGuard);
     }
 
     @Bean

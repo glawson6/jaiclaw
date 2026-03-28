@@ -32,4 +32,22 @@ public record OrchestrationResult(
     public static OrchestrationResult failure(String error) {
         return new OrchestrationResult("", Map.of(), false, error);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String output;
+        private Map<String, Object> metadata;
+        private boolean success;
+        private String error;
+
+        public Builder output(String output) { this.output = output; return this; }
+        public Builder metadata(Map<String, Object> metadata) { this.metadata = metadata; return this; }
+        public Builder success(boolean success) { this.success = success; return this; }
+        public Builder error(String error) { this.error = error; return this; }
+
+        public OrchestrationResult build() {
+            return new OrchestrationResult(output, metadata, success, error);
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package io.jaiclaw.docstore.search;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +22,19 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
     private static final String ENTRY_ID_KEY = "docstore_entry_id";
     private static final int MAX_TEXT_LENGTH = 30000;
 
+    private static final String TENANT_ID_KEY = "tenantId";
+
     private final VectorStore vectorStore;
+    private final TenantGuard tenantGuard;
     private final Map<String, DocStoreEntry> entries = new ConcurrentHashMap<>();
 
     public VectorDocStoreSearch(VectorStore vectorStore) {
+        this(vectorStore, null);
+    }
+
+    public VectorDocStoreSearch(VectorStore vectorStore, TenantGuard tenantGuard) {
         this.vectorStore = vectorStore;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
@@ -37,15 +46,31 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
                 .topK(options.maxResults())
                 .similarityThreshold(0.0);
 
+        // Build filter expression combining tenant and scope filters
+        FilterExpressionBuilder fb = new FilterExpressionBuilder();
+        FilterExpressionBuilder.Op tenantFilter = null;
+        FilterExpressionBuilder.Op scopeFilter = null;
+
+        // Tenant filter in MULTI mode
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            tenantFilter = fb.eq(TENANT_ID_KEY, tenantId);
+        }
+
         // Scope filter by userId or chatId if provided
         if (options.scopeId() != null) {
-            FilterExpressionBuilder fb = new FilterExpressionBuilder();
-            builder.filterExpression(
-                    fb.or(
-                            fb.eq("userId", options.scopeId()),
-                            fb.eq("chatId", options.scopeId())
-                    ).build()
+            scopeFilter = fb.or(
+                    fb.eq("userId", options.scopeId()),
+                    fb.eq("chatId", options.scopeId())
             );
+        }
+
+        if (tenantFilter != null && scopeFilter != null) {
+            builder.filterExpression(fb.and(tenantFilter, scopeFilter).build());
+        } else if (tenantFilter != null) {
+            builder.filterExpression(tenantFilter.build());
+        } else if (scopeFilter != null) {
+            builder.filterExpression(scopeFilter.build());
         }
 
         List<Document> docs = vectorStore.similaritySearch(builder.build());
@@ -81,6 +106,16 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
         metadata.put("chatId", entry.chatId() != null ? entry.chatId() : "");
         metadata.put("mimeType", entry.mimeType() != null ? entry.mimeType() : "");
         metadata.put("entryType", entry.entryType().name());
+
+        // Tag with tenant for isolation in MULTI mode
+        if (entry.tenantId() != null) {
+            metadata.put(TENANT_ID_KEY, entry.tenantId());
+        } else if (tenantGuard != null) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (tenantId != null) {
+                metadata.put(TENANT_ID_KEY, tenantId);
+            }
+        }
 
         Document doc = new Document(entry.id(), text, metadata);
         vectorStore.add(List.of(doc));
@@ -126,6 +161,11 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
     }
 
     private boolean matchesOptions(DocStoreEntry entry, DocStoreSearchOptions options) {
+        // Tenant filtering in MULTI mode (defense-in-depth — vector filter should already handle this)
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(entry.tenantId())) return false;
+        }
         if (options.filterTags() != null && !options.filterTags().isEmpty() &&
                 (entry.tags() == null || Collections.disjoint(entry.tags(), options.filterTags()))) {
             return false;

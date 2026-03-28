@@ -28,4 +28,25 @@ public record AuthResult(
         @JsonProperty("verificationDetails")
         @JsonPropertyDescription("Human-readable verification details")
         String verificationDetails
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String handshakeId;
+        private String authMethod;
+        private boolean verified;
+        private String subject;
+        private String verificationDetails;
+
+        public Builder handshakeId(String handshakeId) { this.handshakeId = handshakeId; return this; }
+        public Builder authMethod(String authMethod) { this.authMethod = authMethod; return this; }
+        public Builder verified(boolean verified) { this.verified = verified; return this; }
+        public Builder subject(String subject) { this.subject = subject; return this; }
+        public Builder verificationDetails(String verificationDetails) { this.verificationDetails = verificationDetails; return this; }
+
+        public AuthResult build() {
+            return new AuthResult(handshakeId, authMethod, verified, subject, verificationDetails);
+        }
+    }
+}

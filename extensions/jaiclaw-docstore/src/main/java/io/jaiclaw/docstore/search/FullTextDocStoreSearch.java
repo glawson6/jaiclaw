@@ -1,5 +1,6 @@
 package io.jaiclaw.docstore.search;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 
 import java.util.*;
@@ -8,11 +9,21 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Full-text search implementation. Maintains an in-memory inverted index
  * across filenames, descriptions, tags, and extracted text.
+ * In MULTI mode, search results are filtered by the current tenant.
  */
 public class FullTextDocStoreSearch implements DocStoreSearchProvider {
 
     private final Map<String, DocStoreEntry> entries = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> invertedIndex = new ConcurrentHashMap<>();
+    private final TenantGuard tenantGuard;
+
+    public FullTextDocStoreSearch() {
+        this(null);
+    }
+
+    public FullTextDocStoreSearch(TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
+    }
 
     @Override
     public List<DocStoreSearchResult> search(String query, DocStoreSearchOptions options) {
@@ -82,6 +93,11 @@ public class FullTextDocStoreSearch implements DocStoreSearchProvider {
     }
 
     private boolean matchesOptions(DocStoreEntry entry, DocStoreSearchOptions options) {
+        // Tenant filtering in MULTI mode
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(entry.tenantId())) return false;
+        }
         if (options.scopeId() != null &&
                 !options.scopeId().equals(entry.userId()) &&
                 !options.scopeId().equals(entry.chatId())) {

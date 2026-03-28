@@ -59,6 +59,7 @@ public class DocStoreService {
                 tags,
                 request.description(),
                 null,
+                null,
                 null
         );
 

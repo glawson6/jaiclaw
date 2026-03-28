@@ -45,4 +45,30 @@ public record AuditEvent(
         return new AuditEvent(id, Instant.now(), tenantId, actor, action, resource, Outcome.FAILURE,
                 Map.of("reason", reason));
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String id;
+        private Instant timestamp;
+        private String tenantId;
+        private String actor;
+        private String action;
+        private String resource;
+        private Outcome outcome;
+        private Map<String, Object> details;
+
+        public Builder id(String id) { this.id = id; return this; }
+        public Builder timestamp(Instant timestamp) { this.timestamp = timestamp; return this; }
+        public Builder tenantId(String tenantId) { this.tenantId = tenantId; return this; }
+        public Builder actor(String actor) { this.actor = actor; return this; }
+        public Builder action(String action) { this.action = action; return this; }
+        public Builder resource(String resource) { this.resource = resource; return this; }
+        public Builder outcome(Outcome outcome) { this.outcome = outcome; return this; }
+        public Builder details(Map<String, Object> details) { this.details = details; return this; }
+
+        public AuditEvent build() {
+            return new AuditEvent(id, timestamp, tenantId, actor, action, resource, outcome, details);
+        }
+    }
 }

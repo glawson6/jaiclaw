@@ -4,7 +4,9 @@ import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.ChannelRegistry;
 import io.jaiclaw.config.JaiClawProperties;
+import io.jaiclaw.config.TenantAgentConfigService;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -61,16 +63,36 @@ public class JaiClawGatewayAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry tenantChannelAdapterRegistry() {
+        return new io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(io.jaiclaw.gateway.mcp.McpServerRegistry.class)
+    public io.jaiclaw.gateway.mcp.TenantMcpServerRegistry tenantMcpServerRegistry(
+            io.jaiclaw.gateway.mcp.McpServerRegistry globalRegistry) {
+        return new io.jaiclaw.gateway.mcp.TenantMcpServerRegistry(globalRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public io.jaiclaw.gateway.GatewayService gatewayService(
             AgentRuntime agentRuntime,
             SessionManager sessionManager,
             ChannelRegistry channelRegistry,
             JaiClawProperties properties,
             io.jaiclaw.gateway.tenant.CompositeTenantResolver tenantResolver,
-            io.jaiclaw.gateway.attachment.AttachmentRouter attachmentRouter) {
+            io.jaiclaw.gateway.attachment.AttachmentRouter attachmentRouter,
+            ObjectProvider<io.jaiclaw.core.tenant.TenantGuard> tenantGuardProvider,
+            ObjectProvider<TenantAgentConfigService> configServiceProvider,
+            ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider) {
         return new io.jaiclaw.gateway.GatewayService(
                 agentRuntime, sessionManager, channelRegistry,
-                properties.agent().defaultAgent(), tenantResolver, attachmentRouter);
+                properties.agent().defaultAgent(), tenantResolver, attachmentRouter,
+                tenantGuardProvider.getIfAvailable(),
+                configServiceProvider.getIfAvailable(),
+                tenantChannelRegistryProvider.getIfAvailable());
     }
 
     @Bean

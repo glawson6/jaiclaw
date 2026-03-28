@@ -118,6 +118,6 @@ class HybridDocStoreSearchSpec extends Specification {
     private DocStoreEntry makeEntry(String id, String filename) {
         new DocStoreEntry(id, DocStoreEntry.EntryType.FILE, filename,
                 "application/pdf", 1000L, null, "telegram", null, null,
-                "user1", "chat1", Instant.now(), Set.of(), null, null, null)
+                "user1", "chat1", Instant.now(), Set.of(), null, null, null, null)
     }
 }

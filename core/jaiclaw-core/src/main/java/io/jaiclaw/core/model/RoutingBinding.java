@@ -30,4 +30,24 @@ public record RoutingBinding(
         }
         return true;
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String agentId;
+        private String channel;
+        private String peerKind;
+        private String peerId;
+        private boolean mentionOnly;
+
+        public Builder agentId(String agentId) { this.agentId = agentId; return this; }
+        public Builder channel(String channel) { this.channel = channel; return this; }
+        public Builder peerKind(String peerKind) { this.peerKind = peerKind; return this; }
+        public Builder peerId(String peerId) { this.peerId = peerId; return this; }
+        public Builder mentionOnly(boolean mentionOnly) { this.mentionOnly = mentionOnly; return this; }
+
+        public RoutingBinding build() {
+            return new RoutingBinding(agentId, channel, peerKind, peerId, mentionOnly);
+        }
+    }
 }

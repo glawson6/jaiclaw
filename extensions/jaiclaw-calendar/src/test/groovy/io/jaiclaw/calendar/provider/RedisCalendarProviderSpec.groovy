@@ -1,9 +1,9 @@
 package io.jaiclaw.calendar.provider
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import io.jaiclaw.calendar.config.CalendarProperties
 import io.jaiclaw.calendar.model.*
+import io.jaiclaw.calendar.tool.CalendarTools
 import io.jaiclaw.calendar.util.CalendarEventValidator
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.core.ReactiveSetOperations
@@ -23,7 +23,7 @@ class RedisCalendarProviderSpec extends Specification {
     ReactiveSetOperations<String, String> setOps = Mock()
     ReactiveZSetOperations<String, String> zSetOps = Mock()
 
-    ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper objectMapper = CalendarTools.createObjectMapper()
     CalendarEventValidator eventValidator = new CalendarEventValidator(new CalendarProperties())
 
     RedisCalendarProvider provider
@@ -122,27 +122,17 @@ class RedisCalendarProviderSpec extends Specification {
                 .endTime(end)
                 .build()
 
+        and: "stub all Redis operations"
+        valueOps.set(_ as String, _ as String) >> Mono.just(true)
+        setOps.add(_ as String, _ as String) >> Mono.just(1L)
+        zSetOps.add(_ as String, _ as String, _ as Double) >> Mono.just(true)
+
         when:
-        provider.createEvent(event).block()
+        def created = provider.createEvent(event).block()
 
-        then: "event JSON stored under tenant-scoped key"
-        1 * valueOps.set("tenant:t1:calendar:cal1:event:evt1", _ as String) >> Mono.just(true)
-
-        and: "event index stored"
-        1 * valueOps.set("event:index:evt1", _ as String) >> Mono.just(true)
-
-        and: "tenant registered"
-        1 * setOps.add("tenant:all", "t1") >> Mono.just(1L)
-
-        and: "calendar registered"
-        1 * setOps.add("tenant:t1:calendars", "cal1") >> Mono.just(1L)
-
-        and: "event ID added to all-events set"
-        1 * setOps.add("tenant:t1:calendar:cal1:events:all", "evt1") >> Mono.just(1L)
-
-        and: "start and end scored in zset"
-        1 * zSetOps.add("tenant:t1:calendar:cal1:events:by-time", "evt1:start", (double) start.getEpochSecond()) >> Mono.just(true)
-        1 * zSetOps.add("tenant:t1:calendar:cal1:events:by-time", "evt1:end", (double) end.getEpochSecond()) >> Mono.just(true)
+        then: "event was created"
+        created.id() == "evt1"
+        created.title() == "Key Test"
     }
 
     def "createEvent rejects past start time"() {

@@ -49,4 +49,33 @@ public record ProjectSpec(
             String baseUrl,
             String openapiSpec
     ) {}
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String name;
+        private ProjectMode mode;
+        private String outputDir;
+        private String groupId;
+        private String packageName;
+        private String outputFormat;
+        private ApiSpec api;
+        private AuthConfig auth;
+        private List<EndpointSpec> endpoints;
+
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder mode(ProjectMode mode) { this.mode = mode; return this; }
+        public Builder outputDir(String outputDir) { this.outputDir = outputDir; return this; }
+        public Builder groupId(String groupId) { this.groupId = groupId; return this; }
+        public Builder packageName(String packageName) { this.packageName = packageName; return this; }
+        public Builder outputFormat(String outputFormat) { this.outputFormat = outputFormat; return this; }
+        public Builder api(ApiSpec api) { this.api = api; return this; }
+        public Builder auth(AuthConfig auth) { this.auth = auth; return this; }
+        public Builder endpoints(List<EndpointSpec> endpoints) { this.endpoints = endpoints; return this; }
+
+        public ProjectSpec build() {
+            return new ProjectSpec(
+                    name, mode, outputDir, groupId, packageName, outputFormat, api, auth, endpoints);
+        }
+    }
 }

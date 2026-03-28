@@ -1,5 +1,6 @@
 package io.jaiclaw.subscription;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,11 +19,20 @@ public class SubscriptionService {
     private final Map<String, PaymentProvider> paymentProviders;
     private final List<SubscriptionLifecycleListener> listeners;
     private final Map<String, SubscriptionPlan> plans;
+    private final TenantGuard tenantGuard;
 
     public SubscriptionService(SubscriptionRepository repository,
                                List<PaymentProvider> paymentProviders,
                                List<SubscriptionLifecycleListener> listeners,
                                List<SubscriptionPlan> plans) {
+        this(repository, paymentProviders, listeners, plans, null);
+    }
+
+    public SubscriptionService(SubscriptionRepository repository,
+                               List<PaymentProvider> paymentProviders,
+                               List<SubscriptionLifecycleListener> listeners,
+                               List<SubscriptionPlan> plans,
+                               TenantGuard tenantGuard) {
         this.repository = repository;
         this.paymentProviders = new LinkedHashMap<>();
         for (var p : paymentProviders) {
@@ -33,6 +43,7 @@ public class SubscriptionService {
         for (var plan : plans) {
             this.plans.put(plan.id(), plan);
         }
+        this.tenantGuard = tenantGuard;
     }
 
     public List<SubscriptionPlan> listPlans() {
@@ -68,7 +79,8 @@ public class SubscriptionService {
         var provider = paymentProviders.get(providerName);
         if (provider == null) throw new IllegalArgumentException("Unknown payment provider: " + providerName);
 
-        // Create subscription in pending state
+        // Create subscription in pending state, stamping tenantId in MULTI mode
+        String tenantId = tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
         var subscription = new Subscription(
                 generateId(),
                 userId,
@@ -77,7 +89,8 @@ public class SubscriptionService {
                 null, null,
                 providerName,
                 null,
-                metadata != null ? metadata : Map.of()
+                metadata != null ? metadata : Map.of(),
+                tenantId
         );
 
         var checkoutMeta = new LinkedHashMap<>(metadata != null ? metadata : Map.of());
@@ -113,7 +126,8 @@ public class SubscriptionService {
                 sub.id(), sub.userId(), sub.planId(),
                 SubscriptionStatus.ACTIVE,
                 now, expiresAt,
-                sub.paymentProvider(), sub.externalId(), sub.metadata()
+                sub.paymentProvider(), sub.externalId(), sub.metadata(),
+                sub.tenantId()
         );
         repository.save(activated);
 

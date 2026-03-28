@@ -27,4 +27,24 @@ public record ToolCallEvent(
                                       int iterationNumber, String sessionKey) {
         return new ToolCallEvent(toolName, parameters, result, iterationNumber, sessionKey);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String toolName;
+        private String parameters;
+        private String result;
+        private int iterationNumber;
+        private String sessionKey;
+
+        public Builder toolName(String toolName) { this.toolName = toolName; return this; }
+        public Builder parameters(String parameters) { this.parameters = parameters; return this; }
+        public Builder result(String result) { this.result = result; return this; }
+        public Builder iterationNumber(int iterationNumber) { this.iterationNumber = iterationNumber; return this; }
+        public Builder sessionKey(String sessionKey) { this.sessionKey = sessionKey; return this; }
+
+        public ToolCallEvent build() {
+            return new ToolCallEvent(toolName, parameters, result, iterationNumber, sessionKey);
+        }
+    }
 }

@@ -25,8 +25,8 @@ class CronAgentFactorySpec extends Specification {
 
     def "executeJob creates session with correct key format"() {
         given:
-        def cronJob = new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "Check status", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("Check status").enabled(true).build()
         def jobDef = new CronJobDefinition(cronJob)
         def runId = "run-abc"
         def session = Session.create("sid", "cron:job1:run-abc", "default", null)
@@ -48,8 +48,8 @@ class CronAgentFactorySpec extends Specification {
 
     def "executeJob uses job's tool profile"() {
         given:
-        def cronJob = new CronJob("job2", "Coding Job", "default", "0 * * * *", "UTC",
-                "Write code", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job2").name("Coding Job").agentId("default")
+                .schedule("0 * * * *").prompt("Write code").enabled(true).build()
         def jobDef = new CronJobDefinition(cronJob, null, null, null, ToolProfile.CODING, [])
         def session = Session.create("sid", "cron:job2:run-xyz", "default", null)
         def response = new AssistantMessage("msg2", "Code written", "default")
@@ -67,8 +67,8 @@ class CronAgentFactorySpec extends Specification {
 
     def "executeJob cleans up session even on failure"() {
         given:
-        def cronJob = new CronJob("job3", "Failing Job", "default", "0 * * * *", "UTC",
-                "fail", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job3").name("Failing Job").agentId("default")
+                .schedule("0 * * * *").prompt("fail").enabled(true).build()
         def jobDef = new CronJobDefinition(cronJob)
         def session = Session.create("sid", "cron:job3:run-err", "default", null)
 

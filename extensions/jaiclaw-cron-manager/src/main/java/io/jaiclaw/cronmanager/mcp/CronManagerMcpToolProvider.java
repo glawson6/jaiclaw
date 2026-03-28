@@ -84,7 +84,7 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
     public McpToolResult execute(String toolName, Map<String, Object> args, TenantContext tenant) {
         try {
             return switch (toolName) {
-                case "create_job" -> handleCreateJob(args);
+                case "create_job" -> handleCreateJob(args, tenant);
                 case "list_jobs" -> handleListJobs();
                 case "get_job" -> handleGetJob(args);
                 case "delete_job" -> handleDeleteJob(args);
@@ -100,7 +100,7 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
         }
     }
 
-    private McpToolResult handleCreateJob(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleCreateJob(Map<String, Object> args, TenantContext tenant) throws JsonProcessingException {
         String name = (String) args.getOrDefault("name", "Unnamed Job");
         String schedule = (String) args.get("schedule");
         String prompt = (String) args.get("prompt");
@@ -114,9 +114,18 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
             return McpToolResult.error("'schedule' and 'prompt' are required");
         }
 
-        CronJob cronJob = new CronJob(
-                UUID.randomUUID().toString(), name, agentId, schedule, timezone,
-                prompt, null, null, enabled, null, null);
+        String tenantId = tenant != null ? tenant.getTenantId() : null;
+
+        CronJob cronJob = CronJob.builder()
+                .id(UUID.randomUUID().toString())
+                .name(name)
+                .agentId(agentId)
+                .schedule(schedule)
+                .timezone(timezone)
+                .prompt(prompt)
+                .enabled(enabled)
+                .tenantId(tenantId)
+                .build();
 
         CronJobDefinition definition = new CronJobDefinition(
                 cronJob, null, null, null, toolProfile, List.of());

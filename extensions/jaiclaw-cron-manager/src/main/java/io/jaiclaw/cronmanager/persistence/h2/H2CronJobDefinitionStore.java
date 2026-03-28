@@ -1,6 +1,7 @@
 package io.jaiclaw.cronmanager.persistence.h2;
 
 import io.jaiclaw.core.model.CronJob;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.cronmanager.model.CronJobDefinition;
 import io.jaiclaw.cronmanager.persistence.CronJobDefinitionStore;
@@ -25,10 +26,20 @@ public class H2CronJobDefinitionStore implements CronJobDefinitionStore {
     private static final Logger log = LoggerFactory.getLogger(H2CronJobDefinitionStore.class);
 
     private final JdbcTemplate jdbc;
+    private final TenantGuard tenantGuard;
     private final RowMapper<CronJobDefinition> rowMapper = new CronJobDefinitionRowMapper();
 
     public H2CronJobDefinitionStore(JdbcTemplate jdbc) {
+        this(jdbc, null);
+    }
+
+    public H2CronJobDefinitionStore(JdbcTemplate jdbc, TenantGuard tenantGuard) {
         this.jdbc = jdbc;
+        this.tenantGuard = tenantGuard;
+    }
+
+    private String tenantParam() {
+        return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
     }
 
     @Override
@@ -39,43 +50,56 @@ public class H2CronJobDefinitionStore implements CronJobDefinitionStore {
         jdbc.update("""
                 MERGE INTO cron_job_definitions (id, name, agent_id, schedule, timezone, prompt,
                     delivery_channel, delivery_target, enabled, last_run_at, next_run_at,
-                    provider, model, system_prompt, tool_profile, skills)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    provider, model, system_prompt, tool_profile, skills, tenant_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 job.id(), job.name(), job.agentId(), job.schedule(), job.timezone(), job.prompt(),
                 job.deliveryChannel(), job.deliveryTarget(), job.enabled(),
                 toTimestamp(job.lastRunAt()), toTimestamp(job.nextRunAt()),
                 def.provider(), def.model(), def.systemPrompt(),
-                def.toolProfile().name(), skillsCsv);
+                def.toolProfile().name(), skillsCsv, job.tenantId());
     }
 
     @Override
     public Optional<CronJobDefinition> findById(String id) {
+        String tp = tenantParam();
         List<CronJobDefinition> results = jdbc.query(
-                "SELECT * FROM cron_job_definitions WHERE id = ?", rowMapper, id);
+                "SELECT * FROM cron_job_definitions WHERE id = ? AND (tenant_id = ? OR ? IS NULL)",
+                rowMapper, id, tp, tp);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     @Override
     public List<CronJobDefinition> findAll() {
-        return jdbc.query("SELECT * FROM cron_job_definitions ORDER BY name", rowMapper);
+        String tp = tenantParam();
+        return jdbc.query(
+                "SELECT * FROM cron_job_definitions WHERE (tenant_id = ? OR ? IS NULL) ORDER BY name",
+                rowMapper, tp, tp);
     }
 
     @Override
     public List<CronJobDefinition> findEnabled() {
+        String tp = tenantParam();
         return jdbc.query(
-                "SELECT * FROM cron_job_definitions WHERE enabled = TRUE ORDER BY name", rowMapper);
+                "SELECT * FROM cron_job_definitions WHERE enabled = TRUE AND (tenant_id = ? OR ? IS NULL) ORDER BY name",
+                rowMapper, tp, tp);
     }
 
     @Override
     public boolean deleteById(String id) {
-        int rows = jdbc.update("DELETE FROM cron_job_definitions WHERE id = ?", id);
+        String tp = tenantParam();
+        int rows = jdbc.update(
+                "DELETE FROM cron_job_definitions WHERE id = ? AND (tenant_id = ? OR ? IS NULL)",
+                id, tp, tp);
         return rows > 0;
     }
 
     @Override
     public void updateEnabled(String id, boolean enabled) {
-        jdbc.update("UPDATE cron_job_definitions SET enabled = ? WHERE id = ?", enabled, id);
+        String tp = tenantParam();
+        jdbc.update(
+                "UPDATE cron_job_definitions SET enabled = ? WHERE id = ? AND (tenant_id = ? OR ? IS NULL)",
+                enabled, id, tp, tp);
     }
 
     private static Timestamp toTimestamp(Instant instant) {
@@ -100,7 +124,8 @@ public class H2CronJobDefinitionStore implements CronJobDefinitionStore {
                     rs.getString("delivery_target"),
                     rs.getBoolean("enabled"),
                     toInstant(rs.getTimestamp("last_run_at")),
-                    toInstant(rs.getTimestamp("next_run_at"))
+                    toInstant(rs.getTimestamp("next_run_at")),
+                    rs.getString("tenant_id")
             );
 
             String skillsCsv = rs.getString("skills");

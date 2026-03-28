@@ -1,6 +1,7 @@
 package io.jaiclaw.cronmanager;
 
 import io.jaiclaw.core.model.CronJob;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.cron.CronService;
 import io.jaiclaw.cronmanager.batch.CronBatchJobFactory;
 import io.jaiclaw.cronmanager.model.CronExecutionRecord;
@@ -33,17 +34,28 @@ public class CronJobManagerService {
     private final CronService cronService;
     private final CronBatchJobFactory batchJobFactory;
     private final JobLauncher jobLauncher;
+    private final TenantGuard tenantGuard;
 
     public CronJobManagerService(CronJobDefinitionStore definitionStore,
                                  CronExecutionStore executionStore,
                                  CronService cronService,
                                  CronBatchJobFactory batchJobFactory,
                                  JobLauncher jobLauncher) {
+        this(definitionStore, executionStore, cronService, batchJobFactory, jobLauncher, null);
+    }
+
+    public CronJobManagerService(CronJobDefinitionStore definitionStore,
+                                 CronExecutionStore executionStore,
+                                 CronService cronService,
+                                 CronBatchJobFactory batchJobFactory,
+                                 JobLauncher jobLauncher,
+                                 TenantGuard tenantGuard) {
         this.definitionStore = definitionStore;
         this.executionStore = executionStore;
         this.cronService = cronService;
         this.batchJobFactory = batchJobFactory;
         this.jobLauncher = jobLauncher;
+        this.tenantGuard = tenantGuard;
     }
 
     /**
@@ -97,23 +109,36 @@ public class CronJobManagerService {
     }
 
     /**
-     * Get a job definition by ID.
+     * Get a job definition by ID. In MULTI mode, the definition store filters by tenant.
      */
     public Optional<CronJobDefinition> getJob(String jobId) {
-        return definitionStore.findById(jobId);
+        Optional<CronJobDefinition> def = definitionStore.findById(jobId);
+        // Defense-in-depth: verify tenant on the returned definition
+        if (def.isPresent() && tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(def.get().cronJob().tenantId())) {
+                return Optional.empty();
+            }
+        }
+        return def;
     }
 
     /**
-     * List all job definitions.
+     * List all job definitions. In MULTI mode, the definition store filters by tenant.
      */
     public List<CronJobDefinition> listJobs() {
         return definitionStore.findAll();
     }
 
     /**
-     * Delete a job by ID.
+     * Delete a job by ID. In MULTI mode, validates tenant before deleting.
      */
     public boolean deleteJob(String jobId) {
+        // Verify tenant access before delete
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            Optional<CronJobDefinition> def = definitionStore.findById(jobId);
+            if (def.isEmpty()) return false;
+        }
         cronService.removeJob(jobId);
         boolean deleted = definitionStore.deleteById(jobId);
         if (deleted) {

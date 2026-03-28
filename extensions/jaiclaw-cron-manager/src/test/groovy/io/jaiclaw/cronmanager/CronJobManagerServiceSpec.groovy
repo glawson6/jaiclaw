@@ -60,8 +60,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "createJob saves definition and schedules via CronService"() {
         given:
-        def cronJob = new CronJob("job1", "Test Job", "default", "0 9 * * *", "UTC",
-                "Check status", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test Job").agentId("default")
+                .schedule("0 9 * * *").prompt("Check status").enabled(true).build()
         def definition = new CronJobDefinition(cronJob)
 
         when:
@@ -75,8 +75,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "createJob assigns ID when blank"() {
         given:
-        def cronJob = new CronJob("", "No ID Job", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("").name("No ID Job").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         def definition = new CronJobDefinition(cronJob)
 
         when:
@@ -89,8 +89,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "getJob delegates to definition store"() {
         given:
-        def cronJob = new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         def definition = new CronJobDefinition(cronJob)
         definitionStore.findById("job1") >> Optional.of(definition)
 
@@ -105,10 +105,10 @@ class CronJobManagerServiceSpec extends Specification {
     def "listJobs delegates to definition store"() {
         given:
         definitionStore.findAll() >> [
-                new CronJobDefinition(new CronJob("j1", "A", "default", "* * * * *", "UTC",
-                        "p", null, null, true, null, null)),
-                new CronJobDefinition(new CronJob("j2", "B", "default", "* * * * *", "UTC",
-                        "p", null, null, false, null, null))
+                new CronJobDefinition(CronJob.builder().id("j1").name("A").agentId("default")
+                        .schedule("* * * * *").prompt("p").enabled(true).build()),
+                new CronJobDefinition(CronJob.builder().id("j2").name("B").agentId("default")
+                        .schedule("* * * * *").prompt("p").build())
         ]
 
         when:
@@ -129,8 +129,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "pauseJob disables job and updates scheduler"() {
         given:
-        def cronJob = new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         def definition = new CronJobDefinition(cronJob)
         definitionStore.findById("job1") >> Optional.of(definition)
 
@@ -146,8 +146,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "resumeJob enables job and reschedules"() {
         given:
-        def cronJob = new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, false, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").build()
         def definition = new CronJobDefinition(cronJob)
         definitionStore.findById("job1") >> Optional.of(definition)
 
@@ -174,8 +174,8 @@ class CronJobManagerServiceSpec extends Specification {
 
     def "runNow launches batch job"() {
         given:
-        def cronJob = new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         def definition = new CronJobDefinition(cronJob)
         definitionStore.findById("job1") >> Optional.of(definition)
         def batchJob = Mock(Job)

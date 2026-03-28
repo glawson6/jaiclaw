@@ -29,4 +29,26 @@ public record SessionEstablished(
         @JsonProperty("summary")
         @JsonPropertyDescription("Human-readable summary of the established session")
         String summary
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String handshakeId;
+        private String sessionToken;
+        private String cipherSuite;
+        private int expiresInSeconds;
+        private String summary;
+
+        public Builder handshakeId(String handshakeId) { this.handshakeId = handshakeId; return this; }
+        public Builder sessionToken(String sessionToken) { this.sessionToken = sessionToken; return this; }
+        public Builder cipherSuite(String cipherSuite) { this.cipherSuite = cipherSuite; return this; }
+        public Builder expiresInSeconds(int expiresInSeconds) { this.expiresInSeconds = expiresInSeconds; return this; }
+        public Builder summary(String summary) { this.summary = summary; return this; }
+
+        public SessionEstablished build() {
+            return new SessionEstablished(
+                    handshakeId, sessionToken, cipherSuite, expiresInSeconds, summary);
+        }
+    }
+}

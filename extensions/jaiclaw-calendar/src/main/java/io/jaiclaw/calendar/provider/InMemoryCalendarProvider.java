@@ -1,6 +1,7 @@
 package io.jaiclaw.calendar.provider;
 
 import io.jaiclaw.calendar.model.*;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -21,6 +22,21 @@ public class InMemoryCalendarProvider implements CalendarProvider {
 
     private final ConcurrentHashMap<String, CalendarEvent> events = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CalendarInfo> calendars = new ConcurrentHashMap<>();
+    private TenantGuard tenantGuard;
+
+    public void setTenantGuard(TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
+    }
+
+    private boolean matchesTenant(String tenantId, String eventTenantId) {
+        if (tenantId == null) return true;
+        // In MULTI mode, strict matching — don't allow unscoped events to leak
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            return tenantId.equals(eventTenantId);
+        }
+        // In SINGLE mode, permissive — match if tenantId matches or event is unscoped
+        return tenantId.equals(eventTenantId) || eventTenantId == null;
+    }
 
     public void initialize() {
         log.info("Initializing in-memory calendar with sample events for next 2 months");
@@ -133,7 +149,7 @@ public class InMemoryCalendarProvider implements CalendarProvider {
         Flux<CalendarEvent> eventFlux = Flux.fromIterable(events.values())
                 .filter(event -> event.overlapsWith(startDate, endDate))
                 .filter(event -> event.status() != EventStatus.CANCELLED)
-                .filter(event -> tenantId == null || tenantId.equals(event.tenantId()) || event.tenantId() == null)
+                .filter(event -> matchesTenant(tenantId, event.tenantId()))
                 .filter(event -> calendarId == null || calendarId.equals(event.calendarId()) || event.calendarId() == null)
                 .sort(Comparator.comparing(CalendarEvent::startTime));
         if (limit != null && limit > 0) {
@@ -144,7 +160,8 @@ public class InMemoryCalendarProvider implements CalendarProvider {
 
     @Override
     public Mono<CalendarEvent> getEvent(String tenantId, String calendarId, String eventId) {
-        return Mono.justOrEmpty(events.get(eventId));
+        return Mono.justOrEmpty(events.get(eventId))
+                .filter(event -> matchesTenant(tenantId, event.tenantId()));
     }
 
     @Override
@@ -162,9 +179,10 @@ public class InMemoryCalendarProvider implements CalendarProvider {
     @Override
     public Mono<Void> deleteEvent(String tenantId, String calendarId, String eventId) {
         return Mono.fromRunnable(() -> {
-            CalendarEvent removed = events.remove(eventId);
-            if (removed != null) {
-                log.info("Deleted event: {} - {}", eventId, removed.title());
+            CalendarEvent existing = events.get(eventId);
+            if (existing != null && matchesTenant(tenantId, existing.tenantId())) {
+                events.remove(eventId);
+                log.info("Deleted event: {} - {}", eventId, existing.title());
             }
         });
     }

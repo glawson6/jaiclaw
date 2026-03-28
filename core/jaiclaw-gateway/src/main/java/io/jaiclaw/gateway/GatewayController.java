@@ -85,7 +85,26 @@ public class GatewayController {
             String channelId,
             String accountId,
             String peerId
-    ) {}
+    ) {
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private String content;
+            private String channelId;
+            private String accountId;
+            private String peerId;
+
+            public Builder content(String content) { this.content = content; return this; }
+            public Builder channelId(String channelId) { this.channelId = channelId; return this; }
+            public Builder accountId(String accountId) { this.accountId = accountId; return this; }
+            public Builder peerId(String peerId) { this.peerId = peerId; return this; }
+
+            public ChatRequest build() {
+                return new ChatRequest(content, channelId, accountId, peerId);
+            }
+        }
+}
 
     public record ChatResponse(
             String id,

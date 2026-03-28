@@ -21,4 +21,22 @@ public record CompactionConfig(
 
     public static final CompactionConfig DEFAULT = new CompactionConfig(true, 0.8, 20, null);
     public static final CompactionConfig DISABLED = new CompactionConfig(false, 0.8, 20, null);
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private boolean enabled;
+        private double triggerThreshold;
+        private int targetTokenPercent;
+        private String summaryModel;
+
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder triggerThreshold(double triggerThreshold) { this.triggerThreshold = triggerThreshold; return this; }
+        public Builder targetTokenPercent(int targetTokenPercent) { this.targetTokenPercent = targetTokenPercent; return this; }
+        public Builder summaryModel(String summaryModel) { this.summaryModel = summaryModel; return this; }
+
+        public CompactionConfig build() {
+            return new CompactionConfig(enabled, triggerThreshold, targetTokenPercent, summaryModel);
+        }
+    }
 }

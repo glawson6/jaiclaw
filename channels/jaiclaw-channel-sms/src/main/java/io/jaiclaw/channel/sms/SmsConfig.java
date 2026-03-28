@@ -43,4 +43,27 @@ public record SmsConfig(
     }
 
     public static final SmsConfig DISABLED = new SmsConfig("", "", "", "/webhooks/sms", false, Set.of());
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String accountSid;
+        private String authToken;
+        private String fromNumber;
+        private String webhookPath;
+        private boolean enabled;
+        private Set<String> allowedSenderIds;
+
+        public Builder accountSid(String accountSid) { this.accountSid = accountSid; return this; }
+        public Builder authToken(String authToken) { this.authToken = authToken; return this; }
+        public Builder fromNumber(String fromNumber) { this.fromNumber = fromNumber; return this; }
+        public Builder webhookPath(String webhookPath) { this.webhookPath = webhookPath; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public SmsConfig build() {
+            return new SmsConfig(
+                    accountSid, authToken, fromNumber, webhookPath, enabled, allowedSenderIds);
+        }
+    }
 }

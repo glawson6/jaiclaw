@@ -27,4 +27,24 @@ public record HandshakeRequest(
         @JsonProperty("clientNonce")
         @JsonPropertyDescription("Client-generated nonce for freshness")
         String clientNonce
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String clientId;
+        private List<String> preferredCipherSuites;
+        private List<String> preferredAuthMethods;
+        private String clientNonce;
+
+        public Builder clientId(String clientId) { this.clientId = clientId; return this; }
+        public Builder preferredCipherSuites(List<String> preferredCipherSuites) { this.preferredCipherSuites = preferredCipherSuites; return this; }
+        public Builder preferredAuthMethods(List<String> preferredAuthMethods) { this.preferredAuthMethods = preferredAuthMethods; return this; }
+        public Builder clientNonce(String clientNonce) { this.clientNonce = clientNonce; return this; }
+
+        public HandshakeRequest build() {
+            return new HandshakeRequest(
+                    clientId, preferredCipherSuites, preferredAuthMethods, clientNonce);
+        }
+    }
+}

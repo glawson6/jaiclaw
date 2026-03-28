@@ -31,4 +31,26 @@ public record ServerHello(
         @JsonProperty("serverCapabilities")
         @JsonPropertyDescription("Full list of server capabilities")
         List<String> serverCapabilities
-) {}
+) {
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String handshakeId;
+        private String selectedCipherSuite;
+        private String selectedAuthMethod;
+        private String serverNonce;
+        private List<String> serverCapabilities;
+
+        public Builder handshakeId(String handshakeId) { this.handshakeId = handshakeId; return this; }
+        public Builder selectedCipherSuite(String selectedCipherSuite) { this.selectedCipherSuite = selectedCipherSuite; return this; }
+        public Builder selectedAuthMethod(String selectedAuthMethod) { this.selectedAuthMethod = selectedAuthMethod; return this; }
+        public Builder serverNonce(String serverNonce) { this.serverNonce = serverNonce; return this; }
+        public Builder serverCapabilities(List<String> serverCapabilities) { this.serverCapabilities = serverCapabilities; return this; }
+
+        public ServerHello build() {
+            return new ServerHello(
+                    handshakeId, selectedCipherSuite, selectedAuthMethod, serverNonce, serverCapabilities);
+        }
+    }
+}

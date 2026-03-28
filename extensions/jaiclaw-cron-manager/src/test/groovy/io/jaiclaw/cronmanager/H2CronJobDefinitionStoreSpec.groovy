@@ -29,8 +29,8 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "save and findById round-trips a definition"() {
         given:
-        def cronJob = new CronJob("job1", "Test Job", "default", "0 9 * * *", "UTC",
-                "Check status", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Test Job").agentId("default")
+                .schedule("0 9 * * *").prompt("Check status").enabled(true).build()
         def definition = new CronJobDefinition(cronJob, "anthropic", "claude-sonnet-4-5",
                 "You are a monitor", ToolProfile.CODING, ["web-research", "coding"])
 
@@ -51,13 +51,13 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "save overwrites existing definition (MERGE)"() {
         given:
-        def cronJob = new CronJob("job1", "Original", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("job1").name("Original").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         store.save(new CronJobDefinition(cronJob))
 
         when:
-        def updated = new CronJob("job1", "Updated", "default", "0 10 * * *", "UTC",
-                "new prompt", null, null, false, null, null)
+        def updated = CronJob.builder().id("job1").name("Updated").agentId("default")
+                .schedule("0 10 * * *").prompt("new prompt").build()
         store.save(new CronJobDefinition(updated))
         def found = store.findById("job1")
 
@@ -70,10 +70,10 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "findAll returns all definitions"() {
         given:
-        store.save(new CronJobDefinition(new CronJob("j1", "A", "default", "* * * * *", "UTC",
-                "p", null, null, true, null, null)))
-        store.save(new CronJobDefinition(new CronJob("j2", "B", "default", "* * * * *", "UTC",
-                "p", null, null, false, null, null)))
+        store.save(new CronJobDefinition(CronJob.builder().id("j1").name("A").agentId("default")
+                .schedule("* * * * *").prompt("p").enabled(true).build()))
+        store.save(new CronJobDefinition(CronJob.builder().id("j2").name("B").agentId("default")
+                .schedule("* * * * *").prompt("p").build()))
 
         when:
         def all = store.findAll()
@@ -84,10 +84,10 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "findEnabled returns only enabled definitions"() {
         given:
-        store.save(new CronJobDefinition(new CronJob("j1", "Enabled", "default", "* * * * *", "UTC",
-                "p", null, null, true, null, null)))
-        store.save(new CronJobDefinition(new CronJob("j2", "Disabled", "default", "* * * * *", "UTC",
-                "p", null, null, false, null, null)))
+        store.save(new CronJobDefinition(CronJob.builder().id("j1").name("Enabled").agentId("default")
+                .schedule("* * * * *").prompt("p").enabled(true).build()))
+        store.save(new CronJobDefinition(CronJob.builder().id("j2").name("Disabled").agentId("default")
+                .schedule("* * * * *").prompt("p").build()))
 
         when:
         def enabled = store.findEnabled()
@@ -99,8 +99,8 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "deleteById removes definition"() {
         given:
-        store.save(new CronJobDefinition(new CronJob("j1", "A", "default", "* * * * *", "UTC",
-                "p", null, null, true, null, null)))
+        store.save(new CronJobDefinition(CronJob.builder().id("j1").name("A").agentId("default")
+                .schedule("* * * * *").prompt("p").enabled(true).build()))
 
         when:
         def deleted = store.deleteById("j1")
@@ -117,8 +117,8 @@ class H2CronJobDefinitionStoreSpec extends Specification {
 
     def "updateEnabled toggles enabled flag"() {
         given:
-        store.save(new CronJobDefinition(new CronJob("j1", "A", "default", "* * * * *", "UTC",
-                "p", null, null, true, null, null)))
+        store.save(new CronJobDefinition(CronJob.builder().id("j1").name("A").agentId("default")
+                .schedule("* * * * *").prompt("p").enabled(true).build()))
 
         when:
         store.updateEnabled("j1", false)
@@ -132,8 +132,9 @@ class H2CronJobDefinitionStoreSpec extends Specification {
     def "timestamps are persisted correctly"() {
         given:
         def now = Instant.now()
-        def cronJob = new CronJob("j1", "Timed", "default", "* * * * *", "UTC",
-                "p", null, null, true, now, now.plusSeconds(60))
+        def cronJob = CronJob.builder().id("j1").name("Timed").agentId("default")
+                .schedule("* * * * *").prompt("p").enabled(true)
+                .lastRunAt(now).nextRunAt(now.plusSeconds(60)).build()
         store.save(new CronJobDefinition(cronJob))
 
         when:

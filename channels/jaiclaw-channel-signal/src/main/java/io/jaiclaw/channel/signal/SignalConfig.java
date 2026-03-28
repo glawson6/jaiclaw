@@ -50,4 +50,31 @@ public record SignalConfig(
             SignalMode.HTTP_CLIENT, "", false,
             "http://localhost:8080", 2, "signal-cli", 7583, Set.of()
     );
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private SignalMode mode;
+        private String phoneNumber;
+        private boolean enabled;
+        private String apiUrl;
+        private int pollIntervalSeconds;
+        private String cliCommand;
+        private int tcpPort;
+        private Set<String> allowedSenderIds;
+
+        public Builder mode(SignalMode mode) { this.mode = mode; return this; }
+        public Builder phoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder apiUrl(String apiUrl) { this.apiUrl = apiUrl; return this; }
+        public Builder pollIntervalSeconds(int pollIntervalSeconds) { this.pollIntervalSeconds = pollIntervalSeconds; return this; }
+        public Builder cliCommand(String cliCommand) { this.cliCommand = cliCommand; return this; }
+        public Builder tcpPort(int tcpPort) { this.tcpPort = tcpPort; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public SignalConfig build() {
+            return new SignalConfig(
+                    mode, phoneNumber, enabled, apiUrl, pollIntervalSeconds, cliCommand, tcpPort, allowedSenderIds);
+        }
+    }
 }

@@ -1,7 +1,14 @@
 package io.jaiclaw.agent;
 
+import io.jaiclaw.agent.delegate.AgentLoopDelegate;
+import io.jaiclaw.agent.delegate.AgentLoopDelegateContext;
+import io.jaiclaw.agent.delegate.AgentLoopDelegateRegistry;
+import io.jaiclaw.agent.delegate.AgentLoopDelegateResult;
 import io.jaiclaw.agent.loop.ExplicitToolLoop;
 import io.jaiclaw.agent.session.SessionManager;
+import io.jaiclaw.agent.tenant.TenantAgentExecutionContext;
+import io.jaiclaw.agent.tenant.TenantAgentRuntimeFactory;
+import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.hook.HookName;
 import io.jaiclaw.core.model.AssistantMessage;
@@ -17,6 +24,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import reactor.core.publisher.Flux;
+
+import io.jaiclaw.core.tenant.TenantContextPropagator;
+import io.jaiclaw.core.tenant.TenantGuard;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -49,8 +59,15 @@ public class AgentRuntime {
     private final ToolApprovalHandler approvalHandler;
     private final AgentOrchestrationPort orchestrationPort;
 
+    // Per-tenant support (nullable — null means singleton path)
+    private final TenantAgentRuntimeFactory tenantRuntimeFactory;
+    private final AgentLoopDelegateRegistry delegateRegistry;
+    private final TenantGuard tenantGuard;
+
+    public static Builder builder() { return new Builder(); }
+
     /**
-     * Full constructor with all SPI collaborators.
+     * Full constructor with all SPI collaborators and per-tenant support.
      */
     public AgentRuntime(
             SessionManager sessionManager,
@@ -63,7 +80,10 @@ public class AgentRuntime {
             AgentHookDispatcher hooks,
             MemoryProvider memoryProvider,
             ToolApprovalHandler approvalHandler,
-            AgentOrchestrationPort orchestrationPort) {
+            AgentOrchestrationPort orchestrationPort,
+            TenantAgentRuntimeFactory tenantRuntimeFactory,
+            AgentLoopDelegateRegistry delegateRegistry,
+            TenantGuard tenantGuard) {
         this.sessionManager = sessionManager;
         this.chatClientBuilder = chatClientBuilder;
         this.toolRegistry = toolRegistry;
@@ -75,25 +95,50 @@ public class AgentRuntime {
         this.memoryProvider = memoryProvider;
         this.approvalHandler = approvalHandler;
         this.orchestrationPort = orchestrationPort;
+        this.tenantRuntimeFactory = tenantRuntimeFactory;
+        this.delegateRegistry = delegateRegistry;
+        this.tenantGuard = tenantGuard;
+    }
+
+    /**
+     * Constructor with all SPI collaborators (backward-compatible, no per-tenant support).
+     */
+    @Deprecated
+    public AgentRuntime(
+            SessionManager sessionManager,
+            ChatClient.Builder chatClientBuilder,
+            ToolRegistry toolRegistry,
+            List<SkillDefinition> skills,
+            ChatModel chatModel,
+            ToolLoopConfig toolLoopConfig,
+            ContextCompactor compactor,
+            AgentHookDispatcher hooks,
+            MemoryProvider memoryProvider,
+            ToolApprovalHandler approvalHandler,
+            AgentOrchestrationPort orchestrationPort) {
+        this(sessionManager, chatClientBuilder, toolRegistry, skills,
+                chatModel, toolLoopConfig, compactor, hooks, memoryProvider,
+                approvalHandler, orchestrationPort, null, null, null);
     }
 
     /**
      * Backward-compatible 4-arg constructor (no SPI collaborators).
      */
+    @Deprecated
     public AgentRuntime(
             SessionManager sessionManager,
             ChatClient.Builder chatClientBuilder,
             ToolRegistry toolRegistry,
             List<SkillDefinition> skills) {
         this(sessionManager, chatClientBuilder, toolRegistry, skills,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
     }
 
     /**
      * Run the agent asynchronously and return a future with the assistant response.
      */
     public CompletableFuture<AssistantMessage> run(String userInput, AgentRuntimeContext context) {
-        var future = CompletableFuture.supplyAsync(() -> {
+        var future = CompletableFuture.supplyAsync(TenantContextPropagator.wrap(() -> {
             try {
                 return executeSync(userInput, context);
             } catch (Exception e) {
@@ -104,10 +149,11 @@ public class AgentRuntime {
                         "error"
                 );
             }
-        });
+        }));
 
-        activeTasks.put(context.sessionKey(), future);
-        future.whenComplete((r, e) -> activeTasks.remove(context.sessionKey()));
+        String taskKey = scopedTaskKey(context.sessionKey());
+        activeTasks.put(taskKey, future);
+        future.whenComplete((r, e) -> activeTasks.remove(taskKey));
         return future;
     }
 
@@ -115,28 +161,51 @@ public class AgentRuntime {
      * Stream the agent response as a Flux of text chunks. Uses SPRING_AI mode only.
      */
     public Flux<String> runStreaming(String userInput, AgentRuntimeContext context) {
+        // Check delegate first for per-tenant config
+        if (context.tenantConfig() != null && delegateRegistry != null) {
+            Optional<AgentLoopDelegate> delegate = delegateRegistry.resolve(context.tenantConfig());
+            if (delegate.isPresent()) {
+                log.info("Streaming via delegate '{}' for tenant: {}",
+                        delegate.get().delegateId(), context.tenantConfig().tenantId());
+                String systemPrompt = resolveTenantSystemPrompt(context);
+                AgentLoopDelegateContext delegateCtx = buildDelegateContext(context, systemPrompt);
+                return delegate.get().executeStream(userInput, delegateCtx);
+            }
+        }
+
         // 1. Record user message
         UserMessage userMessage = new UserMessage(
                 UUID.randomUUID().toString(), userInput, "user");
         sessionManager.appendMessage(context.sessionKey(), userMessage);
 
-        // 2. Resolve tools and build context
-        List<ToolCallback> jaiclawTools = toolRegistry.resolveForProfile(context.toolProfile());
+        // 2. Resolve tools, prompt, and ChatClient — tenant-aware or singleton
+        List<ToolCallback> jaiclawTools;
+        String systemPrompt;
+        ChatClient.Builder effectiveClientBuilder;
+
+        if (context.tenantConfig() != null && tenantRuntimeFactory != null) {
+            TenantAgentExecutionContext tenantCtx = tenantRuntimeFactory.createContext(context.tenantConfig());
+            jaiclawTools = tenantCtx.resolvedTools();
+            systemPrompt = tenantCtx.resolvedSystemPrompt();
+            effectiveClientBuilder = tenantCtx.chatClientBuilder();
+        } else {
+            jaiclawTools = toolRegistry.resolveForProfile(context.toolProfile());
+            systemPrompt = buildSystemPrompt(jaiclawTools, context);
+            effectiveClientBuilder = chatClientBuilder;
+        }
+
         ToolContext toolContext = buildToolContext(context);
         List<org.springframework.ai.tool.ToolCallback> springTools = SpringAiToolBridge.bridgeAll(jaiclawTools, toolContext);
 
-        // 3. Build system prompt with memory
-        String systemPrompt = buildSystemPrompt(jaiclawTools, context);
-
-        // 4. Build history
+        // 3. Build history
         var session = sessionManager.get(context.sessionKey()).orElse(context.session());
         var historyMessages = session.messages().stream()
                 .filter(m -> !(m instanceof UserMessage um && um.id().equals(userMessage.id())))
                 .map(this::toSpringAiMessage)
                 .toList();
 
-        // 5. Stream via ChatClient
-        ChatClient chatClient = chatClientBuilder.build();
+        // 4. Stream via ChatClient
+        ChatClient chatClient = effectiveClientBuilder.build();
         return chatClient.prompt()
                 .system(systemPrompt)
                 .messages(historyMessages)
@@ -149,6 +218,27 @@ public class AgentRuntime {
     private AssistantMessage executeSync(String userInput, AgentRuntimeContext context) {
         // 1. BEFORE_AGENT_START hook
         fireVoid(HookName.BEFORE_AGENT_START, userInput, context.sessionKey());
+
+        // 1a. Check if an agent loop delegate should handle this tenant
+        if (context.tenantConfig() != null && delegateRegistry != null) {
+            Optional<AgentLoopDelegate> delegate = delegateRegistry.resolve(context.tenantConfig());
+            if (delegate.isPresent()) {
+                log.info("Routing to agent delegate '{}' for tenant: {}",
+                        delegate.get().delegateId(), context.tenantConfig().tenantId());
+                String systemPrompt = resolveTenantSystemPrompt(context);
+                AgentLoopDelegateContext delegateCtx = buildDelegateContext(context, systemPrompt);
+                AgentLoopDelegateResult result = delegate.get().execute(userInput, delegateCtx);
+
+                AssistantMessage assistantMessage = new AssistantMessage(
+                        UUID.randomUUID().toString(),
+                        result.content() != null ? result.content() : "",
+                        "default"
+                );
+                sessionManager.appendMessage(context.sessionKey(), assistantMessage);
+                fireVoid(HookName.AGENT_END, assistantMessage, context.sessionKey());
+                return assistantMessage;
+            }
+        }
 
         // 2. Get/create session
         var session = sessionManager.get(context.sessionKey()).orElse(context.session());
@@ -180,36 +270,55 @@ public class AgentRuntime {
                 UUID.randomUUID().toString(), userInput, "user");
         sessionManager.appendMessage(context.sessionKey(), userMessage);
 
-        // 6. Resolve tools with proper ToolContext
-        List<ToolCallback> jaiclawTools = toolRegistry.resolveForProfile(context.toolProfile());
+        // 6. Resolve tools and system prompt — tenant-aware or singleton
+        List<ToolCallback> jaiclawTools;
+        String systemPrompt;
+        ChatClient.Builder effectiveClientBuilder;
+        ChatModel effectiveChatModel;
+        ToolLoopConfig effectiveToolLoopConfig;
+
+        if (context.tenantConfig() != null && tenantRuntimeFactory != null) {
+            TenantAgentExecutionContext tenantCtx = tenantRuntimeFactory.createContext(context.tenantConfig());
+            jaiclawTools = tenantCtx.resolvedTools();
+            systemPrompt = tenantCtx.resolvedSystemPrompt();
+            effectiveClientBuilder = tenantCtx.chatClientBuilder();
+            effectiveChatModel = tenantCtx.chatModel();
+            effectiveToolLoopConfig = context.tenantConfig().toolLoop() != null
+                    ? context.tenantConfig().toolLoop().toConfig()
+                    : toolLoopConfig;
+        } else {
+            jaiclawTools = toolRegistry.resolveForProfile(context.toolProfile());
+            systemPrompt = buildSystemPrompt(jaiclawTools, context);
+            effectiveClientBuilder = chatClientBuilder;
+            effectiveChatModel = chatModel;
+            effectiveToolLoopConfig = toolLoopConfig;
+        }
+
         ToolContext toolContext = buildToolContext(context);
         List<org.springframework.ai.tool.ToolCallback> springTools = SpringAiToolBridge.bridgeAll(jaiclawTools, toolContext);
 
-        // 7. Build system prompt (identity + skills + tools)
-        String systemPrompt = buildSystemPrompt(jaiclawTools, context);
-
-        // 8. Inject memory
-        if (memoryProvider != null && context.workspaceDir() != null) {
+        // 7. Inject memory (only for singleton path; tenant prompt already resolved)
+        if (context.tenantConfig() == null && memoryProvider != null && context.workspaceDir() != null) {
             String memory = memoryProvider.loadMemory(context.workspaceDir());
             if (memory != null && !memory.isBlank()) {
                 systemPrompt = systemPrompt + "\n# Workspace Memory\n\n" + memory + "\n";
             }
         }
 
-        // 9. BEFORE_PROMPT_BUILD modifying hook (allows plugins to alter the prompt)
+        // 8. BEFORE_PROMPT_BUILD modifying hook (allows plugins to alter the prompt)
         systemPrompt = fireModifying(HookName.BEFORE_PROMPT_BUILD, systemPrompt, context.sessionKey());
 
-        // 10. LLM_INPUT hook
+        // 9. LLM_INPUT hook
         fireVoid(HookName.LLM_INPUT, userInput, context.sessionKey());
 
-        // 11. Embabel orchestration check (future path)
+        // 10. Embabel orchestration check (future path)
         if (orchestrationPort != null && orchestrationPort.isAvailable()) {
             log.debug("Embabel orchestration available but not yet used for primary flow");
         }
 
-        // 12. Branch on tool loop mode
+        // 11. Branch on tool loop mode
         String responseContent;
-        if (toolLoopConfig.mode() == ToolLoopConfig.Mode.EXPLICIT && chatModel != null) {
+        if (effectiveToolLoopConfig.mode() == ToolLoopConfig.Mode.EXPLICIT && effectiveChatModel != null) {
             // Explicit loop with hook observability and approval gates
             Map<String, org.springframework.ai.tool.ToolCallback> toolsByName = springTools.stream()
                     .collect(Collectors.toMap(
@@ -217,13 +326,13 @@ public class AgentRuntime {
                             t -> t,
                             (a, b) -> a));
 
-            ExplicitToolLoop loop = new ExplicitToolLoop(chatModel, toolLoopConfig, hooks, approvalHandler);
+            ExplicitToolLoop loop = new ExplicitToolLoop(effectiveChatModel, effectiveToolLoopConfig, hooks, approvalHandler);
             var result = loop.execute(systemPrompt, new ArrayList<>(historyMessages),
                     userInput, toolsByName, context.sessionKey());
             responseContent = result.finalText();
         } else {
             // Spring AI built-in loop (default)
-            ChatClient chatClient = chatClientBuilder.build();
+            ChatClient chatClient = effectiveClientBuilder.build();
             var callSpec = chatClient.prompt()
                     .system(systemPrompt)
                     .messages(historyMessages)
@@ -234,10 +343,10 @@ public class AgentRuntime {
             responseContent = chatResponse.content();
         }
 
-        // 13. LLM_OUTPUT hook
+        // 12. LLM_OUTPUT hook
         fireVoid(HookName.LLM_OUTPUT, responseContent, context.sessionKey());
 
-        // 14. Record assistant message in session
+        // 13. Record assistant message in session
         AssistantMessage assistantMessage = new AssistantMessage(
                 UUID.randomUUID().toString(),
                 responseContent != null ? responseContent : "",
@@ -245,10 +354,41 @@ public class AgentRuntime {
         );
         sessionManager.appendMessage(context.sessionKey(), assistantMessage);
 
-        // 15. AGENT_END hook
+        // 14. AGENT_END hook
         fireVoid(HookName.AGENT_END, assistantMessage, context.sessionKey());
 
         return assistantMessage;
+    }
+
+    private String resolveTenantSystemPrompt(AgentRuntimeContext context) {
+        if (context.tenantConfig() != null && tenantRuntimeFactory != null) {
+            TenantAgentExecutionContext tenantCtx = tenantRuntimeFactory.createContext(context.tenantConfig());
+            return tenantCtx.resolvedSystemPrompt();
+        }
+        return buildSystemPrompt(toolRegistry.resolveForProfile(context.toolProfile()), context);
+    }
+
+    private AgentLoopDelegateContext buildDelegateContext(AgentRuntimeContext context, String systemPrompt) {
+        TenantAgentConfig cfg = context.tenantConfig();
+        var session = sessionManager.get(context.sessionKey()).orElse(context.session());
+        String history = session != null && session.messages() != null
+                ? session.messages().stream()
+                    .map(m -> messageRole(m) + ": " + m.content())
+                    .collect(Collectors.joining("\n"))
+                : "";
+
+        Map<String, Object> props = cfg.loopDelegate() != null && cfg.loopDelegate().properties() != null
+                ? new HashMap<>(cfg.loopDelegate().properties())
+                : Map.of();
+
+        return new AgentLoopDelegateContext(
+                context.sessionKey(),
+                cfg.tenantId(),
+                history,
+                cfg,
+                systemPrompt,
+                props
+        );
     }
 
     private String buildSystemPrompt(List<ToolCallback> tools, AgentRuntimeContext context) {
@@ -290,6 +430,15 @@ public class AgentRuntime {
         return event;
     }
 
+    private static String messageRole(io.jaiclaw.core.model.Message msg) {
+        return switch (msg) {
+            case io.jaiclaw.core.model.UserMessage u -> "user";
+            case io.jaiclaw.core.model.AssistantMessage a -> "assistant";
+            case io.jaiclaw.core.model.SystemMessage s -> "system";
+            case io.jaiclaw.core.model.ToolResultMessage t -> "tool";
+        };
+    }
+
     private org.springframework.ai.chat.messages.Message toSpringAiMessage(io.jaiclaw.core.model.Message msg) {
         return switch (msg) {
             case io.jaiclaw.core.model.UserMessage u ->
@@ -304,15 +453,68 @@ public class AgentRuntime {
     }
 
     public void cancel(String sessionKey) {
-        CompletableFuture<?> task = activeTasks.get(sessionKey);
+        String key = scopedTaskKey(sessionKey);
+        CompletableFuture<?> task = activeTasks.get(key);
         if (task != null) {
             task.cancel(true);
-            activeTasks.remove(sessionKey);
+            activeTasks.remove(key);
         }
     }
 
     public boolean isRunning(String sessionKey) {
-        CompletableFuture<?> task = activeTasks.get(sessionKey);
+        String key = scopedTaskKey(sessionKey);
+        CompletableFuture<?> task = activeTasks.get(key);
         return task != null && !task.isDone();
+    }
+
+    /**
+     * Scope task keys by tenant in MULTI mode to prevent cross-tenant collisions.
+     */
+    private String scopedTaskKey(String sessionKey) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String prefix = tenantGuard.resolveTenantPrefix();
+            if (!sessionKey.startsWith(prefix + ":")) {
+                return prefix + ":" + sessionKey;
+            }
+        }
+        return sessionKey;
+    }
+
+    public static final class Builder {
+        private SessionManager sessionManager;
+        private ChatClient.Builder chatClientBuilder;
+        private ToolRegistry toolRegistry;
+        private List<SkillDefinition> skills;
+        private ChatModel chatModel;
+        private ToolLoopConfig toolLoopConfig;
+        private ContextCompactor compactor;
+        private AgentHookDispatcher hooks;
+        private MemoryProvider memoryProvider;
+        private ToolApprovalHandler approvalHandler;
+        private AgentOrchestrationPort orchestrationPort;
+        private TenantAgentRuntimeFactory tenantRuntimeFactory;
+        private AgentLoopDelegateRegistry delegateRegistry;
+        private TenantGuard tenantGuard;
+
+        public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
+        public Builder chatClientBuilder(ChatClient.Builder chatClientBuilder) { this.chatClientBuilder = chatClientBuilder; return this; }
+        public Builder toolRegistry(ToolRegistry toolRegistry) { this.toolRegistry = toolRegistry; return this; }
+        public Builder skills(List<SkillDefinition> skills) { this.skills = skills; return this; }
+        public Builder chatModel(ChatModel chatModel) { this.chatModel = chatModel; return this; }
+        public Builder toolLoopConfig(ToolLoopConfig toolLoopConfig) { this.toolLoopConfig = toolLoopConfig; return this; }
+        public Builder compactor(ContextCompactor compactor) { this.compactor = compactor; return this; }
+        public Builder hooks(AgentHookDispatcher hooks) { this.hooks = hooks; return this; }
+        public Builder memoryProvider(MemoryProvider memoryProvider) { this.memoryProvider = memoryProvider; return this; }
+        public Builder approvalHandler(ToolApprovalHandler approvalHandler) { this.approvalHandler = approvalHandler; return this; }
+        public Builder orchestrationPort(AgentOrchestrationPort orchestrationPort) { this.orchestrationPort = orchestrationPort; return this; }
+        public Builder tenantRuntimeFactory(TenantAgentRuntimeFactory tenantRuntimeFactory) { this.tenantRuntimeFactory = tenantRuntimeFactory; return this; }
+        public Builder delegateRegistry(AgentLoopDelegateRegistry delegateRegistry) { this.delegateRegistry = delegateRegistry; return this; }
+        public Builder tenantGuard(TenantGuard tenantGuard) { this.tenantGuard = tenantGuard; return this; }
+
+        public AgentRuntime build() {
+            return new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills,
+                    chatModel, toolLoopConfig, compactor, hooks, memoryProvider,
+                    approvalHandler, orchestrationPort, tenantRuntimeFactory, delegateRegistry, tenantGuard);
+        }
     }
 }

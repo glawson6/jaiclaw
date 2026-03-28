@@ -28,4 +28,26 @@ public record AnalysisResult(
         if (entities == null) entities = List.of();
         if (metadata == null) metadata = Map.of();
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String summary;
+        private String extractedText;
+        private List<String> topics;
+        private List<String> entities;
+        private Map<String, String> metadata;
+        private AnalysisLevel level;
+
+        public Builder summary(String summary) { this.summary = summary; return this; }
+        public Builder extractedText(String extractedText) { this.extractedText = extractedText; return this; }
+        public Builder topics(List<String> topics) { this.topics = topics; return this; }
+        public Builder entities(List<String> entities) { this.entities = entities; return this; }
+        public Builder metadata(Map<String, String> metadata) { this.metadata = metadata; return this; }
+        public Builder level(AnalysisLevel level) { this.level = level; return this; }
+
+        public AnalysisResult build() {
+            return new AnalysisResult(summary, extractedText, topics, entities, metadata, level);
+        }
+    }
 }

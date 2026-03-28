@@ -3,7 +3,7 @@ package io.jaiclaw.agent.session;
 import io.jaiclaw.core.model.Message;
 import io.jaiclaw.core.model.Session;
 import io.jaiclaw.core.model.SessionState;
-import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,28 +13,52 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * In-memory session manager. Manages session lifecycle for the agent runtime.
  * Sessions are scoped to the current tenant via {@link TenantContextHolder}.
- * Future phases will add persistent storage backends via a SessionStore SPI.
+ * In MULTI mode, session keys are internally prefixed with tenantId for defense-in-depth.
  */
 public class SessionManager {
 
     private static final Logger log = LoggerFactory.getLogger(SessionManager.class);
 
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
+    private TenantGuard tenantGuard;
+
+    public SessionManager() {}
+
+    public SessionManager(TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
+    }
+
+    public void setTenantGuard(TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
+    }
+
+    private String scopedKey(String sessionKey) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String prefix = tenantGuard.resolveTenantPrefix();
+            if (!sessionKey.startsWith(prefix + ":")) {
+                return prefix + ":" + sessionKey;
+            }
+        }
+        return sessionKey;
+    }
 
     public Session getOrCreate(String sessionKey, String agentId) {
-        return sessions.computeIfAbsent(sessionKey, k -> {
+        String key = scopedKey(sessionKey);
+        return sessions.computeIfAbsent(key, k -> {
             String tenantId = resolveTenantId();
             return Session.create(UUID.randomUUID().toString(), k, agentId, tenantId);
         });
     }
 
     public void appendMessage(String sessionKey, Message message) {
-        sessions.computeIfPresent(sessionKey,
+        String key = scopedKey(sessionKey);
+        sessions.computeIfPresent(key,
                 (k, session) -> session.withMessage(message));
     }
 
     public Optional<Session> get(String sessionKey) {
-        Session session = sessions.get(sessionKey);
+        String key = scopedKey(sessionKey);
+        Session session = sessions.get(key);
         if (session == null) return Optional.empty();
         // Enforce tenant isolation if a tenant context is active
         String currentTenant = resolveTenantId();
@@ -48,7 +72,8 @@ public class SessionManager {
     }
 
     public Session transitionState(String sessionKey, SessionState newState) {
-        return sessions.computeIfPresent(sessionKey,
+        String key = scopedKey(sessionKey);
+        return sessions.computeIfPresent(key,
                 (k, session) -> {
                     log.debug("Session {} state: {} -> {}", sessionKey, session.state(), newState);
                     return session.withState(newState);
@@ -60,12 +85,14 @@ public class SessionManager {
     }
 
     public void replaceMessages(String sessionKey, java.util.List<Message> newMessages) {
-        sessions.computeIfPresent(sessionKey,
+        String key = scopedKey(sessionKey);
+        sessions.computeIfPresent(key,
                 (k, session) -> session.withMessages(newMessages));
     }
 
     public void reset(String sessionKey) {
-        sessions.remove(sessionKey);
+        String key = scopedKey(sessionKey);
+        sessions.remove(key);
     }
 
     /**
@@ -93,7 +120,7 @@ public class SessionManager {
     }
 
     public boolean exists(String sessionKey) {
-        return sessions.containsKey(sessionKey);
+        return sessions.containsKey(scopedKey(sessionKey));
     }
 
     public int sessionCount() {
@@ -101,7 +128,6 @@ public class SessionManager {
     }
 
     private String resolveTenantId() {
-        var ctx = TenantContextHolder.get();
-        return ctx != null ? ctx.getTenantId() : null;
+        return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
     }
 }

@@ -1,5 +1,7 @@
 package io.jaiclaw.security.ratelimit;
 
+import io.jaiclaw.core.tenant.TenantGuard;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,27 +24,42 @@ public class UserRateLimiter {
 
     private final int maxPerMinute;
     private final Map<String, WindowCounter> counters = new ConcurrentHashMap<>();
+    private final TenantGuard tenantGuard;
 
     public UserRateLimiter(int maxPerMinute) {
+        this(maxPerMinute, null);
+    }
+
+    public UserRateLimiter(int maxPerMinute, TenantGuard tenantGuard) {
         this.maxPerMinute = maxPerMinute;
+        this.tenantGuard = tenantGuard;
+    }
+
+    private String scopedUserId(String userId) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            return tenantGuard.resolveTenantPrefix() + ":" + userId;
+        }
+        return userId;
     }
 
     /**
      * Check if a user is within their rate limit.
+     * In MULTI mode, rate limits are per-tenant-per-user.
      *
      * @param userId the user identifier to check
      * @return true if the request is allowed, false if rate-limited
      */
     public boolean isAllowed(String userId) {
-        var counter = counters.computeIfAbsent(userId, k -> new WindowCounter());
+        var counter = counters.computeIfAbsent(scopedUserId(userId), k -> new WindowCounter());
         return counter.tryIncrement(maxPerMinute);
     }
 
     /**
      * Returns the number of requests remaining in the current window for a user.
+     * In MULTI mode, rate limits are per-tenant-per-user.
      */
     public int remaining(String userId) {
-        var counter = counters.get(userId);
+        var counter = counters.get(scopedUserId(userId));
         if (counter == null) return maxPerMinute;
         return Math.max(0, maxPerMinute - counter.currentCount());
     }

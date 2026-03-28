@@ -41,4 +41,30 @@ public record Session(
     public Session withMessages(List<Message> newMessages) {
         return new Session(id, sessionKey, agentId, tenantId, createdAt, Instant.now(), state, newMessages);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String id;
+        private String sessionKey;
+        private String agentId;
+        private String tenantId;
+        private Instant createdAt;
+        private Instant lastActiveAt;
+        private SessionState state;
+        private List<Message> messages = List.of();
+
+        public Builder id(String id) { this.id = id; return this; }
+        public Builder sessionKey(String sessionKey) { this.sessionKey = sessionKey; return this; }
+        public Builder agentId(String agentId) { this.agentId = agentId; return this; }
+        public Builder tenantId(String tenantId) { this.tenantId = tenantId; return this; }
+        public Builder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public Builder lastActiveAt(Instant lastActiveAt) { this.lastActiveAt = lastActiveAt; return this; }
+        public Builder state(SessionState state) { this.state = state; return this; }
+        public Builder messages(List<Message> messages) { this.messages = messages; return this; }
+
+        public Session build() {
+            return new Session(id, sessionKey, agentId, tenantId, createdAt, lastActiveAt, state, messages);
+        }
+    }
 }

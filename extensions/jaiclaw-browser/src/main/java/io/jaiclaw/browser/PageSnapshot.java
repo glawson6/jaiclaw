@@ -15,7 +15,28 @@ public record PageSnapshot(
         public PageElement(int index, String role, String name) {
             this(index, role, name, null, null);
         }
-    }
+    
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private int index;
+            private String role;
+            private String name;
+            private String value;
+            private String href;
+
+            public Builder index(int index) { this.index = index; return this; }
+            public Builder role(String role) { this.role = role; return this; }
+            public Builder name(String name) { this.name = name; return this; }
+            public Builder value(String value) { this.value = value; return this; }
+            public Builder href(String href) { this.href = href; return this; }
+
+            public PageElement build() {
+                return new PageElement(index, role, name, value, href);
+            }
+        }
+}
 
     public String toText() {
         StringBuilder sb = new StringBuilder();

@@ -4,12 +4,17 @@ import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.AgentRuntimeContext;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.*;
+import io.jaiclaw.config.TenantAgentConfig;
+import io.jaiclaw.config.TenantAgentConfigService;
+import io.jaiclaw.core.model.AgentIdentity;
 import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.tenant.TenantContext;
 import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolProfileHolder;
 import io.jaiclaw.gateway.attachment.AttachmentRouter;
+import io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry;
 import io.jaiclaw.gateway.tenant.TenantResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,20 +39,48 @@ public class GatewayService implements ChannelMessageHandler {
     private final String defaultAgentId;
     private final TenantResolver tenantResolver;
     private final AttachmentRouter attachmentRouter;
+    private final TenantGuard tenantGuard;
+    private final TenantAgentConfigService tenantAgentConfigService;
+    private final TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
 
+    public static Builder builder() { return new Builder(); }
+
+    @Deprecated
     public GatewayService(AgentRuntime agentRuntime,
                           SessionManager sessionManager,
                           ChannelRegistry channelRegistry,
                           String defaultAgentId) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, null, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, null, null, null, null, null);
     }
 
+    @Deprecated
     public GatewayService(AgentRuntime agentRuntime,
                           SessionManager sessionManager,
                           ChannelRegistry channelRegistry,
                           String defaultAgentId,
                           TenantResolver tenantResolver) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, null, null, null, null);
+    }
+
+    @Deprecated
+    public GatewayService(AgentRuntime agentRuntime,
+                          SessionManager sessionManager,
+                          ChannelRegistry channelRegistry,
+                          String defaultAgentId,
+                          TenantResolver tenantResolver,
+                          AttachmentRouter attachmentRouter) {
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, null, null, null);
+    }
+
+    @Deprecated
+    public GatewayService(AgentRuntime agentRuntime,
+                          SessionManager sessionManager,
+                          ChannelRegistry channelRegistry,
+                          String defaultAgentId,
+                          TenantResolver tenantResolver,
+                          AttachmentRouter attachmentRouter,
+                          TenantGuard tenantGuard) {
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, tenantGuard, null, null);
     }
 
     public GatewayService(AgentRuntime agentRuntime,
@@ -55,13 +88,19 @@ public class GatewayService implements ChannelMessageHandler {
                           ChannelRegistry channelRegistry,
                           String defaultAgentId,
                           TenantResolver tenantResolver,
-                          AttachmentRouter attachmentRouter) {
+                          AttachmentRouter attachmentRouter,
+                          TenantGuard tenantGuard,
+                          TenantAgentConfigService tenantAgentConfigService,
+                          TenantChannelAdapterRegistry tenantChannelAdapterRegistry) {
         this.agentRuntime = agentRuntime;
         this.sessionManager = sessionManager;
         this.channelRegistry = channelRegistry;
         this.defaultAgentId = defaultAgentId;
         this.tenantResolver = tenantResolver;
         this.attachmentRouter = attachmentRouter;
+        this.tenantGuard = tenantGuard;
+        this.tenantAgentConfigService = tenantAgentConfigService;
+        this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry;
     }
 
     /**
@@ -76,6 +115,13 @@ public class GatewayService implements ChannelMessageHandler {
         // Resolve tenant from channel metadata
         Optional<TenantContext> tenant = resolveTenantFromChannel(message);
         tenant.ifPresent(TenantContextHolder::set);
+
+        // Fail-closed in MULTI mode: reject unresolved tenant
+        if (tenantGuard != null && tenantGuard.isMultiTenant() && tenant.isEmpty()) {
+            log.warn("MULTI mode: rejected message on {} — no tenant resolved", message.channelId());
+            deliverErrorResponse(message, "No tenant context could be resolved for this request.");
+            return;
+        }
 
         try {
             // Route attachments if present
@@ -92,11 +138,28 @@ public class GatewayService implements ChannelMessageHandler {
                 }
             }
 
+            // Resolve per-tenant agent config if available
+            String tenantId = tenant.map(TenantContext::getTenantId).orElse("default");
+            TenantAgentConfig tenantConfig = null;
+            if (tenantAgentConfigService != null) {
+                tenantConfig = tenantAgentConfigService.resolve(tenantId);
+            }
+
             var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
             ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+
+            // Build identity from tenant config or use default
+            AgentIdentity identity = tenantConfig != null && tenantConfig.identity() != null
+                    ? new AgentIdentity(
+                        tenantConfig.agentId(),
+                        tenantConfig.identity().name(),
+                        tenantConfig.identity().description())
+                    : AgentIdentity.DEFAULT;
+
+            String agentId = tenantConfig != null ? tenantConfig.agentId() : defaultAgentId;
+
             AgentRuntimeContext context = new AgentRuntimeContext(
-                    defaultAgentId, sessionKey, session,
-                    io.jaiclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
+                    agentId, sessionKey, session, identity, toolProfile, ".", tenantConfig);
 
             agentRuntime.run(message.content(), context)
                     .thenAccept(response -> deliverResponse(message, response))
@@ -165,9 +228,21 @@ public class GatewayService implements ChannelMessageHandler {
                 inbound.peerId(),
                 response.content());
 
-        channelRegistry.get(inbound.channelId()).ifPresentOrElse(
-                adapter -> {
-                    DeliveryResult result = adapter.sendMessage(outbound);
+        // Try tenant-specific adapter first, then fall back to global
+        Optional<ChannelAdapter> adapter = Optional.empty();
+        if (tenantChannelAdapterRegistry != null) {
+            TenantContext tc = TenantContextHolder.get();
+            if (tc != null) {
+                adapter = tenantChannelAdapterRegistry.getAdapter(tc.getTenantId(), inbound.channelId());
+            }
+        }
+        if (adapter.isEmpty()) {
+            adapter = channelRegistry.get(inbound.channelId());
+        }
+
+        adapter.ifPresentOrElse(
+                a -> {
+                    DeliveryResult result = a.sendMessage(outbound);
                     if (result instanceof DeliveryResult.Failure f) {
                         log.warn("Failed to deliver response on {}: {} - {}",
                                 inbound.channelId(), f.errorCode(), f.message());
@@ -203,5 +278,33 @@ public class GatewayService implements ChannelMessageHandler {
     public void stop() {
         channelRegistry.stopAll();
         log.info("Gateway stopped");
+    }
+
+    public static final class Builder {
+        private AgentRuntime agentRuntime;
+        private SessionManager sessionManager;
+        private ChannelRegistry channelRegistry;
+        private String defaultAgentId;
+        private TenantResolver tenantResolver;
+        private AttachmentRouter attachmentRouter;
+        private TenantGuard tenantGuard;
+        private TenantAgentConfigService tenantAgentConfigService;
+        private TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
+
+        public Builder agentRuntime(AgentRuntime agentRuntime) { this.agentRuntime = agentRuntime; return this; }
+        public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
+        public Builder channelRegistry(ChannelRegistry channelRegistry) { this.channelRegistry = channelRegistry; return this; }
+        public Builder defaultAgentId(String defaultAgentId) { this.defaultAgentId = defaultAgentId; return this; }
+        public Builder tenantResolver(TenantResolver tenantResolver) { this.tenantResolver = tenantResolver; return this; }
+        public Builder attachmentRouter(AttachmentRouter attachmentRouter) { this.attachmentRouter = attachmentRouter; return this; }
+        public Builder tenantGuard(TenantGuard tenantGuard) { this.tenantGuard = tenantGuard; return this; }
+        public Builder tenantAgentConfigService(TenantAgentConfigService tenantAgentConfigService) { this.tenantAgentConfigService = tenantAgentConfigService; return this; }
+        public Builder tenantChannelAdapterRegistry(TenantChannelAdapterRegistry tenantChannelAdapterRegistry) { this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry; return this; }
+
+        public GatewayService build() {
+            return new GatewayService(agentRuntime, sessionManager, channelRegistry, defaultAgentId,
+                    tenantResolver, attachmentRouter, tenantGuard, tenantAgentConfigService,
+                    tenantChannelAdapterRegistry);
+        }
     }
 }

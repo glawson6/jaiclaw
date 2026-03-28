@@ -61,4 +61,37 @@ public record EmailConfig(
 
     public static final EmailConfig DISABLED = new EmailConfig(
             "imap", "", 993, "", 587, "", "", false, 60, new String[]{"INBOX"}, Set.of());
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String provider;
+        private String host;
+        private int port;
+        private String smtpHost;
+        private int smtpPort;
+        private String username;
+        private String password;
+        private boolean enabled;
+        private int pollingInterval;
+        private String[] folders;
+        private Set<String> allowedSenderIds;
+
+        public Builder provider(String provider) { this.provider = provider; return this; }
+        public Builder host(String host) { this.host = host; return this; }
+        public Builder port(int port) { this.port = port; return this; }
+        public Builder smtpHost(String smtpHost) { this.smtpHost = smtpHost; return this; }
+        public Builder smtpPort(int smtpPort) { this.smtpPort = smtpPort; return this; }
+        public Builder username(String username) { this.username = username; return this; }
+        public Builder password(String password) { this.password = password; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder pollingInterval(int pollingInterval) { this.pollingInterval = pollingInterval; return this; }
+        public Builder folders(String[] folders) { this.folders = folders; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public EmailConfig build() {
+            return new EmailConfig(
+                    provider, host, port, smtpHost, smtpPort, username, password, enabled, pollingInterval, folders, allowedSenderIds);
+        }
+    }
 }

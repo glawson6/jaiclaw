@@ -52,4 +52,24 @@ public record SlackConfig(
     }
 
     public static final SlackConfig DISABLED = new SlackConfig("", "", false, "", Set.of());
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private String botToken;
+        private String signingSecret;
+        private boolean enabled;
+        private String appToken;
+        private Set<String> allowedSenderIds;
+
+        public Builder botToken(String botToken) { this.botToken = botToken; return this; }
+        public Builder signingSecret(String signingSecret) { this.signingSecret = signingSecret; return this; }
+        public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+        public Builder appToken(String appToken) { this.appToken = appToken; return this; }
+        public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+
+        public SlackConfig build() {
+            return new SlackConfig(botToken, signingSecret, enabled, appToken, allowedSenderIds);
+        }
+    }
 }

@@ -38,8 +38,8 @@ class CronManagerMcpToolProviderSpec extends Specification {
 
     def "list_jobs dispatches to manager service"() {
         given:
-        def cronJob = new CronJob("j1", "Test", "default", "0 9 * * *", "UTC",
-                "prompt", null, null, true, null, null)
+        def cronJob = CronJob.builder().id("j1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("prompt").enabled(true).build()
         managerService.listJobs() >> [new CronJobDefinition(cronJob)]
 
         when:

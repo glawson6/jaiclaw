@@ -1,6 +1,6 @@
 package io.jaiclaw.memory;
 
-import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,13 +10,22 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Simple in-memory implementation of MemorySearchManager using keyword matching.
  * Used as a fallback when no VectorStore is configured.
- * All operations are partitioned by the current tenant via {@link TenantContextHolder}.
+ * All operations are partitioned by the current tenant via {@link TenantGuard}.
  */
 public class InMemorySearchManager implements MemorySearchManager {
 
     private static final Logger log = LoggerFactory.getLogger(InMemorySearchManager.class);
 
     private final List<MemoryEntry> entries = new CopyOnWriteArrayList<>();
+    private final TenantGuard tenantGuard;
+
+    public InMemorySearchManager() {
+        this(null);
+    }
+
+    public InMemorySearchManager(TenantGuard tenantGuard) {
+        this.tenantGuard = tenantGuard;
+    }
 
     public void addEntry(String path, String content, MemorySource source) {
         String tenantId = resolveTenantId();
@@ -69,6 +78,10 @@ public class InMemorySearchManager implements MemorySearchManager {
     }
 
     private boolean matchesTenant(MemoryEntry entry, String tenantId) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            // Fail-closed: in MULTI mode, tenantId must match exactly
+            return tenantId != null && tenantId.equals(entry.tenantId());
+        }
         if (tenantId == null) return true;
         return tenantId.equals(entry.tenantId());
     }
@@ -100,8 +113,7 @@ public class InMemorySearchManager implements MemorySearchManager {
     }
 
     private String resolveTenantId() {
-        var ctx = TenantContextHolder.get();
-        return ctx != null ? ctx.getTenantId() : null;
+        return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
     }
 
     record MemoryEntry(String path, String content, MemorySource source, String tenantId) {}

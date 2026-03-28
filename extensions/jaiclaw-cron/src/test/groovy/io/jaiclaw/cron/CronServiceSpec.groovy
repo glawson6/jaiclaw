@@ -29,8 +29,8 @@ class CronServiceSpec extends Specification {
 
     def "addJob stores and returns job with next run time"() {
         given:
-        def job = new CronJob("job1", "Test Job", "default", "0 9 * * *", "UTC",
-                "Check status", null, null, true, null, null)
+        def job = CronJob.builder().id("job1").name("Test Job").agentId("default")
+                .schedule("0 9 * * *").prompt("Check status").enabled(true).build()
 
         when:
         def added = service.addJob(job)
@@ -43,8 +43,8 @@ class CronServiceSpec extends Specification {
 
     def "removeJob deletes job"() {
         given:
-        service.addJob(new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "test", null, null, true, null, null))
+        service.addJob(CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("test").enabled(true).build())
 
         when:
         def removed = service.removeJob("job1")
@@ -56,8 +56,8 @@ class CronServiceSpec extends Specification {
 
     def "runNow executes job immediately"() {
         given:
-        service.addJob(new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "Check pods", null, null, true, null, null))
+        service.addJob(CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("Check pods").enabled(true).build())
 
         when:
         def result = service.runNow("job1")
@@ -77,8 +77,8 @@ class CronServiceSpec extends Specification {
 
     def "getHistory tracks job runs"() {
         given:
-        service.addJob(new CronJob("job1", "Test", "default", "0 9 * * *", "UTC",
-                "test", null, null, true, null, null))
+        service.addJob(CronJob.builder().id("job1").name("Test").agentId("default")
+                .schedule("0 9 * * *").prompt("test").enabled(true).build())
         service.runNow("job1")
 
         when:

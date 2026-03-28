@@ -36,4 +36,27 @@ public record WhitelistedCommandConfig(
         if (section == null || section.isBlank()) section = ToolCatalog.SECTION_EXEC;
         if (profiles == null || profiles.isEmpty()) profiles = Set.of(ToolProfile.FULL);
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private List<String> allowedPrefixes;
+        private int timeoutSeconds;
+        private int maxOutputLines;
+        private String toolName;
+        private String section;
+        private Set<ToolProfile> profiles;
+
+        public Builder allowedPrefixes(List<String> allowedPrefixes) { this.allowedPrefixes = allowedPrefixes; return this; }
+        public Builder timeoutSeconds(int timeoutSeconds) { this.timeoutSeconds = timeoutSeconds; return this; }
+        public Builder maxOutputLines(int maxOutputLines) { this.maxOutputLines = maxOutputLines; return this; }
+        public Builder toolName(String toolName) { this.toolName = toolName; return this; }
+        public Builder section(String section) { this.section = section; return this; }
+        public Builder profiles(Set<ToolProfile> profiles) { this.profiles = profiles; return this; }
+
+        public WhitelistedCommandConfig build() {
+            return new WhitelistedCommandConfig(
+                    allowedPrefixes, timeoutSeconds, maxOutputLines, toolName, section, profiles);
+        }
+    }
 }

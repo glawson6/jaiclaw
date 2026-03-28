@@ -6,6 +6,8 @@ import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.core.model.AgentIdentity;
 import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.model.Session;
+import io.jaiclaw.core.tenant.DefaultTenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.cronmanager.model.CronJobDefinition;
 import org.slf4j.Logger;
@@ -39,6 +41,7 @@ public class CronAgentFactory {
     public String executeJob(CronJobDefinition jobDef, String runId) {
         String jobId = jobDef.cronJob().id();
         String agentId = jobDef.cronJob().agentId();
+        String tenantId = jobDef.cronJob().tenantId();
         String sessionKey = "cron:" + jobId + ":" + runId;
         String prompt = jobDef.cronJob().prompt();
         ToolProfile toolProfile = jobDef.toolProfile();
@@ -46,19 +49,27 @@ public class CronAgentFactory {
         log.info("Executing cron job '{}' (id={}, runId={}) with profile {}",
                 jobDef.cronJob().name(), jobId, runId, toolProfile);
 
-        Session session = sessionManager.getOrCreate(sessionKey, agentId);
-
-        AgentRuntimeContext context = new AgentRuntimeContext(
-                agentId, sessionKey, session,
-                AgentIdentity.DEFAULT, toolProfile, ".");
+        // Set tenant context from job's tenantId if present
+        if (tenantId != null && !tenantId.isBlank()) {
+            TenantContextHolder.set(new DefaultTenantContext(tenantId, tenantId));
+        }
 
         try {
+            Session session = sessionManager.getOrCreate(sessionKey, agentId);
+
+            AgentRuntimeContext context = new AgentRuntimeContext(
+                    agentId, sessionKey, session,
+                    AgentIdentity.DEFAULT, toolProfile, ".");
+
             AssistantMessage response = agentRuntime.run(prompt, context).join();
             log.info("Cron job '{}' completed successfully", jobDef.cronJob().name());
             return response.content();
         } finally {
             // Clean up the ephemeral session
             sessionManager.reset(sessionKey);
+            if (tenantId != null && !tenantId.isBlank()) {
+                TenantContextHolder.clear();
+            }
         }
     }
 

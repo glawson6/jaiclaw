@@ -2,7 +2,14 @@ package io.jaiclaw.autoconfigure;
 
 import io.jaiclaw.config.ChannelsProperties;
 import io.jaiclaw.config.JaiClawProperties;
+import io.jaiclaw.config.TenantAgentConfig;
+import io.jaiclaw.config.TenantAgentConfigService;
+import io.jaiclaw.config.TenantChannelsConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -27,6 +34,44 @@ import org.springframework.context.annotation.Configuration;
 @AutoConfiguration
 @AutoConfigureAfter(JaiClawGatewayAutoConfiguration.class)
 public class JaiClawChannelAutoConfiguration {
+
+    private static final Logger log = LoggerFactory.getLogger(JaiClawChannelAutoConfiguration.class);
+
+    /**
+     * Startup hook that scans and pre-loads tenant configs in MULTI mode,
+     * registers bot-token-to-tenant mappings, and starts per-tenant channel adapters.
+     */
+    @Bean
+    @ConditionalOnBean({TenantAgentConfigService.class})
+    public ApplicationRunner tenantConfigStartupHook(
+            TenantAgentConfigService configService,
+            ObjectProvider<io.jaiclaw.gateway.tenant.BotTokenTenantResolver> botTokenResolverProvider) {
+        return args -> {
+            // Scan and load all tenant configs
+            configService.scanAndLoadAll();
+
+            // Auto-register bot token → tenant mappings
+            var botTokenResolver = botTokenResolverProvider.getIfAvailable();
+            if (botTokenResolver != null) {
+                for (var entry : configService.allConfigurations().entrySet()) {
+                    String tenantId = entry.getKey();
+                    TenantAgentConfig config = entry.getValue();
+                    TenantChannelsConfig channels = config.channels();
+                    if (channels == null) continue;
+
+                    if (channels.telegram() != null && channels.telegram().botToken() != null) {
+                        botTokenResolver.register(
+                                channels.telegram().botToken(), tenantId, config.name());
+                    }
+                    if (channels.slack() != null && channels.slack().botToken() != null) {
+                        botTokenResolver.register(
+                                channels.slack().botToken(), tenantId, config.name());
+                    }
+                }
+                log.info("Registered {} bot-token-to-tenant mappings", botTokenResolver.mappingCount());
+            }
+        };
+    }
 
     /**
      * Email adapter auto-configuration.
@@ -88,8 +133,9 @@ public class JaiClawChannelAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(type = "io.jaiclaw.audit.AuditLogger")
-        public io.jaiclaw.audit.InMemoryAuditLogger inMemoryAuditLogger() {
-            return new io.jaiclaw.audit.InMemoryAuditLogger();
+        public io.jaiclaw.audit.InMemoryAuditLogger inMemoryAuditLogger(
+                io.jaiclaw.core.tenant.TenantGuard tenantGuard) {
+            return new io.jaiclaw.audit.InMemoryAuditLogger(tenantGuard);
         }
     }
 

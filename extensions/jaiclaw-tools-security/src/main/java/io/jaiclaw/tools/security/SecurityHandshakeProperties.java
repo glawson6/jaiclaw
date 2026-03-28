@@ -51,4 +51,29 @@ public record SecurityHandshakeProperties(
             if (tokenTtlSeconds <= 0) tokenTtlSeconds = 3600;
         }
     }
+
+    public static Builder builder() { return new Builder(); }
+
+    public static final class Builder {
+        private HandshakeMode mode;
+        private String mcpServerUrl;
+        private String mcpServerName;
+        private BootstrapTrust bootstrap;
+        private String apiKey;
+        private List<String> allowedClientKeys;
+        private ServerProperties server;
+
+        public Builder mode(HandshakeMode mode) { this.mode = mode; return this; }
+        public Builder mcpServerUrl(String mcpServerUrl) { this.mcpServerUrl = mcpServerUrl; return this; }
+        public Builder mcpServerName(String mcpServerName) { this.mcpServerName = mcpServerName; return this; }
+        public Builder bootstrap(BootstrapTrust bootstrap) { this.bootstrap = bootstrap; return this; }
+        public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
+        public Builder allowedClientKeys(List<String> allowedClientKeys) { this.allowedClientKeys = allowedClientKeys; return this; }
+        public Builder server(ServerProperties server) { this.server = server; return this; }
+
+        public SecurityHandshakeProperties build() {
+            return new SecurityHandshakeProperties(
+                    mode, mcpServerUrl, mcpServerName, bootstrap, apiKey, allowedClientKeys, server);
+        }
+    }
 }

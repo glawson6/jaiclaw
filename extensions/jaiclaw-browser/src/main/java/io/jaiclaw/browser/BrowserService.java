@@ -1,5 +1,6 @@
 package io.jaiclaw.browser;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,16 +20,30 @@ public class BrowserService {
 
     private final BrowserConfig config;
     private final Map<String, BrowserSession> sessions = new ConcurrentHashMap<>();
+    private final TenantGuard tenantGuard;
     private Object playwright;
     private Object browser;
     private boolean initialized;
 
     public BrowserService(BrowserConfig config) {
+        this(config, null);
+    }
+
+    public BrowserService(BrowserConfig config, TenantGuard tenantGuard) {
         this.config = config;
+        this.tenantGuard = tenantGuard;
+    }
+
+    private String scopedSessionId(String sessionId) {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            return tenantGuard.resolveTenantPrefix() + ":" + sessionId;
+        }
+        return sessionId;
     }
 
     public synchronized BrowserSession getOrCreateSession(String sessionId) {
-        return sessions.computeIfAbsent(sessionId, id -> {
+        String scopedId = scopedSessionId(sessionId);
+        return sessions.computeIfAbsent(scopedId, id -> {
             ensureInitialized();
             return new BrowserSession(id, browser, config);
         });
@@ -39,11 +54,17 @@ public class BrowserService {
     }
 
     public List<String> listSessions() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String prefix = tenantGuard.resolveTenantPrefix() + ":";
+            return sessions.keySet().stream()
+                    .filter(k -> k.startsWith(prefix))
+                    .toList();
+        }
         return List.copyOf(sessions.keySet());
     }
 
     public void closeSession(String sessionId) {
-        BrowserSession session = sessions.remove(sessionId);
+        BrowserSession session = sessions.remove(scopedSessionId(sessionId));
         if (session != null) {
             session.close();
         }

@@ -2,6 +2,7 @@ package io.jaiclaw.cron;
 
 import io.jaiclaw.core.model.CronJob;
 import io.jaiclaw.core.model.CronJobResult;
+import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,14 +26,22 @@ public class CronService {
     private final ScheduledExecutorService scheduler;
     private final Map<String, ScheduledFuture<?>> scheduledFutures = new ConcurrentHashMap<>();
     private final List<CronJobResult> history = new CopyOnWriteArrayList<>();
+    private final TenantGuard tenantGuard;
 
     public CronService(CronJobStore jobStore, CronJobExecutor executor,
                        int maxConcurrentJobs, int jobTimeoutSeconds) {
+        this(jobStore, executor, maxConcurrentJobs, jobTimeoutSeconds, null);
+    }
+
+    public CronService(CronJobStore jobStore, CronJobExecutor executor,
+                       int maxConcurrentJobs, int jobTimeoutSeconds,
+                       TenantGuard tenantGuard) {
         this.jobStore = jobStore;
         this.executor = executor;
         this.scheduleComputer = new CronScheduleComputer();
         this.maxConcurrentJobs = maxConcurrentJobs;
         this.jobTimeoutSeconds = jobTimeoutSeconds;
+        this.tenantGuard = tenantGuard;
         this.scheduler = Executors.newScheduledThreadPool(maxConcurrentJobs,
                 Thread.ofVirtual().name("cron-", 0).factory());
     }
@@ -52,6 +61,10 @@ public class CronService {
     }
 
     public CronJob addJob(CronJob job) {
+        // Stamp tenantId in MULTI mode
+        if (tenantGuard != null && tenantGuard.isMultiTenant() && job.tenantId() == null) {
+            job = job.withTenantId(tenantGuard.resolveTenantIdForStorage());
+        }
         Instant nextRun = scheduleComputer.nextFireTime(job.schedule(), job.timezone())
                 .orElse(null);
         CronJob withNext = job.withNextRunAt(nextRun);
@@ -61,20 +74,35 @@ public class CronService {
     }
 
     public boolean removeJob(String jobId) {
+        verifyTenantAccess(jobId);
         cancelScheduled(jobId);
         return jobStore.remove(jobId);
     }
 
     public List<CronJob> listJobs() {
-        return jobStore.listAll();
+        List<CronJob> all = jobStore.listAll();
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            return all.stream()
+                    .filter(j -> tenantId.equals(j.tenantId()))
+                    .toList();
+        }
+        return all;
     }
 
     public Optional<CronJob> getJob(String jobId) {
-        return jobStore.get(jobId);
+        Optional<CronJob> job = jobStore.get(jobId);
+        if (tenantGuard != null && tenantGuard.isMultiTenant() && job.isPresent()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(job.get().tenantId())) {
+                return Optional.empty();
+            }
+        }
+        return job;
     }
 
     public CronJobResult runNow(String jobId) {
-        Optional<CronJob> job = jobStore.get(jobId);
+        Optional<CronJob> job = getJob(jobId);
         if (job.isEmpty()) {
             return new CronJobResult.Failure(jobId, UUID.randomUUID().toString(),
                     "Job not found", Instant.now());
@@ -86,13 +114,39 @@ public class CronService {
     }
 
     public List<CronJobResult> getHistory(String jobId) {
+        // In MULTI mode, verify the job belongs to the current tenant before returning history
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            Optional<CronJob> job = getJob(jobId);
+            if (job.isEmpty()) return List.of();
+        }
         return history.stream()
                 .filter(r -> jobId(r).equals(jobId))
                 .toList();
     }
 
     public List<CronJobResult> getFullHistory() {
+        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+            // Filter history to only include results for jobs owned by the current tenant
+            Set<String> tenantJobIds = listJobs().stream()
+                    .map(CronJob::id)
+                    .collect(java.util.stream.Collectors.toSet());
+            return history.stream()
+                    .filter(r -> tenantJobIds.contains(jobId(r)))
+                    .toList();
+        }
         return List.copyOf(history);
+    }
+
+    private void verifyTenantAccess(String jobId) {
+        if (tenantGuard == null || !tenantGuard.isMultiTenant()) return;
+        Optional<CronJob> job = jobStore.get(jobId);
+        if (job.isPresent()) {
+            String tenantId = tenantGuard.requireTenantIfMulti();
+            if (!tenantId.equals(job.get().tenantId())) {
+                throw new IllegalStateException(
+                        "Cross-tenant access denied for cron job " + jobId);
+            }
+        }
     }
 
     private void scheduleJob(CronJob job) {

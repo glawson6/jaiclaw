@@ -6,10 +6,16 @@ package io.jaiclaw.core.model;
  * @param canonicalUserId  UUID of the "real" user across channels
  * @param channel          platform identifier ("telegram", "slack", etc.)
  * @param channelUserId    user's ID on that platform
+ * @param tenantId         tenant scope (nullable for single-tenant)
  */
 public record IdentityLink(
         String canonicalUserId,
         String channel,
-        String channelUserId
+        String channelUserId,
+        String tenantId
 ) {
+    /** Backward-compatible constructor without tenantId. */
+    public IdentityLink(String canonicalUserId, String channel, String channelUserId) {
+        this(canonicalUserId, channel, channelUserId, null);
+    }
 }
