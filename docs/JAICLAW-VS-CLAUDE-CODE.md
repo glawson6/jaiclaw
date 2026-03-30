@@ -111,7 +111,7 @@ JaiClaw components participate in Spring's dependency injection, lifecycle manag
 
 **Claude Code:** Connects to external services via MCP servers. There are MCP servers for Slack, Telegram, etc. These are integrations — Claude Code can send a message by calling an MCP tool. It does not receive inbound messages from users on those channels. It does not route conversations. It does not maintain per-user sessions across channels.
 
-**JaiClaw:** Six native channel adapters with bidirectional messaging, session isolation, and cross-channel identity linking.
+**JaiClaw:** Eight native channel adapters with bidirectional messaging, session isolation, and cross-channel identity linking. All channels are also exposed as MCP tools via `jaiclaw-messaging` — external LLMs can send/receive messages through any configured channel.
 
 | Channel | Inbound | Outbound | Development Mode | Production Mode |
 |---------|---------|----------|-----------------|-----------------|
@@ -343,7 +343,7 @@ Claude Code is the best tool for building JaiClaw applications. JaiClaw is the b
 | **Planning** | ReAct (LLM-driven, non-deterministic) | GOAP via Embabel (A*-planned, deterministic) |
 | **Skills** | `CLAUDE.md` project files | Versioned, tenant-scoped, eligibility-checked Markdown |
 | **Sub-agents** | Up to 10 parallel workers | Embabel GOAP with automatic parallelism detection |
-| **MCP** | 3,000+ server integrations | Client (3 transports) + Server (expose tools to external LLMs) |
+| **MCP** | 3,000+ server integrations | Client (3 transports) + Server (REST + SSE + stdio) + Messaging MCP (8 channel tools) |
 | **Calendar** | None built-in | CalendarService with 8 MCP tools (events, scheduling, availability) |
 | **Identity** | Per-developer | Cross-channel canonical identity (same user on Telegram + Slack + Email) |
 | **Billing** | Anthropic subscription | Stripe/PayPal/Telegram Stars per-tenant billing |

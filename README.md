@@ -257,6 +257,7 @@ jaiclaw-channel-discord   Discord adapter (Gateway + Interactions)
 jaiclaw-channel-email     Email adapter (IMAP polling + SMTP + MIME attachments)
 jaiclaw-channel-sms       SMS/MMS adapter (Twilio REST API + webhook)
 jaiclaw-media             Async media analysis SPI (vision/audio LLM pipeline)
+jaiclaw-messaging         MCP server: channel messaging tools (send, broadcast, sessions, agent chat)
 jaiclaw-audit             Audit logging SPI + in-memory implementation
 jaiclaw-spring-boot-starter  Auto-configuration for all modules
 jaiclaw-gateway-app       Standalone gateway server (runnable)

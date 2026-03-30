@@ -21,7 +21,7 @@ JaiClaw is layered bottom-up:
 | 0 - Core | `jaiclaw-core` | Pure Java records, sealed interfaces, enums — zero Spring dependency |
 | 1 - Channel SPI | `jaiclaw-channel-api` | `ChannelAdapter` SPI, `ChannelMessage`, attachments |
 | 2 - Tools | `jaiclaw-tools` | `ToolRegistry`, built-in tools, Spring AI bridge |
-| 3 - Features | `jaiclaw-agent`, `jaiclaw-skills`, `jaiclaw-plugin-sdk`, `jaiclaw-memory`, `jaiclaw-security`, `jaiclaw-documents`, `jaiclaw-media`, `jaiclaw-audit`, `jaiclaw-compaction`, `jaiclaw-browser`, `jaiclaw-cron`, `jaiclaw-voice`, `jaiclaw-identity`, `jaiclaw-canvas`, `jaiclaw-code` | Agent runtime, session management, plugins, memory, security, media, scheduling |
+| 3 - Features | `jaiclaw-agent`, `jaiclaw-skills`, `jaiclaw-plugin-sdk`, `jaiclaw-memory`, `jaiclaw-security`, `jaiclaw-documents`, `jaiclaw-media`, `jaiclaw-audit`, `jaiclaw-compaction`, `jaiclaw-browser`, `jaiclaw-cron`, `jaiclaw-voice`, `jaiclaw-identity`, `jaiclaw-canvas`, `jaiclaw-code`, `jaiclaw-messaging` | Agent runtime, session management, plugins, memory, security, media, scheduling, MCP messaging |
 | 4 - Gateway | `jaiclaw-gateway`, channel adapters (Telegram, Slack, Discord, Email, SMS) | REST/WebSocket API, webhook dispatch, MCP hosting |
 | 5 - Auto-Config | `jaiclaw-spring-boot-starter` | 3-phase auto-configuration |
 | 6 - Starters | `jaiclaw-starter-anthropic`, `jaiclaw-starter-openai`, `jaiclaw-starter-gateway`, etc. | Dependency aggregation |
@@ -579,7 +579,7 @@ The following resource URIs are designed for a future JaiClaw MCP resource serve
 | Resource URI | Description |
 |-------------|-------------|
 | `jaiclaw://docs/architecture` | Full architecture diagram with all layers |
-| `jaiclaw://docs/modules` | Complete module dependency graph (39 modules) |
+| `jaiclaw://docs/modules` | Complete module dependency graph (40 modules) |
 | `jaiclaw://docs/auto-config` | Auto-configuration ordering and bean wiring details |
 | `jaiclaw://examples/tool` | Complete custom tool implementation with tests |
 | `jaiclaw://examples/plugin` | Complete plugin implementation with tool registration |

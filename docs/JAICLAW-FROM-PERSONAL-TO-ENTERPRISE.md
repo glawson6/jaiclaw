@@ -24,7 +24,7 @@ Most AI agent tools force a choice: a lightweight personal tool that can't scale
 │  No audit         Minimal          Full audit trail     SOC 2 / HIPAA        │
 │  ReAct loop       ReAct loop       ReAct + cron         GOAP multi-agent     │
 │                                                                              │
-│  Modules: 4-5     Modules: 8-10    Modules: 15-20      Modules: 25-39       │
+│  Modules: 4-5     Modules: 8-10    Modules: 15-20      Modules: 25-40       │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -539,7 +539,7 @@ Start with Level 1 or 2. Ship an MVP in days. When you land enterprise customers
 Start with Level 3. Deploy a departmental AI assistant that handles real workflows — daily briefings, document analysis, price monitoring. When other departments want in, add multi-tenancy. When compliance requires auditability, add Embabel.
 
 ### For enterprises
-Start at Level 4 with GOAP. The security, audit, multi-tenancy, compliance infrastructure, and deterministic planning are production-grade from day one. 39 modules mean you take exactly what you need.
+Start at Level 4 with GOAP. The security, audit, multi-tenancy, compliance infrastructure, and deterministic planning are production-grade from day one. 40 modules mean you take exactly what you need.
 
 ### For all organizations
 **You stay on Java.** Your existing CI/CD pipelines, security reviews, monitoring dashboards, deployment infrastructure, and engineering team skills all apply. No Python. No parallel stack. No cross-language integration tax.
@@ -551,7 +551,7 @@ Start at Level 4 with GOAP. The security, audit, multi-tenancy, compliance infra
 ```
 Personal Assistant  =  Spring AI  +  JaiClaw Core  +  Shell
 Team Bot            =  above      +  1 Channel     +  Skills
-Department Platform =  above      +  Channels      +  Cron + Docs + Audit + Calendar
+Department Platform =  above      +  Channels      +  Cron + Docs + Audit + Calendar + Messaging MCP
 Enterprise Platform =  above      +  JWT Security   +  Multi-Tenancy + Billing + K8s
 Multi-Agent GOAP    =  any above  +  Embabel        (deterministic, parallel, auditable)
 ```
@@ -561,5 +561,5 @@ One framework. Add modules. Ship.
 ---
 
 *JaiClaw — Java 21 / Spring Boot 3.5 / Spring AI 1.1*
-*39 modules. 17 examples. 11 starters.*
+*40 modules. 17 examples. 11 starters.*
 *From `./mvnw spring-boot:run` to Kubernetes. Same codebase.*

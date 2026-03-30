@@ -144,6 +144,18 @@ public class JaiClawGatewayAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnBean(io.jaiclaw.gateway.mcp.McpServerRegistry.class)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+            name = "jaiclaw.mcp.sse-server.enabled", havingValue = "true", matchIfMissing = true)
+    public io.jaiclaw.gateway.mcp.transport.server.McpSseServerController mcpSseServerController(
+            io.jaiclaw.gateway.mcp.McpServerRegistry registry,
+            io.jaiclaw.gateway.tenant.CompositeTenantResolver tenantResolver,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        return new io.jaiclaw.gateway.mcp.transport.server.McpSseServerController(registry, tenantResolver, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public io.jaiclaw.gateway.observability.GatewayMetrics gatewayMetrics() {
         return new io.jaiclaw.gateway.observability.GatewayMetrics();
     }

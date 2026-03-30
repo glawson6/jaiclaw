@@ -3,7 +3,7 @@
 ## Overview
 
 - **OpenClaw** — TypeScript/Node.js personal AI gateway with 25+ channels, 50+ skills, native apps (macOS/iOS/Android), voice, canvas, browser automation
-- **JaiClaw** — Java 21 / Spring Boot 3.5 / Spring AI port of OpenClaw. 38 modules, 8 channel adapters, 30+ tools, enterprise-focused with multi-tenancy, JWT security, audit, k8s monitoring, modular starters
+- **JaiClaw** — Java 21 / Spring Boot 3.5 / Spring AI port of OpenClaw. 40 modules, 8 channel adapters, 30+ tools, enterprise-focused with multi-tenancy, JWT security, audit, k8s monitoring, modular starters
 - **Embabel** — Kotlin/Spring agent framework by Rod Johnson. GOAP planning, workflow patterns, multi-model mixing, structured output, HITL, guardrails, A2A protocol
 
 JaiClaw's goal is to combine the best of both: OpenClaw's breadth of channels/tools/skills with Embabel's planning/orchestration depth, wrapped in an enterprise-grade Java platform.
@@ -37,7 +37,7 @@ JaiClaw's goal is to combine the best of both: OpenClaw's breadth of channels/to
 | **Config Hot-Reload** | hybrid/hot/restart modes | Requires restart | Hot-reload missing |
 | **Media Pipeline** | FFmpeg transcoding, TTS (ElevenLabs/OpenAI), STT (Whisper), image gen | `MediaAnalysisProvider` SPI + `CompositeMediaAnalyzer` + Voice module (OpenAI TTS/STT) | **Partial.** TTS/STT ported, FFmpeg transcoding and image gen missing |
 | **Session Model** | Main session + per-peer + DM scope policies + thread support + JSONL transcripts | Sessions with tenant isolation + `SessionTranscriptStore` for persistent transcripts | **Partial.** Transcripts ported; DM scoping, thread support missing |
-| **MCP** | mcporter bridge (loose coupling) | MCP hosting (server-side, REST endpoints) + Security Handshake MCP provider | Different direction — JaiClaw hosts MCP, OpenClaw consumes it |
+| **MCP** | mcporter bridge (loose coupling) | MCP hosting (REST + SSE + stdio transports) + Security Handshake + Messaging MCP provider (8 channel tools) | Different direction — JaiClaw hosts MCP, OpenClaw consumes it |
 | **Document Store** | N/A | `DocStoreService` — 8 tools (search, list, get, tag, describe, analyze, delete, add URL) + LLM analysis + Telegram integration | **JaiClaw-original feature** |
 | **Code Tools** | N/A | 3 tools: `file_edit`, `glob`, `grep` — agentic coding capabilities | **JaiClaw-original feature** |
 | **Agent-to-Agent Security** | N/A | 31-class cryptographic handshake protocol (ECDH, challenge-response, pluggable bootstrap trust, MCP endpoint) | **JaiClaw-original feature** |
@@ -120,7 +120,7 @@ JaiClaw's goal is to combine the best of both: OpenClaw's breadth of channels/to
 | Code Tools | - | ++ (file_edit, glob, grep) | - | JaiClaw |
 | Plugin System | +++ | ++ | + | OpenClaw |
 | Skills | +++ (50+) | ++ (6) | - | OpenClaw |
-| MCP | + (client) | ++ (server + security handshake) | ++ (both) | Embabel / JaiClaw |
+| MCP | + (client) | +++ (server: REST + SSE + stdio + security handshake + messaging tools) | ++ (both) | JaiClaw / Embabel |
 | A2A Protocol | - | - | ++ | Embabel |
 | RAG | + | ++ | ++ | Embabel/JaiClaw |
 | Observability | ++ | + | +++ | Embabel |

@@ -134,9 +134,9 @@ Session keys encode tenant boundaries: `{agentId}:{channel}:{accountId}:{peerId}
 
 **No Python AI framework has this.** LangChain, CrewAI, and AutoGen are single-tenant by design. Adding multi-tenancy requires rebuilding the session, memory, and security layers from scratch.
 
-### 5. 39 Fine-Grained Modules — Take Only What You Need
+### 5. 40 Fine-Grained Modules — Take Only What You Need
 
-JaiClaw is not a monolith. It's 39 modules with explicit dependency boundaries:
+JaiClaw is not a monolith. It's 40 modules with explicit dependency boundaries:
 
 ```
 Need just tools + Spring AI bridge?        → jaiclaw-tools (1 module)

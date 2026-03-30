@@ -76,11 +76,11 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │  │ automation   │ │ virtual thr  │ │              │ │ user linking    │   │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘   │
 │                                                                              │
-│  ┌──────────────┐ ┌──────────────┐                                          │
-│  │ jaiclaw-canvas │ │  jaiclaw-code  │                                          │
-│  │ A2UI / HTML  │ │  file edit   │                                          │
-│  │ artifacts    │ │  code tools  │                                          │
-│  └──────────────┘ └──────────────┘                                          │
+│  ┌──────────────┐ ┌──────────────┐ ┌────────────────┐                       │
+│  │ jaiclaw-canvas │ │  jaiclaw-code  │ │jaiclaw-messaging │                       │
+│  │ A2UI / HTML  │ │  file edit   │ │ MCP channel    │                       │
+│  │ artifacts    │ │  code tools  │ │ messaging tools│                       │
+│  └──────────────┘ └──────────────┘ └────────────────┘                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                      TOOL LAYER  (Layer 2)                                   │
 │                                                                              │
@@ -142,6 +142,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-identity  (cross-channel identity linking, JSON persistence)
   +---> jaiclaw-canvas  (A2UI artifact rendering, HTML file management)
   +---> jaiclaw-code  (file editing, code generation tools)
+  +---> jaiclaw-messaging  (MCP server: channel messaging, sessions, agent-routed chat)
   +---> jaiclaw-config  (@ConfigurationProperties records)
           |
           +---> jaiclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
@@ -289,6 +290,8 @@ Adapters are discovered via Spring component scanning and registered in a `Chann
 | Web UI    | WebSocket `/ws/session/{id}`                     | WebSocket                | JWT / session  | `jaiclaw-gateway` (built-in)|
 | REST API  | `POST /api/chat`                                 | JSON response            | API key / JWT  | `jaiclaw-gateway` (built-in)|
 | MCP       | `POST /mcp/{server}/tools/{tool}`                | JSON response            | API key / JWT  | `jaiclaw-gateway` (built-in)|
+| MCP SSE   | `GET /mcp/{server}/sse` + `POST /jsonrpc`        | JSON-RPC 2.0 / SSE       | API key / JWT  | `jaiclaw-gateway` (built-in)|
+| MCP stdio | stdin JSON-RPC (standalone JAR `--stdio`)         | stdout JSON-RPC          | Env vars       | `jaiclaw-messaging` (standalone)|
 
 **Dual-mode adapters**: All three messaging adapters support a local-dev mode that requires no public endpoint:
 - **Telegram**: `webhookUrl` blank → long polling via `getUpdates`
@@ -459,6 +462,9 @@ env:
 | Channel adapter SPI + attachments| Done         | `jaiclaw-channel-api`          |
 | Gateway (REST + WS + webhooks)   | Done         | `jaiclaw-gateway`              |
 | MCP server hosting               | Done         | `jaiclaw-gateway` (mcp/)       |
+| MCP SSE server transport         | Done         | `jaiclaw-gateway` (mcp/transport/server/) |
+| MCP stdio bridge transport       | Done         | `jaiclaw-gateway` (mcp/transport/server/) |
+| MCP channel messaging tools      | Done         | `jaiclaw-messaging`            |
 | Observability (metrics + health) | Done         | `jaiclaw-gateway` (observability/) |
 | Telegram adapter (poll + webhook)| Done         | `jaiclaw-channel-telegram`     |
 | Slack adapter                    | Done         | `jaiclaw-channel-slack`        |
@@ -538,6 +544,7 @@ JaiClawGatewayAutoConfiguration
   ├── webSocketSessionHandler WebSocketSessionHandler      (WS /ws/session/{id})
   ├── mcpServerRegistry       McpServerRegistry            (collects McpToolProvider beans)
   ├── mcpController           McpController                @ConditionalOnBean(McpServerRegistry) — /mcp/*
+  ├── mcpSseServerController  McpSseServerController       @ConditionalOnProperty(jaiclaw.mcp.sse-server.enabled) — /mcp/{server}/sse + /jsonrpc
   ├── gatewayMetrics          GatewayMetrics               (atomic request/error counters)
   └── gatewayHealthIndicator  GatewayHealthIndicator       (UP/DEGRADED based on channel adapter status)
 ```
@@ -557,6 +564,18 @@ JaiClawChannelAutoConfiguration
   └── AuditAutoConfiguration      ─── creates ──→  InMemoryAuditLogger  @ConditionalOnClass(AuditLogger)
 ```
 
+### Extension Auto-Configurations
+
+Extensions provide their own `@AutoConfiguration` classes registered via `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. They are `@AutoConfigureAfter(JaiClawGatewayAutoConfiguration)` so gateway beans are available.
+
+```
+JaiClawCalendarAutoConfiguration     @ConditionalOnProperty(jaiclaw.calendar.enabled=true)
+  └── CalendarMcpToolProvider        (8 tools: event CRUD, scheduling, availability)
+
+JaiClawMessagingAutoConfiguration    @ConditionalOnProperty(jaiclaw.messaging.enabled=true)
+  └── MessagingMcpToolProvider       (8 tools: channel messaging, sessions, agent chat)
+```
+
 ### Complete Bean Dependency Chain
 
 ```
@@ -566,7 +585,8 @@ ChatModel (Spring AI)
               └─→ GatewayService (Phase 3)
                     ├─→ GatewayController   (/api/chat, /api/health, /webhook/*)
                     ├─→ GatewayLifecycle    (starts channel adapters)
-                    └─→ WebSocketSessionHandler (/ws/session/{id})
+                    ├─→ WebSocketSessionHandler (/ws/session/{id})
+                    └─→ McpServerRegistry → MessagingMcpToolProvider, CalendarMcpToolProvider, etc.
 ```
 
 ### Why Three Separate Auto-Configs?
