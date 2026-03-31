@@ -148,4 +148,18 @@ class GlobToolSpec extends Specification {
         expect:
         tool.definition().section() == ToolCatalog.SECTION_FILES
     }
+
+    // --- Workspace boundary tests ---
+
+    def "path traversal is blocked when workspace boundary is enforced"() {
+        given:
+        def boundedTool = new GlobTool(true)
+
+        when:
+        def result = boundedTool.execute(Map.of("pattern", "**/*", "path", "../../etc"), context)
+
+        then:
+        result instanceof ToolResult.Error
+        (result as ToolResult.Error).message().contains("Path traversal blocked")
+    }
 }

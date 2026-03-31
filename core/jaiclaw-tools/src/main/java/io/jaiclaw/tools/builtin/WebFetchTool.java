@@ -7,6 +7,7 @@ import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
 
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
+import io.jaiclaw.tools.exec.SsrfGuard;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -38,15 +40,24 @@ public class WebFetchTool extends AbstractBuiltinTool {
             }""";
 
     private final HttpClient httpClient;
+    private final boolean ssrfProtection;
 
     public WebFetchTool() {
+        this(false);
+    }
+
+    public WebFetchTool(boolean ssrfProtection) {
         this(ProxyAwareHttpClientFactory.newBuilder()
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .connectTimeout(Duration.ofSeconds(10))
-                .build());
+                .build(), ssrfProtection);
     }
 
     public WebFetchTool(HttpClient httpClient) {
+        this(httpClient, false);
+    }
+
+    public WebFetchTool(HttpClient httpClient, boolean ssrfProtection) {
         super(new ToolDefinition(
                 "web_fetch",
                 "Fetch content from a URL. Returns the HTTP status code and response body.",
@@ -55,6 +66,7 @@ public class WebFetchTool extends AbstractBuiltinTool {
                 Set.of(ToolProfile.CODING, ToolProfile.FULL)
         ));
         this.httpClient = httpClient;
+        this.ssrfProtection = ssrfProtection;
     }
 
     @Override
@@ -62,6 +74,14 @@ public class WebFetchTool extends AbstractBuiltinTool {
         String url = requireParam(parameters, "url");
         int timeout = parameters.containsKey("timeout")
                 ? ((Number) parameters.get("timeout")).intValue() : 30;
+
+        // SSRF protection: block requests to private/internal addresses
+        if (ssrfProtection) {
+            Optional<String> ssrfError = SsrfGuard.validate(url);
+            if (ssrfError.isPresent()) {
+                return new ToolResult.Error("SSRF protection: " + ssrfError.get());
+            }
+        }
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))

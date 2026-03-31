@@ -640,6 +640,22 @@ jaiclaw:
   #     password: ${HTTP_PROXY_PASSWORD:}
   #     non-proxy-hosts: ${NO_PROXY:localhost,127.0.0.1}
 
+# --- Security Hardening (all opt-in, default: off) ---
+# Activate all at once with: SPRING_PROFILES_ACTIVE=security-hardened
+#   channels:
+#     slack:
+#       verify-signature: true         # HMAC-SHA256 webhook verification
+#     telegram:
+#       verify-webhook: true           # Secret token webhook verification
+#       mask-bot-token: true           # Hash bot token in session keys
+#   tools:
+#     web:
+#       ssrf-protection: true          # Block private/internal IP requests
+#     code:
+#       workspace-boundary: true       # Path traversal protection
+#   security:
+#     timing-safe-api-key: true        # Constant-time API key comparison
+
 spring:
   ai:
     openai:

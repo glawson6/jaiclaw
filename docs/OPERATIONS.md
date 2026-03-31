@@ -588,6 +588,23 @@ The `onboard` command in the shell includes a security step:
 
 The `--reconfigure` flag in `quickstart.sh` also includes a security step.
 
+### Security Hardening
+
+JaiClaw provides opt-in security hardening flags that are all **disabled by default**. Enable them individually or activate the `security-hardened` Spring profile to enable all at once:
+
+```bash
+SPRING_PROFILES_ACTIVE=security-hardened ./start.sh local
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `jaiclaw.channels.slack.verify-signature` | `false` | HMAC-SHA256 verification of Slack webhook signatures with replay protection |
+| `jaiclaw.channels.telegram.verify-webhook` | `false` | `X-Telegram-Bot-Api-Secret-Token` header verification on inbound webhooks |
+| `jaiclaw.channels.telegram.mask-bot-token` | `false` | Use SHA-256 hash prefix of bot token as accountId in session keys |
+| `jaiclaw.tools.web.ssrf-protection` | `false` | Block WebFetchTool requests to private/internal/link-local IPs |
+| `jaiclaw.tools.code.workspace-boundary` | `false` | Path traversal protection in FileEditTool, GrepTool, GlobTool |
+| `jaiclaw.security.timing-safe-api-key` | `false` | Constant-time API key comparison via `MessageDigest.isEqual()` |
+
 ---
 
 ## Environment Variables

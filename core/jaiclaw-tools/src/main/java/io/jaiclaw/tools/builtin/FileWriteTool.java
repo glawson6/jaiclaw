@@ -5,6 +5,7 @@ import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
+import io.jaiclaw.tools.exec.WorkspaceBoundary;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,7 +48,7 @@ public class FileWriteTool extends AbstractBuiltinTool {
         String filePath = requireParam(parameters, "path");
         String content = requireParam(parameters, "content");
 
-        Path resolved = Path.of(context.workspaceDir()).resolve(filePath).normalize();
+        Path resolved = WorkspaceBoundary.resolve(context.workspaceDir(), filePath);
         Files.createDirectories(resolved.getParent());
         Files.writeString(resolved, content);
 

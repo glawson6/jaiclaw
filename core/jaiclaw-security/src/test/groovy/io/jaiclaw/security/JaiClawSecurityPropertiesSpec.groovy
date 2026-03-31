@@ -15,7 +15,7 @@ class JaiClawSecurityPropertiesSpec extends Specification {
 
     def "enabled=true without explicit mode resolves to jwt"() {
         when:
-        def props = new JaiClawSecurityProperties(true, null, null, null,
+        def props = new JaiClawSecurityProperties(true, null, null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())
@@ -26,7 +26,7 @@ class JaiClawSecurityPropertiesSpec extends Specification {
 
     def "enabled=false without explicit mode resolves to api-key"() {
         when:
-        def props = new JaiClawSecurityProperties(false, null, null, null,
+        def props = new JaiClawSecurityProperties(false, null, null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())
@@ -37,7 +37,7 @@ class JaiClawSecurityPropertiesSpec extends Specification {
 
     def "explicit mode overrides enabled flag"() {
         when:
-        def props = new JaiClawSecurityProperties(true, "none", null, null,
+        def props = new JaiClawSecurityProperties(true, "none", null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())
@@ -56,7 +56,7 @@ class JaiClawSecurityPropertiesSpec extends Specification {
 
     def "explicit apiKeyFile is preserved"() {
         when:
-        def props = new JaiClawSecurityProperties(false, "api-key", null, "/custom/path",
+        def props = new JaiClawSecurityProperties(false, "api-key", null, "/custom/path", false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())

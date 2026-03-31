@@ -8,18 +8,26 @@ public record ToolsProperties(
         Set<String> allow,
         Set<String> deny,
         WebToolsProperties web,
-        ExecToolProperties exec
+        ExecToolProperties exec,
+        CodeToolsProperties code
 ) {
     public static final ToolsProperties DEFAULT = new ToolsProperties(
             "coding", Set.of(), Set.of(),
-            WebToolsProperties.DEFAULT, ExecToolProperties.DEFAULT
+            WebToolsProperties.DEFAULT, ExecToolProperties.DEFAULT, CodeToolsProperties.DEFAULT
     );
+
+    public ToolsProperties {
+        if (web == null) web = WebToolsProperties.DEFAULT;
+        if (exec == null) exec = ExecToolProperties.DEFAULT;
+        if (code == null) code = CodeToolsProperties.DEFAULT;
+    }
 
     public record WebToolsProperties(
             boolean searchEnabled,
-            boolean fetchEnabled
+            boolean fetchEnabled,
+            boolean ssrfProtection
     ) {
-        public static final WebToolsProperties DEFAULT = new WebToolsProperties(true, true);
+        public static final WebToolsProperties DEFAULT = new WebToolsProperties(true, true, false);
     }
 
     public record ExecToolProperties(
@@ -31,7 +39,8 @@ public record ToolsProperties(
             KubectlPolicyProperties kubectl
     ) {
         public static final ExecToolProperties DEFAULT = new ExecToolProperties(
-                "sandbox", "unrestricted", List.of(), List.of(), 300,
+                "sandbox", "deny-dangerous", List.of(),
+                List.of("rm -rf /", "mkfs", "> /dev/sd"), 300,
                 KubectlPolicyProperties.DEFAULT
         );
     }
@@ -44,5 +53,11 @@ public record ToolsProperties(
         public static final KubectlPolicyProperties DEFAULT = new KubectlPolicyProperties(
                 "unrestricted", List.of(), List.of()
         );
+    }
+
+    public record CodeToolsProperties(
+            boolean workspaceBoundary
+    ) {
+        public static final CodeToolsProperties DEFAULT = new CodeToolsProperties(false);
     }
 }

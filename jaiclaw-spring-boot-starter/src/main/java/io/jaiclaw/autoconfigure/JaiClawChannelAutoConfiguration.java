@@ -159,7 +159,10 @@ public class JaiClawChannelAutoConfiguration {
                     telegram.webhookUrl(),
                     telegram.enabled(),
                     telegram.pollingTimeoutSeconds(),
-                    telegram.allowedUserIds());
+                    telegram.allowedUserIds(),
+                    telegram.verifyWebhook(),
+                    telegram.webhookSecretToken(),
+                    telegram.maskBotToken());
             return new io.jaiclaw.channel.telegram.TelegramAdapter(config, webhookDispatcher);
         }
     }
@@ -184,7 +187,8 @@ public class JaiClawChannelAutoConfiguration {
                     slack.signingSecret(),
                     slack.enabled(),
                     slack.appToken(),
-                    slack.allowedSenderIds());
+                    slack.allowedSenderIds(),
+                    slack.verifySignature());
             return new io.jaiclaw.channel.slack.SlackAdapter(config, webhookDispatcher);
         }
     }

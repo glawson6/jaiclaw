@@ -5,6 +5,7 @@ import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
+import io.jaiclaw.tools.exec.WorkspaceBoundary;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,7 +50,7 @@ public class FileReadTool extends AbstractBuiltinTool {
     @Override
     protected ToolResult doExecute(Map<String, Object> parameters, ToolContext context) throws Exception {
         String filePath = requireParam(parameters, "path");
-        Path resolved = Path.of(context.workspaceDir()).resolve(filePath).normalize();
+        Path resolved = WorkspaceBoundary.resolve(context.workspaceDir(), filePath);
 
         if (!Files.exists(resolved)) {
             return new ToolResult.Error("File not found: " + filePath);

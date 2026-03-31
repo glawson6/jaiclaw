@@ -15,6 +15,9 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -286,7 +289,7 @@ public class TelegramAdapter implements ChannelAdapter {
         if (text.isEmpty() && attachments.isEmpty()) return;
 
         var channelMessage = ChannelMessage.inbound(
-                updateId, "telegram", config.botToken(), chatId, text, attachments, platformData);
+                updateId, "telegram", config.accountId(), chatId, text, attachments, platformData);
 
         if (handler != null) {
             handler.onMessage(channelMessage);
@@ -406,10 +409,15 @@ public class TelegramAdapter implements ChannelAdapter {
     private void registerWebhook() {
         try {
             String url = TELEGRAM_API_BASE + config.botToken() + "/setWebhook";
-            Map<String, Object> body = Map.of(
-                    "url", config.webhookUrl(),
-                    "allowed_updates", new String[]{"message"}
-            );
+            Map<String, Object> body = new HashMap<>();
+            body.put("url", config.webhookUrl());
+            body.put("allowed_updates", new String[]{"message"});
+
+            // Include secret_token if webhook verification is enabled
+            if (config.verifyWebhook() && !config.webhookSecretToken().isBlank()) {
+                body.put("secret_token", config.webhookSecretToken());
+            }
+
             restTemplate.postForEntity(url, body, String.class);
             log.info("Registered Telegram webhook: {}", config.webhookUrl());
         } catch (Exception e) {
@@ -419,6 +427,17 @@ public class TelegramAdapter implements ChannelAdapter {
 
     private ResponseEntity<String> handleWebhook(String body, Map<String, String> headers) {
         try {
+            // Verify webhook secret token when verifyWebhook is enabled
+            if (config.verifyWebhook() && !config.webhookSecretToken().isBlank()) {
+                String provided = headers.get("x-telegram-bot-api-secret-token");
+                if (provided == null || !MessageDigest.isEqual(
+                        provided.getBytes(StandardCharsets.UTF_8),
+                        config.webhookSecretToken().getBytes(StandardCharsets.UTF_8))) {
+                    log.warn("Telegram webhook secret token verification failed");
+                    return ResponseEntity.status(401).body("invalid secret token");
+                }
+            }
+
             JsonNode update = MAPPER.readTree(body);
             processUpdate(update);
             return ResponseEntity.ok("ok");

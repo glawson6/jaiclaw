@@ -7,9 +7,14 @@ class CommandPolicySpec extends Specification {
 
     // --- Shell policy: unrestricted ---
 
+    def "DEFAULT policy is deny-dangerous"() {
+        expect:
+        ExecPolicyConfig.DEFAULT.policy() == ExecPolicyConfig.POLICY_DENY_DANGEROUS
+    }
+
     def "unrestricted policy allows any command"() {
         given:
-        def config = ExecPolicyConfig.DEFAULT
+        def config = new ExecPolicyConfig("unrestricted", List.of(), List.of(), 300)
 
         expect:
         CommandPolicy.validate("echo hello", config).isEmpty()

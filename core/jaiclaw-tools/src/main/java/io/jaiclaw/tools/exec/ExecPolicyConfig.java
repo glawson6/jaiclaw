@@ -20,7 +20,11 @@ public record ExecPolicyConfig(
     public static final String POLICY_ALLOWLIST = "allowlist";
     public static final String POLICY_DENY_DANGEROUS = "deny-dangerous";
 
+    public static final List<String> DEFAULT_BLOCKED_PATTERNS = List.of(
+            "rm -rf /", "mkfs", "> /dev/sd"
+    );
+
     public static final ExecPolicyConfig DEFAULT = new ExecPolicyConfig(
-            POLICY_UNRESTRICTED, List.of(), List.of(), 300
+            POLICY_DENY_DANGEROUS, List.of(), DEFAULT_BLOCKED_PATTERNS, 300
     );
 }

@@ -167,7 +167,8 @@ public class JaiClawAutoConfiguration {
     public ToolRegistry toolRegistry(JaiClawProperties properties) {
         var registry = new ToolRegistry();
         ExecPolicyConfig execPolicyConfig = toExecPolicyConfig(properties.tools().exec());
-        BuiltinTools.registerAll(registry, execPolicyConfig);
+        boolean ssrfProtection = properties.tools().web().ssrfProtection();
+        BuiltinTools.registerAll(registry, execPolicyConfig, ssrfProtection);
         return registry;
     }
 

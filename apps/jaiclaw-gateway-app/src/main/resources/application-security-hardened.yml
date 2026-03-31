@@ -1,0 +1,16 @@
+# Security-hardened profile — enables all security flags.
+# Activate with: SPRING_PROFILES_ACTIVE=security-hardened
+jaiclaw:
+  channels:
+    slack:
+      verify-signature: true
+    telegram:
+      verify-webhook: true
+      mask-bot-token: true
+  tools:
+    web:
+      ssrf-protection: true
+    code:
+      workspace-boundary: true
+  security:
+    timing-safe-api-key: true

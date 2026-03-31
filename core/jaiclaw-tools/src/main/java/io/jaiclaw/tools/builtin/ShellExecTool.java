@@ -7,6 +7,7 @@ import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
 import io.jaiclaw.tools.exec.CommandPolicy;
 import io.jaiclaw.tools.exec.ExecPolicyConfig;
+import io.jaiclaw.tools.exec.SafeProcessEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +84,7 @@ public class ShellExecTool extends AbstractBuiltinTool {
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command)
                 .directory(Path.of(context.workspaceDir()).toFile())
                 .redirectErrorStream(true);
+        SafeProcessEnvironment.apply(pb);
 
         Process process = pb.start();
         StringBuilder output = new StringBuilder();

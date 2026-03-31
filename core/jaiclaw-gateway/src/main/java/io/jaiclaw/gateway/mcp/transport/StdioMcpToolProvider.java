@@ -38,7 +38,19 @@ public class StdioMcpToolProvider implements McpToolProvider, DisposableBean {
     private BufferedReader stdout;
     private List<McpToolDefinition> cachedTools;
 
+    /** Shell metacharacters that indicate potential command injection. */
+    private static final java.util.regex.Pattern SHELL_METACHAR_PATTERN = java.util.regex.Pattern.compile(
+            "[;|&`<>$]"
+    );
+
     public StdioMcpToolProvider(String serverName, String description, String command, List<String> args) {
+        if (command == null || command.isBlank()) {
+            throw new IllegalArgumentException("MCP server command must not be blank for: " + serverName);
+        }
+        if (SHELL_METACHAR_PATTERN.matcher(command).find()) {
+            throw new IllegalArgumentException(
+                    "MCP server command contains shell metacharacters: " + command);
+        }
         this.serverName = serverName;
         this.description = description != null ? description : serverName;
         this.command = command;
@@ -55,6 +67,18 @@ public class StdioMcpToolProvider implements McpToolProvider, DisposableBean {
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(false);
+
+        // Sanitize environment — only keep safe variables
+        Map<String, String> currentEnv = System.getenv();
+        pb.environment().clear();
+        for (String key : List.of("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE",
+                "TERM", "USER", "LOGNAME", "SHELL", "TMPDIR", "TZ", "HOSTNAME")) {
+            String value = currentEnv.get(key);
+            if (value != null) {
+                pb.environment().put(key, value);
+            }
+        }
+
         process = pb.start();
 
         stdin = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));

@@ -32,11 +32,18 @@ public class PayPalPaymentProvider implements PaymentProvider {
     private final String webhookId;
     private final String returnUrl;
     private final String cancelUrl;
+    private final boolean verifyWebhook;
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
 
     public PayPalPaymentProvider(String clientId, String clientSecret, boolean sandbox,
                                   String webhookId, String returnUrl, String cancelUrl) {
+        this(clientId, clientSecret, sandbox, webhookId, returnUrl, cancelUrl, false);
+    }
+
+    public PayPalPaymentProvider(String clientId, String clientSecret, boolean sandbox,
+                                  String webhookId, String returnUrl, String cancelUrl,
+                                  boolean verifyWebhook) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.baseUrl = sandbox
@@ -45,6 +52,7 @@ public class PayPalPaymentProvider implements PaymentProvider {
         this.webhookId = webhookId;
         this.returnUrl = returnUrl;
         this.cancelUrl = cancelUrl;
+        this.verifyWebhook = verifyWebhook;
         this.httpClient = HttpClient.newHttpClient();
         this.mapper = new ObjectMapper();
     }
@@ -149,6 +157,14 @@ public class PayPalPaymentProvider implements PaymentProvider {
     @Override
     public Optional<PaymentEvent> handleWebhook(String payload, Map<String, String> headers) {
         try {
+            // Verify webhook signature when enabled
+            if (verifyWebhook && webhookId != null && !webhookId.isBlank()) {
+                if (!verifyWebhookSignature(payload, headers)) {
+                    log.warn("PayPal webhook signature verification failed");
+                    return Optional.empty();
+                }
+            }
+
             Map<String, Object> event = mapper.readValue(payload,
                     new TypeReference<Map<String, Object>>() {});
 
@@ -215,32 +231,68 @@ public class PayPalPaymentProvider implements PaymentProvider {
         return (String) body.get("access_token");
     }
 
-    private String createOrderJson(SubscriptionPlan plan, Map<String, String> metadata) {
+    private String createOrderJson(SubscriptionPlan plan, Map<String, String> metadata)
+            throws IOException {
         String subscriptionId = metadata.getOrDefault("subscription_id", "");
-        return """
-                {
-                  "intent": "CAPTURE",
-                  "purchase_units": [{
-                    "amount": {
-                      "currency_code": "%s",
-                      "value": "%s"
-                    },
-                    "description": "%s",
-                    "custom_id": "%s"
-                  }],
-                  "application_context": {
-                    "return_url": "%s",
-                    "cancel_url": "%s"
-                  }
-                }
-                """.formatted(
-                plan.currency(),
-                plan.price().toPlainString(),
-                plan.name(),
-                subscriptionId,
-                returnUrl,
-                cancelUrl
+        Map<String, Object> order = Map.of(
+                "intent", "CAPTURE",
+                "purchase_units", java.util.List.of(Map.of(
+                        "amount", Map.of(
+                                "currency_code", plan.currency(),
+                                "value", plan.price().toPlainString()
+                        ),
+                        "description", plan.name(),
+                        "custom_id", subscriptionId
+                )),
+                "application_context", Map.of(
+                        "return_url", returnUrl,
+                        "cancel_url", cancelUrl
+                )
         );
+        return mapper.writeValueAsString(order);
+    }
+
+    /**
+     * Verify webhook signature by calling PayPal's verification API.
+     *
+     * @see <a href="https://developer.paypal.com/docs/api/webhooks/v1/#verify-webhook-signature_post">PayPal docs</a>
+     */
+    boolean verifyWebhookSignature(String payload, Map<String, String> headers) {
+        try {
+            String accessToken = getAccessToken();
+
+            Map<String, Object> verifyBody = new java.util.LinkedHashMap<>();
+            verifyBody.put("auth_algo", headers.getOrDefault("paypal-auth-algo", ""));
+            verifyBody.put("cert_url", headers.getOrDefault("paypal-cert-url", ""));
+            verifyBody.put("transmission_id", headers.getOrDefault("paypal-transmission-id", ""));
+            verifyBody.put("transmission_sig", headers.getOrDefault("paypal-transmission-sig", ""));
+            verifyBody.put("transmission_time", headers.getOrDefault("paypal-transmission-time", ""));
+            verifyBody.put("webhook_id", webhookId);
+            verifyBody.put("webhook_event", mapper.readValue(payload,
+                    new TypeReference<Map<String, Object>>() {}));
+
+            String verifyJson = mapper.writeValueAsString(verifyBody);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/v1/notifications/verify-webhook-signature"))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + accessToken)
+                    .POST(HttpRequest.BodyPublishers.ofString(verifyJson))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                Map<String, Object> result = mapper.readValue(response.body(),
+                        new TypeReference<Map<String, Object>>() {});
+                return "SUCCESS".equals(result.get("verification_status"));
+            }
+            log.warn("PayPal webhook verification returned HTTP {}", response.statusCode());
+            return false;
+        } catch (Exception e) {
+            log.error("PayPal webhook signature verification error: {}", e.getMessage());
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")

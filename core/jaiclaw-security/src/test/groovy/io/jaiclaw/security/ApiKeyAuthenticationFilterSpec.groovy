@@ -149,6 +149,40 @@ class ApiKeyAuthenticationFilterSpec extends Specification {
         authed.principal == "api-key-user"
     }
 
+    // --- Timing-safe API key comparison tests ---
+
+    def "timing-safe mode accepts correct key"() {
+        given:
+        def timingSafeFilter = new ApiKeyAuthenticationFilter(provider, null, true)
+        def request = mockRequest("/api/chat", VALID_KEY)
+        def response = Mock(HttpServletResponse)
+        def chain = Mock(FilterChain)
+
+        when:
+        timingSafeFilter.doFilterInternal(request, response, chain)
+
+        then:
+        1 * chain.doFilter(request, response)
+        0 * response.setStatus(401)
+    }
+
+    def "timing-safe mode rejects wrong key"() {
+        given:
+        def timingSafeFilter = new ApiKeyAuthenticationFilter(provider, null, true)
+        def request = mockRequest("/api/chat", "wrong-key")
+        def response = Mock(HttpServletResponse)
+        def writer = new PrintWriter(new StringWriter())
+        response.getWriter() >> writer
+        def chain = Mock(FilterChain)
+
+        when:
+        timingSafeFilter.doFilterInternal(request, response, chain)
+
+        then:
+        1 * response.setStatus(401)
+        0 * chain.doFilter(_, _)
+    }
+
     private HttpServletRequest mockRequest(String uri, String apiKey = null) {
         Mock(HttpServletRequest) {
             getRequestURI() >> uri

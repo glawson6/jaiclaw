@@ -6,6 +6,7 @@ import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
 import io.jaiclaw.tools.builtin.AbstractBuiltinTool;
+import io.jaiclaw.tools.exec.WorkspaceBoundary;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -40,7 +41,13 @@ public class GlobTool extends AbstractBuiltinTool {
               "required": ["pattern"]
             }""";
 
+    private final boolean enforceWorkspaceBoundary;
+
     public GlobTool() {
+        this(false);
+    }
+
+    public GlobTool(boolean enforceWorkspaceBoundary) {
         super(new ToolDefinition(
                 "glob",
                 "Find files matching a glob pattern. Returns matching file paths sorted alphabetically.",
@@ -48,6 +55,7 @@ public class GlobTool extends AbstractBuiltinTool {
                 INPUT_SCHEMA,
                 Set.of(ToolProfile.MINIMAL, ToolProfile.CODING, ToolProfile.FULL)
         ));
+        this.enforceWorkspaceBoundary = enforceWorkspaceBoundary;
     }
 
     @Override
@@ -55,7 +63,12 @@ public class GlobTool extends AbstractBuiltinTool {
         String pattern = requireParam(parameters, "pattern");
         String basePath = optionalParam(parameters, "path", "");
 
-        Path baseDir = Path.of(context.workspaceDir()).resolve(basePath).normalize();
+        Path baseDir;
+        if (enforceWorkspaceBoundary) {
+            baseDir = WorkspaceBoundary.resolve(context.workspaceDir(), basePath);
+        } else {
+            baseDir = Path.of(context.workspaceDir()).resolve(basePath).normalize();
+        }
 
         if (!Files.isDirectory(baseDir)) {
             return new ToolResult.Error("Directory not found: " + basePath);

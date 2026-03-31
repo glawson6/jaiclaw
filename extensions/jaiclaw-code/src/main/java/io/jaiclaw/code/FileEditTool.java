@@ -6,6 +6,7 @@ import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
 import io.jaiclaw.tools.builtin.AbstractBuiltinTool;
+import io.jaiclaw.tools.exec.WorkspaceBoundary;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +43,13 @@ public class FileEditTool extends AbstractBuiltinTool {
               "required": ["path", "old_string", "new_string"]
             }""";
 
+    private final boolean enforceWorkspaceBoundary;
+
     public FileEditTool() {
+        this(false);
+    }
+
+    public FileEditTool(boolean enforceWorkspaceBoundary) {
         super(new ToolDefinition(
                 "file_edit",
                 "Perform a surgical string replacement in a file. Finds old_string and replaces it with new_string. "
@@ -51,6 +58,7 @@ public class FileEditTool extends AbstractBuiltinTool {
                 INPUT_SCHEMA,
                 Set.of(ToolProfile.CODING, ToolProfile.FULL)
         ));
+        this.enforceWorkspaceBoundary = enforceWorkspaceBoundary;
     }
 
     @Override
@@ -61,7 +69,12 @@ public class FileEditTool extends AbstractBuiltinTool {
         boolean replaceAll = Boolean.parseBoolean(
                 optionalParam(parameters, "replace_all", "false"));
 
-        Path resolved = Path.of(context.workspaceDir()).resolve(filePath).normalize();
+        Path resolved;
+        if (enforceWorkspaceBoundary) {
+            resolved = WorkspaceBoundary.resolve(context.workspaceDir(), filePath);
+        } else {
+            resolved = Path.of(context.workspaceDir()).resolve(filePath).normalize();
+        }
 
         if (!Files.exists(resolved)) {
             return new ToolResult.Error("File not found: " + filePath);

@@ -62,10 +62,13 @@ public record ChannelsProperties(
             String botToken,
             String webhookUrl,
             String allowedUsers,
-            int pollingTimeoutSeconds
+            int pollingTimeoutSeconds,
+            boolean verifyWebhook,
+            String webhookSecretToken,
+            boolean maskBotToken
     ) {
         public static final TelegramProperties DEFAULT = new TelegramProperties(
-                false, null, null, null, 30
+                false, null, null, null, 30, false, null, false
         );
 
         public Set<String> allowedUserIds() {
@@ -84,15 +87,22 @@ public record ChannelsProperties(
             private String webhookUrl;
             private String allowedUsers;
             private int pollingTimeoutSeconds;
+            private boolean verifyWebhook;
+            private String webhookSecretToken;
+            private boolean maskBotToken;
 
             public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
             public Builder botToken(String botToken) { this.botToken = botToken; return this; }
             public Builder webhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; return this; }
             public Builder allowedUsers(String allowedUsers) { this.allowedUsers = allowedUsers; return this; }
             public Builder pollingTimeoutSeconds(int pollingTimeoutSeconds) { this.pollingTimeoutSeconds = pollingTimeoutSeconds; return this; }
+            public Builder verifyWebhook(boolean verifyWebhook) { this.verifyWebhook = verifyWebhook; return this; }
+            public Builder webhookSecretToken(String webhookSecretToken) { this.webhookSecretToken = webhookSecretToken; return this; }
+            public Builder maskBotToken(boolean maskBotToken) { this.maskBotToken = maskBotToken; return this; }
 
             public TelegramProperties build() {
-                return new TelegramProperties(enabled, botToken, webhookUrl, allowedUsers, pollingTimeoutSeconds);
+                return new TelegramProperties(enabled, botToken, webhookUrl, allowedUsers,
+                        pollingTimeoutSeconds, verifyWebhook, webhookSecretToken, maskBotToken);
             }
         }
     }
@@ -201,10 +211,11 @@ public record ChannelsProperties(
             String botToken,
             String signingSecret,
             String appToken,
-            String allowedSenders
+            String allowedSenders,
+            boolean verifySignature
     ) {
         public static final SlackProperties DEFAULT = new SlackProperties(
-                false, null, null, null, null
+                false, null, null, null, null, false
         );
 
         public Set<String> allowedSenderIds() {
@@ -223,15 +234,17 @@ public record ChannelsProperties(
             private String signingSecret;
             private String appToken;
             private String allowedSenders;
+            private boolean verifySignature;
 
             public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
             public Builder botToken(String botToken) { this.botToken = botToken; return this; }
             public Builder signingSecret(String signingSecret) { this.signingSecret = signingSecret; return this; }
             public Builder appToken(String appToken) { this.appToken = appToken; return this; }
             public Builder allowedSenders(String allowedSenders) { this.allowedSenders = allowedSenders; return this; }
+            public Builder verifySignature(boolean verifySignature) { this.verifySignature = verifySignature; return this; }
 
             public SlackProperties build() {
-                return new SlackProperties(enabled, botToken, signingSecret, appToken, allowedSenders);
+                return new SlackProperties(enabled, botToken, signingSecret, appToken, allowedSenders, verifySignature);
             }
         }
     }

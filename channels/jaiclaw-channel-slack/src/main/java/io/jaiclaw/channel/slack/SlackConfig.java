@@ -19,7 +19,8 @@ public record SlackConfig(
         String signingSecret,
         boolean enabled,
         String appToken,
-        Set<String> allowedSenderIds
+        Set<String> allowedSenderIds,
+        boolean verifySignature
 ) {
     public SlackConfig {
         if (botToken == null) botToken = "";
@@ -30,12 +31,18 @@ public record SlackConfig(
 
     /** Backwards-compatible 3-arg constructor (webhook mode). */
     public SlackConfig(String botToken, String signingSecret, boolean enabled) {
-        this(botToken, signingSecret, enabled, "", Set.of());
+        this(botToken, signingSecret, enabled, "", Set.of(), false);
     }
 
     /** Backwards-compatible 4-arg constructor. */
     public SlackConfig(String botToken, String signingSecret, boolean enabled, String appToken) {
-        this(botToken, signingSecret, enabled, appToken, Set.of());
+        this(botToken, signingSecret, enabled, appToken, Set.of(), false);
+    }
+
+    /** Backwards-compatible 5-arg constructor. */
+    public SlackConfig(String botToken, String signingSecret, boolean enabled,
+                       String appToken, Set<String> allowedSenderIds) {
+        this(botToken, signingSecret, enabled, appToken, allowedSenderIds, false);
     }
 
     /** Use Socket Mode when appToken is present. */
@@ -51,7 +58,7 @@ public record SlackConfig(
         return allowedSenderIds.isEmpty() || allowedSenderIds.contains(userId);
     }
 
-    public static final SlackConfig DISABLED = new SlackConfig("", "", false, "", Set.of());
+    public static final SlackConfig DISABLED = new SlackConfig("", "", false, "", Set.of(), false);
 
     public static Builder builder() { return new Builder(); }
 
@@ -61,15 +68,17 @@ public record SlackConfig(
         private boolean enabled;
         private String appToken;
         private Set<String> allowedSenderIds;
+        private boolean verifySignature;
 
         public Builder botToken(String botToken) { this.botToken = botToken; return this; }
         public Builder signingSecret(String signingSecret) { this.signingSecret = signingSecret; return this; }
         public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
         public Builder appToken(String appToken) { this.appToken = appToken; return this; }
         public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+        public Builder verifySignature(boolean verifySignature) { this.verifySignature = verifySignature; return this; }
 
         public SlackConfig build() {
-            return new SlackConfig(botToken, signingSecret, enabled, appToken, allowedSenderIds);
+            return new SlackConfig(botToken, signingSecret, enabled, appToken, allowedSenderIds, verifySignature);
         }
     }
 }

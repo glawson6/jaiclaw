@@ -7,6 +7,7 @@ class SecurityModeLoggerSpec extends Specification {
     def "logs info for api-key mode without error"() {
         given:
         def properties = new JaiClawSecurityProperties(false, "api-key", "test-key", "/tmp/key",
+                false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())
@@ -26,6 +27,7 @@ class SecurityModeLoggerSpec extends Specification {
     def "logs warning for none mode without error"() {
         given:
         def properties = new JaiClawSecurityProperties(false, "none", null, "/tmp/key",
+                false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())
@@ -41,6 +43,7 @@ class SecurityModeLoggerSpec extends Specification {
     def "logs info for jwt mode without error"() {
         given:
         def properties = new JaiClawSecurityProperties(true, "jwt", null, "/tmp/key",
+                false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
                 new JaiClawSecurityProperties.RateLimitProperties())

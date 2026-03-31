@@ -6,6 +6,7 @@ import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
 import io.jaiclaw.tools.builtin.AbstractBuiltinTool;
+import io.jaiclaw.tools.exec.WorkspaceBoundary;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -53,7 +54,13 @@ public class GrepTool extends AbstractBuiltinTool {
               "required": ["pattern"]
             }""";
 
+    private final boolean enforceWorkspaceBoundary;
+
     public GrepTool() {
+        this(false);
+    }
+
+    public GrepTool(boolean enforceWorkspaceBoundary) {
         super(new ToolDefinition(
                 "grep",
                 "Search file contents for a regex pattern. Returns matching lines with file paths and line numbers.",
@@ -61,6 +68,7 @@ public class GrepTool extends AbstractBuiltinTool {
                 INPUT_SCHEMA,
                 Set.of(ToolProfile.MINIMAL, ToolProfile.CODING, ToolProfile.FULL)
         ));
+        this.enforceWorkspaceBoundary = enforceWorkspaceBoundary;
     }
 
     @Override
@@ -80,7 +88,12 @@ public class GrepTool extends AbstractBuiltinTool {
             return new ToolResult.Error("Invalid regex: " + e.getMessage());
         }
 
-        Path baseDir = Path.of(context.workspaceDir()).resolve(basePath).normalize();
+        Path baseDir;
+        if (enforceWorkspaceBoundary) {
+            baseDir = WorkspaceBoundary.resolve(context.workspaceDir(), basePath);
+        } else {
+            baseDir = Path.of(context.workspaceDir()).resolve(basePath).normalize();
+        }
 
         if (!Files.exists(baseDir)) {
             return new ToolResult.Error("Path not found: " + basePath);

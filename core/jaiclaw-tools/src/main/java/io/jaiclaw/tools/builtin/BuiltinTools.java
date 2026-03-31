@@ -14,15 +14,19 @@ public final class BuiltinTools {
     private BuiltinTools() {}
 
     public static List<ToolCallback> all() {
-        return all(ExecPolicyConfig.DEFAULT);
+        return all(ExecPolicyConfig.DEFAULT, false);
     }
 
     public static List<ToolCallback> all(ExecPolicyConfig execPolicyConfig) {
+        return all(execPolicyConfig, false);
+    }
+
+    public static List<ToolCallback> all(ExecPolicyConfig execPolicyConfig, boolean ssrfProtection) {
         return List.of(
                 new FileReadTool(),
                 new FileWriteTool(),
                 new ShellExecTool(execPolicyConfig),
-                new WebFetchTool(),
+                new WebFetchTool(ssrfProtection),
                 new WebSearchTool(),
                 new ClaudeCliTool()
         );
@@ -34,5 +38,10 @@ public final class BuiltinTools {
 
     public static void registerAll(ToolRegistry registry, ExecPolicyConfig execPolicyConfig) {
         registry.registerAll(all(execPolicyConfig));
+    }
+
+    public static void registerAll(ToolRegistry registry, ExecPolicyConfig execPolicyConfig,
+                                    boolean ssrfProtection) {
+        registry.registerAll(all(execPolicyConfig, ssrfProtection));
     }
 }

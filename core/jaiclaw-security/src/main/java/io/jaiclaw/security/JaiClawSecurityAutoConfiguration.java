@@ -51,8 +51,9 @@ public class JaiClawSecurityAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(ApiKeyAuthenticationFilter.class)
-        ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
-            return new ApiKeyAuthenticationFilter(apiKeyProvider);
+        ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider,
+                                                              JaiClawSecurityProperties properties) {
+            return new ApiKeyAuthenticationFilter(apiKeyProvider, null, properties.timingSafeApiKey());
         }
 
         @Bean

@@ -51,7 +51,16 @@ public class ExecSecretProvider {
             // No shell interpretation
             pb.redirectErrorStream(false);
 
-            // Add extra env vars
+            // Sanitize environment — clear inherited vars, keep only safe + configured
+            Map<String, String> currentEnv = System.getenv();
+            pb.environment().clear();
+            for (String key : List.of("PATH", "HOME", "LANG", "TERM", "USER", "SHELL", "TMPDIR")) {
+                String value = currentEnv.get(key);
+                if (value != null) {
+                    pb.environment().put(key, value);
+                }
+            }
+            // Add explicitly configured extra env vars
             if (config.env() != null) {
                 pb.environment().putAll(config.env());
             }
@@ -72,7 +81,8 @@ public class ExecSecretProvider {
             long timeoutMs = config.timeoutMs() > 0 ? config.timeoutMs() : SecretProviderConfig.DEFAULT_TIMEOUT_MS;
             boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
             if (!finished) {
-                process.destroyForcibly();
+                // Kill the entire process tree — descendants first, then the parent
+                destroyProcessTree(process);
                 throw new SecretRefResolver.SecretResolutionException(
                         "Exec secret provider timed out after " + timeoutMs + "ms: " + config.command());
             }
@@ -127,5 +137,22 @@ public class ExecSecretProvider {
             throw new SecretRefResolver.SecretResolutionException(
                     "Exec command must be an absolute path: " + config.command());
         }
+    }
+
+    /**
+     * Kill the entire process tree — all descendants first, then the parent.
+     * Prevents orphaned child processes from surviving the timeout.
+     */
+    private static void destroyProcessTree(Process process) {
+        ProcessHandle handle = process.toHandle();
+        // Kill descendants in reverse order (deepest first)
+        handle.descendants().forEach(descendant -> {
+            try {
+                descendant.destroyForcibly();
+            } catch (Exception e) {
+                // Best effort — descendant may have already exited
+            }
+        });
+        process.destroyForcibly();
     }
 }

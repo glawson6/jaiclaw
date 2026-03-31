@@ -378,4 +378,97 @@ class TelegramAdapterSpec extends Specification {
         then:
         cfg.pollingTimeoutSeconds() == 30
     }
+
+    // --- Webhook secret token verification tests ---
+
+    def "webhook rejects request with invalid secret token when verifyWebhook is enabled"() {
+        given:
+        def verifyConfig = new TelegramConfig(
+                "test-bot-token", "https://example.com/webhook/telegram", true,
+                30, Set.of(), true, "my-secret-token", false)
+        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockRestTemplate)
+        def handler = Mock(ChannelMessageHandler)
+        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        verifyAdapter.start(handler)
+
+        def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'
+        def headers = Map.of("x-telegram-bot-api-secret-token", "wrong-token")
+
+        when:
+        def response = webhookDispatcher.dispatch("telegram", body, headers)
+
+        then:
+        response.statusCode.value() == 401
+        0 * handler.onMessage(_)
+    }
+
+    def "webhook accepts request with correct secret token when verifyWebhook is enabled"() {
+        given:
+        def verifyConfig = new TelegramConfig(
+                "test-bot-token", "https://example.com/webhook/telegram", true,
+                30, Set.of(), true, "my-secret-token", false)
+        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockRestTemplate)
+        def handler = Mock(ChannelMessageHandler)
+        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        verifyAdapter.start(handler)
+
+        def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'
+        def headers = Map.of("x-telegram-bot-api-secret-token", "my-secret-token")
+
+        when:
+        def response = webhookDispatcher.dispatch("telegram", body, headers)
+
+        then:
+        response.statusCode.value() == 200
+        1 * handler.onMessage(_)
+    }
+
+    def "webhook skips verification when verifyWebhook is disabled"() {
+        given:
+        // Default config has verifyWebhook=false
+        def handler = Mock(ChannelMessageHandler)
+        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        webhookAdapter.start(handler)
+
+        def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'
+
+        when:
+        // No secret token header — should still pass since verifyWebhook is false
+        def response = webhookDispatcher.dispatch("telegram", body, Map.of())
+
+        then:
+        response.statusCode.value() == 200
+        1 * handler.onMessage(_)
+    }
+
+    // --- Bot token masking tests ---
+
+    def "accountId returns raw bot token when maskBotToken is false"() {
+        given:
+        def cfg = new TelegramConfig("my-bot-token:abc123", "", true)
+
+        expect:
+        cfg.accountId() == "my-bot-token:abc123"
+    }
+
+    def "accountId returns hashed prefix when maskBotToken is true"() {
+        given:
+        def cfg = new TelegramConfig(
+                "my-bot-token:abc123", "", true,
+                30, Set.of(), false, "", true)
+
+        expect:
+        cfg.accountId().startsWith("tg_")
+        cfg.accountId().length() == 15 // "tg_" + 12 hex chars
+        cfg.accountId() != "my-bot-token:abc123"
+    }
+
+    def "accountId is deterministic for same bot token"() {
+        given:
+        def cfg1 = new TelegramConfig("token", "", true, 30, Set.of(), false, "", true)
+        def cfg2 = new TelegramConfig("token", "", true, 30, Set.of(), false, "", true)
+
+        expect:
+        cfg1.accountId() == cfg2.accountId()
+    }
 }

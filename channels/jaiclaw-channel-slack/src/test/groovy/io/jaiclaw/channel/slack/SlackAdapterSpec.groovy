@@ -5,6 +5,8 @@ import io.jaiclaw.channel.ChannelMessageHandler
 import io.jaiclaw.gateway.WebhookDispatcher
 import spock.lang.Specification
 
+import java.util.HexFormat
+
 class SlackAdapterSpec extends Specification {
 
     WebhookDispatcher webhookDispatcher = new WebhookDispatcher()
@@ -176,5 +178,105 @@ class SlackAdapterSpec extends Specification {
         then:
         !cfg.useSocketMode()
         cfg.appToken() == ""
+    }
+
+    // --- Signature verification tests ---
+
+    def "webhook rejects request with invalid signature when verifySignature is enabled"() {
+        given:
+        def verifyConfig = new SlackConfig("xoxb-test-token", "test-signing-secret", true, "", Set.of(), true)
+        def verifyAdapter = new SlackAdapter(verifyConfig, webhookDispatcher)
+        def handler = Mock(ChannelMessageHandler)
+        verifyAdapter.start(handler)
+
+        def body = '{"type":"event_callback","event":{"type":"message","text":"hi","channel":"C1","user":"U1"}}'
+        def headers = Map.of(
+            "x-slack-signature", "v0=invalid",
+            "x-slack-request-timestamp", String.valueOf(System.currentTimeMillis() / 1000 as long)
+        )
+
+        when:
+        def response = webhookDispatcher.dispatch("slack", body, headers)
+
+        then:
+        response.statusCode.value() == 401
+        0 * handler.onMessage(_)
+    }
+
+    def "webhook accepts request with valid signature when verifySignature is enabled"() {
+        given:
+        def signingSecret = "test-signing-secret"
+        def verifyConfig = new SlackConfig("xoxb-test-token", signingSecret, true, "", Set.of(), true)
+        def verifyAdapter = new SlackAdapter(verifyConfig, webhookDispatcher)
+        def handler = Mock(ChannelMessageHandler)
+        verifyAdapter.start(handler)
+
+        def body = '{"type":"event_callback","team_id":"T1","event_id":"E1","event":{"type":"message","text":"hi","channel":"C1","user":"U1","ts":"123"}}'
+        def timestamp = String.valueOf(System.currentTimeMillis() / 1000 as long)
+
+        // Compute valid HMAC-SHA256 signature
+        def baseString = "v0:${timestamp}:${body}"
+        def mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(new javax.crypto.spec.SecretKeySpec(signingSecret.getBytes("UTF-8"), "HmacSHA256"))
+        def hash = mac.doFinal(baseString.getBytes("UTF-8"))
+        def signature = "v0=" + HexFormat.of().formatHex(hash)
+
+        def headers = Map.of(
+            "x-slack-signature", signature,
+            "x-slack-request-timestamp", timestamp
+        )
+
+        when:
+        def response = webhookDispatcher.dispatch("slack", body, headers)
+
+        then:
+        response.statusCode.value() == 200
+        1 * handler.onMessage(_)
+    }
+
+    def "webhook skips verification when verifySignature is disabled even with signingSecret"() {
+        given:
+        // Default config has verifySignature=false (3-arg constructor)
+        def handler = Mock(ChannelMessageHandler)
+        webhookAdapter.start(handler)
+
+        def body = '{"type":"event_callback","team_id":"T1","event_id":"E1","event":{"type":"message","text":"hi","channel":"C1","user":"U1","ts":"123"}}'
+
+        when:
+        // No signature headers — should still pass since verifySignature is false
+        def response = webhookDispatcher.dispatch("slack", body, Map.of())
+
+        then:
+        response.statusCode.value() == 200
+        1 * handler.onMessage(_)
+    }
+
+    def "webhook rejects stale timestamp when verifySignature is enabled"() {
+        given:
+        def signingSecret = "test-signing-secret"
+        def verifyConfig = new SlackConfig("xoxb-test-token", signingSecret, true, "", Set.of(), true)
+        def verifyAdapter = new SlackAdapter(verifyConfig, webhookDispatcher)
+        verifyAdapter.start(Mock(ChannelMessageHandler))
+
+        def body = '{"type":"event_callback"}'
+        def staleTimestamp = String.valueOf((System.currentTimeMillis() / 1000 as long) - 600)
+
+        // Compute valid signature but with stale timestamp
+        def baseString = "v0:${staleTimestamp}:${body}"
+        def mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(new javax.crypto.spec.SecretKeySpec(signingSecret.getBytes("UTF-8"), "HmacSHA256"))
+        def hash = mac.doFinal(baseString.getBytes("UTF-8"))
+        def signature = "v0=" + HexFormat.of().formatHex(hash)
+
+        def headers = Map.of(
+            "x-slack-signature", signature,
+            "x-slack-request-timestamp", staleTimestamp
+        )
+
+        when:
+        def response = webhookDispatcher.dispatch("slack", body, headers)
+
+        then:
+        response.statusCode.value() == 401
     }
 }

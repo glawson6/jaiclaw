@@ -1,5 +1,6 @@
 package io.jaiclaw.channel.process;
 
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -26,6 +27,15 @@ public record CliProcessConfig(
             throw new IllegalArgumentException("command must not be blank");
         }
         if (args == null) args = List.of();
+        if (workingDir != null) {
+            Path workPath = Path.of(workingDir).toAbsolutePath().normalize();
+            if (workingDir.contains("..")) {
+                throw new IllegalArgumentException(
+                        "workingDir must not contain path traversal (..): " + workingDir);
+            }
+            // Store the normalized absolute path
+            workingDir = workPath.toString();
+        }
         if (tcpPort < 0) tcpPort = 0;
         if (healthCheckIntervalSeconds <= 0) healthCheckIntervalSeconds = 30;
         if (maxRestarts < 0) maxRestarts = 0;

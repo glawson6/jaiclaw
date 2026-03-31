@@ -1,5 +1,6 @@
 package io.jaiclaw.perplexity.render;
 
+import io.jaiclaw.tools.exec.SsrfGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Optional;
 
 public class TerminalImageRenderer {
 
@@ -106,6 +108,12 @@ public class TerminalImageRenderer {
     }
 
     private byte[] fetchUrl(String url) throws IOException, InterruptedException {
+        // SSRF protection: always-on for standalone CLI tools
+        Optional<String> ssrfError = SsrfGuard.validate(url);
+        if (ssrfError.isPresent()) {
+            throw new IOException("SSRF protection: " + ssrfError.get());
+        }
+
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .followRedirects(HttpClient.Redirect.NORMAL)

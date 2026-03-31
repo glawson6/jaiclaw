@@ -123,4 +123,29 @@ class FileEditToolSpec extends Specification {
         expect:
         tool.definition().section() == ToolCatalog.SECTION_FILES
     }
+
+    // --- Workspace boundary tests ---
+
+    def "path traversal is blocked when workspace boundary is enforced"() {
+        given:
+        def boundedTool = new FileEditTool(true)
+        Files.writeString(tempDir.resolve("test.txt"), "hello")
+
+        when:
+        def result = boundedTool.execute(Map.of("path", "../../etc/passwd", "old_string", "root", "new_string", "x"), context)
+
+        then:
+        result instanceof ToolResult.Error
+        (result as ToolResult.Error).message().contains("Path traversal blocked")
+    }
+
+    def "path traversal is allowed when workspace boundary is not enforced"() {
+        given:
+        // Default tool (no boundary enforcement) - traversal resolves but file won't exist
+        def result = tool.execute(Map.of("path", "../nonexistent", "old_string", "a", "new_string", "b"), context)
+
+        expect:
+        result instanceof ToolResult.Error
+        (result as ToolResult.Error).message().contains("not found")
+    }
 }

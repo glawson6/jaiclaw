@@ -8,6 +8,7 @@ import io.jaiclaw.tools.ToolCatalog;
 import io.jaiclaw.tools.builtin.AbstractBuiltinTool;
 import io.jaiclaw.tools.exec.CommandPolicy;
 import io.jaiclaw.tools.exec.KubectlPolicyConfig;
+import io.jaiclaw.tools.exec.SafeProcessEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +83,7 @@ public class KubectlExecTool extends AbstractBuiltinTool {
 
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command)
                 .redirectErrorStream(true);
+        SafeProcessEnvironment.apply(pb);
 
         Process process = pb.start();
         StringBuilder output = new StringBuilder();

@@ -15,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 
 /**
@@ -32,14 +34,21 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyProvider apiKeyProvider;
     private final TenantGuard tenantGuard;
+    private final boolean timingSafe;
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
-        this(apiKeyProvider, null);
+        this(apiKeyProvider, null, false);
     }
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard) {
+        this(apiKeyProvider, tenantGuard, false);
+    }
+
+    public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard,
+                                       boolean timingSafe) {
         this.apiKeyProvider = apiKeyProvider;
         this.tenantGuard = tenantGuard;
+        this.timingSafe = timingSafe;
     }
 
     @Override
@@ -66,7 +75,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!providedKey.equals(apiKeyProvider.getResolvedKey())) {
+        boolean keyMatch;
+        if (timingSafe) {
+            keyMatch = MessageDigest.isEqual(
+                    providedKey.getBytes(StandardCharsets.UTF_8),
+                    apiKeyProvider.getResolvedKey().getBytes(StandardCharsets.UTF_8));
+        } else {
+            keyMatch = providedKey.equals(apiKeyProvider.getResolvedKey());
+        }
+
+        if (!keyMatch) {
             log.debug("Invalid API key for request to {}", request.getRequestURI());
             sendUnauthorized(response);
             return;

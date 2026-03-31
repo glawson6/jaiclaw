@@ -2,6 +2,7 @@ package io.jaiclaw.code;
 
 import io.jaiclaw.tools.ToolRegistry;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -17,8 +18,10 @@ import org.springframework.context.annotation.Bean;
 public class CodeToolsAutoConfiguration {
 
     @Bean
-    public CodeToolsRegistrar codeToolsRegistrar(ToolRegistry toolRegistry) {
-        CodeTools.registerAll(toolRegistry);
+    public CodeToolsRegistrar codeToolsRegistrar(
+            ToolRegistry toolRegistry,
+            @Value("${jaiclaw.tools.code.workspace-boundary:false}") boolean workspaceBoundary) {
+        CodeTools.registerAll(toolRegistry, workspaceBoundary);
         return new CodeToolsRegistrar();
     }
 

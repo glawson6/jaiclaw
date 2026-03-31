@@ -9,10 +9,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,6 +41,9 @@ public class SlackAdapter implements ChannelAdapter {
     private static final Logger log = LoggerFactory.getLogger(SlackAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String SLACK_API_BASE = "https://slack.com/api/";
+
+    /** Maximum allowed clock skew for Slack request timestamps (5 minutes). */
+    private static final long MAX_TIMESTAMP_DRIFT_SECONDS = 300;
 
     private final SlackConfig config;
     private final WebhookDispatcher webhookDispatcher;
@@ -320,6 +330,14 @@ public class SlackAdapter implements ChannelAdapter {
 
     private ResponseEntity<String> handleWebhook(String body, Map<String, String> headers) {
         try {
+            // Verify Slack request signature when verifySignature is enabled and signingSecret is configured
+            if (config.verifySignature() && !config.signingSecret().isBlank()) {
+                if (!verifySlackSignature(body, headers)) {
+                    log.warn("Slack webhook signature verification failed");
+                    return ResponseEntity.status(401).body("invalid signature");
+                }
+            }
+
             JsonNode payload = MAPPER.readTree(body);
             String type = payload.path("type").asText();
 
@@ -338,6 +356,55 @@ public class SlackAdapter implements ChannelAdapter {
         } catch (Exception e) {
             log.error("Failed to process Slack webhook", e);
             return ResponseEntity.ok("");
+        }
+    }
+
+    /**
+     * Verify the Slack request signature using HMAC-SHA256.
+     * <p>
+     * Slack signs requests as: {@code v0=HMAC-SHA256(signingSecret, "v0:{timestamp}:{body}")}.
+     * The signature is sent in the {@code X-Slack-Signature} header.
+     * The timestamp is in {@code X-Slack-Request-Timestamp}.
+     *
+     * @see <a href="https://api.slack.com/authentication/verifying-requests-from-slack">Slack docs</a>
+     */
+    boolean verifySlackSignature(String body, Map<String, String> headers) {
+        String signature = headers.get("x-slack-signature");
+        String timestampStr = headers.get("x-slack-request-timestamp");
+
+        if (signature == null || timestampStr == null) {
+            log.debug("Missing Slack signature headers");
+            return false;
+        }
+
+        // Reject requests older than 5 minutes to prevent replay attacks
+        try {
+            long timestamp = Long.parseLong(timestampStr);
+            long now = System.currentTimeMillis() / 1000;
+            if (Math.abs(now - timestamp) > MAX_TIMESTAMP_DRIFT_SECONDS) {
+                log.debug("Slack request timestamp too old: {} (now={})", timestamp, now);
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            log.debug("Invalid Slack request timestamp: {}", timestampStr);
+            return false;
+        }
+
+        try {
+            String baseString = "v0:" + timestampStr + ":" + body;
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(
+                    config.signingSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(baseString.getBytes(StandardCharsets.UTF_8));
+            String computed = "v0=" + HexFormat.of().formatHex(hash);
+
+            // Constant-time comparison to prevent timing attacks
+            return MessageDigest.isEqual(
+                    computed.getBytes(StandardCharsets.UTF_8),
+                    signature.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            log.error("Failed to compute Slack signature", e);
+            return false;
         }
     }
 }

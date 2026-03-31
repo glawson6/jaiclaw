@@ -20,12 +20,13 @@ public record JaiClawSecurityProperties(
         String mode,
         String apiKey,
         String apiKeyFile,
+        boolean timingSafeApiKey,
         JwtProperties jwt,
         RoleMappingProperties roleMapping,
         RateLimitProperties rateLimit
 ) {
     public JaiClawSecurityProperties() {
-        this(false, null, null, null,
+        this(false, null, null, null, false,
                 new JwtProperties(), new RoleMappingProperties(), new RateLimitProperties());
     }
 
@@ -53,6 +54,7 @@ public record JaiClawSecurityProperties(
         private String mode;
         private String apiKey;
         private String apiKeyFile;
+        private boolean timingSafeApiKey;
         private JwtProperties jwt;
         private RoleMappingProperties roleMapping;
         private RateLimitProperties rateLimit;
@@ -61,12 +63,14 @@ public record JaiClawSecurityProperties(
         public Builder mode(String mode) { this.mode = mode; return this; }
         public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
         public Builder apiKeyFile(String apiKeyFile) { this.apiKeyFile = apiKeyFile; return this; }
+        public Builder timingSafeApiKey(boolean timingSafeApiKey) { this.timingSafeApiKey = timingSafeApiKey; return this; }
         public Builder jwt(JwtProperties jwt) { this.jwt = jwt; return this; }
         public Builder roleMapping(RoleMappingProperties roleMapping) { this.roleMapping = roleMapping; return this; }
         public Builder rateLimit(RateLimitProperties rateLimit) { this.rateLimit = rateLimit; return this; }
 
         public JaiClawSecurityProperties build() {
-            return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, jwt, roleMapping, rateLimit);
+            return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey,
+                    jwt, roleMapping, rateLimit);
         }
     }
 

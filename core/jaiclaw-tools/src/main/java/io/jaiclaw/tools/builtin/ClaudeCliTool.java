@@ -5,6 +5,7 @@ import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolResult;
 import io.jaiclaw.tools.ToolCatalog;
+import io.jaiclaw.tools.exec.SafeProcessEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,6 +126,7 @@ public class ClaudeCliTool extends AbstractBuiltinTool {
         ProcessBuilder pb = new ProcessBuilder(command)
                 .directory(Path.of(context.workspaceDir()).toFile())
                 .redirectErrorStream(true);
+        SafeProcessEnvironment.apply(pb);
 
         Process process = pb.start();
 

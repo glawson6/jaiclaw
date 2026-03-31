@@ -3,6 +3,7 @@ package io.jaiclaw.tools.builtin;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolResult;
+import io.jaiclaw.tools.exec.SafeProcessEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -47,6 +49,11 @@ public class WhitelistedCommandTool extends AbstractBuiltinTool {
               "required": ["command"]
             }""";
 
+    /** Shell metacharacters that enable injection: ; | && || $( ` > < & */
+    private static final Pattern SHELL_METACHAR_PATTERN = Pattern.compile(
+            "[;|&`<>]|\\$\\("
+    );
+
     private final WhitelistedCommandConfig config;
 
     public WhitelistedCommandTool(WhitelistedCommandConfig config) {
@@ -78,6 +85,14 @@ public class WhitelistedCommandTool extends AbstractBuiltinTool {
                             .collect(Collectors.joining(", ")));
         }
 
+        // Safety: block shell metacharacters to prevent piping/chaining after the prefix
+        if (containsShellMetachars(command)) {
+            log.warn("Blocked command with shell metacharacters: {}", command);
+            return new ToolResult.Error(
+                    "Command contains blocked shell metacharacters. "
+                            + "Piping, chaining, and redirection are not allowed.");
+        }
+
         // Check if the binary exists on PATH
         String binary = extractBinary(command);
         if (binary != null && !isBinaryAvailable(binary)) {
@@ -91,6 +106,7 @@ public class WhitelistedCommandTool extends AbstractBuiltinTool {
 
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command)
                 .redirectErrorStream(true);
+        SafeProcessEnvironment.apply(pb);
 
         Process process = pb.start();
         StringBuilder output = new StringBuilder();
@@ -170,6 +186,13 @@ public class WhitelistedCommandTool extends AbstractBuiltinTool {
             }
         }
         return null;
+    }
+
+    /**
+     * Check if a command contains shell metacharacters that could enable injection.
+     */
+    boolean containsShellMetachars(String command) {
+        return SHELL_METACHAR_PATTERN.matcher(command).find();
     }
 
     /**

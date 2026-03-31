@@ -13,14 +13,22 @@ public final class CodeTools {
     private CodeTools() {}
 
     public static List<ToolCallback> all() {
+        return all(false);
+    }
+
+    public static List<ToolCallback> all(boolean enforceWorkspaceBoundary) {
         return List.of(
-                new FileEditTool(),
-                new GlobTool(),
-                new GrepTool()
+                new FileEditTool(enforceWorkspaceBoundary),
+                new GlobTool(enforceWorkspaceBoundary),
+                new GrepTool(enforceWorkspaceBoundary)
         );
     }
 
     public static void registerAll(ToolRegistry registry) {
         registry.registerAll(all());
+    }
+
+    public static void registerAll(ToolRegistry registry, boolean enforceWorkspaceBoundary) {
+        registry.registerAll(all(enforceWorkspaceBoundary));
     }
 }

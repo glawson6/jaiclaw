@@ -177,4 +177,18 @@ class GrepToolSpec extends Specification {
         expect:
         tool.definition().section() == ToolCatalog.SECTION_FILES
     }
+
+    // --- Workspace boundary tests ---
+
+    def "path traversal is blocked when workspace boundary is enforced"() {
+        given:
+        def boundedTool = new GrepTool(true)
+
+        when:
+        def result = boundedTool.execute(Map.of("pattern", "root", "path", "../../etc"), context)
+
+        then:
+        result instanceof ToolResult.Error
+        (result as ToolResult.Error).message().contains("Path traversal blocked")
+    }
 }
