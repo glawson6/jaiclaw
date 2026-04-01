@@ -36,5 +36,6 @@
         <module>system-monitor</module>
         <module>voice-call-demo</module>
         <module>oauth-provider-demo</module>
+        <module>canvas-dashboard</module>
     </modules>
 </project>

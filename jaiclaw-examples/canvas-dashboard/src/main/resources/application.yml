@@ -1,0 +1,51 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:api-key}
+  identity:
+    name: Dashboard Agent
+    description: Generates interactive HTML dashboards from chat
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Dashboard Agent
+        tools:
+          profile: full
+  skills:
+    allow-bundled: []
+
+logging:
+  level:
+    io.jaiclaw.agent.AgentRuntime: INFO
+    io.jaiclaw.agent.LlmTraceLogger: TRACE
+
+spring:
+  autoconfigure:
+    exclude:
+      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    minimax:
+      enabled: ${MINIMAX_ENABLED:false}
+      api-key: ${MINIMAX_API_KEY:not-set}
+      base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat}
+      chat:
+        options:
+          model: ${MINIMAX_MODEL:M2-her}

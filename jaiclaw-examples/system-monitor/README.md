@@ -74,6 +74,15 @@ TELEGRAM_CHAT_ID=your-chat-id \
 ../../mvnw spring-boot:run
 ```
 
+### Using MiniMax
+
+To run with MiniMax instead of Anthropic:
+
+```bash
+AI_PROVIDER=minimax MINIMAX_ENABLED=true MINIMAX_API_KEY=your-key ../../mvnw spring-boot:run
+```
+
+
 ## Testing It
 
 ```bash

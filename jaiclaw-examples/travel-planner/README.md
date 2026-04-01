@@ -81,6 +81,15 @@ export JAVA_HOME=$HOME/.sdkman/candidates/java/21.0.9-oracle
 ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl :jaiclaw-example-travel-planner
 ```
 
+### Using MiniMax
+
+To run with MiniMax instead of Anthropic:
+
+```bash
+AI_PROVIDER=minimax MINIMAX_ENABLED=true MINIMAX_API_KEY=your-key ./mvnw spring-boot:run -pl :jaiclaw-example-travel-planner
+```
+
+
 ## Testing It
 
 ### Shell (Interactive)

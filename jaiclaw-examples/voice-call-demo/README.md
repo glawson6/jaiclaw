@@ -77,6 +77,15 @@ export PUBLIC_URL=https://xxxx.ngrok.io      # From step 1
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+### Using MiniMax
+
+To run with MiniMax instead of Anthropic:
+
+```bash
+AI_PROVIDER=minimax MINIMAX_ENABLED=true MINIMAX_API_KEY=your-key ../../mvnw spring-boot:run
+```
+
+
 ### 4. Build and run
 
 ```bash

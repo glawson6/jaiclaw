@@ -15,9 +15,9 @@ jaiclaw:
         id: default
         name: Default Agent
         tools:
-          profile: coding
+          profile: minimal
   tools:
-    profile: coding
+    profile: minimal
   # --- HTTP Proxy ---
   # Option 1: Set HTTP_PROXY/HTTPS_PROXY/NO_PROXY env vars (auto-detected)
   # Option 2: Explicit config below (takes precedence over env vars)
@@ -30,9 +30,11 @@ jaiclaw:
   #      non-proxy-hosts: ${NO_PROXY:localhost,127.0.0.1}
   skills:
     allow-bundled:
-      - "*"
+      - conversation
+      - summarize
+      - web-research
   plugins:
-    enabled: true
+    enabled: false
   # --- Wizard model lists & fallback models ---
   # Override via environment variables (Spring Boot relaxed binding):
   #
@@ -103,6 +105,11 @@ jaiclaw:
           - mistral
           - codellama
           - gemma2
+      minimax:
+        display-name: MiniMax
+        fallback-model: M2-her
+        wizard-models:
+          - M2-her
   mcp-servers:
     cron-manager:
       description: "Scheduled job management"
@@ -149,6 +156,12 @@ jaiclaw:
       skip-jwt-validation: ${TEAMS_SKIP_JWT_VALIDATION:false}
       allowed-senders: ${TEAMS_ALLOWED_SENDERS:}
 
+logging:
+  level:
+    io.jaiclaw.agent.LlmTraceLogger: ${JAICLAW_LLM_TRACE:WARN}
+    io.jaiclaw.gateway.app: INFO
+    io.jaiclaw: ${JAICLAW_LOG_LEVEL:INFO}
+
 spring:
   config:
     import: optional:file:${user.home}/.jaiclaw/application-local.yml
@@ -162,8 +175,9 @@ spring:
       enabled: ${OPENAI_ENABLED:false}
       api-key: ${OPENAI_API_KEY:not-set}
     anthropic:
-      enabled: ${ANTHROPIC_ENABLED:true}
+      enabled: ${ANTHROPIC_ENABLED:false}
       api-key: ${ANTHROPIC_API_KEY:not-set}
+      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
         options:
           model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
@@ -177,6 +191,13 @@ spring:
         chat:
           options:
             model: ${GEMINI_MODEL:gemini-2.0-flash}
+    minimax:
+      enabled: ${MINIMAX_ENABLED:false}
+      api-key: ${MINIMAX_API_KEY:not-set}
+      base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat}
+      chat:
+        options:
+          model: ${MINIMAX_MODEL:M2-her}
     bedrock:
       converse:
         enabled: ${BEDROCK_ENABLED:false}

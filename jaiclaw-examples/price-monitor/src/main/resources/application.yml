@@ -40,3 +40,10 @@ spring:
     ollama:
       enabled: ${OLLAMA_ENABLED:false}
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    minimax:
+      enabled: ${MINIMAX_ENABLED:false}
+      api-key: ${MINIMAX_API_KEY:not-set}
+      base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat}
+      chat:
+        options:
+          model: ${MINIMAX_MODEL:M2-her}

@@ -25,7 +25,7 @@ JaiClaw *(pronounced "Jay-Claw")* is a production-ready framework for building A
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, subscription billing, and security hardening that don't exist in the Node.js version.
 
-Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4.
+Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4, Embabel 0.3.4
 
 ## Key Features
 
@@ -44,6 +44,30 @@ Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4.
 **59 Bundled Skills** — Pre-built capabilities from system administration to content generation, loaded from markdown with YAML frontmatter.
 
 **Security Hardening** — Six opt-in protections: HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe auth, agent-to-agent ECDH key exchange.
+
+## Hidden Superpowers
+
+JaiClaw is deeper than the feature list suggests. Here are capabilities that catch people off guard.
+
+**Claude Code sends your Telegram messages.** Run the gateway with MCP enabled and Claude Code, Cursor, or any MCP client gains 53 tools — send Telegram messages, create Discord polls, manage Slack threads, broadcast to all channels, schedule calendar events. Your IDE becomes a multi-channel command center.
+
+**The AI makes phone calls.** Real Twilio telephony — outbound calls with text-to-speech, real-time transcription, bidirectional conversation mode, and DTMF detection. The LLM conducts actual phone conversations and maintains a full transcript.
+
+**Agents schedule themselves.** Tell the agent "send me a briefing every weekday at 7am" and it creates a cron job that triggers itself. Virtual-thread executor handles hundreds of concurrent scheduled tasks. No external scheduler needed.
+
+**Two AI agents shake hands.** ECDH P-256 key exchange, challenge-response identity verification, JWT session tokens — all deterministic, zero LLM calls. Secure agent-to-agent communication that no other framework offers.
+
+**Conversations never end.** Context window filling up? The compaction engine transparently summarizes older messages and keeps going. Configurable threshold — the agent decides what to remember and what to compress.
+
+**The LLM browses like a human.** Eight Playwright tools: navigate, click, type into forms, take screenshots, execute JavaScript, manage multiple tabs. Not URL fetching — full interactive browser automation.
+
+**Turn your bot into a SaaS product.** Stripe, PayPal, and Telegram Payments built in. Subscription lifecycle management with access control hooks — grant features on payment, revoke on expiry.
+
+**Live dashboards from chat.** Canvas (A2UI) pushes interactive HTML artifacts to connected clients. The agent generates charts, forms, or custom UIs that render and update in real-time.
+
+**Plugins hook into everything.** 14 lifecycle hooks — intercept before/after LLM calls, tool execution, message pipeline, session events, and context compaction. Reshape the entire agent behavior without forking.
+
+**Your API keys rotate themselves.** OAuth session rotation round-robins across multiple credentials with cooldown tracking. Auto-syncs tokens from Claude CLI, Codex CLI, and other installed tools.
 
 ## Quick Start
 
@@ -68,6 +92,15 @@ OPENAI_API_KEY=sk-... ./quickstart.sh
 
 # With Google Gemini
 GEMINI_API_KEY=... ./quickstart.sh
+
+# With MiniMax
+AI_PROVIDER=minimax MINIMAX_ENABLED=true MINIMAX_API_KEY=your-key ./quickstart.sh
+
+# With MiniMax via Anthropic-compatible endpoint (no native MiniMax provider needed)
+ANTHROPIC_API_KEY=your-minimax-key \
+  ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic \
+  ANTHROPIC_MODEL=M2-her \
+  ./quickstart.sh
 ```
 
 To pre-pull the Ollama image in the background while the quickstart runs:
@@ -229,6 +262,7 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 | Example | Description |
 |---------|-------------|
 | [code-scaffolder](jaiclaw-examples/code-scaffolder/) | Project scaffolding agent that generates complete project structures from templates |
+| [canvas-dashboard](jaiclaw-examples/canvas-dashboard/) | On-demand interactive HTML dashboards with Chart.js via Canvas (A2UI) |
 
 ## Architecture
 
@@ -277,6 +311,10 @@ You can also set `JAICLAW_ENV_FILE` directly to point to any `.env` file.
 | `OPENAI_API_KEY` | | OpenAI API key |
 | `GEMINI_API_KEY` | | Google Gemini API key |
 | `OLLAMA_ENABLED` | `false` | Enable Ollama local LLM |
+| `MINIMAX_ENABLED` | `false` | Enable MiniMax LLM |
+| `MINIMAX_API_KEY` | | MiniMax API key |
+| `MINIMAX_BASE_URL` | `https://api.minimax.chat` | MiniMax API base URL |
+| `MINIMAX_MODEL` | `M2-her` | MiniMax model name |
 | `GATEWAY_PORT` | `8080` | Gateway HTTP port |
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the full environment variable reference.

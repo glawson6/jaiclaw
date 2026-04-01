@@ -352,7 +352,29 @@ public class AgentRuntime {
             LlmTraceLogger.logResponse(responseContent, tokenUsage.outputTokens());
         }
 
-        // 11a. Log token usage
+        // 11a. Sanitize: strip chain-of-thought reasoning leaked by some models
+        responseContent = ResponseSanitizer.sanitize(responseContent);
+        if (ResponseSanitizer.isEntirelyReasoning(responseContent)) {
+            log.warn("Response is entirely chain-of-thought reasoning — retrying with stronger instruction");
+            ChatClient retryClient = (effectiveClientBuilder != null ? effectiveClientBuilder : chatClientBuilder).build();
+            var retryResponse = retryClient.prompt()
+                    .system("You are a conversational assistant. Respond DIRECTLY to the user. " +
+                            "Do NOT describe what you will do. Do NOT explain your reasoning. " +
+                            "Just give the actual response the user should see.")
+                    .user(userInput)
+                    .call()
+                    .chatResponse();
+            if (retryResponse != null && retryResponse.getResult() != null) {
+                String retryContent = retryResponse.getResult().getOutput().getText();
+                if (retryContent != null && !ResponseSanitizer.isEntirelyReasoning(retryContent)) {
+                    responseContent = retryContent;
+                    TokenUsage retryUsage = ExplicitToolLoop.extractUsage(retryResponse);
+                    tokenUsage = tokenUsage.add(retryUsage);
+                }
+            }
+        }
+
+        // 11b. Log token usage
         log.info("LLM usage — request: {} tokens, response: {} tokens, total: {} tokens",
                 String.format("%,d", tokenUsage.inputTokens()),
                 String.format("%,d", tokenUsage.outputTokens()),

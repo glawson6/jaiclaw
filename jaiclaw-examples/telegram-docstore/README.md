@@ -75,6 +75,15 @@ TELEGRAM_BOT_TOKEN=123456:ABC-DEF... \
 ../../mvnw spring-boot:run
 ```
 
+### Using MiniMax
+
+To run with MiniMax instead of Anthropic:
+
+```bash
+AI_PROVIDER=minimax MINIMAX_ENABLED=true MINIMAX_API_KEY=your-key ../../mvnw spring-boot:run
+```
+
+
 ## Testing It
 
 1. Open Telegram and find your bot

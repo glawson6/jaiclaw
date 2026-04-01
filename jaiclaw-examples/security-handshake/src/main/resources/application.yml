@@ -5,10 +5,27 @@ spring:
   application:
     name: security-handshake-demo
   ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
     anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
       chat:
         options:
-          model: claude-sonnet-4-20250514
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    minimax:
+      enabled: ${MINIMAX_ENABLED:false}
+      api-key: ${MINIMAX_API_KEY:not-set}
+      base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat}
+      chat:
+        options:
+          model: ${MINIMAX_MODEL:M2-her}
 
 jaiclaw:
   security:

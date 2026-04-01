@@ -2,6 +2,8 @@
 
 10 example applications demonstrating JaiClaw framework capabilities. Each is a standalone Spring Boot app that can be built and run independently.
 
+> **Note:** Each example is a self-contained Spring Boot application with its own `application.yml`. Examples do **not** inherit configuration from the gateway app (`jaiclaw-gateway-app`). If you add a new LLM provider or change settings in the gateway's `application.yml`, those changes won't apply to examples — you must update each example's `application.yml` separately.
+
 ## Overview
 
 | # | Example | Category | Modules | Description |

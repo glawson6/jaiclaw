@@ -712,8 +712,19 @@ AI_PROVIDER=minimax \
 spring.ai.minimax:
   enabled: ${MINIMAX_ENABLED:false}
   api-key: ${MINIMAX_API_KEY:}
-  chat.options.model: ${MINIMAX_MODEL:abab6.5s-chat}
+  chat.options.model: ${MINIMAX_MODEL:M2-her}
 ```
+
+**MiniMax via Anthropic-compatible endpoint** — MiniMax exposes an Anthropic-compatible API at `https://api.minimax.io/anthropic`. This lets you use MiniMax models through the standard Anthropic provider without enabling the native MiniMax Spring AI starter.
+
+```bash
+ANTHROPIC_API_KEY=your-minimax-key \
+  ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic \
+  ANTHROPIC_MODEL=M2-her \
+  ./start.sh shell
+```
+
+No additional dependencies or provider flags are needed — JaiClaw treats it as a standard Anthropic endpoint.
 
 **Vertex AI** — Requires a GCP project with Vertex AI enabled. Uses Application Default Credentials (ADC).
 
@@ -1014,7 +1025,7 @@ Token usage is also recorded on each `AssistantMessage` in the session via the `
 | `MISTRAL_MODEL` | No | Mistral model name (default: `mistral-large-latest`) |
 | `MINIMAX_API_KEY` | For MiniMax | MiniMax API key |
 | `MINIMAX_ENABLED` | No | Enable MiniMax provider (default: `false`) |
-| `MINIMAX_MODEL` | No | MiniMax model name (default: `abab6.5s-chat`) |
+| `MINIMAX_MODEL` | No | MiniMax model name (default: `M2-her`) |
 | `VERTEX_AI_ENABLED` | No | Enable Google Vertex AI provider (default: `false`) |
 | `VERTEX_AI_PROJECT_ID` | For Vertex | GCP project ID |
 | `VERTEX_AI_LOCATION` | No | GCP location (default: `us-central1`) |

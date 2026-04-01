@@ -48,6 +48,11 @@ public class SystemPromptBuilder {
         }
         sb.append(".\n\n");
 
+        // Core behavior
+        sb.append("Respond directly to the user in natural language. ");
+        sb.append("Never output your internal reasoning, chain-of-thought, or planning. ");
+        sb.append("Your entire response is shown to the user as-is.\n\n");
+
         // Date context
         sb.append("Today's date is ").append(LocalDate.now()).append(".\n\n");
 

@@ -54,6 +54,11 @@
             <artifactId>jaiclaw-starter-bedrock</artifactId>
             <type>pom</type>
         </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-minimax</artifactId>
+            <type>pom</type>
+        </dependency>
     </dependencies>
 
     <build>
