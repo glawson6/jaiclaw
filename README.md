@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="jaiclaw-image.png" alt="JaiClaw Logo" width="200">
+</p>
+
 # JaiClaw *(pronounced "Jay-Claw")*
 
 Java/Spring AI personal assistant framework. Embeddable agent runtime with tool execution, skills, plugins, memory, and multi-channel messaging (Telegram, Slack, Discord, Email, SMS).
@@ -304,10 +308,5 @@ Images use `eclipse-temurin:21-jre` base and follow `io.jaiclaw/<module>:<versio
 
 ## License
 
-Free for personal use and small organizations.
-
-Commercial licensing required for SaaS, enterprise use,
-or embedding in commercial products.
-
-Contact: gregory.lawson@taptech.net
+Licensed under the [Apache License, Version 2.0](LICENSE).
 
