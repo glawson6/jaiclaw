@@ -18,13 +18,14 @@ Most AI agent tools force a choice: a lightweight personal tool that can't scale
 │  CLI on laptop    bot for a team   gateway + cron      GOAP + K8s            │
 │                                                                              │
 │  1 user           5-50 users       50-500 users        Unlimited             │
-│  0 channels       1 channel        3-6 channels        All channels          │
+│  0 channels       1 channel        3-7 channels        All 7 channels        │
 │  No auth          API key          JWT roles            JWT multi-tenancy     │
 │  In-memory        In-memory        Redis sessions       Redis + PostgreSQL   │
 │  No audit         Minimal          Full audit trail     SOC 2 / HIPAA        │
 │  ReAct loop       ReAct loop       ReAct + cron         GOAP multi-agent     │
+│  1 LLM provider   1-2 providers    2-3 providers        Any of 11 providers  │
 │                                                                              │
-│  Modules: 4-5     Modules: 8-10    Modules: 15-20      Modules: 25-40       │
+│  Modules: 4-5     Modules: 8-12    Modules: 18-25      Modules: 30-65       │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,7 +48,23 @@ The key insight: **you never rewrite.** You add modules. The same `AgentRuntime`
 </dependency>
 ```
 
-This single POM gives you: Anthropic (Claude) as the LLM provider, Spring Shell CLI, and 5 bundled skills (coding, web-research, system-admin, conversation, summarize).
+This single POM gives you: Anthropic (Claude) as the LLM provider, Spring Shell CLI, and 59 bundled skills (coding, web-research, system-admin, conversation, summarize, and dozens more).
+
+**Choose your LLM provider** — 11 providers supported via dedicated starters:
+
+| Provider | Starter | Credentials |
+|----------|---------|-------------|
+| Anthropic (default) | `jaiclaw-starter-anthropic` | `ANTHROPIC_API_KEY` |
+| OpenAI | `jaiclaw-starter-openai` | `OPENAI_API_KEY` |
+| Ollama (local, free) | `jaiclaw-starter-ollama` | *(none)* |
+| Google Gemini | `jaiclaw-starter-gemini` | `GEMINI_API_KEY` |
+| AWS Bedrock | `jaiclaw-starter-bedrock` | AWS credentials |
+| Azure OpenAI | `jaiclaw-starter-azure-openai` | `AZURE_OPENAI_API_KEY` |
+| DeepSeek | `jaiclaw-starter-deepseek` | `DEEPSEEK_API_KEY` |
+| Mistral AI | `jaiclaw-starter-mistral` | `MISTRAL_API_KEY` |
+| MiniMax | `jaiclaw-starter-minimax` | `MINIMAX_API_KEY` |
+| Vertex AI | `jaiclaw-starter-vertex-ai` | GCP ADC |
+| OCI GenAI | `jaiclaw-starter-oci-genai` | OCI config |
 
 **Run it:**
 ```bash
@@ -58,13 +75,13 @@ This single POM gives you: Anthropic (Claude) as the LLM provider, Spring Shell 
 **Modules used (~5):**
 - `jaiclaw-tools` — File I/O, shell exec, web search, web fetch
 - `jaiclaw-compaction` — Automatic context window management with identifier preservation
-- `jaiclaw-skills` — 5 bundled behavioral skills
+- `jaiclaw-skills` — 59 bundled behavioral skills (whitelist only what you need)
 - `jaiclaw-shell` — Interactive Spring Shell CLI (via `jaiclaw-starter-shell`)
 - `jaiclaw-spring-boot-starter` — Auto-configuration
 
 **JaiClaw example:** [**Research Assistant**](../jaiclaw-examples/research-assistant/) — A multi-iteration research agent with tool loops, context compaction for managing large research contexts, and workspace memory for persisting findings across sessions.
 
-**What makes this more than a chatbot wrapper:** Session persistence, context compaction with identifier preservation (file paths and UUIDs survive summarization), workspace memory (`MEMORY.md`), and daily log files. Your assistant remembers yesterday's conversation.
+**What makes this more than a chatbot wrapper:** Session persistence, context compaction with identifier preservation (file paths and UUIDs survive summarization), workspace memory (`MEMORY.md`), and daily log files. Your assistant remembers yesterday's conversation. The `jaiclaw-prompt-analyzer` CLI tool estimates token usage so you can tune which skills and tools are active.
 
 ---
 
@@ -72,7 +89,7 @@ This single POM gives you: Anthropic (Claude) as the LLM provider, Spring Shell 
 
 **Who:** A small team (5-50 people) that wants a shared AI assistant on a single messaging channel.
 
-**What you add:** One channel adapter, the gateway, and optionally voice transcription.
+**What you add:** One channel adapter, the gateway, and optionally voice transcription and OAuth credential management.
 
 **Configuration:**
 ```yaml
@@ -88,11 +105,24 @@ jaiclaw:
       - conversation
 ```
 
-**Modules added (+4, total ~8-10):**
-- `jaiclaw-channel-telegram` — Telegram Bot API adapter (or Slack, Discord, SMS, Email, Signal)
-- `jaiclaw-gateway` — REST API + webhook routing
-- `jaiclaw-voice` — Voice memo transcription (Whisper STT)
-- `jaiclaw-identity` — Cross-channel identity linking
+**Modules added (+5, total ~8-12):**
+- `jaiclaw-channel-telegram` — Telegram Bot API adapter (or Slack, Discord, SMS, Email, Signal, Teams)
+- `jaiclaw-gateway` — REST API + WebSocket + webhook routing
+- `jaiclaw-voice` — Voice memo transcription (Whisper STT) and text-to-speech
+- `jaiclaw-identity` — OAuth credential management, cross-provider auth rotation, external CLI sync (Claude, Codex, Qwen, MiniMax)
+- `jaiclaw-docstore` — Document storage, indexing, and retrieval
+
+**7 channel adapters** — all follow the same `ChannelAdapter` SPI:
+
+| Channel | Module | No Public URL? | Best For |
+|---------|--------|---------------|----------|
+| Telegram | `jaiclaw-channel-telegram` | Polling mode | Mobile UX, voice memos |
+| Slack | `jaiclaw-channel-slack` | Socket Mode | Team collaboration |
+| Discord | `jaiclaw-channel-discord` | Gateway WS | Community bots |
+| Email | `jaiclaw-channel-email` | IMAP polling | Async, document intake |
+| SMS | `jaiclaw-channel-sms` | *(webhook)* | Mobile outreach |
+| Signal | `jaiclaw-channel-signal` | *(bridge)* | Privacy-focused |
+| Teams | `jaiclaw-channel-teams` | *(webhook)* | Enterprise Microsoft |
 
 **JaiClaw examples at this level:**
 
@@ -102,15 +132,17 @@ jaiclaw:
 
 - [**Telegram DocStore**](../jaiclaw-examples/telegram-docstore/) — A Telegram bot for document storage, retrieval, and analysis. Users send documents via Telegram chat and the agent ingests, indexes, and answers questions about them.
 
+- [**OAuth Provider Demo**](../jaiclaw-examples/oauth-provider-demo/) — Authenticate with an AI provider via OAuth (PKCE auth code or device code) before the agent operates. Demonstrates the `jaiclaw-identity` module's OAuth flow with 5 provider configs.
+
 **What changes from Level 1:** The assistant is now **shared** — multiple users interact with it, each with their own session. Sessions are isolated per user automatically via the session key pattern `{agentId}:{channel}:{accountId}:{peerId}`. Skills provide behavioral guardrails without code changes — a non-engineer can author a new skill as a Markdown file.
 
 ---
 
 ## Level 3: Multi-Channel Departmental Platform
 
-**Who:** A department or business unit (50-500 users) that needs the assistant available across multiple channels with scheduled automation, document processing, browser automation, and access control.
+**Who:** A department or business unit (50-500 users) that needs the assistant available across multiple channels with scheduled automation, document processing, browser automation, telephony, and access control.
 
-**What you add:** Multiple channel adapters, cron scheduling, document ingestion, browser tools, canvas output, calendar management, and the audit trail.
+**What you add:** Multiple channel adapters, cron scheduling, document ingestion, browser tools, canvas output, calendar management, telephony, platform-specific tools, and the audit trail.
 
 **Configuration (additive):**
 ```yaml
@@ -130,14 +162,18 @@ jaiclaw:
     enabled: true
 ```
 
-**Modules added (+8-12, total ~15-20):**
+**Modules added (+10-15, total ~18-25):**
 - `jaiclaw-channel-slack`, `jaiclaw-channel-email`, `jaiclaw-channel-sms` — Additional channels
 - `jaiclaw-cron` + `jaiclaw-cron-manager` — Scheduled autonomous agent tasks with H2 persistence and run history
 - `jaiclaw-documents` + `jaiclaw-docstore` — PDF/HTML/text ingestion with full-text and vector search
 - `jaiclaw-browser` — Playwright-based headless browser (8 tools: navigate, click, type, screenshot, evaluate, read, tabs, close)
-- `jaiclaw-canvas` — Rich HTML output pushed to clients
+- `jaiclaw-canvas` — Rich HTML artifact rendering pushed to clients (A2UI pattern)
 - `jaiclaw-calendar` — Event scheduling with 8 MCP tools (create/list/update/delete events, available slots, calendars)
-- `jaiclaw-audit` — Formal audit trail with tenant context and outcomes
+- `jaiclaw-voice-call` — Full telephony via Twilio: outbound/inbound calls, WebSocket media streaming, TwiML generation
+- `jaiclaw-discord-tools` — Platform-specific Discord MCP tools: reactions, pins, threads, polls, message management
+- `jaiclaw-slack-tools` — Platform-specific Slack MCP tools: reactions, pins, channel history, member info
+- `jaiclaw-messaging` — MCP server exposing 8 cross-channel messaging tools (send, broadcast, sessions, agent-routed chat)
+- `jaiclaw-audit` — Formal audit trail with tenant context, actor, action, resource, outcome, and timestamp
 
 **JaiClaw examples at this level:**
 
@@ -153,21 +189,26 @@ jaiclaw:
 
 - [**Content Pipeline**](../jaiclaw-examples/content-pipeline/) — Multi-modal content analysis using `jaiclaw-media` for image/audio processing and `jaiclaw-documents` for PDF parsing. Demonstrates the plugin SPI with multiple custom tools (`AnalyzeImageTool`, `ExtractMetadataTool`).
 
+- [**Voice Call Demo**](../jaiclaw-examples/voice-call-demo/) — Telephony integration with Twilio: outbound appointment reminder calls and inbound customer service via WebSocket media streaming.
+
 **What changes from Level 2:**
 - **Multi-channel:** The same user can talk to the agent on Telegram and Email — `IdentityLinkService` resolves them to the same canonical identity, sharing conversation history and memory.
 - **Scheduled autonomy:** The agent acts on its own via cron jobs — daily briefings, price monitoring, report generation — without a human initiating the conversation. Cron jobs persist in H2, survive restarts, and track run history.
 - **Document intelligence:** The agent ingests PDFs, transcripts, contracts, and reports into a searchable document store with vector similarity search.
 - **Browser automation:** The agent navigates websites, fills forms, takes screenshots, and scrapes JavaScript-rendered pages via Playwright.
+- **Telephony:** The agent makes and receives phone calls via Twilio with WebSocket media streaming — appointment reminders, customer service, voice interaction.
 - **Calendar management:** The agent can create events, find available time slots, and manage calendars — all exposed as MCP tools the agent calls autonomously.
+- **Platform-specific actions:** Beyond basic messaging, Discord and Slack tools provide reactions, pins, threads, polls, and message management as MCP tools.
+- **Cross-channel messaging MCP:** External LLMs can invoke JaiClaw's channel messaging capabilities — send messages, broadcast, manage sessions — via the messaging MCP server.
 - **Audit trail:** Every action is logged with actor, action, resource, outcome, and timestamp. Per-tenant, queryable.
 
 ---
 
 ## Level 4: Enterprise Multi-Tenant Platform
 
-**Who:** An organization deploying the assistant across multiple teams, departments, or client organizations — each with data isolation, role-based access, compliance requirements, and subscription billing.
+**Who:** An organization deploying the assistant across multiple teams, departments, or client organizations — each with data isolation, role-based access, compliance requirements, subscription billing, and security hardening.
 
-**What you add:** JWT security with tenant resolution, role-based tool profiles, subscription billing, MCP server hosting, Kubernetes deployment, and media analysis.
+**What you add:** JWT security with tenant resolution, role-based tool profiles, subscription billing, MCP server hosting, Kubernetes deployment, security hardening, and media analysis.
 
 **Configuration (additive):**
 ```yaml
@@ -177,14 +218,37 @@ jaiclaw:
   subscription:
     enabled: true
     provider: stripe
+
+# Enable security hardening (or use SPRING_PROFILES_ACTIVE=security-hardened)
+jaiclaw.channels.slack.verify-signature: true
+jaiclaw.channels.telegram.verify-webhook: true
+jaiclaw.channels.telegram.mask-bot-token: true
+jaiclaw.tools.web.ssrf-protection: true
+jaiclaw.tools.code.workspace-boundary: true
+jaiclaw.security.timing-safe-api-key: true
 ```
 
-**Modules added (+8-15, total 25-39):**
-- `jaiclaw-security` — JWT tenant resolution, role → tool profile mapping, per-sender rate limiting
-- `jaiclaw-subscription` — Stripe/PayPal/Telegram Stars billing with plan management
+**Modules added (+8-15, total 30-65):**
+- `jaiclaw-security` — JWT tenant resolution, role-to-tool-profile mapping, per-sender rate limiting, timing-safe API key comparison
+- `jaiclaw-subscription` + `jaiclaw-subscription-telegram` — Stripe/PayPal/Telegram Stars billing with plan management and webhook verification
 - `jaiclaw-tools-k8s` — 9 Fabric8 Kubernetes management tools
-- `jaiclaw-media` — Image/video/audio analysis SPI
+- `jaiclaw-tools-security` — ECDH P-256/X25519 key exchange, challenge-response, secure session establishment
+- `jaiclaw-media` — Image/video/audio analysis SPI with async `CompositeMediaAnalyzer`
 - MCP server hosting — Expose JaiClaw tools at `/mcp/*` for external LLMs (Claude Desktop, Cursor)
+- `jaiclaw-code` — File edit, glob, grep tools with workspace boundary enforcement
+
+**Security hardening** (all flags opt-in, default off):
+
+| Protection | Flag | What It Does |
+|-----------|------|-------------|
+| Slack webhook HMAC | `verify-signature` | HMAC-SHA256 + replay protection |
+| Telegram webhook secret | `verify-webhook` | Secret token verification |
+| Bot token masking | `mask-bot-token` | SHA-256 hash in session keys |
+| SSRF protection | `ssrf-protection` | Block private/internal IPs in WebFetchTool |
+| Path traversal | `workspace-boundary` | Prevent code tools from escaping workspace |
+| Timing-safe auth | `timing-safe-api-key` | `MessageDigest.isEqual()` for API key comparison |
+
+Enable all at once: `SPRING_PROFILES_ACTIVE=security-hardened`
 
 **JaiClaw examples at this level:**
 
@@ -197,11 +261,13 @@ jaiclaw:
 - [**Security Handshake**](../jaiclaw-examples/security-handshake/) + [**Security Handshake Server**](../jaiclaw-examples/security-handshake-server/) — ECDH P-256/X25519 cryptographic key exchange orchestrated by a GOAP agent, with a standalone MCP server implementing the handshake protocol. Demonstrates agent-to-agent secure communication.
 
 **What changes from Level 3:**
-- **Multi-tenancy is architectural:** JWT tokens carry `tenantId`, `roles`, and `staffId`. Every session, memory query, skill lookup, and audit event is tenant-isolated at the framework level — not application-level filtering. A misconfigured query cannot leak data across tenants.
-- **Role-based tool access:** `RoleToolProfileResolver` maps JWT roles to tool profiles. Admin → `FULL` (all tools including shell exec). Standard User → `MESSAGING` (communication tools only). Guest → `MINIMAL` (read-only tools).
+- **Multi-tenancy is architectural:** JWT tokens carry `tenantId`, `roles`, and `staffId`. Every session, memory query, skill lookup, and audit event is tenant-isolated at the framework level — not application-level filtering. A misconfigured query cannot leak data across tenants. `TenantContextHolder` propagates across async boundaries via `TenantContextPropagator`.
+- **Role-based tool access:** `RoleToolProfileResolver` maps JWT roles to tool profiles. Admin -> `FULL` (all tools including shell exec). Standard User -> `MESSAGING` (communication tools only). Guest -> `MINIMAL` (read-only tools).
+- **Security hardening:** HMAC webhook verification, SSRF protection, workspace boundary enforcement, timing-safe authentication — all opt-in flags that activate with a single profile.
 - **Subscription billing:** Stripe, PayPal, and Telegram Stars integrations with plan management, activation, expiry, and webhook handling.
 - **Kubernetes deployment:** JKube-integrated Docker images, Helm charts, horizontal scaling across gateway and app tiers, Redis for distributed session state.
 - **MCP server hosting:** Your JaiClaw agent's tools are exposed as MCP endpoints — external LLMs (Claude Desktop, Cursor, other JaiClaw instances) can invoke them.
+- **OAuth credential rotation:** `jaiclaw-identity` provides session rotation with round-robin and cooldown, user-pin sticky sessions, and external CLI credential sync across Claude, Codex, Qwen, and MiniMax CLIs.
 
 ---
 
@@ -287,10 +353,10 @@ public class CodeReviewAgent {
 ```
 
 The GOAP planner sees:
-- `analyzeDiff`: needs `String` → produces `DiffAnalysis`
-- `generateReview`: needs `DiffAnalysis` → produces `ReviewComplete` (goal)
+- `analyzeDiff`: needs `String` -> produces `DiffAnalysis`
+- `generateReview`: needs `DiffAnalysis` -> produces `ReviewComplete` (goal)
 
-Plan: `analyzeDiff → generateReview`. Computed once, executed deterministically.
+Plan: `analyzeDiff -> generateReview`. Computed once, executed deterministically.
 
 ```
 String(diff) → [analyzeDiff] → DiffAnalysis → [generateReview] → ReviewComplete ✓
@@ -340,8 +406,8 @@ public class TravelPlannerAgent {
 ```
 
 The planner computes:
-- `searchFlights` and `searchHotels` both take `TravelRequest` — no dependency between them → **parallel execution**
-- `assemblePlan` needs both `FlightOptions` AND `HotelOptions` → waits for both → **fan-in**
+- `searchFlights` and `searchHotels` both take `TravelRequest` — no dependency between them -> **parallel execution**
+- `assemblePlan` needs both `FlightOptions` AND `HotelOptions` -> waits for both -> **fan-in**
 
 ```
 TravelRequest
@@ -398,7 +464,7 @@ The [**Security Handshake**](../jaiclaw-examples/security-handshake/) example us
 | Complex multi-step workflows | LLM may forget steps or choose wrong order | Plan is computed upfront — correct by construction |
 | Compliance and audit | Log tool calls, hope sequence was right | Every action's preconditions and effects are typed and auditable |
 | Performance at scale | Each step requires LLM round-trip to decide next action | Plan computed once — execute without re-evaluation |
-| Debugging production issues | Read logs, reconstruct what happened | Replay: same inputs → same plan → same execution |
+| Debugging production issues | Read logs, reconstruct what happened | Replay: same inputs -> same plan -> same execution |
 | Multi-step data pipelines | LLM might skip steps or repeat them | Type system prevents: Action2 cannot run without Action1's output |
 | Parallel workloads | Manually code sub-agent coordination | Planner detects parallelism automatically from type dependencies |
 
@@ -431,10 +497,10 @@ The critical architectural decision in JaiClaw is that **each level is additive,
 
 | Transition | What you do | What you DON'T do |
 |-----------|-------------|-------------------|
-| Personal → Team | Add a channel adapter dependency + YAML config | Rewrite your agent logic |
-| Team → Department | Add more channels + cron + documents + audit | Change your tool implementations |
-| Department → Enterprise | Add JWT security + multi-tenancy + billing | Rebuild your session management |
-| Any level → GOAP | Add `jaiclaw-starter-embabel` + write `@Agent` classes | Touch existing ReAct workflows |
+| Personal -> Team | Add a channel adapter dependency + YAML config | Rewrite your agent logic |
+| Team -> Department | Add more channels + cron + documents + audit | Change your tool implementations |
+| Department -> Enterprise | Add JWT security + multi-tenancy + billing + hardening | Rebuild your session management |
+| Any level -> GOAP | Add `jaiclaw-starter-embabel` + write `@Agent` classes | Touch existing ReAct workflows |
 
 ### Maven dependency is the scaling mechanism
 
@@ -451,7 +517,7 @@ The critical architectural decision in JaiClaw is that **each level is additive,
     <artifactId>jaiclaw-channel-telegram</artifactId>
 </dependency>
 
-<!-- Level 3: Department (add automation + docs) -->
+<!-- Level 3: Department (add automation + docs + telephony) -->
 <dependency>
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-cron</artifactId>
@@ -464,8 +530,16 @@ The critical architectural decision in JaiClaw is that **each level is additive,
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-audit</artifactId>
 </dependency>
+<dependency>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-voice-call</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-messaging</artifactId>
+</dependency>
 
-<!-- Level 4: Enterprise (add security + billing) -->
+<!-- Level 4: Enterprise (add security + billing + hardening) -->
 <dependency>
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-security</artifactId>
@@ -486,9 +560,9 @@ No replatforming. No migration. No "enterprise edition." The same JAR, composed 
 
 ---
 
-## 17 Examples Across the Spectrum
+## 20 Examples Across the Spectrum
 
-JaiClaw ships 17 working examples demonstrating every level:
+JaiClaw ships 20 working examples demonstrating every level:
 
 | Example | Level | Key Modules | What It Demonstrates |
 |---------|-------|-------------|---------------------|
@@ -497,32 +571,49 @@ JaiClaw ships 17 working examples demonstrating every level:
 | **Meeting Assistant** | 2 | voice, identity, channel-slack | STT transcription, cross-channel identity, Slack delivery |
 | **Helpdesk Bot** | 2-4 | security, gateway | Multi-tenant FAQ + tickets with JWT or API key auth |
 | **Telegram DocStore** | 2 | docstore, channel-telegram | Document upload, indexing, and Q&A via Telegram |
+| **OAuth Provider Demo** | 2 | identity | OAuth login (PKCE + device code) with 5 provider configs |
 | **Daily Briefing** | 3 | cron, channel-telegram, channel-email | 7 AM weekday digest with weather + news |
 | **Price Monitor** | 3 | cron, browser, channel-sms | Hourly Playwright scraping with SMS price alerts |
 | **System Monitor** | 3 | starter-gateway, starter-cron | Daily Linux health reports to Telegram |
 | **Sales Report** | 3 | cron, canvas | Weekly HTML dashboard generation |
 | **Document Q&A** | 3 | documents, memory, compaction | PDF ingestion with semantic search and citations |
 | **Content Pipeline** | 3 | media, documents, plugin-sdk | Multi-modal image/audio/PDF analysis |
+| **Voice Call Demo** | 3 | voice-call, channel-sms | Twilio telephony: outbound reminders + inbound service |
 | **Incident Responder** | 4 | plugin-sdk, gateway | DevOps triage with human-in-the-loop approval |
 | **Data Pipeline** | 4 | plugin-sdk, gateway | ETL orchestration with audit hooks and approval gates |
-| **Code Review Bot** | GOAP | starter-embabel, canvas | Serial action chaining: diff → analysis → review |
-| **Travel Planner** | GOAP | starter-embabel, browser, voice | Parallel fan-out (flights ∥ hotels) → fan-in (plan) |
-| **Compliance Checker** | GOAP | starter-embabel, documents, audit | Policy extraction → compliance check with audit trail |
+| **Code Review Bot** | GOAP | starter-embabel, canvas | Serial action chaining: diff -> analysis -> review |
+| **Travel Planner** | GOAP | starter-embabel, browser, voice | Parallel fan-out (flights || hotels) -> fan-in (plan) |
+| **Compliance Checker** | GOAP | starter-embabel, documents, audit | Policy extraction -> compliance check with audit trail |
 | **Security Handshake** | GOAP | starter-embabel, tools-security | ECDH key exchange orchestrated by GOAP planner |
+| **Security Handshake Server** | GOAP | starter-embabel, tools-security | Standalone MCP server for handshake protocol |
 
 ---
 
-## 11 Starters for Every Use Case
+## 18 Starters for Every Use Case
+
+### AI Model Provider Starters (11)
+
+| Starter | Provider | Credentials |
+|---------|----------|-------------|
+| `jaiclaw-starter-anthropic` | Anthropic (Claude) | `ANTHROPIC_API_KEY` |
+| `jaiclaw-starter-openai` | OpenAI (GPT) | `OPENAI_API_KEY` |
+| `jaiclaw-starter-gemini` | Google Gemini | `GEMINI_API_KEY` |
+| `jaiclaw-starter-ollama` | Ollama (local models) | *(none)* |
+| `jaiclaw-starter-bedrock` | AWS Bedrock | AWS credentials |
+| `jaiclaw-starter-azure-openai` | Azure OpenAI | `AZURE_OPENAI_API_KEY` |
+| `jaiclaw-starter-deepseek` | DeepSeek (R1, V3) | `DEEPSEEK_API_KEY` |
+| `jaiclaw-starter-mistral` | Mistral AI | `MISTRAL_API_KEY` |
+| `jaiclaw-starter-minimax` | MiniMax | `MINIMAX_API_KEY` |
+| `jaiclaw-starter-vertex-ai` | Google Vertex AI | GCP ADC |
+| `jaiclaw-starter-oci-genai` | Oracle Cloud GenAI | OCI config |
+
+### Feature & Deployment Starters (7)
 
 | Starter | What It Bundles |
 |---------|-----------------|
-| `jaiclaw-starter-anthropic` | JaiClaw core + Claude (Anthropic) |
-| `jaiclaw-starter-openai` | JaiClaw core + GPT (OpenAI) |
-| `jaiclaw-starter-gemini` | JaiClaw core + Gemini (Google) |
-| `jaiclaw-starter-ollama` | JaiClaw core + Ollama (local models) |
 | `jaiclaw-starter-shell` | Spring Shell CLI + Embabel shell |
-| `jaiclaw-starter-personal-assistant` | Anthropic + Shell + 5 bundled skills |
-| `jaiclaw-starter-gateway` | REST + WebSocket + all 6 channel adapters |
+| `jaiclaw-starter-personal-assistant` | Anthropic + Shell + 59 bundled skills |
+| `jaiclaw-starter-gateway` | REST + WebSocket + all 7 channel adapters |
 | `jaiclaw-starter-cron` | Cron manager + Spring Batch + H2 persistence |
 | `jaiclaw-starter-calendar` | Calendar events + scheduling + MCP tools |
 | `jaiclaw-starter-embabel` | JaiClaw core + Embabel GOAP agent platform |
@@ -536,10 +627,10 @@ JaiClaw ships 17 working examples demonstrating every level:
 Start with Level 1 or 2. Ship an MVP in days. When you land enterprise customers, add multi-tenancy and billing — without a rewrite. Add GOAP when your workflows need deterministic guarantees.
 
 ### For mid-size companies
-Start with Level 3. Deploy a departmental AI assistant that handles real workflows — daily briefings, document analysis, price monitoring. When other departments want in, add multi-tenancy. When compliance requires auditability, add Embabel.
+Start with Level 3. Deploy a departmental AI assistant that handles real workflows — daily briefings, document analysis, price monitoring, phone calls. When other departments want in, add multi-tenancy. When compliance requires auditability, add Embabel.
 
 ### For enterprises
-Start at Level 4 with GOAP. The security, audit, multi-tenancy, compliance infrastructure, and deterministic planning are production-grade from day one. 40 modules mean you take exactly what you need.
+Start at Level 4 with GOAP. The security hardening, audit, multi-tenancy, compliance infrastructure, and deterministic planning are production-grade from day one. 65 modules mean you take exactly what you need.
 
 ### For all organizations
 **You stay on Java.** Your existing CI/CD pipelines, security reviews, monitoring dashboards, deployment infrastructure, and engineering team skills all apply. No Python. No parallel stack. No cross-language integration tax.
@@ -550,9 +641,9 @@ Start at Level 4 with GOAP. The security, audit, multi-tenancy, compliance infra
 
 ```
 Personal Assistant  =  Spring AI  +  JaiClaw Core  +  Shell
-Team Bot            =  above      +  1 Channel     +  Skills
-Department Platform =  above      +  Channels      +  Cron + Docs + Audit + Calendar + Messaging MCP
-Enterprise Platform =  above      +  JWT Security   +  Multi-Tenancy + Billing + K8s
+Team Bot            =  above      +  1 Channel     +  Skills  +  Identity
+Department Platform =  above      +  Channels      +  Cron + Docs + Audit + Calendar + Telephony + Messaging MCP
+Enterprise Platform =  above      +  JWT Security   +  Multi-Tenancy + Billing + Hardening + K8s
 Multi-Agent GOAP    =  any above  +  Embabel        (deterministic, parallel, auditable)
 ```
 
@@ -560,6 +651,6 @@ One framework. Add modules. Ship.
 
 ---
 
-*JaiClaw — Java 21 / Spring Boot 3.5 / Spring AI 1.1*
-*40 modules. 17 examples. 11 starters.*
+*JaiClaw — Java 21 / Spring Boot 3.5 / Spring AI 1.1.4*
+*65 modules. 20 examples. 18 starters. 11 AI providers. 7 channels. 59 skills.*
 *From `./mvnw spring-boot:run` to Kubernetes. Same codebase.*

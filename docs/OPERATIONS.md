@@ -530,7 +530,7 @@ docker compose --profile ollama exec ollama ollama pull llama3.2
 
 ### Multiple Providers
 
-All four can be configured simultaneously in `docker-compose/.env`:
+Multiple providers can be configured simultaneously in `docker-compose/.env`:
 
 ```bash
 AI_PROVIDER=anthropic
@@ -622,6 +622,148 @@ JAICLAW_MODELS_PROVIDERS_ANTHROPIC_FALLBACK_MODEL=claude-haiku-next
 ```
 
 > **Note:** When any indexed env var is set for a list (e.g., `_WIZARD_MODELS_0`), Spring Boot replaces the entire YAML list with the env-var-defined entries. Always define all list entries when overriding via env vars.
+
+---
+
+### AI Model Provider Reference
+
+JaiClaw ships a starter module for each supported AI model provider. Each starter is a POM-only module that bundles `jaiclaw-spring-boot-starter` with the corresponding Spring AI model starter.
+
+#### Provider Credentials Index
+
+| Provider | JaiClaw Starter | Spring AI Property Prefix | API Key Env Var | Enable Env Var | Default |
+|----------|----------------|--------------------------|-----------------|----------------|---------|
+| Anthropic | `jaiclaw-starter-anthropic` | `spring.ai.anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_ENABLED` | **On** |
+| OpenAI | `jaiclaw-starter-openai` | `spring.ai.openai` | `OPENAI_API_KEY` | `OPENAI_ENABLED` | Off |
+| Ollama | `jaiclaw-starter-ollama` | `spring.ai.ollama` | *(none — local)* | `OLLAMA_ENABLED` | Off |
+| Google Gemini | `jaiclaw-starter-gemini` | `spring.ai.google.genai` | `GEMINI_API_KEY` | `GEMINI_ENABLED` | Off |
+| AWS Bedrock | `jaiclaw-starter-bedrock` | `spring.ai.bedrock` | *(AWS credentials)* | `BEDROCK_ENABLED` | Off |
+| Azure OpenAI | `jaiclaw-starter-azure-openai` | `spring.ai.azure.openai` | `AZURE_OPENAI_API_KEY` | `AZURE_OPENAI_ENABLED` | Off |
+| DeepSeek | `jaiclaw-starter-deepseek` | `spring.ai.deepseek` | `DEEPSEEK_API_KEY` | `DEEPSEEK_ENABLED` | Off |
+| Mistral AI | `jaiclaw-starter-mistral` | `spring.ai.mistralai` | `MISTRAL_API_KEY` | `MISTRAL_ENABLED` | Off |
+| MiniMax | `jaiclaw-starter-minimax` | `spring.ai.minimax` | `MINIMAX_API_KEY` | `MINIMAX_ENABLED` | Off |
+| Vertex AI | `jaiclaw-starter-vertex-ai` | `spring.ai.vertex.ai.gemini` | *(GCP credentials)* | `VERTEX_AI_ENABLED` | Off |
+| OCI GenAI | `jaiclaw-starter-oci-genai` | `spring.ai.oci.genai` | *(OCI credentials)* | `OCI_GENAI_ENABLED` | Off |
+
+**Core providers** (bundled in gateway-app and shell): Anthropic, OpenAI, Ollama, Gemini, Bedrock.
+**Extended providers** (opt-in via starter dependency): Azure OpenAI, DeepSeek, Mistral, MiniMax, Vertex AI, OCI GenAI.
+
+#### Provider Setup Details
+
+**Azure OpenAI** — Requires an Azure OpenAI Service resource. Get credentials from the Azure Portal.
+
+```bash
+AI_PROVIDER=azure-openai \
+  AZURE_OPENAI_ENABLED=true \
+  AZURE_OPENAI_API_KEY=your-key \
+  AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.azure.openai:
+  enabled: ${AZURE_OPENAI_ENABLED:false}
+  api-key: ${AZURE_OPENAI_API_KEY:}
+  endpoint: ${AZURE_OPENAI_ENDPOINT:}
+```
+
+**DeepSeek** — Get an API key from [platform.deepseek.com](https://platform.deepseek.com/).
+
+```bash
+AI_PROVIDER=deepseek \
+  DEEPSEEK_ENABLED=true \
+  DEEPSEEK_API_KEY=sk-... \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.deepseek:
+  enabled: ${DEEPSEEK_ENABLED:false}
+  api-key: ${DEEPSEEK_API_KEY:}
+  chat.options.model: ${DEEPSEEK_MODEL:deepseek-chat}
+```
+
+**Mistral AI** — Get an API key from [console.mistral.ai](https://console.mistral.ai/).
+
+```bash
+AI_PROVIDER=mistral-ai \
+  MISTRAL_ENABLED=true \
+  MISTRAL_API_KEY=your-key \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.mistralai:
+  enabled: ${MISTRAL_ENABLED:false}
+  api-key: ${MISTRAL_API_KEY:}
+  chat.options.model: ${MISTRAL_MODEL:mistral-large-latest}
+```
+
+**MiniMax** — Get an API key from [platform.minimaxi.com](https://platform.minimaxi.com/).
+
+```bash
+AI_PROVIDER=minimax \
+  MINIMAX_ENABLED=true \
+  MINIMAX_API_KEY=your-key \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.minimax:
+  enabled: ${MINIMAX_ENABLED:false}
+  api-key: ${MINIMAX_API_KEY:}
+  chat.options.model: ${MINIMAX_MODEL:abab6.5s-chat}
+```
+
+**Vertex AI** — Requires a GCP project with Vertex AI enabled. Uses Application Default Credentials (ADC).
+
+```bash
+gcloud auth application-default login
+AI_PROVIDER=vertex-ai \
+  VERTEX_AI_ENABLED=true \
+  VERTEX_AI_PROJECT_ID=your-project \
+  VERTEX_AI_LOCATION=us-central1 \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.vertex.ai.gemini:
+  enabled: ${VERTEX_AI_ENABLED:false}
+  project-id: ${VERTEX_AI_PROJECT_ID:}
+  location: ${VERTEX_AI_LOCATION:us-central1}
+  chat.options.model: ${VERTEX_AI_MODEL:gemini-2.0-flash}
+```
+
+**OCI GenAI** — Requires an Oracle Cloud account with OCI GenAI service. Uses OCI config file credentials.
+
+```bash
+AI_PROVIDER=oci-genai \
+  OCI_GENAI_ENABLED=true \
+  OCI_GENAI_COMPARTMENT_ID=ocid1.compartment... \
+  ./start.sh shell
+```
+
+```yaml
+spring.ai.oci.genai:
+  enabled: ${OCI_GENAI_ENABLED:false}
+  compartment-id: ${OCI_GENAI_COMPARTMENT_ID:}
+  chat.options.model: ${OCI_GENAI_MODEL:cohere.command-r-plus}
+```
+
+#### Using an Extended Provider
+
+Extended providers are not on the classpath by default. To use one, replace the model provider starter in your `pom.xml`:
+
+```xml
+<!-- Replace jaiclaw-starter-anthropic with your provider -->
+<dependency>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-starter-deepseek</artifactId>
+    <type>pom</type>
+</dependency>
+```
+
+Or add it alongside existing providers for multi-provider setups.
 
 ---
 
@@ -847,7 +989,7 @@ Token usage is also recorded on each `AssistantMessage` in the session via the `
 | `JAICLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
 | `JAICLAW_API_KEY` | No | Custom API key (auto-generated if not set) |
 | `JAICLAW_API_KEY_FILE` | No | Path to API key file (default: `~/.jaiclaw/api-key`) |
-| `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, `google-genai`, or `ollama` |
+| `AI_PROVIDER` | No | Primary LLM provider: `anthropic` (default), `openai`, `ollama`, `google-genai`, `bedrock`, `azure-openai`, `deepseek`, `mistral-ai`, `minimax`, `vertex-ai`, `oci-genai` |
 | `ANTHROPIC_API_KEY` | One of these | Anthropic API key |
 | `ANTHROPIC_ENABLED` | No | Enable Anthropic provider (default: `true`) |
 | `ANTHROPIC_MODEL` | No | Anthropic model name (default: `claude-sonnet-4-5`) |
@@ -858,6 +1000,28 @@ Token usage is also recorded on each `AssistantMessage` in the session via the `
 | `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.0-flash`) |
 | `OLLAMA_ENABLED` | No | Enable Ollama provider (default: `false`) |
 | `OLLAMA_BASE_URL` | No | Ollama API URL (default: `http://localhost:11434`) |
+| `BEDROCK_ENABLED` | No | Enable AWS Bedrock provider (default: `false`) |
+| `BEDROCK_MODEL` | No | Bedrock model ID (default: `us.anthropic.claude-3-5-sonnet-20241022-v2:0`) |
+| `AWS_REGION` | For Bedrock | AWS region (default: `us-east-1`) |
+| `AZURE_OPENAI_API_KEY` | For Azure | Azure OpenAI API key |
+| `AZURE_OPENAI_ENABLED` | No | Enable Azure OpenAI provider (default: `false`) |
+| `AZURE_OPENAI_ENDPOINT` | For Azure | Azure OpenAI endpoint URL |
+| `DEEPSEEK_API_KEY` | For DeepSeek | DeepSeek API key |
+| `DEEPSEEK_ENABLED` | No | Enable DeepSeek provider (default: `false`) |
+| `DEEPSEEK_MODEL` | No | DeepSeek model name (default: `deepseek-chat`) |
+| `MISTRAL_API_KEY` | For Mistral | Mistral AI API key |
+| `MISTRAL_ENABLED` | No | Enable Mistral AI provider (default: `false`) |
+| `MISTRAL_MODEL` | No | Mistral model name (default: `mistral-large-latest`) |
+| `MINIMAX_API_KEY` | For MiniMax | MiniMax API key |
+| `MINIMAX_ENABLED` | No | Enable MiniMax provider (default: `false`) |
+| `MINIMAX_MODEL` | No | MiniMax model name (default: `abab6.5s-chat`) |
+| `VERTEX_AI_ENABLED` | No | Enable Google Vertex AI provider (default: `false`) |
+| `VERTEX_AI_PROJECT_ID` | For Vertex | GCP project ID |
+| `VERTEX_AI_LOCATION` | No | GCP location (default: `us-central1`) |
+| `VERTEX_AI_MODEL` | No | Vertex AI model name (default: `gemini-2.0-flash`) |
+| `OCI_GENAI_ENABLED` | No | Enable OCI GenAI provider (default: `false`) |
+| `OCI_GENAI_COMPARTMENT_ID` | For OCI | OCI compartment OCID |
+| `OCI_GENAI_MODEL` | No | OCI GenAI model name (default: `cohere.command-r-plus`) |
 | `GATEWAY_PORT` | No | Gateway HTTP port (default: `8080`) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram bot token from @BotFather |
 | `TELEGRAM_WEBHOOK_URL` | No (polling if blank) | Public webhook URL for production |

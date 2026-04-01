@@ -28,7 +28,7 @@
             <artifactId>jaiclaw-code</artifactId>
         </dependency>
 
-        <!-- All four AI providers -->
+        <!-- Core AI providers -->
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-starter-anthropic</artifactId>
@@ -47,6 +47,11 @@
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-starter-gemini</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-bedrock</artifactId>
             <type>pom</type>
         </dependency>
     </dependencies>

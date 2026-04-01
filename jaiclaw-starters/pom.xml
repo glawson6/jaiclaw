@@ -21,6 +21,12 @@
         <module>jaiclaw-starter-ollama</module>
         <module>jaiclaw-starter-gemini</module>
         <module>jaiclaw-starter-bedrock</module>
+        <module>jaiclaw-starter-azure-openai</module>
+        <module>jaiclaw-starter-deepseek</module>
+        <module>jaiclaw-starter-mistral</module>
+        <module>jaiclaw-starter-minimax</module>
+        <module>jaiclaw-starter-vertex-ai</module>
+        <module>jaiclaw-starter-oci-genai</module>
         <module>jaiclaw-starter-gateway</module>
         <module>jaiclaw-starter-shell</module>
         <module>jaiclaw-starter-embabel</module>
