@@ -38,8 +38,37 @@ public class PdfFormReader {
             }
         } else {
             PdfFormField.FieldType type = mapFieldType(field);
-            List<String> options = (field instanceof PDChoice choice)
-                    ? choice.getOptions() : List.of();
+            List<String> options;
+            if (field instanceof PDChoice choice) {
+                options = choice.getOptions();
+            } else if (field instanceof PDCheckBox checkbox) {
+                String onValue = checkbox.getOnValue();
+                options = List.of(onValue != null ? onValue : "Yes", "Off");
+            } else if (field instanceof PDRadioButton radio) {
+                options = radio.getExportValues();
+                // Fallback: if export values empty, extract on-values from widgets
+                if (options.isEmpty()) {
+                    List<String> onValues = new ArrayList<>();
+                    for (org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget : radio.getWidgets()) {
+                        if (widget.getAppearance() != null
+                                && widget.getAppearance().getNormalAppearance() != null) {
+                            for (org.apache.pdfbox.cos.COSName key : widget.getAppearance()
+                                    .getNormalAppearance().getSubDictionary().keySet()) {
+                                String name = key.getName();
+                                if (!"Off".equals(name) && !onValues.contains(name)) {
+                                    onValues.add(name);
+                                }
+                            }
+                        }
+                    }
+                    if (!onValues.isEmpty()) {
+                        onValues.add("Off");
+                        options = onValues;
+                    }
+                }
+            } else {
+                options = List.of();
+            }
             result.add(new PdfFormField(
                     field.getFullyQualifiedName(), type,
                     field.getValueAsString(), options));

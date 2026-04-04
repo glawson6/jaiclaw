@@ -16,8 +16,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.jaiclaw.documents.PdfFormField;
+
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +48,32 @@ public class PdfFillerRestController {
         this.templateManager = templateManager;
     }
 
+    /**
+     * Returns the PDF template's form fields so callers can see what fields are
+     * available and what types they expect.
+     */
+    @GetMapping("/template")
+    public ResponseEntity<Map<String, Object>> getTemplate() {
+        List<PdfFormField> fields = templateManager.getFields();
+        List<Map<String, Object>> fieldList = fields.stream()
+                .map(f -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("name", f.name());
+                    m.put("type", f.type().name());
+                    if (f.currentValue() != null && !f.currentValue().isEmpty()) {
+                        m.put("currentValue", f.currentValue());
+                    }
+                    if (!f.options().isEmpty()) {
+                        m.put("options", f.options());
+                    }
+                    return m;
+                })
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "fieldCount", fields.size(),
+                "fields", fieldList));
+    }
+
     @PostMapping("/fill")
     public ResponseEntity<Map<String, String>> fill(@RequestBody String jsonBody) {
         String jobId = UUID.randomUUID().toString();
@@ -54,8 +83,10 @@ public class PdfFillerRestController {
                 ArtifactStatus.PENDING, null, Instant.now(), Map.of());
         artifactStore.save(pending);
 
-        String enriched = "PDF FORM FIELDS:\n" + templateManager.getFieldDescriptions()
-                + "\nJSON DATA:\n" + jsonBody;
+        String enriched = "AVAILABLE PDF FORM FIELDS (in document order):\n"
+                + templateManager.getFieldDescriptions()
+                + "\nJSON DATA TO MAP:\n" + jsonBody
+                + "\n\nMap each value from the JSON to the correct PDF field name above.";
         producerTemplate.sendBodyAndHeader(
                 "seda:jaiclaw-pdf-filler-in", enriched,
                 CamelMessageConverter.HEADER_PEER_ID, jobId);

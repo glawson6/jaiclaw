@@ -34,8 +34,10 @@ public class JsonIngestRoute extends RouteBuilder {
                         simple("${file:name.noext}"))
                 .process(exchange -> {
                     String jsonBody = exchange.getIn().getBody(String.class);
-                    String enriched = "PDF FORM FIELDS:\n" + templateManager.getFieldDescriptions()
-                            + "\nJSON DATA:\n" + jsonBody;
+                    String enriched = "AVAILABLE PDF FORM FIELDS (in document order):\n"
+                            + templateManager.getFieldDescriptions()
+                            + "\nJSON DATA TO MAP:\n" + jsonBody
+                            + "\n\nMap each value from the JSON to the correct PDF field name above.";
                     exchange.getIn().setBody(enriched);
                 })
                 .to("seda:jaiclaw-pdf-filler-in");

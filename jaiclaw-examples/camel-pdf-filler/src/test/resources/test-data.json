@@ -1,10 +1,39 @@
 {
-  "fullName": "John Doe",
-  "email": "john.doe@example.com",
-  "phone": "555-123-4567",
-  "address": "123 Main Street",
-  "city": "Springfield",
-  "state": "IL",
-  "zipCode": "62701",
-  "agreedToTerms": true
+  "applicationDate": "2026-04-03",
+  "projectName": "Smith Residence Kitchen Remodel",
+  "projectType": "Existing",
+  "streetAddress": "1842 Peachtree Road NE",
+  "totalSquareFeet": "450",
+  "numberOfBuildings": "1",
+  "numberOfStories": "2",
+  "numberOfResidentialUnits": "1",
+  "descriptionOfWork": "Complete kitchen renovation including removal of non-load-bearing wall between kitchen and dining room, new electrical panel upgrade from 100A to 200A, new plumbing for kitchen island sink, installation of gas line for range, new HVAC ductwork modifications.",
+  "inclusionaryZoning": false,
+  "propertyOwner": {
+    "name": "Robert A. Smith",
+    "streetAddress": "1842 Peachtree Road NE",
+    "city": "Atlanta",
+    "state": "GA",
+    "zipCode": "30309",
+    "contactNumber": "404-555-1234",
+    "emailAddress": "robert.smith@example.com"
+  },
+  "generalContractor": {
+    "contactName": "James T. Builder",
+    "companyName": "Peachtree Construction LLC",
+    "streetAddress": "500 Armour Drive NE, Suite 200",
+    "city": "Atlanta",
+    "state": "GA",
+    "zipCode": "30324",
+    "contactNumber": "404-555-9876",
+    "emailAddress": "james@peachtreeconstruction.com",
+    "businessLicenseNumber": "BL-2025-04821",
+    "businessLicenseExpDate": "12/31/2026",
+    "stateContractorsLicenseNumber": "GCL-48291",
+    "stateContractorsLicenseExpDate": "06/30/2027"
+  },
+  "applicantType": "Property Owner",
+  "applicantName": "Robert A. Smith",
+  "projectedCostOfConstruction": "85000",
+  "costMethodology": "Bid"
 }

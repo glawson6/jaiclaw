@@ -4,7 +4,7 @@ server:
 app:
   inbox: ${APP_INBOX:target/data/inbox}
   outbox: ${APP_OUTBOX:target/data/outbox}
-  template: ${APP_TEMPLATE:file:target/data/templates/sample-form.pdf}
+  template: ${APP_TEMPLATE:classpath:pdfs/Building_Permit_Application_Packet.pdf}
   telegram:
     chat-id: ${TELEGRAM_CHAT_ID}
 
@@ -25,29 +25,57 @@ jaiclaw:
           content: >
             You are a PDF form field mapper with human-in-the-loop support.
 
-            You receive two inputs:
-            1. A list of PDF form field names with their types
-            2. A JSON object containing data to fill into the form
+
+            UNDERSTANDING THE PDF FIELD NAMES:
+
+            Government PDF forms often reuse generic field names with numeric suffixes to
+            distinguish sections. For example, a building permit form might have:
+            - "Name" for property owner, "Name_2" for applicant, "Name_3" for affidavit
+            - "Street Address" for project, "Street Address_2" for property owner,
+              "Street Address_3" for contractor, "Street Address_4" for architect, etc.
+            - "City", "City_2", "City_3", etc. follow the same section ordering
+            - Fields like "undefined", "undefined_2" are often unlabeled text areas
+            - Fields like "fill_56" are auto-generated names for text areas
+
+            The suffix numbers increment in document order (top to bottom). Use the
+            surrounding field names and the JSON object's structure to determine which
+            section each field belongs to.
+
+
+            HANDLING NESTED JSON:
+
+            The input JSON may have nested objects like:
+            {"propertyOwner": {"name": "...", "city": "..."}, "generalContractor": {"contactName": "...", "city": "..."}}
+
+            Flatten these and map each leaf value to the appropriate PDF field based on
+            which section it belongs to. The JSON key path tells you the section.
+
+
+            CHECKBOX FIELDS:
+
+            Each checkbox field lists its valid options (e.g., options: [On, Off] or
+            options: [Yes, Off]). Use the FIRST option for checked/true and "Off" for
+            unchecked/false. NEVER use "Yes" if the options show "On" — use exactly the
+            listed on-value. Some checkboxes represent mutually exclusive options (e.g.,
+            "Property Owner" vs "Contractor" applicant type). Map the JSON value to check
+            the matching checkbox and leave others as "Off".
+
 
             PHASE 1 (initial mapping):
+
             Map each JSON value to the most appropriate PDF form field.
             Return a JSON object with this exact structure:
-            {"fieldMappings": {"pdfFieldName": "value", ...}, "unmapped": ["jsonKey1", ...], "warnings": ["..."], "clarificationNeeded": true/false, "question": "..."}
+            {"fieldMappings": {"pdfFieldName": "value", ...}, "unmapped": ["jsonKeyPath", ...], "warnings": ["..."], "clarificationNeeded": true/false, "question": "..."}
 
-            RULES:
-            1. Use exact PDF field names as keys in fieldMappings.
-            2. Values must come directly from the input JSON — never fabricate data.
-            3. If a JSON key has no clear PDF field match, add it to "unmapped".
-            4. If a mapping is uncertain, add a warning.
-            5. For checkbox fields, use "Yes" for true/checked and "Off" for false/unchecked.
-            6. If any JSON keys cannot be confidently mapped, set "clarificationNeeded": true
-               and include a "question" field with a human-readable question asking how to
-               handle the unmapped fields. List the unmapped fields and the available PDF
-               form fields so the user can make an informed decision.
-            7. If all fields map clearly, set "clarificationNeeded": false and omit "question".
-            8. Do NOT include any text outside the JSON object.
+            If any JSON keys cannot be confidently mapped, set "clarificationNeeded": true
+            and include a "question" field with a human-readable question listing the
+            unmapped fields and the available PDF form fields so the user can decide.
+            If all fields map clearly, set "clarificationNeeded": false and omit "question".
+            Do NOT include any text outside the JSON object.
+
 
             PHASE 2 (after user clarification):
+
             The user will reply with instructions on how to map the remaining fields.
             Apply their instructions and return the final complete fieldMappings JSON
             with all fields resolved. Set "clarificationNeeded": false.
@@ -85,3 +113,4 @@ spring:
       chat:
         options:
           model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
+          max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}

@@ -72,7 +72,12 @@ JSON file (data/inbox/)     REST API (POST /api/fill -> returns jobId)
 # Required
 export ANTHROPIC_API_KEY=sk-your-key-here
 
-# Optional overrides
+# Optional — PDF template (the unfilled form to use as a template)
+# Supports file: and classpath: prefixes
+# If the file doesn't exist, a sample 8-field form is generated automatically
+export APP_TEMPLATE=file:/path/to/your-form.pdf   # default: file:target/data/templates/sample-form.pdf
+
+# Optional — other overrides
 export AI_PROVIDER=anthropic              # default
 export ANTHROPIC_MODEL=claude-haiku-4-5   # default
 export APP_INBOX=/path/to/custom/inbox    # default: target/data/inbox
@@ -99,6 +104,14 @@ java -jar jaiclaw-examples/camel-pdf-filler/target/jaiclaw-example-camel-pdf-fil
 ```
 
 ### Verify
+
+**Inspect the loaded template:**
+
+```bash
+# See what form fields are available in the loaded PDF template
+curl -s http://localhost:8080/api/template | jq .
+# Returns: {"fieldCount":8,"fields":[{"name":"fullName","type":"TEXT"},{"name":"email","type":"TEXT"},...]}
+```
 
 **Via REST API:**
 

@@ -45,7 +45,7 @@ public class CamelPdfFillerApp {
     }
 
     @Bean
-    ApplicationRunner aiProviderStartupLogger(Environment env, ChatModel chatModel) {
+    ApplicationRunner startupLogger(Environment env, ChatModel chatModel, TemplateManager templateManager) {
         return args -> {
             String provider = env.getProperty("spring.ai.model.chat", "anthropic");
             String model = switch (provider) {
@@ -53,7 +53,18 @@ public class CamelPdfFillerApp {
                 case "openai" -> env.getProperty("spring.ai.openai.chat.options.model", "gpt-4o");
                 default -> "unknown";
             };
-            log.info("AI Provider: {} | Model: {} | ChatModel: {}", provider, model, chatModel.getClass().getSimpleName());
+            String inbox = env.getProperty("app.inbox", "target/data/inbox");
+            String outbox = env.getProperty("app.outbox", "target/data/outbox");
+            String template = env.getProperty("app.template", "file:target/data/templates/sample-form.pdf");
+            int fieldCount = templateManager.getFields().size();
+
+            log.info("=== PDF Filler Configuration ===");
+            log.info("  AI Provider : {} | Model: {} | ChatModel: {}", provider, model, chatModel.getClass().getSimpleName());
+            log.info("  Template    : {} ({} form fields)", template, fieldCount);
+            log.info("  Inbox       : {}", inbox);
+            log.info("  Outbox      : {}", outbox);
+            log.info("  REST API    : POST /api/fill, GET /api/fill/{{jobId}}, GET /api/template");
+            log.info("================================");
         };
     }
 }

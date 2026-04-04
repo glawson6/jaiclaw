@@ -65,6 +65,13 @@ public class PdfOutputRoute extends RouteBuilder {
 
     private void processPdfFill(String peerId, String llmResponse) {
         try {
+            // Detect agent error messages (not JSON) — e.g. "I encountered an error: ..."
+            if (llmResponse != null && llmResponse.startsWith("I encountered an error")) {
+                artifactStore.updateStatus(peerId, ArtifactStatus.FAILED, llmResponse);
+                log.error("Agent returned error for [{}]: {}", peerId, llmResponse);
+                return;
+            }
+
             artifactStore.updateStatus(peerId, ArtifactStatus.PROCESSING, null);
 
             // Extract JSON from LLM response (may be wrapped in markdown code fences)
@@ -89,6 +96,9 @@ public class PdfOutputRoute extends RouteBuilder {
                 if (!warnings.isEmpty()) {
                     metadata.put("warnings", String.join("; ", warnings));
                 }
+                if (!success.skippedFields().isEmpty()) {
+                    metadata.put("skipped", String.join("; ", success.skippedFields()));
+                }
 
                 StoredArtifact artifact = new StoredArtifact(
                         peerId, success.pdfBytes(), "application/pdf",
@@ -101,10 +111,13 @@ public class PdfOutputRoute extends RouteBuilder {
                 Path outputPath = outboxDir.resolve(peerId + ".pdf");
                 Files.write(outputPath, success.pdfBytes());
 
-                log.info("Filled PDF for [{}] ({} fields set) -> {}",
-                        peerId, success.fieldsSet(), outputPath);
+                log.info("Filled PDF for [{}] ({} fields set, {} skipped) -> {}",
+                        peerId, success.fieldsSet(), success.skippedFields().size(), outputPath);
                 if (!unmapped.isEmpty()) {
                     log.warn("Unmapped fields for [{}]: {}", peerId, unmapped);
+                }
+                if (!success.skippedFields().isEmpty()) {
+                    log.warn("Skipped fields for [{}]: {}", peerId, success.skippedFields());
                 }
             } else if (result instanceof PdfFormResult.Failure failure) {
                 artifactStore.updateStatus(peerId, ArtifactStatus.FAILED, failure.reason());
@@ -118,13 +131,19 @@ public class PdfOutputRoute extends RouteBuilder {
 
     private String extractJson(String response) {
         String trimmed = response.strip();
-        // Strip markdown code fences if present
+        // Strip markdown code fences if present (```json ... ```)
         if (trimmed.startsWith("```")) {
             int firstNewline = trimmed.indexOf('\n');
             int lastFence = trimmed.lastIndexOf("```");
             if (firstNewline > 0 && lastFence > firstNewline) {
                 trimmed = trimmed.substring(firstNewline + 1, lastFence).strip();
             }
+        }
+        // Fallback: extract JSON object between first { and last }
+        int firstBrace = trimmed.indexOf('{');
+        int lastBrace = trimmed.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            trimmed = trimmed.substring(firstBrace, lastBrace + 1);
         }
         return trimmed;
     }

@@ -81,6 +81,14 @@ public class TelegramPdfOutputRoute extends RouteBuilder {
 
     private void processLlmResponse(String peerId, String llmResponse) {
         try {
+            // Detect agent error messages (not JSON) — e.g. "I encountered an error: ..."
+            if (llmResponse != null && llmResponse.startsWith("I encountered an error")) {
+                artifactStore.updateStatus(peerId, ArtifactStatus.FAILED, llmResponse);
+                sendToTelegram("PDF fill failed for [" + peerId + "]: " + llmResponse);
+                log.error("Agent returned error for [{}]: {}", peerId, llmResponse);
+                return;
+            }
+
             String jsonStr = extractJson(llmResponse);
             JsonNode root = mapper.readTree(jsonStr);
 
@@ -118,6 +126,9 @@ public class TelegramPdfOutputRoute extends RouteBuilder {
                 if (!warnings.isEmpty()) {
                     metadata.put("warnings", String.join("; ", warnings));
                 }
+                if (!success.skippedFields().isEmpty()) {
+                    metadata.put("skipped", String.join("; ", success.skippedFields()));
+                }
 
                 StoredArtifact artifact = new StoredArtifact(
                         peerId, success.pdfBytes(), "application/pdf",
@@ -130,13 +141,16 @@ public class TelegramPdfOutputRoute extends RouteBuilder {
                 Path outputPath = outboxDir.resolve(peerId + ".pdf");
                 Files.write(outputPath, success.pdfBytes());
 
-                log.info("Filled PDF for [{}] ({} fields set) -> {}",
-                        peerId, success.fieldsSet(), outputPath);
+                log.info("Filled PDF for [{}] ({} fields set, {} skipped) -> {}",
+                        peerId, success.fieldsSet(), success.skippedFields().size(), outputPath);
 
                 String notification = "PDF filled for [" + peerId + "] with "
                         + success.fieldsSet() + " fields set.";
                 if (!unmapped.isEmpty()) {
                     notification += "\nUnmapped: " + unmapped;
+                }
+                if (!success.skippedFields().isEmpty()) {
+                    notification += "\nSkipped: " + success.skippedFields();
                 }
                 sendToTelegram(notification);
             } else if (result instanceof PdfFormResult.Failure failure) {
@@ -170,12 +184,19 @@ public class TelegramPdfOutputRoute extends RouteBuilder {
 
     private String extractJson(String response) {
         String trimmed = response.strip();
+        // Strip markdown code fences if present (```json ... ```)
         if (trimmed.startsWith("```")) {
             int firstNewline = trimmed.indexOf('\n');
             int lastFence = trimmed.lastIndexOf("```");
             if (firstNewline > 0 && lastFence > firstNewline) {
                 trimmed = trimmed.substring(firstNewline + 1, lastFence).strip();
             }
+        }
+        // Fallback: extract JSON object between first { and last }
+        int firstBrace = trimmed.indexOf('{');
+        int lastBrace = trimmed.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            trimmed = trimmed.substring(firstBrace, lastBrace + 1);
         }
         return trimmed;
     }

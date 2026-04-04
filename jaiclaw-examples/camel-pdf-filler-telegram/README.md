@@ -76,7 +76,11 @@ export ANTHROPIC_API_KEY=sk-your-key-here
 export TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 export TELEGRAM_CHAT_ID=your-chat-id
 
-# Optional overrides
+# Optional — PDF template (the unfilled form to use as a template)
+# If the file doesn't exist, a sample 8-field form is generated automatically
+export APP_TEMPLATE=file:/path/to/your-form.pdf   # default: file:target/data/templates/sample-form.pdf
+
+# Optional — other overrides
 export AI_PROVIDER=anthropic
 export ANTHROPIC_MODEL=claude-haiku-4-5
 ```

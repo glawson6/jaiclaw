@@ -1,0 +1,29 @@
+{
+  "applicationDate": "2026-03-28",
+  "projectName": "Garcia Deck Addition",
+  "projectType": "Existing",
+  "streetAddress": "2215 Memorial Drive SE",
+  "totalSquareFeet": "320",
+  "numberOfBuildings": "1",
+  "numberOfStories": "1",
+  "numberOfResidentialUnits": "1",
+  "descriptionOfWork": "Construction of new 16x20 pressure-treated wood deck attached to rear of existing single-family residence. Includes concrete footings, ledger board attachment, guardrails, and stairs. No electrical or plumbing work.",
+  "inclusionaryZoning": false,
+  "propertyOwner": {
+    "name": "Maria L. Garcia",
+    "streetAddress": "2215 Memorial Drive SE",
+    "city": "Atlanta",
+    "state": "GA",
+    "zipCode": "30317",
+    "contactNumber": "678-555-4421",
+    "emailAddress": "maria.garcia@example.com"
+  },
+  "generalContractor": {
+    "isSelfPerforming": true,
+    "note": "Homeowner performing own work — no general contractor"
+  },
+  "applicantType": "Property Owner",
+  "applicantName": "Maria L. Garcia",
+  "projectedCostOfConstruction": "8500",
+  "costMethodology": "Estimate"
+}
