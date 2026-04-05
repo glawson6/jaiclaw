@@ -1,0 +1,37 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gemma4-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # On macOS with Apple Silicon, remove the deploy.resources block above —
+    # Ollama uses Metal acceleration automatically via the host install.
+    # Docker GPU passthrough is Linux/NVIDIA only.
+
+  # Pull the model after Ollama starts
+  gemma4-pull:
+    image: ollama/ollama:latest
+    container_name: gemma4-pull
+    depends_on:
+      - ollama
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Ollama to start...' &&
+        sleep 5 &&
+        ollama pull gemma4:e4b &&
+        echo 'Gemma 4 12B ready!'
+      "
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+
+volumes:
+  ollama-data:

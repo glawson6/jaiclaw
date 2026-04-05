@@ -43,5 +43,6 @@
         <module>camel-pdf-filler</module>
         <module>camel-pdf-filler-telegram</module>
         <module>mcp-docs-server</module>
+        <module>gemma4-local</module>
     </modules>
 </project>

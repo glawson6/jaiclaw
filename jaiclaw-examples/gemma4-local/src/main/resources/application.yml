@@ -1,0 +1,51 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:api-key}
+  identity:
+    name: Gemma 4 Assistant
+    description: Local conversational assistant powered by Google Gemma 4 via Ollama
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Gemma 4 Agent
+        tools:
+          profile: minimal
+  tools:
+    profile: minimal
+  skills:
+    allow-bundled:
+      - conversation
+      - summarize
+  plugins:
+    enabled: false
+
+spring:
+  autoconfigure:
+    exclude:
+      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+  application:
+    name: jaiclaw-gemma4-local
+  shell:
+    interactive:
+      enabled: true
+  ai:
+    model:
+      chat: ollama
+    ollama:
+      enabled: true
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_MODEL:gemma4:e4b}
+          temperature: ${OLLAMA_TEMPERATURE:0.7}
+          num-ctx: ${OLLAMA_NUM_CTX:8192}
+
+#logging:
+#  level:
+#    io.jaiclaw: ${JAICLAW_LOG_LEVEL:INFO}
+#    io.jaiclaw.agent.LlmTraceLogger: ${JAICLAW_LLM_TRACE:TRACE}

@@ -1,6 +1,6 @@
 # JaiClaw Examples
 
-10 example applications demonstrating JaiClaw framework capabilities. Each is a standalone Spring Boot app that can be built and run independently.
+Example applications demonstrating JaiClaw framework capabilities. Each is a standalone Spring Boot app that can be built and run independently.
 
 > **Note:** Each example is a self-contained Spring Boot application with its own `application.yml`. Examples do **not** inherit configuration from the gateway app (`jaiclaw-gateway-app`). If you add a new LLM provider or change settings in the gateway's `application.yml`, those changes won't apply to examples — you must update each example's `application.yml` separately.
 
@@ -19,6 +19,7 @@
 | 9 | [helpdesk-bot](../jaiclaw-examples/helpdesk-bot/) | Security | Gateway, Security | Multi-tenant support bot |
 | 10 | [content-pipeline](../jaiclaw-examples/content-pipeline/) | Media | Media, Documents, Plugin | Multi-modal content analysis |
 | 11 | [mcp-docs-server](../jaiclaw-examples/mcp-docs-server/) | MCP | Docs, Gateway | MCP server exposing JaiClaw docs as resources with search |
+| 12 | [gemma4-local](../jaiclaw-examples/gemma4-local/) | Local LLM | Ollama, Gateway | Gemma 4 chatbot running fully local via Ollama with function calling |
 
 ## Quick Start
 
@@ -191,6 +192,27 @@ Multi-modal content analysis pipeline. A plugin registers tools for image analys
 ```
 Image/PDF/Audio → ContentAnalysisPlugin → analyze_image / extract_metadata → structured metadata
 ```
+
+---
+
+## Local LLM Examples
+
+### 12. Gemma 4 Local
+
+**Modules:** jaiclaw-gateway, spring-ai-starter-model-ollama
+
+Conversational chatbot running Google Gemma 4 locally via Ollama. Demonstrates native function calling with a fully open-source model (Apache 2.0) — zero cloud API dependencies.
+
+**Key classes:**
+- `Gemma4ToolConfig` — registers CurrentTimeTool and CalculateTool via ToolRegistry
+- `CurrentTimeTool` — timezone-aware clock (demonstrates tool parameter handling)
+- `CalculateTool` — arithmetic expression evaluator
+
+```
+User → AgentRuntime → Ollama (localhost:11434) → Gemma 4 12B → function call → CurrentTimeTool/CalculateTool → response
+```
+
+Includes `docker-compose.yml` for starting Ollama with Gemma 4 auto-pulled. Supports all model sizes (2B, 4B, 12B, 27B) via the `OLLAMA_MODEL` env var.
 
 ---
 

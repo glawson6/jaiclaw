@@ -14,7 +14,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
   <a href="#channels"><img src="https://img.shields.io/badge/Channels-7-blueviolet" alt="7 Channels"></a>
   <a href="#configuration"><img src="https://img.shields.io/badge/LLM%20Providers-11-green" alt="11 LLM Providers"></a>
-  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-20-yellow" alt="20 Examples"></a>
+  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-21-yellow" alt="21 Examples"></a>
 </p>
 
 ---
@@ -211,7 +211,7 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 
 ## Examples
 
-20 example applications demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app. See [docs/EXAMPLES.md](docs/EXAMPLES.md) for full details.
+21 example applications demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app. See [docs/EXAMPLES.md](docs/EXAMPLES.md) for full details.
 
 ### Scheduling & Automation
 
@@ -263,6 +263,12 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 |---------|-------------|
 | [code-scaffolder](jaiclaw-examples/code-scaffolder/) | Project scaffolding agent that generates complete project structures from templates |
 | [canvas-dashboard](jaiclaw-examples/canvas-dashboard/) | On-demand interactive HTML dashboards with Chart.js via Canvas (A2UI) |
+
+### Local LLM
+
+| Example | Description |
+|---------|-------------|
+| [gemma4-local](jaiclaw-examples/gemma4-local/) | Gemma 4 chatbot running fully local via Ollama with native function calling |
 
 ## Architecture
 
