@@ -13,18 +13,18 @@ Conversational chatbot running Google Gemma 4 locally via Ollama, demonstrating 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│                   GEMMA 4 LOCAL APP                        │
+┌───────────────────────────────────────────────────────────  ┐
+│                   GEMMA 4 LOCAL APP                         │
 │                (standalone Spring Boot)                     │
 ├──────────────────┬───────���────────────────────────────────┤
-│ Gateway          │  REST API (/api/chat, /api/health)      │
+│ Gateway          │  REST API (/api/chat, /api/health)       │
 ├──────────────────┼──────────────���─────────────────────────┤
 │ Shell            │  Spring Shell CLI (interactive REPL)     │
 ├──────────────────┼─────────────────────────────���──────────┤
-│ Agent Runtime    │  AgentRuntime → Ollama → Gemma 4        │
+│ Agent Runtime    │  AgentRuntime → Ollama → Gemma 4         │
 ├──────────────────┼─────────────────────────���──────────────┤
-│ Custom Tools     │  [CurrentTimeTool]  [CalculateTool]     │
-├───��──────────────┼────────────────────────────────────────┤
+│ Custom Tools     │  [CurrentTimeTool]  [CalculateTool]      │
+├───��─────────────┼────────────────────────────────────────  ┤
 │ Core             │  jaiclaw-core (records, SPI)             │
 └──────────────────┴─────────────���──────────────────────────┘
 
@@ -41,6 +41,8 @@ Data flow:
 - Java 21+
 - JaiClaw built and installed (`./mvnw install -DskipTests` from project root)
 - **Ollama** installed locally OR Docker
+
+> **Hardware guidance:** See the [Gemma 4 Hardware Guide](../../docs/GEMMA4-HARDWARE-GUIDE.md) for VRAM requirements, expected inference speeds, and model selection advice for your specific hardware.
 
 ## Gemma 4 Ollama Models
 

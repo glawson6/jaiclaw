@@ -422,6 +422,7 @@ Images use `eclipse-temurin:21-jre` base and follow `io.jaiclaw/<module>:<versio
 | [Enterprise Scaling](docs/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md) | From personal assistant to multi-tenant platform |
 | [Feature Comparison](docs/FEATURE-COMPARISON.md) | OpenClaw vs JaiClaw vs Embabel — full feature matrix |
 | [Telegram Setup](docs/TELEGRAM-SETUP.md) | Step-by-step Telegram bot configuration |
+| [Gemma 4 Hardware Guide](docs/GEMMA4-HARDWARE-GUIDE.md) | Performance benchmarks, VRAM requirements, model selection for local Gemma 4 |
 
 ## Contributing
 

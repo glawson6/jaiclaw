@@ -518,6 +518,8 @@ ollama pull llama3.2
 AI_PROVIDER=ollama OLLAMA_ENABLED=true ./start.sh shell
 ```
 
+See the [Gemma 4 Hardware Guide](GEMMA4-HARDWARE-GUIDE.md) for model selection, VRAM requirements, and performance benchmarks when running Gemma 4 variants.
+
 **Docker (used by quickstart.sh):**
 
 ```bash

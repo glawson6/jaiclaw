@@ -363,6 +363,7 @@ public class AgentRuntime {
         }
 
         // 11. Branch on tool loop mode
+        long llmStartNanos = System.nanoTime();
         String responseContent;
         TokenUsage tokenUsage = TokenUsage.ZERO;
         if (effectiveToolLoopConfig.mode() == ToolLoopConfig.Mode.EXPLICIT && effectiveChatModel != null) {
@@ -397,6 +398,8 @@ public class AgentRuntime {
             LlmTraceLogger.logResponse(responseContent, tokenUsage.outputTokens());
         }
 
+        long llmElapsedMs = (System.nanoTime() - llmStartNanos) / 1_000_000;
+
         // 11a. Sanitize: strip chain-of-thought reasoning leaked by some models
         responseContent = ResponseSanitizer.sanitize(responseContent);
         if (ResponseSanitizer.isEntirelyReasoning(responseContent)) {
@@ -419,15 +422,12 @@ public class AgentRuntime {
             }
         }
 
-        // 11b. Log token usage
-        log.info("LLM usage — request: {} tokens, response: {} tokens, total: {} tokens",
-                String.format("%,d", tokenUsage.inputTokens()),
-                String.format("%,d", tokenUsage.outputTokens()),
-                String.format("%,d", tokenUsage.totalTokens()));
+        // 11b. Log token usage and duration
+        log.info("LLM usage — {} ms, request: {} tokens, response: {} tokens, total: {} tokens",
+                llmElapsedMs, tokenUsage.inputTokens(), tokenUsage.outputTokens(), tokenUsage.totalTokens());
         if (tokenUsage.cacheReadTokens() > 0 || tokenUsage.cacheWriteTokens() > 0) {
             log.info("LLM cache — read: {} tokens, write: {} tokens",
-                    String.format("%,d", tokenUsage.cacheReadTokens()),
-                    String.format("%,d", tokenUsage.cacheWriteTokens()));
+                    tokenUsage.cacheReadTokens(), tokenUsage.cacheWriteTokens());
         }
 
         // 12. LLM_OUTPUT hook
@@ -439,7 +439,7 @@ public class AgentRuntime {
                 .content(responseContent != null ? responseContent : "")
                 .modelId("default")
                 .usage(tokenUsage)
-                .metadata(Map.of())
+                .metadata(Map.of("llmDurationMs", llmElapsedMs))
                 .build();
         if (!context.stateless()) {
             sessionManager.appendMessage(context.sessionKey(), assistantMessage);

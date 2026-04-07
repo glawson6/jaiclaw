@@ -52,6 +52,7 @@ class ExplicitToolLoopSpec extends Specification {
         result.finalText() == "Hello there!"
         result.iterationsUsed() == 1
         result.history().isEmpty()
+        result.durationMs() >= 0
     }
 
     def "executes tool calls and returns final text"() {
@@ -76,6 +77,7 @@ class ExplicitToolLoopSpec extends Specification {
         result.history().size() == 1
         result.history()[0].toolName() == "myTool"
         result.history()[0].result() == "tool result"
+        result.durationMs() >= 0
     }
 
     def "fires BEFORE and AFTER tool call hooks"() {
@@ -117,6 +119,7 @@ class ExplicitToolLoopSpec extends Specification {
         then:
         result.finalText().contains("Max iterations reached")
         result.iterationsUsed() == 2
+        result.durationMs() >= 0
     }
 
     def "approval denial stops tool execution"() {

@@ -38,7 +38,7 @@ public class ExplicitToolLoop {
     private final AgentHookDispatcher hooks;
     private final ToolApprovalHandler approvalHandler;
 
-    public record LoopResult(String finalText, List<ToolCallEvent> history, int iterationsUsed, TokenUsage totalUsage) {}
+    public record LoopResult(String finalText, List<ToolCallEvent> history, int iterationsUsed, TokenUsage totalUsage, long durationMs) {}
 
     public ExplicitToolLoop(ChatModel chatModel, ToolLoopConfig config,
                             AgentHookDispatcher hooks, ToolApprovalHandler approvalHandler) {
@@ -58,6 +58,7 @@ public class ExplicitToolLoop {
 
         List<ToolCallEvent> toolCallHistory = new ArrayList<>();
         TokenUsage accumulatedUsage = TokenUsage.ZERO;
+        long loopStartNanos = System.nanoTime();
 
         for (int i = 0; i < config.maxIterations(); i++) {
             var options = ToolCallingChatOptions.builder()
@@ -65,7 +66,10 @@ public class ExplicitToolLoop {
                     .toolCallbacks(new ArrayList<>(toolsByName.values()))
                     .build();
 
+            long iterStartNanos = System.nanoTime();
             ChatResponse response = chatModel.call(new Prompt(messages, options));
+            long iterMs = (System.nanoTime() - iterStartNanos) / 1_000_000;
+            log.debug("Explicit loop iteration {} — {} ms", i + 1, iterMs);
             var output = response.getResult().getOutput();
 
             TokenUsage iterationUsage = extractUsage(response);
@@ -75,7 +79,8 @@ public class ExplicitToolLoop {
                     toolsByName.values(), iterationUsage.inputTokens(), iterationUsage.outputTokens());
 
             if (output.getToolCalls() == null || output.getToolCalls().isEmpty()) {
-                return new LoopResult(output.getText(), toolCallHistory, i + 1, accumulatedUsage);
+                long durationMs = (System.nanoTime() - loopStartNanos) / 1_000_000;
+                return new LoopResult(output.getText(), toolCallHistory, i + 1, accumulatedUsage, durationMs);
             }
 
             // Add the assistant message with tool calls to conversation
@@ -153,7 +158,8 @@ public class ExplicitToolLoop {
         }
 
         log.warn("Explicit tool loop hit max iterations ({}) for session {}", config.maxIterations(), sessionKey);
-        return new LoopResult("Max iterations reached (" + config.maxIterations() + ")", toolCallHistory, config.maxIterations(), accumulatedUsage);
+        long durationMs = (System.nanoTime() - loopStartNanos) / 1_000_000;
+        return new LoopResult("Max iterations reached (" + config.maxIterations() + ")", toolCallHistory, config.maxIterations(), accumulatedUsage, durationMs);
     }
 
     @SuppressWarnings("unchecked")
