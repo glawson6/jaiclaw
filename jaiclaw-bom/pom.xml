@@ -25,8 +25,21 @@
         </snapshotRepository>
     </distributionManagement>
 
+    <properties>
+        <spring-ai.version>1.1.4</spring-ai.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
+            <!-- Spring AI BOM -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-core</artifactId>
