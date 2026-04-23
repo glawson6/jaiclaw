@@ -6,11 +6,35 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-bom</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw :: BOM</name>
     <description>Bill of Materials for JaiClaw modules</description>
+    <url>https://github.com/glawson6/jaiclaw</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>JaiClaw</name>
+            <email>dev@jaiclaw.io</email>
+            <organization>JaiClaw</organization>
+            <organizationUrl>https://github.com/glawson6/jaiclaw</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/glawson6/jaiclaw.git</connection>
+        <developerConnection>scm:git:ssh://github.com:glawson6/jaiclaw.git</developerConnection>
+        <url>https://github.com/glawson6/jaiclaw/tree/main</url>
+    </scm>
 
     <distributionManagement>
         <repository>
@@ -28,6 +52,42 @@
     <properties>
         <spring-ai.version>1.1.4</spring-ai.version>
     </properties>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.9.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                            <ignorePublishedComponents>true</ignorePublishedComponents>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencyManagement>
         <dependencies>
