@@ -14,6 +14,10 @@
     <name>JaiClaw :: Gateway App</name>
     <description>Standalone Spring Boot application for the JaiClaw gateway (REST + WebSocket + channels)</description>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- Gateway starter (auto-config + gateway library + all channel adapters + web) -->
         <dependency>

@@ -14,6 +14,10 @@
     <name>JaiClaw :: Cron Manager App</name>
     <description>Standalone Spring Boot app for managing and executing scheduled cron jobs with full agent capabilities</description>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- Cron manager starter (extension + batch + jdbc + h2) -->
         <dependency>

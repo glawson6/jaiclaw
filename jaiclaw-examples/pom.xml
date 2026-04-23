@@ -15,6 +15,10 @@
     <name>JaiClaw :: Examples</name>
     <description>Example applications demonstrating JaiClaw framework capabilities</description>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <modules>
         <module>daily-briefing</module>
         <module>sales-report</module>

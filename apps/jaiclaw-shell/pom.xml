@@ -14,6 +14,10 @@
     <name>JaiClaw :: Shell</name>
     <description>Spring Shell CLI application</description>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- Shell starter (auto-config + Spring Shell + Embabel shell + spring-web) -->
         <dependency>

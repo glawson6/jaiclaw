@@ -14,6 +14,10 @@
     <packaging>pom</packaging>
     <name>JaiClaw :: Apps</name>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <modules>
         <module>jaiclaw-gateway-app</module>
         <module>jaiclaw-shell</module>

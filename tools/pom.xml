@@ -14,6 +14,10 @@
     <packaging>pom</packaging>
     <name>JaiClaw :: CLI Tools</name>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <modules>
         <module>jaiclaw-perplexity</module>
         <module>jaiclaw-rest-cli-architect</module>
