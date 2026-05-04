@@ -67,7 +67,17 @@ import java.util.Set;
  * checks resolve reliably.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration")
+@AutoConfigureAfter(name = {
+        "org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration",
+        "org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration",
+        "org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration",
+        "org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration",
+        "org.springframework.ai.model.minimax.autoconfigure.MiniMaxChatAutoConfiguration",
+        "org.springframework.ai.model.mistral.autoconfigure.MistralChatAutoConfiguration",
+        "org.springframework.ai.model.vertexai.autoconfigure.VertexAiGeminiChatAutoConfiguration",
+        "org.springframework.ai.model.azure.openai.autoconfigure.AzureOpenAiChatAutoConfiguration",
+        "org.springframework.ai.model.bedrock.converse.autoconfigure.BedrockConverseAutoConfiguration"
+})
 @EnableConfigurationProperties(JaiClawProperties.class)
 public class JaiClawAutoConfiguration {
 

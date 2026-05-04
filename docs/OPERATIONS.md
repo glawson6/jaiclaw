@@ -728,6 +728,19 @@ ANTHROPIC_API_KEY=your-minimax-key \
 
 No additional dependencies or provider flags are needed — JaiClaw treats it as a standard Anthropic endpoint.
 
+**MiniMax Thinking Filter** — When using MiniMax via the Anthropic-compatible endpoint, thinking content blocks are automatically filtered from responses. MiniMax's API always returns thinking blocks even when thinking mode is not requested; Spring AI creates separate `Generation` objects for these, and without filtering the chain-of-thought reasoning leaks into user-facing responses. The filter is enabled by default and can be disabled:
+
+```yaml
+jaiclaw:
+  models:
+    minimax:
+      filter-thinking: false   # default: true
+```
+
+The filter removes `Generation` objects tagged with a "signature" metadata key (MiniMax's thinking blocks) and returns only text generations. If all generations are thinking blocks, the last one is kept as a fallback.
+
+> **Note:** This auto-configured filter wraps `ChatModel` beans via `BeanPostProcessor`. It does not reach `ChatModel` instances created internally by Embabel's `SpringAiLlmService`. Embabel apps must use a separate `SmartInitializingSingleton` approach — see the `camel-html-summarizer-embabel` example.
+
 **Vertex AI** — Requires a GCP project with Vertex AI enabled. Uses Application Default Credentials (ADC).
 
 ```bash

@@ -27,6 +27,14 @@ import java.util.List;
  * ensuring only text generations are returned to Embabel's tool loop.
  *
  * <p><b>Only needed when using MiniMax via the Anthropic-compatible endpoint.</b>
+ *
+ * <p><b>Why this exists despite the framework-level filter:</b> JaiClaw's
+ * {@code MiniMaxThinkingFilterAutoConfiguration} wraps {@code ChatModel} beans via
+ * {@code BeanPostProcessor}, but Embabel creates its own {@code ChatModel} instances
+ * internally inside {@code SpringAiLlmService} — those are not Spring-managed beans
+ * and the {@code BeanPostProcessor} cannot reach them. This class uses
+ * {@code SmartInitializingSingleton} + reflection to wrap those internal instances
+ * after all singletons are initialized.
  */
 @Configuration
 public class MiniMaxThinkingFilter implements SmartInitializingSingleton {

@@ -27,20 +27,24 @@ public class OAuthFlowManager {
     private final AuthProfileStoreManager storeManager;
     private final AuthorizationCodeFlow authCodeFlow;
     private final DeviceCodeFlow deviceCodeFlow;
+    private final ResourceOwnerPasswordFlow ropcFlow;
 
     public OAuthFlowManager(Map<String, OAuthProviderConfig> providerConfigs,
                             AuthProfileStoreManager storeManager) {
-        this(providerConfigs, storeManager, new AuthorizationCodeFlow(), new DeviceCodeFlow());
+        this(providerConfigs, storeManager, new AuthorizationCodeFlow(), new DeviceCodeFlow(),
+                new ResourceOwnerPasswordFlow());
     }
 
     public OAuthFlowManager(Map<String, OAuthProviderConfig> providerConfigs,
                             AuthProfileStoreManager storeManager,
                             AuthorizationCodeFlow authCodeFlow,
-                            DeviceCodeFlow deviceCodeFlow) {
+                            DeviceCodeFlow deviceCodeFlow,
+                            ResourceOwnerPasswordFlow ropcFlow) {
         this.providerConfigs = new ConcurrentHashMap<>(providerConfigs);
         this.storeManager = storeManager;
         this.authCodeFlow = authCodeFlow;
         this.deviceCodeFlow = deviceCodeFlow;
+        this.ropcFlow = ropcFlow;
     }
 
     /** Register a provider config. */
@@ -78,6 +82,7 @@ public class OAuthFlowManager {
         OAuthFlowResult result = switch (config.flowType()) {
             case AUTHORIZATION_CODE -> runAuthCodeFlow(config, outputHandler, inputHandler);
             case DEVICE_CODE -> runDeviceCodeFlow(config, outputHandler);
+            case RESOURCE_OWNER_PASSWORD -> runROPCFlow(config, outputHandler, inputHandler);
         };
 
         // Store the credential
@@ -139,6 +144,25 @@ public class OAuthFlowManager {
         outputHandler.accept("Waiting for authorization...");
 
         return deviceCodeFlow.pollForToken(config, deviceCode);
+    }
+
+    private OAuthFlowResult runROPCFlow(OAuthProviderConfig config,
+                                          Consumer<String> outputHandler,
+                                          java.util.function.Supplier<String> inputHandler)
+            throws OAuthFlowException {
+        outputHandler.accept("Username:");
+        String username = inputHandler.get();
+        if (username == null || username.isBlank()) {
+            throw new OAuthFlowException("Username is required for password flow");
+        }
+
+        outputHandler.accept("Password:");
+        String password = inputHandler.get();
+        if (password == null || password.isBlank()) {
+            throw new OAuthFlowException("Password is required for password flow");
+        }
+
+        return ropcFlow.requestToken(config, username.trim(), password.trim());
     }
 
     private String extractCodeFromRedirectUrl(String input, String expectedState) throws OAuthFlowException {
