@@ -13,3 +13,4 @@ docs/PRIVATE-DOCS-INDEX.md
 /.claude/
 /dependency-update-report.md
 security-report-*.md
+BUILD-MEMORY.md
