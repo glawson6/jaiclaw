@@ -26,7 +26,7 @@ public record JaiClawSecurityProperties(
         RateLimitProperties rateLimit
 ) {
     public JaiClawSecurityProperties() {
-        this(false, null, null, null, false,
+        this(false, null, null, null, true,
                 new JwtProperties(), new RoleMappingProperties(), new RateLimitProperties());
     }
 

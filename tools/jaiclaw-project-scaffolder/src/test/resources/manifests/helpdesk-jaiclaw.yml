@@ -1,0 +1,28 @@
+name: helpdesk-bot
+description: Multi-tenant support bot with FAQ lookup
+
+parent: jaiclaw
+
+extensions: [security, plugin-sdk]
+channels: [telegram, slack]
+
+agent:
+  name: Helpdesk Agent
+  tools-profile: full
+  system-prompt:
+    strategy: classpath
+    source: prompts/system-prompt.md
+
+skills:
+  allow-bundled: []
+
+security:
+  mode: api-key
+
+custom-tools:
+  - name: search_faq
+    description: Search the FAQ knowledge base
+    section: helpdesk
+    parameters:
+      question: { type: string, description: "The user's question", required: true }
+      category: { type: string, description: "FAQ category" }

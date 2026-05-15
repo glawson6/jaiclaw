@@ -27,7 +27,7 @@ public record ToolsProperties(
             boolean fetchEnabled,
             boolean ssrfProtection
     ) {
-        public static final WebToolsProperties DEFAULT = new WebToolsProperties(true, true, false);
+        public static final WebToolsProperties DEFAULT = new WebToolsProperties(true, true, true);
     }
 
     public record ExecToolProperties(
@@ -38,6 +38,12 @@ public record ToolsProperties(
             int maxTimeout,
             KubectlPolicyProperties kubectl
     ) {
+        public ExecToolProperties {
+            if (allowedCommands == null) allowedCommands = List.of();
+            if (blockedPatterns == null) blockedPatterns = List.of();
+            if (kubectl == null) kubectl = KubectlPolicyProperties.DEFAULT;
+        }
+
         public static final ExecToolProperties DEFAULT = new ExecToolProperties(
                 "sandbox", "deny-dangerous", List.of(),
                 List.of("rm -rf /", "mkfs", "> /dev/sd"), 300,
@@ -50,6 +56,11 @@ public record ToolsProperties(
             List<String> allowedVerbs,
             List<String> blockedVerbs
     ) {
+        public KubectlPolicyProperties {
+            if (allowedVerbs == null) allowedVerbs = List.of();
+            if (blockedVerbs == null) blockedVerbs = List.of();
+        }
+
         public static final KubectlPolicyProperties DEFAULT = new KubectlPolicyProperties(
                 "unrestricted", List.of(), List.of()
         );
@@ -58,6 +69,6 @@ public record ToolsProperties(
     public record CodeToolsProperties(
             boolean workspaceBoundary
     ) {
-        public static final CodeToolsProperties DEFAULT = new CodeToolsProperties(false);
+        public static final CodeToolsProperties DEFAULT = new CodeToolsProperties(true);
     }
 }

@@ -10,19 +10,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 
-import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
-
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,29 +28,36 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * MCP tool provider that connects via Server-Sent Events (SSE transport).
  * Connects to an SSE endpoint to receive the POST URL, then sends JSON-RPC
- * requests via POST and receives responses via SSE events.
+ * requests via POST. Responses arrive asynchronously on the SSE stream as
+ * {@code event:message} events and are correlated by JSON-RPC request ID.
+ *
+ * <p>HTTP operations are delegated to an {@link SseHttpTransport} instance,
+ * allowing the transport layer to be swapped (e.g. {@code HttpClient} vs
+ * {@code WebClient}) without changing the SSE protocol logic.</p>
  */
 public class SseMcpToolProvider implements McpToolProvider, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(SseMcpToolProvider.class);
+    private static final int REQUEST_TIMEOUT_SECONDS = 30;
 
     private final String serverName;
     private final String description;
     private final String url;
+    private final SseHttpTransport transport;
     private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicInteger requestId = new AtomicInteger(1);
-    private final HttpClient httpClient;
+    private final ConcurrentHashMap<Integer, CompletableFuture<JsonNode>> pendingRequests = new ConcurrentHashMap<>();
 
     private volatile String postEndpoint;
     private volatile boolean connected;
     private List<McpToolDefinition> cachedTools;
-    private CompletableFuture<Void> sseConnection;
+    private Thread sseReaderThread;
 
-    public SseMcpToolProvider(String serverName, String description, String url) {
+    public SseMcpToolProvider(String serverName, String description, String url, SseHttpTransport transport) {
         this.serverName = serverName;
         this.description = description != null ? description : serverName;
         this.url = url;
-        this.httpClient = ProxyAwareHttpClientFactory.create();
+        this.transport = transport;
     }
 
     /**
@@ -63,36 +67,48 @@ public class SseMcpToolProvider implements McpToolProvider, DisposableBean {
         CountDownLatch endpointLatch = new CountDownLatch(1);
         AtomicReference<Exception> error = new AtomicReference<>();
 
-        sseConnection = CompletableFuture.runAsync(() -> {
+        sseReaderThread = new Thread(() -> {
             try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .header("Accept", "text/event-stream")
-                        .GET()
-                        .build();
-
-                HttpResponse<java.io.InputStream> response = httpClient.send(request,
-                        HttpResponse.BodyHandlers.ofInputStream());
-
+                log.debug("[{}] SSE reader: calling connectSseStream", serverName);
+                InputStream stream = transport.connectSseStream(url);
+                log.debug("[{}] SSE reader: connectSseStream returned, creating BufferedReader", serverName);
                 BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.body(), StandardCharsets.UTF_8));
+                        new InputStreamReader(stream, StandardCharsets.UTF_8));
 
+                String currentEvent = null;
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (line.startsWith("event: endpoint")) {
-                        String dataLine = reader.readLine();
-                        if (dataLine != null && dataLine.startsWith("data: ")) {
-                            postEndpoint = resolveUrl(dataLine.substring(6).trim());
+                    log.debug("[{}] SSE reader: line='{}' currentEvent={}", serverName, line, currentEvent);
+                    if (line.startsWith("event:")) {
+                        currentEvent = line.substring(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        String data = line.substring(5).trim();
+                        if ("endpoint".equals(currentEvent)) {
+                            postEndpoint = resolveUrl(data);
                             connected = true;
+                            log.debug("[{}] SSE reader: endpoint discovered: {}", serverName, postEndpoint);
                             endpointLatch.countDown();
+                        } else if ("message".equals(currentEvent)) {
+                            handleSseMessage(data);
                         }
+                        currentEvent = null;
+                    } else if (line.isEmpty()) {
+                        currentEvent = null;
                     }
                 }
+                log.debug("[{}] SSE reader: stream ended (readLine returned null)", serverName);
             } catch (Exception e) {
-                error.set(e);
-                endpointLatch.countDown();
+                if (connected) {
+                    log.warn("SSE stream for '{}' closed: {}", serverName, e.getMessage());
+                } else {
+                    log.error("[{}] SSE reader: error before connected", serverName, e);
+                    error.set(e);
+                    endpointLatch.countDown();
+                }
             }
-        });
+        }, "mcp-sse-reader-" + serverName);
+        sseReaderThread.setDaemon(true);
+        sseReaderThread.start();
 
         if (!endpointLatch.await(10, TimeUnit.SECONDS)) {
             throw new Exception("Timeout waiting for SSE endpoint from " + url);
@@ -103,10 +119,34 @@ public class SseMcpToolProvider implements McpToolProvider, DisposableBean {
         }
 
         // Initialize and cache tools
+        log.debug("[{}] Sending initialize request", serverName);
         sendInitialize();
+        sendNotification("notifications/initialized", Map.of());
+        log.debug("[{}] Initialize complete, refreshing tools", serverName);
         refreshTools();
+        log.debug("[{}] Tools refreshed", serverName);
 
         log.info("SSE MCP server '{}' connected: {} ({} tools)", serverName, url, cachedTools.size());
+    }
+
+    private void handleSseMessage(String data) {
+        try {
+            JsonNode responseNode = mapper.readTree(data);
+            if (responseNode.has("id") && !responseNode.get("id").isNull()) {
+                int id = responseNode.get("id").asInt();
+                CompletableFuture<JsonNode> future = pendingRequests.remove(id);
+                if (future != null) {
+                    future.complete(responseNode);
+                } else {
+                    log.debug("Received SSE response for unknown request id: {}", id);
+                }
+            } else {
+                // Notification (no id) — log and ignore
+                log.debug("Received SSE notification: {}", data);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse SSE message: {}", data, e);
+        }
     }
 
     private String resolveUrl(String endpoint) {
@@ -122,7 +162,7 @@ public class SseMcpToolProvider implements McpToolProvider, DisposableBean {
         Map<String, Object> initParams = Map.of(
                 "protocolVersion", "2024-11-05",
                 "capabilities", Map.of(),
-                "clientInfo", Map.of("name", "jaiclaw", "version", "0.1.0")
+                "clientInfo", Map.of("name", "jaiclaw", "version", "0.3.0")
         );
         sendRequest("initialize", initParams);
     }
@@ -195,35 +235,69 @@ public class SseMcpToolProvider implements McpToolProvider, DisposableBean {
                 "params", params
         );
 
-        String json = mapper.writeValueAsString(request);
+        // Register a future to receive the response from the SSE stream
+        CompletableFuture<JsonNode> responseFuture = new CompletableFuture<>();
+        pendingRequests.put(id, responseFuture);
 
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(postEndpoint))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
-                .build();
+        try {
+            String json = mapper.writeValueAsString(request);
 
-        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            // Fire the POST — response comes via SSE stream, not HTTP body
+            log.debug("[{}] POSTing {} (id={}) to {}", serverName, method, id, postEndpoint);
+            int statusCode = transport.postJsonRpc(postEndpoint, json);
+            log.debug("[{}] POST {} returned status {}", serverName, method, statusCode);
+            if (statusCode != 200 && statusCode != 202) {
+                pendingRequests.remove(id);
+                throw new Exception("SSE MCP POST failed with status " + statusCode);
+            }
 
-        if (response.statusCode() != 200) {
-            throw new Exception("SSE MCP POST failed with status " + response.statusCode());
+            // Wait for the response on the SSE stream
+            JsonNode responseNode = responseFuture.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+            if (responseNode.has("error")) {
+                JsonNode errorNode = responseNode.get("error");
+                throw new Exception("MCP error: " + errorNode.get("message").asText());
+            }
+
+            return responseNode.get("result");
+        } catch (Exception e) {
+            pendingRequests.remove(id);
+            throw e;
         }
+    }
 
-        JsonNode responseNode = mapper.readTree(response.body());
-        if (responseNode.has("error")) {
-            JsonNode error = responseNode.get("error");
-            throw new Exception("MCP error: " + error.get("message").asText());
+    private void sendNotification(String method, Map<String, Object> params) throws Exception {
+        if (postEndpoint == null) {
+            throw new IllegalStateException("SSE MCP server not connected: " + serverName);
         }
-
-        return responseNode.get("result");
+        Map<String, Object> notification = Map.of(
+                "jsonrpc", "2.0",
+                "method", method,
+                "params", params
+        );
+        String json = mapper.writeValueAsString(notification);
+        log.debug("[{}] Sending notification: {}", serverName, method);
+        int statusCode = transport.postJsonRpc(postEndpoint, json);
+        if (statusCode != 200 && statusCode != 202 && statusCode != 204) {
+            log.warn("[{}] Notification '{}' returned unexpected status {}", serverName, method, statusCode);
+        }
     }
 
     @Override
     public void destroy() {
         connected = false;
-        if (sseConnection != null) {
-            sseConnection.cancel(true);
+        if (sseReaderThread != null) {
+            sseReaderThread.interrupt();
         }
+        try {
+            transport.close();
+        } catch (Exception e) {
+            log.debug("Error closing SSE transport for '{}': {}", serverName, e.getMessage());
+        }
+        // Complete any pending requests with an error
+        pendingRequests.forEach((id, future) ->
+                future.completeExceptionally(new Exception("SSE connection closed")));
+        pendingRequests.clear();
         log.info("SSE MCP server disconnected: {}", serverName);
     }
 }

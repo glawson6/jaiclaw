@@ -1,6 +1,7 @@
 package io.jaiclaw.config.prompt;
 
 import io.jaiclaw.config.SystemPromptConfig;
+import org.springframework.core.io.ResourceLoader;
 
 import java.util.List;
 
@@ -12,10 +13,10 @@ public class SystemPromptLoaderFactory {
 
     private final List<SystemPromptLoader> loaders;
 
-    public SystemPromptLoaderFactory() {
+    public SystemPromptLoaderFactory(ResourceLoader resourceLoader) {
         this.loaders = List.of(
                 new InlineSystemPromptLoader(),
-                new ClasspathSystemPromptLoader(),
+                new ClasspathSystemPromptLoader(resourceLoader),
                 new FileSystemPromptLoader(),
                 new UrlSystemPromptLoader()
         );

@@ -44,7 +44,7 @@ public class GlobTool extends AbstractBuiltinTool {
     private final boolean enforceWorkspaceBoundary;
 
     public GlobTool() {
-        this(false);
+        this(true);
     }
 
     public GlobTool(boolean enforceWorkspaceBoundary) {

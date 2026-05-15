@@ -141,8 +141,9 @@ class FileEditToolSpec extends Specification {
 
     def "path traversal is allowed when workspace boundary is not enforced"() {
         given:
-        // Default tool (no boundary enforcement) - traversal resolves but file won't exist
-        def result = tool.execute(Map.of("path", "../nonexistent", "old_string", "a", "new_string", "b"), context)
+        def unboundedTool = new FileEditTool(false)
+        // Explicit no-boundary tool — traversal resolves but file won't exist
+        def result = unboundedTool.execute(Map.of("path", "../nonexistent", "old_string", "a", "new_string", "b"), context)
 
         expect:
         result instanceof ToolResult.Error

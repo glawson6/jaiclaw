@@ -1,0 +1,41 @@
+name: personal-assistant
+description: Full-featured personal assistant with calendar, voice, and browser
+
+archetype: comprehensive
+group-id: io.mycompany
+java-package: io.mycompany.assistant
+version: 1.0.0-SNAPSHOT
+jaiclaw-version: 0.3.0-SNAPSHOT
+
+ai-provider:
+  primary: anthropic
+  additional: [openai, ollama]
+
+extensions: [calendar, voice, browser, identity, canvas]
+channels: [telegram, slack, discord]
+
+agent:
+  name: Personal Assistant
+  tools-profile: full
+  system-prompt:
+    strategy: inline
+    content: |
+      You are a personal assistant that helps with scheduling,
+      web research, and daily tasks.
+
+skills:
+  allow-bundled: [summarize, web-research]
+
+security:
+  mode: jwt
+
+server:
+  port: 9090
+
+docker:
+  enabled: true
+  base-image: eclipse-temurin:21-jre
+
+readme:
+  problem: Managing daily tasks, calendar events, and information lookup is tedious
+  solution: An AI-powered personal assistant that integrates with your calendar, can browse the web, and communicates across multiple messaging platforms

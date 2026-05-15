@@ -8,11 +8,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 /**
  * Auto-configuration for JaiClaw security. Three modes:
@@ -37,6 +39,33 @@ public class JaiClawSecurityAutoConfiguration {
         return new SecurityModeLogger(properties, apiKeyProvider.getIfAvailable());
     }
 
+    /**
+     * Rate limit filter — shared across API key and JWT modes.
+     */
+    @Bean
+    @ConditionalOnProperty(name = "jaiclaw.security.rate-limit.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(RateLimitFilter.class)
+    RateLimitFilter rateLimitFilter(JaiClawSecurityProperties properties) {
+        JaiClawSecurityProperties.RateLimitProperties rl = properties.rateLimit();
+        return new RateLimitFilter(rl.maxRequestsPerWindow(), rl.windowSeconds(),
+                rl.cleanupIntervalSeconds());
+    }
+
+    /**
+     * Applies standard security response headers to all filter chains.
+     */
+    private static void configureSecurityHeaders(HttpSecurity http) throws Exception {
+        http.headers(headers -> headers
+                .contentTypeOptions(Customizer.withDefaults())
+                .frameOptions(frame -> frame.deny())
+                .referrerPolicy(ref -> ref.policy(
+                        ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .httpStrictTransportSecurity(hsts -> hsts
+                        .includeSubDomains(true)
+                        .maxAgeInSeconds(31536000))
+        );
+    }
+
     // ── API Key mode (default) ──────────────────────────────────────────────
 
     @Configuration(proxyBeanMethods = false)
@@ -59,9 +88,11 @@ public class JaiClawSecurityAutoConfiguration {
         @Bean
         @ConditionalOnMissingBean(SecurityFilterChain.class)
         SecurityFilterChain apiKeyFilterChain(HttpSecurity http,
-                                              ApiKeyAuthenticationFilter apiKeyFilter)
+                                              ApiKeyAuthenticationFilter apiKeyFilter,
+                                              ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
                 throws Exception {
-            return http
+            configureSecurityHeaders(http);
+            HttpSecurity builder = http
                     .csrf(AbstractHttpConfigurer::disable)
                     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth
@@ -69,10 +100,16 @@ public class JaiClawSecurityAutoConfiguration {
                             .requestMatchers("/webhook/**").permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .requestMatchers("/mcp/**").authenticated()
-                            .anyRequest().permitAll()
+                            .anyRequest().denyAll()
                     )
-                    .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-                    .build();
+                    .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
+
+            RateLimitFilter rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
+            if (rateLimitFilter != null) {
+                builder.addFilterAfter(rateLimitFilter, ApiKeyAuthenticationFilter.class);
+            }
+
+            return builder.build();
         }
     }
 
@@ -89,6 +126,11 @@ public class JaiClawSecurityAutoConfiguration {
             if (jwt.secret() == null || jwt.secret().isBlank()) {
                 throw new IllegalStateException(
                         "jaiclaw.security.jwt.secret must be set when jaiclaw.security.mode=jwt");
+            }
+            if (jwt.secret().length() < 32) {
+                throw new IllegalStateException(
+                        "jaiclaw.security.jwt.secret must be at least 32 characters (256 bits) for HMAC-SHA256. "
+                                + "Current length: " + jwt.secret().length());
             }
             return new JwtTokenValidator(jwt.secret(), jwt.issuer(),
                     jwt.tenantClaim(), jwt.roleClaim());
@@ -110,20 +152,12 @@ public class JaiClawSecurityAutoConfiguration {
         }
 
         @Bean
-        @ConditionalOnProperty(name = "jaiclaw.security.rate-limit.enabled", havingValue = "true")
-        @ConditionalOnMissingBean(RateLimitFilter.class)
-        RateLimitFilter rateLimitFilter(JaiClawSecurityProperties properties) {
-            JaiClawSecurityProperties.RateLimitProperties rl = properties.rateLimit();
-            return new RateLimitFilter(rl.maxRequestsPerWindow(), rl.windowSeconds(),
-                    rl.cleanupIntervalSeconds());
-        }
-
-        @Bean
         @ConditionalOnMissingBean(SecurityFilterChain.class)
         SecurityFilterChain jwtFilterChain(HttpSecurity http,
                                            JwtAuthenticationFilter jwtFilter,
                                            ObjectProvider<RateLimitFilter> rateLimitFilterProvider)
                 throws Exception {
+            configureSecurityHeaders(http);
             HttpSecurity builder = http
                     .csrf(AbstractHttpConfigurer::disable)
                     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -132,7 +166,7 @@ public class JaiClawSecurityAutoConfiguration {
                             .requestMatchers("/webhook/**").permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .requestMatchers("/mcp/**").authenticated()
-                            .anyRequest().permitAll()
+                            .anyRequest().denyAll()
                     )
                     .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

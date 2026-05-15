@@ -43,7 +43,7 @@ public class WebFetchTool extends AbstractBuiltinTool {
     private final boolean ssrfProtection;
 
     public WebFetchTool() {
-        this(false);
+        this(true);
     }
 
     public WebFetchTool(boolean ssrfProtection) {
@@ -54,7 +54,7 @@ public class WebFetchTool extends AbstractBuiltinTool {
     }
 
     public WebFetchTool(HttpClient httpClient) {
-        this(httpClient, false);
+        this(httpClient, true);
     }
 
     public WebFetchTool(HttpClient httpClient, boolean ssrfProtection) {

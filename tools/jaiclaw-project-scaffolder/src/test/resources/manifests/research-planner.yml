@@ -1,0 +1,24 @@
+name: research-planner
+description: Embabel-powered research planning agent
+
+archetype: embabel
+
+ai-provider:
+  primary: gemini
+
+agent:
+  name: Research Planner
+  tools-profile: full
+
+skills:
+  allow-bundled: [web-research]
+
+security:
+  mode: none
+
+embabel:
+  default-llm: claude-sonnet-4-5
+  workflow: ResearchPlannerAgent
+
+docker:
+  enabled: false

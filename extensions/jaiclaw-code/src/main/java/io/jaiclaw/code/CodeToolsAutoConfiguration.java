@@ -20,7 +20,7 @@ public class CodeToolsAutoConfiguration {
     @Bean
     public CodeToolsRegistrar codeToolsRegistrar(
             ToolRegistry toolRegistry,
-            @Value("${jaiclaw.tools.code.workspace-boundary:false}") boolean workspaceBoundary) {
+            @Value("${jaiclaw.tools.code.workspace-boundary:true}") boolean workspaceBoundary) {
         CodeTools.registerAll(toolRegistry, workspaceBoundary);
         return new CodeToolsRegistrar();
     }

@@ -23,11 +23,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * MCP tool provider that communicates over streamable HTTP transport.
  * Sends JSON-RPC 2.0 requests as POST to a single endpoint and receives
- * JSON-RPC responses.
+ * JSON-RPC responses. Tracks the {@code Mcp-Session-Id} header returned
+ * by the server during initialization and sends it on all subsequent requests.
  */
 public class HttpMcpToolProvider implements McpToolProvider {
 
     private static final Logger log = LoggerFactory.getLogger(HttpMcpToolProvider.class);
+    private static final String SESSION_ID_HEADER = "Mcp-Session-Id";
+    private static final String ACCEPT_INIT = "application/json, text/event-stream";
+    private static final String ACCEPT_JSON = "application/json";
 
     private final String serverName;
     private final String description;
@@ -37,6 +41,7 @@ public class HttpMcpToolProvider implements McpToolProvider {
     private final AtomicInteger requestId = new AtomicInteger(1);
     private final HttpClient httpClient;
 
+    private volatile String sessionId;
     private List<McpToolDefinition> cachedTools;
 
     public HttpMcpToolProvider(String serverName, String description, String url, String authToken) {
@@ -44,7 +49,9 @@ public class HttpMcpToolProvider implements McpToolProvider {
         this.description = description != null ? description : serverName;
         this.url = url;
         this.authToken = authToken;
-        this.httpClient = ProxyAwareHttpClientFactory.create();
+        this.httpClient = ProxyAwareHttpClientFactory.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
     }
 
     /**
@@ -54,11 +61,13 @@ public class HttpMcpToolProvider implements McpToolProvider {
         Map<String, Object> initParams = Map.of(
                 "protocolVersion", "2024-11-05",
                 "capabilities", Map.of(),
-                "clientInfo", Map.of("name", "jaiclaw", "version", "0.1.0")
+                "clientInfo", Map.of("name", "jaiclaw", "version", "0.3.0")
         );
-        sendRequest("initialize", initParams);
+        sendRequest("initialize", initParams, ACCEPT_INIT);
+        sendNotification("notifications/initialized");
         refreshTools();
-        log.info("HTTP MCP server '{}' initialized: {} ({} tools)", serverName, url, cachedTools.size());
+        log.info("HTTP MCP server '{}' initialized: {} ({} tools, sessionId={})",
+                serverName, url, cachedTools.size(), sessionId);
     }
 
     private void refreshTools() throws Exception {
@@ -117,6 +126,10 @@ public class HttpMcpToolProvider implements McpToolProvider {
     }
 
     private JsonNode sendRequest(String method, Map<String, Object> params) throws Exception {
+        return sendRequest(method, params, ACCEPT_JSON);
+    }
+
+    private JsonNode sendRequest(String method, Map<String, Object> params, String accept) throws Exception {
         int id = requestId.getAndIncrement();
         Map<String, Object> request = Map.of(
                 "jsonrpc", "2.0",
@@ -125,21 +138,14 @@ public class HttpMcpToolProvider implements McpToolProvider {
                 "params", params
         );
 
-        String json = mapper.writeValueAsString(request);
+        HttpResponse<String> response = doPost(mapper.writeValueAsString(request), accept);
 
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json));
-
-        if (authToken != null && !authToken.isBlank()) {
-            builder.header("Authorization", "Bearer " + authToken);
-        }
-
-        HttpRequest httpRequest = builder.build();
-        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        // Capture session ID from response headers
+        response.headers().firstValue(SESSION_ID_HEADER).ifPresent(sid -> this.sessionId = sid);
 
         if (response.statusCode() != 200) {
+            log.error("HTTP MCP request to {} failed — method: {}, status: {}, response headers: {}, body: {}",
+                    url, method, response.statusCode(), response.headers().map(), response.body());
             throw new Exception("HTTP MCP request failed with status " + response.statusCode());
         }
 
@@ -150,5 +156,34 @@ public class HttpMcpToolProvider implements McpToolProvider {
         }
 
         return responseNode.get("result");
+    }
+
+    private void sendNotification(String method) throws Exception {
+        Map<String, Object> notification = Map.of(
+                "jsonrpc", "2.0",
+                "method", method
+        );
+        HttpResponse<String> response = doPost(mapper.writeValueAsString(notification), ACCEPT_JSON);
+        // Notifications may return 200 or 202; both are acceptable
+        if (response.statusCode() != 200 && response.statusCode() != 202 && response.statusCode() != 204) {
+            log.warn("MCP notification '{}' returned unexpected status {}", method, response.statusCode());
+        }
+    }
+
+    private HttpResponse<String> doPost(String json, String accept) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("Accept", accept)
+                .POST(HttpRequest.BodyPublishers.ofString(json));
+
+        if (sessionId != null) {
+            builder.header(SESSION_ID_HEADER, sessionId);
+        }
+        if (authToken != null && !authToken.isBlank()) {
+            builder.header("Authorization", "Bearer " + authToken);
+        }
+
+        return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 }

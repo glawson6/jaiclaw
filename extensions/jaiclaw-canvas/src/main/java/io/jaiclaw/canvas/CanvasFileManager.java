@@ -65,9 +65,16 @@ public class CanvasFileManager {
     }
 
     public String writeHtml(String id, String html) {
+        if (id.contains("/") || id.contains("\\") || id.contains("..")) {
+            throw new SecurityException("Invalid canvas file ID: " + id);
+        }
         String fileName = id + ".html";
+        Path resolved = resolveDir().resolve(fileName).normalize();
+        if (!resolved.startsWith(resolveDir())) {
+            throw new SecurityException("Path traversal blocked: " + id);
+        }
         try {
-            Files.writeString(resolveDir().resolve(fileName), html, StandardCharsets.UTF_8);
+            Files.writeString(resolved, html, StandardCharsets.UTF_8);
             return fileName;
         } catch (IOException e) {
             log.error("Failed to write canvas HTML {}: {}", fileName, e.getMessage());
@@ -76,7 +83,11 @@ public class CanvasFileManager {
     }
 
     public Optional<String> readHtml(String fileName) {
-        Path file = resolveDir().resolve(fileName);
+        Path file = resolveDir().resolve(fileName).normalize();
+        if (!file.startsWith(resolveDir())) {
+            log.warn("Path traversal attempt blocked: {}", fileName);
+            return Optional.empty();
+        }
         if (!Files.exists(file)) return Optional.empty();
         try {
             return Optional.of(Files.readString(file, StandardCharsets.UTF_8));

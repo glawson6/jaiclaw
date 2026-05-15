@@ -1,0 +1,28 @@
+name: pdf-summarizer
+description: Camel-based PDF document summarizer
+
+archetype: camel
+
+ai-provider:
+  primary: anthropic
+
+extensions: [documents]
+
+agent:
+  name: PDF Summarizer
+  tools-profile: minimal
+  system-prompt:
+    strategy: classpath
+    source: prompts/system-prompt.md
+
+skills:
+  allow-bundled: [summarize]
+
+security:
+  mode: none
+
+camel:
+  channel-id: pdf-summarizer
+  display-name: PDF Summarizer
+  stateless: true
+  version: 4.18.1

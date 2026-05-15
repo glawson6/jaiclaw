@@ -295,8 +295,8 @@ public class JaiClawAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public SystemPromptLoaderFactory systemPromptLoaderFactory() {
-        return new SystemPromptLoaderFactory();
+    public SystemPromptLoaderFactory systemPromptLoaderFactory(ResourceLoader resourceLoader) {
+        return new SystemPromptLoaderFactory(resourceLoader);
     }
 
     @Bean
@@ -369,6 +369,7 @@ public class JaiClawAutoConfiguration {
             JaiClawProperties properties,
             TenantGuard tenantGuard,
             org.springframework.core.env.Environment env,
+            SystemPromptLoaderFactory promptLoaderFactory,
             ObjectProvider<ChatModel> chatModelProvider,
             ObjectProvider<ContextCompactor> compactorProvider,
             ObjectProvider<AgentHookDispatcher> hooksProvider,
@@ -408,8 +409,7 @@ public class JaiClawAutoConfiguration {
         String additionalInstructions = "";
         boolean replaceSystemPrompt = false;
         if (systemPromptConfig != null) {
-            SystemPromptLoaderFactory promptLoader = new SystemPromptLoaderFactory();
-            additionalInstructions = promptLoader.load(systemPromptConfig);
+            additionalInstructions = promptLoaderFactory.load(systemPromptConfig);
             replaceSystemPrompt = !systemPromptConfig.append();
             log.info("System prompt configured — strategy: {}, replace: {}, length: {}",
                     systemPromptConfig.strategy(), replaceSystemPrompt, additionalInstructions.length());

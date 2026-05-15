@@ -13,7 +13,7 @@ public final class CodeTools {
     private CodeTools() {}
 
     public static List<ToolCallback> all() {
-        return all(false);
+        return all(true);
     }
 
     public static List<ToolCallback> all(boolean enforceWorkspaceBoundary) {

@@ -46,7 +46,7 @@ public class FileEditTool extends AbstractBuiltinTool {
     private final boolean enforceWorkspaceBoundary;
 
     public FileEditTool() {
-        this(false);
+        this(true);
     }
 
     public FileEditTool(boolean enforceWorkspaceBoundary) {

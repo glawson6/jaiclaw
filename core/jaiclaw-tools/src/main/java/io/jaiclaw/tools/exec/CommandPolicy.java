@@ -93,6 +93,9 @@ public final class CommandPolicy {
     // --- Private helpers ---
 
     private static Optional<String> checkBlockedPatterns(String command, List<String> blockedPatterns) {
+        if (blockedPatterns == null || blockedPatterns.isEmpty()) {
+            return Optional.empty();
+        }
         for (String pattern : blockedPatterns) {
             if (command.contains(pattern)) {
                 return Optional.of("Command blocked by pattern: " + pattern);

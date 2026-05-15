@@ -57,7 +57,7 @@ public class GrepTool extends AbstractBuiltinTool {
     private final boolean enforceWorkspaceBoundary;
 
     public GrepTool() {
-        this(false);
+        this(true);
     }
 
     public GrepTool(boolean enforceWorkspaceBoundary) {

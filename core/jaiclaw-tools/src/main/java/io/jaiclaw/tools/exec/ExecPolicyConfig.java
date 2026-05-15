@@ -16,6 +16,10 @@ public record ExecPolicyConfig(
         List<String> blockedPatterns,
         int maxTimeout
 ) {
+    public ExecPolicyConfig {
+        if (allowedCommands == null) allowedCommands = List.of();
+        if (blockedPatterns == null) blockedPatterns = List.of();
+    }
     public static final String POLICY_UNRESTRICTED = "unrestricted";
     public static final String POLICY_ALLOWLIST = "allowlist";
     public static final String POLICY_DENY_DANGEROUS = "deny-dangerous";

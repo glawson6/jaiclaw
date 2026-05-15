@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>0.2.0</version>
+        <version>0.3.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-maven-plugin</artifactId>
@@ -34,6 +34,31 @@
             <artifactId>maven-plugin-annotations</artifactId>
             <version>${maven-plugin-annotations.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- JaiClaw Project Scaffolder (scaffold goal) -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-project-scaffolder</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework.shell</groupId>
+                    <artifactId>spring-shell-starter</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- JaiClaw Prompt Analyzer (the analysis engine) -->

@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-bom</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw :: BOM</name>
@@ -278,6 +278,11 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-skill-creator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-project-scaffolder</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

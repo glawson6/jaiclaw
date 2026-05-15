@@ -43,8 +43,16 @@ public final class McpTransportFactory {
                 if (entry.url() == null || entry.url().isBlank()) {
                     throw new IllegalArgumentException("MCP server '" + name + "' (sse) requires a url");
                 }
+                SseHttpTransport transport;
+                if (isWebClientAvailable()) {
+                    log.info("Using WebClient SSE transport for MCP server '{}'", name);
+                    transport = new WebClientSseTransport();
+                } else {
+                    log.info("Using Java HttpClient SSE transport for MCP server '{}'", name);
+                    transport = new JavaHttpSseTransport(name);
+                }
                 SseMcpToolProvider provider = new SseMcpToolProvider(
-                        name, entry.description(), entry.url());
+                        name, entry.description(), entry.url(), transport);
                 provider.connect();
                 yield provider;
             }
@@ -60,5 +68,14 @@ public final class McpTransportFactory {
             default -> throw new IllegalArgumentException(
                     "MCP server '" + name + "' has unknown transport type: " + type);
         };
+    }
+
+    private static boolean isWebClientAvailable() {
+        try {
+            Class.forName("org.springframework.web.reactive.function.client.WebClient");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 }

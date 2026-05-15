@@ -66,6 +66,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         String providedKey = request.getHeader(API_KEY_HEADER);
         if (providedKey == null || providedKey.isBlank()) {
             providedKey = request.getParameter(API_KEY_PARAM);
+            if (providedKey != null && !providedKey.isBlank()) {
+                log.warn("API key provided via query parameter — this is deprecated and will be removed. "
+                        + "Use the X-API-Key header instead.");
+            }
         }
 
         if (providedKey == null || providedKey.isBlank()) {

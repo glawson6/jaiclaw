@@ -1,0 +1,4 @@
+name: minimal-bot
+description: A minimal JaiClaw bot using jaiclaw-parent
+
+parent: jaiclaw

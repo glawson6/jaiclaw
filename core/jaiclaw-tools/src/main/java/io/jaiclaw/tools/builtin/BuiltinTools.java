@@ -14,7 +14,7 @@ public final class BuiltinTools {
     private BuiltinTools() {}
 
     public static List<ToolCallback> all() {
-        return all(ExecPolicyConfig.DEFAULT, false);
+        return all(ExecPolicyConfig.DEFAULT, true);
     }
 
     public static List<ToolCallback> all(ExecPolicyConfig execPolicyConfig) {
