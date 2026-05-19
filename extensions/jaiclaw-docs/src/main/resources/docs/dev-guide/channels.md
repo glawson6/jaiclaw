@@ -30,9 +30,13 @@
 | Class | Type | Description |
 |---|---|---|
 | TelegramConfig | record | Configuration with polling/webhook modes, user filtering, webhook verification, bot token masking |
-| TelegramAdapter | class | Bot API adapter with polling and webhook support; optional secret token verification |
+| TelegramAdapter | class | Bot API adapter with polling and webhook support; optional secret token verification; pluggable HTTP client and polling strategy |
+| TelegramHttpClient | interface | Pluggable HTTP transport for Bot API calls (post, get, downloadFile) |
+| DefaultTelegramHttpClient | class | Default implementation using JDK `HttpClient` with proxy support via `ProxyAwareHttpClientFactory` |
+| TelegramPollingStrategy | interface | Pluggable polling loop for `getUpdates` replacement |
+| CamelTelegramPollingStrategy | class | Apache Camel-based polling using `camel-telegram` component |
 | SendTelegramTool | class | Reusable tool that sends a message to a specific Telegram chat ID via the ChannelRegistry |
-| TelegramUserIdFilter | class | Gateway filter enforcing user ID authorization and rate limiting on inbound Telegram messages |
+| TelegramUserIdFilter | class | Gateway filter (`GatewayMessageFilter`) enforcing user ID authorization and rate limiting on inbound Telegram messages |
 
 ### Class Relationships
 
@@ -41,16 +45,20 @@ ChannelAdapter (SPI from jaiclaw-channel-api)
   │
   └── TelegramAdapter
         ├── TelegramConfig (record)
-        ├── WebhookDispatcher (for webhook mode)
-        └── RestTemplate (Bot API calls)
+        ├── TelegramHttpClient (pluggable HTTP transport)
+        │     └── DefaultTelegramHttpClient (JDK HttpClient + proxy support)
+        ├── TelegramPollingStrategy (pluggable polling)
+        │     ├── (built-in getUpdates loop — default)
+        │     └── CamelTelegramPollingStrategy (Apache Camel)
+        └── WebhookDispatcher (for webhook mode)
 
 SendTelegramTool (implements ToolCallback)
   └── ChannelRegistry → TelegramAdapter.sendMessage()
 
-TelegramUserIdFilter (implements ChannelMessageHandler)
+TelegramUserIdFilter (implements GatewayMessageFilter)
   ├── Set<String> allowedUserIds (authorization)
   ├── UserRateLimiter (rate limiting)
-  └── ChannelMessageHandler downstream (chained to GatewayService)
+  └── GatewayService downstream (via FilteredGatewayLifecycle)
 ```
 
 ### SendTelegramTool
@@ -72,14 +80,21 @@ SendTelegramTool sendTelegramTool(ChannelRegistry channelRegistry) {
 }
 ```
 
-### TelegramUserIdFilter
+### TelegramUserIdFilter (Auto-Configured)
 
-A gateway-level filter that wraps the downstream `ChannelMessageHandler` (the `GatewayService`) and enforces:
+A gateway-level filter that implements `GatewayMessageFilter` and enforces:
 
 1. **User ID authorization** -- only configured user IDs may interact
 2. **Rate limiting** -- prevents command flooding per user via `UserRateLimiter` (from `jaiclaw-security`)
 
 This supplements the `allowedUserIds` filtering built into `TelegramAdapter`. The adapter's built-in filter runs first at the polling/webhook level; this filter adds a second layer at the gateway level for defense in depth, plus rate limiting.
+
+**Auto-configuration:** When `jaiclaw.channels.telegram.allowed-users` is set, the framework automatically creates:
+- A `UserRateLimiter` bean (configurable via `jaiclaw.channels.telegram.rate-limit`, default: 10 requests/minute)
+- A `TelegramUserIdFilter` bean wired to the `GatewayService`
+- A `FilteredGatewayLifecycle` (instead of the default `GatewayLifecycle`) that routes all channel messages through the filter before reaching the `GatewayService`
+
+No manual bean definitions are needed — the presence of `allowed-users` is sufficient to activate the full filter chain.
 
 ### Dual-Mode
 
@@ -94,6 +109,14 @@ This supplements the `allowedUserIds` filtering built into `TelegramAdapter`. Th
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
 | `TELEGRAM_WEBHOOK_URL` | No | Webhook URL (blank = polling mode) |
+| `TELEGRAM_ALLOWED_USERS` | No | Comma-separated user IDs for authorization (activates `TelegramUserIdFilter`) |
+
+### Pluggable Transport (0.4.0+)
+
+| Property | Default | Description |
+|---|---|---|
+| `jaiclaw.channels.telegram.http-client` | `default` | HTTP client for Bot API calls. Provide a `TelegramHttpClient` bean to override. |
+| `jaiclaw.channels.telegram.polling-strategy` | `builtin` | Polling implementation. Set to `camel` to use Apache Camel's Telegram component. |
 
 ### Security Hardening (Opt-In)
 
@@ -102,6 +125,7 @@ This supplements the `allowedUserIds` filtering built into `TelegramAdapter`. Th
 | `jaiclaw.channels.telegram.verify-webhook` | `false` | Verify `X-Telegram-Bot-Api-Secret-Token` header on inbound webhooks |
 | `jaiclaw.channels.telegram.webhook-secret-token` | — | Token sent to Telegram `setWebhook` and verified on inbound |
 | `jaiclaw.channels.telegram.mask-bot-token` | `false` | Use SHA-256 hash prefix of bot token as `accountId` in session keys instead of raw token |
+| `jaiclaw.channels.telegram.rate-limit` | `10` | Max messages per minute per user (used by auto-configured `UserRateLimiter`) |
 
 When `mask-bot-token` is enabled, `TelegramConfig.accountId()` returns `"tg_" + SHA256(botToken).substring(0,12)` instead of the raw bot token, preventing token leakage in session keys and logs.
 
@@ -400,7 +424,7 @@ Config record + Adapter class → implements ChannelAdapter
 
 | Module | Config | Adapter | Extra Classes |
 |---|---|---|---|
-| jaiclaw-channel-telegram | TelegramConfig | TelegramAdapter | SendTelegramTool, TelegramUserIdFilter |
+| jaiclaw-channel-telegram | TelegramConfig | TelegramAdapter | SendTelegramTool, TelegramUserIdFilter, TelegramHttpClient, DefaultTelegramHttpClient, TelegramPollingStrategy, CamelTelegramPollingStrategy |
 | jaiclaw-channel-slack | SlackConfig | SlackAdapter | — |
 | jaiclaw-channel-discord | DiscordConfig | DiscordAdapter | — |
 | jaiclaw-channel-email | EmailConfig | EmailAdapter | — |

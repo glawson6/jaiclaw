@@ -296,9 +296,13 @@ Adapters are discovered via Spring component scanning and registered in a `Chann
 | MCP stdio | stdin JSON-RPC (standalone JAR `--stdio`)         | stdout JSON-RPC          | Env vars       | `jaiclaw-messaging` (standalone)|
 
 **Dual-mode adapters**: All three messaging adapters support a local-dev mode that requires no public endpoint:
-- **Telegram**: `webhookUrl` blank → long polling via `getUpdates`
+- **Telegram**: `webhookUrl` blank → long polling via `getUpdates` (or pluggable `TelegramPollingStrategy`, e.g. Apache Camel)
 - **Slack**: `appToken` set → Socket Mode via WebSocket to `apps.connections.open`
 - **Discord**: `useGateway` true → Gateway WebSocket with heartbeat + IDENTIFY
+
+**Message filter layer** (0.4.0+): The `GatewayMessageFilter` interface allows inserting filters between channel adapters and `GatewayService`. When a filter bean is present (e.g., `TelegramUserIdFilter`), `FilteredGatewayLifecycle` routes all inbound messages through the filter chain before they reach the gateway. This provides defense-in-depth for user authorization and rate limiting.
+
+**Pluggable Telegram transport** (0.4.0+): The Telegram adapter accepts pluggable `TelegramHttpClient` and `TelegramPollingStrategy` implementations. The default HTTP client uses JDK `HttpClient` with proxy support. An alternative `CamelTelegramPollingStrategy` is auto-configured when Apache Camel is on the classpath.
 
 ### Session Key Convention
 
@@ -546,7 +550,9 @@ JaiClawGatewayAutoConfiguration
   ├── compositeTenantResolver CompositeTenantResolver     (aggregates all TenantResolvers)
   ├── loggingAttachmentRouter LoggingAttachmentRouter      @ConditionalOnMissingBean(AttachmentRouter)
   ├── gatewayService          GatewayService               (AgentRuntime, SessionManager, ChannelRegistry, ...)
-  ├── gatewayLifecycle        GatewayLifecycle             (starts/stops channel adapters on app lifecycle)
+  ├── gatewayLifecycle        GatewayLifecycle / FilteredGatewayLifecycle
+  │                           (starts/stops channel adapters; uses FilteredGatewayLifecycle
+  │                            when a GatewayMessageFilter bean is present)
   ├── gatewayController       GatewayController            @RestController — /api/chat, /api/health, /webhook/*
   ├── webSocketSessionHandler WebSocketSessionHandler      (WS /ws/session/{id})
   ├── mcpServerRegistry       McpServerRegistry            (collects McpToolProvider + McpResourceProvider beans)

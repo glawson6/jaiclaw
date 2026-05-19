@@ -41,13 +41,15 @@ public class TenantAgentConfigService {
     private final TenantEnvLoader envLoader;
     private final ResourceLoader resourceLoader;
     private final AgentLoopDelegateConfig loopDelegateOverride;
+    private final LlmConfig llmOverride;
+    private final AgentProperties.ToolPolicyConfig toolsOverride;
     private final ConcurrentHashMap<String, TenantAgentConfig> cache = new ConcurrentHashMap<>();
 
     public TenantAgentConfigService(TenantConfigProperties tenantConfig,
                                     AgentProperties agentProperties,
                                     TenantEnvLoader envLoader,
                                     ResourceLoader resourceLoader) {
-        this(tenantConfig, agentProperties, envLoader, resourceLoader, null);
+        this(tenantConfig, agentProperties, envLoader, resourceLoader, null, null, null);
     }
 
     /**
@@ -60,11 +62,42 @@ public class TenantAgentConfigService {
                                     TenantEnvLoader envLoader,
                                     ResourceLoader resourceLoader,
                                     AgentLoopDelegateConfig loopDelegateOverride) {
+        this(tenantConfig, agentProperties, envLoader, resourceLoader, loopDelegateOverride, null, null);
+    }
+
+    /**
+     * Constructor with optional loop-delegate and LLM overrides.
+     * Overrides are applied when Spring Boot's record binding silently fails
+     * for deeply nested records in {@code Map<String, Record>}.
+     */
+    public TenantAgentConfigService(TenantConfigProperties tenantConfig,
+                                    AgentProperties agentProperties,
+                                    TenantEnvLoader envLoader,
+                                    ResourceLoader resourceLoader,
+                                    AgentLoopDelegateConfig loopDelegateOverride,
+                                    LlmConfig llmOverride) {
+        this(tenantConfig, agentProperties, envLoader, resourceLoader, loopDelegateOverride, llmOverride, null);
+    }
+
+    /**
+     * Constructor with optional loop-delegate, LLM, and tools overrides.
+     * Overrides are applied when Spring Boot's record binding silently fails
+     * for deeply nested records in {@code Map<String, Record>}.
+     */
+    public TenantAgentConfigService(TenantConfigProperties tenantConfig,
+                                    AgentProperties agentProperties,
+                                    TenantEnvLoader envLoader,
+                                    ResourceLoader resourceLoader,
+                                    AgentLoopDelegateConfig loopDelegateOverride,
+                                    LlmConfig llmOverride,
+                                    AgentProperties.ToolPolicyConfig toolsOverride) {
         this.tenantConfig = tenantConfig;
         this.agentProperties = agentProperties;
         this.envLoader = envLoader;
         this.resourceLoader = resourceLoader;
         this.loopDelegateOverride = loopDelegateOverride;
+        this.llmOverride = llmOverride;
+        this.toolsOverride = toolsOverride;
     }
 
     /**
@@ -115,28 +148,54 @@ public class TenantAgentConfigService {
                 ? agents.getOrDefault(agentProperties.defaultAgent(), AgentProperties.AgentConfig.DEFAULT)
                 : AgentProperties.AgentConfig.DEFAULT;
 
-        // Apply loop-delegate override if the bound config has null/disabled delegate
+        // Apply overrides for fields that Spring Boot's record binding silently drops
         // (Spring Boot record binding for Map<String, Record> with many fields can silently fail)
+        boolean needsRebuild = false;
+        LlmConfig effectiveLlm = defaultConfig.llm();
+        AgentLoopDelegateConfig effectiveDelegate = defaultConfig.loopDelegate();
+        AgentProperties.ToolPolicyConfig effectiveTools = defaultConfig.tools();
+
+        if (llmOverride != null && llmOverride.primary() != null
+                && (defaultConfig.llm() == null || !llmOverride.primary().equals(defaultConfig.llm().primary()))) {
+            log.info("Applying LLM override — provider: {}, primary: {}",
+                    llmOverride.provider(), llmOverride.primary());
+            effectiveLlm = llmOverride;
+            needsRebuild = true;
+        }
+
         if (loopDelegateOverride != null && loopDelegateOverride.enabled()
                 && (defaultConfig.loopDelegate() == null || !defaultConfig.loopDelegate().enabled())) {
             log.info("Applying loop-delegate override — delegateId: {}, workflow: {}",
                     loopDelegateOverride.delegateId(), loopDelegateOverride.workflow());
+            effectiveDelegate = loopDelegateOverride;
+            needsRebuild = true;
+        }
+
+        if (toolsOverride != null && toolsOverride.profile() != null
+                && (defaultConfig.tools() == null
+                    || !toolsOverride.profile().equals(defaultConfig.tools().profile()))) {
+            log.info("Applying tools override — profile: {}", toolsOverride.profile());
+            effectiveTools = toolsOverride;
+            needsRebuild = true;
+        }
+
+        if (needsRebuild) {
             defaultConfig = AgentProperties.AgentConfig.builder()
                     .id(defaultConfig.id())
                     .name(defaultConfig.name())
                     .workspace(defaultConfig.workspace())
                     .model(defaultConfig.model())
                     .skills(defaultConfig.skills())
-                    .tools(defaultConfig.tools())
+                    .tools(effectiveTools)
                     .identity(defaultConfig.identity())
                     .toolLoop(defaultConfig.toolLoop())
-                    .llm(defaultConfig.llm())
+                    .llm(effectiveLlm)
                     .systemPrompt(defaultConfig.systemPrompt())
                     .features(defaultConfig.features())
                     .errorMessages(defaultConfig.errorMessages())
                     .mcpServers(defaultConfig.mcpServers())
                     .channels(defaultConfig.channels())
-                    .loopDelegate(loopDelegateOverride)
+                    .loopDelegate(effectiveDelegate)
                     .build();
         }
 

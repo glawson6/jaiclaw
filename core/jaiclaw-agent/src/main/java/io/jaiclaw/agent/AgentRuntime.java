@@ -34,6 +34,8 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +48,11 @@ import java.util.stream.Collectors;
 public class AgentRuntime {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRuntime.class);
+    private static final Executor AGENT_EXECUTOR = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "agent-worker");
+        t.setDaemon(true);
+        return t;
+    });
 
     private final SessionManager sessionManager;
     private final ChatClient.Builder chatClientBuilder;
@@ -176,7 +183,9 @@ public class AgentRuntime {
      * Run the agent asynchronously and return a future with the assistant response.
      */
     public CompletableFuture<AssistantMessage> run(String userInput, AgentRuntimeContext context) {
+        log.info("AgentRuntime.run() called for session={}, input length={}", context.sessionKey(), userInput != null ? userInput.length() : -1);
         var future = CompletableFuture.supplyAsync(TenantContextPropagator.wrap(() -> {
+            log.info("AgentRuntime virtual thread started for session={}", context.sessionKey());
             try {
                 return executeSync(userInput, context);
             } catch (Exception e) {
@@ -187,7 +196,7 @@ public class AgentRuntime {
                         "error"
                 );
             }
-        }));
+        }), AGENT_EXECUTOR);
 
         String taskKey = scopedTaskKey(context.sessionKey());
         activeTasks.put(taskKey, future);
@@ -246,9 +255,11 @@ public class AgentRuntime {
 
         // 4. Stream via ChatClient
         ChatClient chatClient = effectiveClientBuilder.build();
-        return chatClient.prompt()
-                .system(systemPrompt)
-                .messages(historyMessages)
+        var spec = chatClient.prompt();
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            spec.system(systemPrompt);
+        }
+        return spec.messages(historyMessages)
                 .user(userInput)
                 .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]))
                 .stream()
@@ -256,6 +267,7 @@ public class AgentRuntime {
     }
 
     private AssistantMessage executeSync(String userInput, AgentRuntimeContext context) {
+        log.info("executeSync() entered for session={}, tenantConfig={}", context.sessionKey(), context.tenantConfig() != null ? context.tenantConfig().tenantId() : "null");
         // 1. BEFORE_AGENT_START hook
         fireVoid(HookName.BEFORE_AGENT_START, userInput, context.sessionKey());
 
@@ -382,9 +394,11 @@ public class AgentRuntime {
         } else {
             // Spring AI built-in loop (default)
             ChatClient chatClient = effectiveClientBuilder.build();
-            var callSpec = chatClient.prompt()
-                    .system(systemPrompt)
-                    .messages(historyMessages)
+            var spec = chatClient.prompt();
+            if (systemPrompt != null && !systemPrompt.isEmpty()) {
+                spec.system(systemPrompt);
+            }
+            var callSpec = spec.messages(historyMessages)
                     .user(userInput)
                     .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]));
 

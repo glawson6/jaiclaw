@@ -11,15 +11,31 @@ Example applications demonstrating JaiClaw framework capabilities. Each is a sta
 | 1 | [daily-briefing](../jaiclaw-examples/daily-briefing/) | Cron | Cron, Telegram, Email | Scheduled morning briefing with news and weather |
 | 2 | [sales-report](../jaiclaw-examples/sales-report/) | Cron | Cron, Canvas | Weekly sales dashboard with HTML report |
 | 3 | [price-monitor](../jaiclaw-examples/price-monitor/) | Cron | Cron, Browser, SMS | Hourly price checker with SMS alerts |
-| 4 | [code-review-bot](../jaiclaw-examples/code-review-bot/) | Embabel | Embabel, Canvas, Plugin | GOAP-orchestrated PR code review |
-| 5 | [travel-planner](../jaiclaw-examples/travel-planner/) | Embabel | Embabel, Browser, Voice | Multi-step trip planning with GOAP |
-| 6 | [compliance-checker](../jaiclaw-examples/compliance-checker/) | Embabel | Embabel, Documents, Audit | Document compliance verification |
-| 7 | [document-qa](../jaiclaw-examples/document-qa/) | Documents | Documents, Memory, Compaction | PDF ingestion and semantic search Q&A |
-| 8 | [meeting-assistant](../jaiclaw-examples/meeting-assistant/) | Voice | Voice, Identity, Slack | Meeting transcription and summary |
-| 9 | [helpdesk-bot](../jaiclaw-examples/helpdesk-bot/) | Security | Gateway, Security | Multi-tenant support bot |
-| 10 | [content-pipeline](../jaiclaw-examples/content-pipeline/) | Media | Media, Documents, Plugin | Multi-modal content analysis |
-| 11 | [mcp-docs-server](../jaiclaw-examples/mcp-docs-server/) | MCP | Docs, Gateway | MCP server exposing JaiClaw docs as resources with search |
-| 12 | [gemma4-local](../jaiclaw-examples/gemma4-local/) | Local LLM | Ollama, Gateway | Gemma 4 chatbot running fully local via Ollama with function calling |
+| 4 | [system-monitor](../jaiclaw-examples/system-monitor/) | Cron | Cron, Telegram | Daily server health analysis with Telegram reporting |
+| 5 | [code-review-bot](../jaiclaw-examples/code-review-bot/) | Embabel | Embabel, Canvas, Plugin | GOAP-orchestrated PR code review |
+| 6 | [travel-planner](../jaiclaw-examples/travel-planner/) | Embabel | Embabel, Browser, Voice | Multi-step trip planning with GOAP |
+| 7 | [compliance-checker](../jaiclaw-examples/compliance-checker/) | Embabel | Embabel, Documents, Audit | Document compliance verification |
+| 8 | [incident-responder](../jaiclaw-examples/incident-responder/) | Embabel | Embabel, K8s Tools | DevOps incident triage with health checks and remediation |
+| 9 | [data-pipeline](../jaiclaw-examples/data-pipeline/) | Embabel | Embabel, Documents | ETL orchestrator with schema validation and approval |
+| 10 | [document-qa](../jaiclaw-examples/document-qa/) | Documents | Documents, Memory, Compaction | PDF ingestion and semantic search Q&A |
+| 11 | [telegram-docstore](../jaiclaw-examples/telegram-docstore/) | Documents | DocStore, Telegram | Telegram bot for document management and semantic search |
+| 12 | [research-assistant](../jaiclaw-examples/research-assistant/) | Documents | Documents, Browser | Multi-source research with structured report generation |
+| 13 | [content-pipeline](../jaiclaw-examples/content-pipeline/) | Media | Media, Documents, Plugin | Multi-modal content analysis |
+| 14 | [meeting-assistant](../jaiclaw-examples/meeting-assistant/) | Voice | Voice, Identity, Slack | Meeting transcription and summary |
+| 15 | [helpdesk-bot](../jaiclaw-examples/helpdesk-bot/) | Security | Gateway, Security | Multi-tenant support bot |
+| 16 | [voice-call-demo](../jaiclaw-examples/voice-call-demo/) | Voice | Voice Call, Twilio | Telephony with outbound reminders and inbound customer service |
+| 17 | [security-handshake](../jaiclaw-examples/security-handshake/) | Security | Tools Security | LLM-driven ECDH key exchange and session token bootstrap |
+| 18 | [security-handshake-server](../jaiclaw-examples/security-handshake-server/) | Security | Tools Security, MCP | MCP server implementing full ECDH P-256 security handshake |
+| 19 | [oauth-provider-demo](../jaiclaw-examples/oauth-provider-demo/) | Security | Identity | OAuth-gated LLM access with PKCE and device code flows |
+| 20 | [code-scaffolder](../jaiclaw-examples/code-scaffolder/) | Developer | Code, Plugin | Project scaffolding agent that generates complete project structures |
+| 21 | [canvas-dashboard](../jaiclaw-examples/canvas-dashboard/) | Developer | Canvas | On-demand interactive HTML dashboards with Chart.js |
+| 22 | [mcp-docs-server](../jaiclaw-examples/mcp-docs-server/) | MCP | Docs, Gateway | MCP server exposing JaiClaw docs as resources with search |
+| 23 | [gemma4-local](../jaiclaw-examples/gemma4-local/) | Local LLM | Ollama, Gateway | Gemma 4 chatbot running fully local via Ollama with function calling |
+| 24 | [camel-html-summarizer](../jaiclaw-examples/camel-html-summarizer/) | Camel | Camel, Documents | HTML page summarization via Apache Camel routes |
+| 25 | [camel-html-summarizer-telegram](../jaiclaw-examples/camel-html-summarizer-telegram/) | Camel | Camel, Telegram | HTML summarizer with Telegram delivery |
+| 26 | [camel-html-summarizer-embabel](../jaiclaw-examples/camel-html-summarizer-embabel/) | Camel | Camel, Embabel | HTML summarizer with Embabel GOAP orchestration |
+| 27 | [camel-pdf-filler](../jaiclaw-examples/camel-pdf-filler/) | Camel | Camel, Documents | PDF form filling via Apache Camel routes |
+| 28 | [camel-pdf-filler-telegram](../jaiclaw-examples/camel-pdf-filler-telegram/) | Camel | Camel, Telegram, Documents | PDF form filling with Telegram integration |
 
 ## Quick Start
 

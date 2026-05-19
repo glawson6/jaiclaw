@@ -2,6 +2,7 @@ package io.jaiclaw.channel.telegram;
 
 import io.jaiclaw.channel.ChannelMessage;
 import io.jaiclaw.channel.ChannelMessageHandler;
+import io.jaiclaw.gateway.GatewayMessageFilter;
 import io.jaiclaw.security.ratelimit.UserRateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,12 @@ import java.util.Set;
  * into JaiClaw's TelegramAdapter. The TelegramAdapter's built-in filter runs first at
  * the polling/webhook level. This filter adds a second layer at the gateway level
  * for defense in depth, and also adds rate limiting which is not in the base adapter.
+ *
+ * <p>Implements {@link GatewayMessageFilter} so that JaiClaw's auto-configuration
+ * automatically creates a {@link io.jaiclaw.gateway.FilteredGatewayLifecycle} when
+ * this bean is present.
  */
-public class TelegramUserIdFilter implements ChannelMessageHandler {
+public class TelegramUserIdFilter implements GatewayMessageFilter {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramUserIdFilter.class);
 

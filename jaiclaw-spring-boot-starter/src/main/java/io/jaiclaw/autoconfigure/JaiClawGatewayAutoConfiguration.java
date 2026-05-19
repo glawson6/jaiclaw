@@ -95,10 +95,23 @@ public class JaiClawGatewayAutoConfiguration {
                 tenantChannelRegistryProvider.getIfAvailable());
     }
 
+    /**
+     * Creates the gateway lifecycle. When a {@code TelegramUserIdFilter} bean is present
+     * (auto-configured from {@code jaiclaw.channels.telegram.allowed-users}), creates a
+     * {@link io.jaiclaw.gateway.FilteredGatewayLifecycle} that inserts the filter between
+     * channel adapters and the GatewayService. Otherwise, creates the default lifecycle.
+     */
     @Bean
     @ConditionalOnMissingBean
     public io.jaiclaw.gateway.GatewayLifecycle gatewayLifecycle(
-            io.jaiclaw.gateway.GatewayService gatewayService) {
+            io.jaiclaw.gateway.GatewayService gatewayService,
+            ChannelRegistry channelRegistry,
+            ObjectProvider<io.jaiclaw.gateway.GatewayMessageFilter> messageFilterProvider) {
+        var filter = messageFilterProvider.getIfAvailable();
+        if (filter != null) {
+            return new io.jaiclaw.gateway.FilteredGatewayLifecycle(
+                    gatewayService, channelRegistry, filter);
+        }
         return new io.jaiclaw.gateway.GatewayLifecycle(gatewayService);
     }
 

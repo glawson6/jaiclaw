@@ -1091,6 +1091,8 @@ Token usage is also recorded on each `AssistantMessage` in the session via the `
 | `GATEWAY_PORT` | No | Gateway HTTP port (default: `8080`) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram bot token from @BotFather |
 | `TELEGRAM_WEBHOOK_URL` | No (polling if blank) | Public webhook URL for production |
+| `TELEGRAM_ALLOWED_USERS` | No | Comma-separated Telegram user IDs for authorization (auto-configures `TelegramUserIdFilter`) |
+| `TELEGRAM_RATE_LIMIT` | No | Max messages per minute per user (default: 10, requires `TELEGRAM_ALLOWED_USERS`) |
 | `SLACK_BOT_TOKEN` | For Slack | Slack bot OAuth token |
 | `SLACK_APP_TOKEN` | No (Socket Mode) | App-level token (xapp-...) for Socket Mode |
 | `SLACK_SIGNING_SECRET` | For Slack webhook | Slack app signing secret (webhook mode only) |
@@ -1304,6 +1306,35 @@ TELEGRAM_WEBHOOK_URL=https://jaiclaw.taptech.net/webhook/telegram
 
 The adapter will call `setWebhook` on startup to register with Telegram.
 
+### Telegram User Authorization
+
+When `TELEGRAM_ALLOWED_USERS` (or `jaiclaw.channels.telegram.allowed-users`) is set, JaiClaw automatically configures:
+
+1. **`TelegramUserIdFilter`** — A `GatewayMessageFilter` that rejects messages from unauthorized Telegram user IDs
+2. **`UserRateLimiter`** — Rate limiting per user (default: 10 messages/minute, configurable via `TELEGRAM_RATE_LIMIT`)
+3. **`FilteredGatewayLifecycle`** — Routes all channel messages through the filter before reaching `GatewayService`
+
+No manual bean definitions are needed — the presence of `allowed-users` is sufficient to activate the full filter chain.
+
+```bash
+# Only allow specific user IDs
+TELEGRAM_ALLOWED_USERS=123456789,987654321
+
+# Adjust rate limit (default: 10/min)
+TELEGRAM_RATE_LIMIT=5
+```
+
+### Pluggable Telegram Transport (0.4.0+)
+
+The Telegram adapter supports pluggable HTTP clients and polling strategies:
+
+| Property | Values | Description |
+|---|---|---|
+| `jaiclaw.channels.telegram.http-client` | `default` | HTTP client for Bot API calls. Default uses JDK `HttpClient` with proxy support. |
+| `jaiclaw.channels.telegram.polling-strategy` | `builtin`, `camel` | Polling implementation. `camel` uses Apache Camel's Telegram component (requires `camel-telegram` on classpath). |
+
+The `camel` polling strategy is auto-configured by `CamelPollingAutoConfiguration` when Apache Camel and the Camel Telegram component are on the classpath.
+
 ---
 
 ## Troubleshooting
@@ -1327,6 +1358,27 @@ The adapter will call `setWebhook` on startup to register with Telegram.
 
 ### No LLM configured
 If no ChatClient.Builder bean is available (no API keys set, no Ollama running), `AgentRuntime` won't be created. The `chat` command will return: "No LLM configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or enable Ollama."
+
+### Tools not appearing for LLM
+
+If the LLM only sees generic tools (file_read, shell_exec, etc.) and not your custom tools, the `jaiclaw.agent.agents.{name}.tools.profile` property may be silently dropped by Spring Boot's record binding. This is a known limitation when binding deeply nested records inside `Map<String, Record>`.
+
+**Workaround:** JaiClaw 0.4.0 includes an automatic fallback that reads the tools profile directly from the `Environment`. Check the startup log for:
+
+```
+Tools config resolved from Environment (record binding fallback) — profile: full
+```
+
+If you see this, the fallback is working correctly. If your tools profile is still not applied, verify the property is set correctly:
+
+```yaml
+jaiclaw:
+  agent:
+    agents:
+      default:
+        tools:
+          profile: full   # must be: full, coding, messaging, or minimal
+```
 
 ### Port conflicts
 Default ports:

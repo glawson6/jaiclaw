@@ -147,13 +147,60 @@ public class JaiClawChannelAutoConfiguration {
     @ConditionalOnProperty(prefix = "jaiclaw.channels.telegram", name = "enabled", havingValue = "true")
     static class TelegramAutoConfiguration {
 
+        /**
+         * Camel-based polling strategy — activated when Camel is on the classpath
+         * and {@code jaiclaw.channels.telegram.polling-strategy=camel}.
+         */
+        @Configuration(proxyBeanMethods = false)
+        @ConditionalOnClass(name = "org.apache.camel.CamelContext")
+        @ConditionalOnProperty(prefix = "jaiclaw.channels.telegram", name = "polling-strategy", havingValue = "camel")
+        static class CamelPollingAutoConfiguration {
+
+            @Bean
+            @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramPollingStrategy.class)
+            public io.jaiclaw.channel.telegram.TelegramPollingStrategy camelTelegramPollingStrategy(
+                    org.apache.camel.CamelContext camelContext) {
+                log.info("Creating CamelTelegramPollingStrategy");
+                return new io.jaiclaw.channel.telegram.CamelTelegramPollingStrategy(camelContext);
+            }
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramHttpClient.class)
+        public io.jaiclaw.channel.telegram.TelegramHttpClient telegramHttpClient(
+                JaiClawProperties properties) {
+            var telegram = properties.channels().telegram();
+            int timeout = telegram.pollingTimeoutSeconds();
+            var clientType = io.jaiclaw.channel.telegram.TelegramHttpClientType
+                    .fromString(telegram.httpClient());
+            log.info("Creating TelegramHttpClient: {} (timeout={}s)", clientType, timeout);
+            return switch (clientType) {
+                case JDK -> new io.jaiclaw.channel.telegram.JdkHttpClientTelegramHttpClient(timeout);
+                case REST_TEMPLATE -> new io.jaiclaw.channel.telegram.RestTemplateTelegramHttpClient(timeout);
+                case WEB_CLIENT -> new io.jaiclaw.channel.telegram.WebClientTelegramHttpClient(timeout);
+            };
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramPollingStrategy.class)
+        public io.jaiclaw.channel.telegram.TelegramPollingStrategy telegramPollingStrategy(
+                JaiClawProperties properties,
+                io.jaiclaw.channel.telegram.TelegramHttpClient httpClient) {
+            log.info("Creating NativeTelegramPollingStrategy");
+            return new io.jaiclaw.channel.telegram.NativeTelegramPollingStrategy(httpClient);
+        }
+
         @Bean
         @ConditionalOnMissingBean
         @ConditionalOnBean(io.jaiclaw.gateway.WebhookDispatcher.class)
         public io.jaiclaw.channel.telegram.TelegramAdapter telegramAdapter(
                 JaiClawProperties properties,
-                io.jaiclaw.gateway.WebhookDispatcher webhookDispatcher) {
+                io.jaiclaw.gateway.WebhookDispatcher webhookDispatcher,
+                io.jaiclaw.channel.telegram.TelegramHttpClient httpClient,
+                io.jaiclaw.channel.telegram.TelegramPollingStrategy pollingStrategy) {
             var telegram = properties.channels().telegram();
+            var strategyType = io.jaiclaw.channel.telegram.TelegramPollingStrategyType
+                    .fromString(telegram.pollingStrategy());
             var config = new io.jaiclaw.channel.telegram.TelegramConfig(
                     telegram.botToken(),
                     telegram.webhookUrl(),
@@ -162,8 +209,35 @@ public class JaiClawChannelAutoConfiguration {
                     telegram.allowedUserIds(),
                     telegram.verifyWebhook(),
                     telegram.webhookSecretToken(),
-                    telegram.maskBotToken());
-            return new io.jaiclaw.channel.telegram.TelegramAdapter(config, webhookDispatcher);
+                    telegram.maskBotToken(),
+                    strategyType);
+            return new io.jaiclaw.channel.telegram.TelegramAdapter(
+                    config, webhookDispatcher, httpClient, pollingStrategy);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.security.ratelimit.UserRateLimiter.class)
+        @ConditionalOnClass(name = "io.jaiclaw.security.ratelimit.UserRateLimiter")
+        public io.jaiclaw.security.ratelimit.UserRateLimiter telegramUserRateLimiter(
+                JaiClawProperties properties) {
+            int rateLimit = properties.channels().telegram().rateLimit();
+            log.info("Creating UserRateLimiter with {} messages/minute for Telegram", rateLimit);
+            return new io.jaiclaw.security.ratelimit.UserRateLimiter(rateLimit);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramUserIdFilter.class)
+        @ConditionalOnClass(name = "io.jaiclaw.channel.telegram.TelegramUserIdFilter")
+        @ConditionalOnBean(io.jaiclaw.security.ratelimit.UserRateLimiter.class)
+        public io.jaiclaw.channel.telegram.TelegramUserIdFilter telegramUserIdFilter(
+                JaiClawProperties properties,
+                io.jaiclaw.security.ratelimit.UserRateLimiter rateLimiter,
+                io.jaiclaw.gateway.GatewayService gatewayService) {
+            var allowedUsers = properties.channels().telegram().allowedUserIds();
+            log.info("Creating TelegramUserIdFilter with {} allowed users", allowedUsers.size());
+            var filter = new io.jaiclaw.channel.telegram.TelegramUserIdFilter(allowedUsers, rateLimiter);
+            filter.setDownstream(gatewayService);
+            return filter;
         }
     }
 

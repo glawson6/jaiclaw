@@ -510,6 +510,8 @@ RateLimitFilter (applied regardless of mode)
 | GatewayService | class | Core service bridging channels to agent runtime |
 | GatewayController | class | REST controller: /api/chat, /webhook/*, /api/channels |
 | GatewayLifecycle | class | SmartLifecycle managing gateway start/stop |
+| FilteredGatewayLifecycle | class | Extends GatewayLifecycle; routes messages through a GatewayMessageFilter before GatewayService |
+| GatewayMessageFilter | interface | Marker interface for filters inserted between channel adapters and GatewayService |
 | WebhookDispatcher | class | Dispatches webhooks to channel handlers |
 | WebSocketSessionHandler | class | WebSocket handler for /ws/session/{key} |
 | RoutingService | class | Routes by channel, chat type, @mention rules |
@@ -568,6 +570,10 @@ McpStdioBridge (standalone) — stdin/stdout JSON-RPC 2.0
 
 GatewayLifecycle (SmartLifecycle)
   └── starts/stops all ChannelAdapters
+
+FilteredGatewayLifecycle (extends GatewayLifecycle)
+  └── starts ChannelAdapters with GatewayMessageFilter interposed
+        └── GatewayMessageFilter → GatewayService (filter chain)
 ```
 
 ---

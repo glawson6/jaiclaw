@@ -14,7 +14,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
   <a href="#channels"><img src="https://img.shields.io/badge/Channels-7-blueviolet" alt="7 Channels"></a>
   <a href="#configuration"><img src="https://img.shields.io/badge/LLM%20Providers-11-green" alt="11 LLM Providers"></a>
-  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-21-yellow" alt="21 Examples"></a>
+  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-28-yellow" alt="28 Examples"></a>
 </p>
 
 ---
@@ -25,7 +25,7 @@ JaiClaw *(pronounced "Jay-Claw")* is a production-ready framework for building A
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, subscription billing, and security hardening that don't exist in the Node.js version.
 
-Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4, Embabel 0.3.4
+Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4, Embabel 0.3.5
 
 ## Key Features
 
@@ -211,7 +211,7 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 
 ## Examples
 
-21 example applications demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app. See [docs/EXAMPLES.md](docs/EXAMPLES.md) for full details.
+28 example applications demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app. See [docs/EXAMPLES.md](docs/EXAMPLES.md) for full details.
 
 ### Scheduling & Automation
 

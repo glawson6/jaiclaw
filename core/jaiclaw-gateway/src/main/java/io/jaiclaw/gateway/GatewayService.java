@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Core gateway service that bridges channel adapters to the agent runtime.
@@ -171,6 +172,7 @@ public class GatewayService implements ChannelMessageHandler {
                     agentId, sessionKey, session, identity, toolProfile, ".", tenantConfig, stateless);
 
             agentRuntime.run(message.content(), context)
+                    .orTimeout(5, TimeUnit.MINUTES)
                     .thenAccept(response -> deliverResponse(message, response))
                     .exceptionally(ex -> {
                         log.error("Failed to process message for session {}", sessionKey, ex);

@@ -145,15 +145,15 @@ JaiClaw's goal is to combine the best of both: OpenClaw's breadth of channels/to
 8. Event system + OpenTelemetry observability
 
 ### From OpenClaw (port key features)
-1. More channels (WhatsApp, iMessage, Signal at minimum)
-2. Context compaction (session summarization near token limits)
-3. Markdown workspace memory (daily logs + long-term curated)
-4. Browser tool (Playwright for Java)
-5. Scheduling/cron
+1. More channels (WhatsApp, iMessage at minimum — Signal already ported)
+2. ~~Context compaction~~ **Done** — `CompactionService` with LLM summarization
+3. ~~Markdown workspace memory~~ **Done** — daily logs + hybrid search + transcripts
+4. ~~Browser tool~~ **Done** — 8 Playwright tools
+5. ~~Scheduling/cron~~ **Done** — `CronService` + `CronJobManager`
 6. Group chat routing with @mention activation
-7. Identity linking across channels
+7. ~~Identity linking~~ **Done** — `IdentityLinkService`
 8. More skills (port the most popular ones)
-9. Voice capabilities (if native apps are in scope)
+9. ~~Voice capabilities~~ **Done** — TTS/STT SPI + OpenAI provider
 
 ### JaiClaw's Unique Strengths (keep and extend)
 1. Enterprise multi-tenancy
@@ -162,3 +162,5 @@ JaiClaw's goal is to combine the best of both: OpenClaw's breadth of channels/to
 4. K8s monitoring tools
 5. Spring Boot starter ecosystem
 6. Clean modular architecture (zero-Spring core)
+7. Gateway message filter framework (0.4.0) — pluggable security/rate-limiting layer
+8. Pluggable Telegram transport (0.4.0) — extensible HTTP client and polling strategy

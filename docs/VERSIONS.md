@@ -2,6 +2,69 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 0.4.0
+
+Released 2026-05-18.
+
+### New Features
+
+- **Pluggable Telegram HTTP Client** — `TelegramAdapter` now accepts an injectable `TelegramHttpClient` interface instead of using a hardcoded `RestTemplate`. The default implementation (`DefaultTelegramHttpClient`) uses JDK `HttpClient` with proxy support via `ProxyAwareHttpClientFactory`. Custom implementations can be provided as Spring beans.
+
+- **Pluggable Telegram Polling Strategy** — A new `TelegramPollingStrategy` interface allows replacing the built-in `getUpdates` polling loop. The framework ships a `CamelTelegramPollingStrategy` that uses Apache Camel's Telegram component for polling, which is auto-configured by `CamelPollingAutoConfiguration` when Camel is on the classpath.
+
+- **Gateway Message Filter Framework** — New `GatewayMessageFilter` interface in `jaiclaw-gateway` allows inserting message filters between channel adapters and `GatewayService`. When a filter bean is present, `FilteredGatewayLifecycle` is used instead of the default `GatewayLifecycle`. `TelegramUserIdFilter` now implements this interface for defense-in-depth user authorization and rate limiting.
+
+- **Tools Configuration Environment Fallback** — Added `resolveToolsFromEnvironment()` in `JaiClawAutoConfiguration` to work around Spring Boot's silent failure when binding deeply nested records inside `Map<String, Record>`. The `jaiclaw.agent.agents.{name}.tools.profile` property is now read directly from the `Environment` as a fallback, following the same pattern used for `llmOverride` and `loopDelegateOverride`.
+
+- **Telegram Markdown Fallback** — `TelegramAdapter.sendText()` now catches Telegram API "can't parse entities" errors and retries the message without `parse_mode`, ensuring delivery even when LLM responses contain malformed Markdown.
+
+- **Empty Attachment Guards** — `TelegramAdapter.extractAttachments()` now checks `!fileId.isBlank()` before attempting downloads for document, photo, video, audio, and voice attachments. This prevents spurious 400 errors from Camel's `IncomingMessage` serialization which includes empty attachment objects.
+
+### Changes
+
+- **AgentRuntime Thread Pool** — `AgentRuntime` now uses a bounded virtual thread executor instead of an unbounded cached thread pool, preventing thread starvation under load.
+
+- **TenantAgentRuntimeFactory Logging** — Added INFO-level logging for tool resolution, showing profile, registry size, resolved tool count, and tool names per tenant. Useful for diagnosing tool visibility issues.
+
+- **SkillLoader JAR FileSystem Fix** — Fixed `SkillLoader` to handle JAR-based `FileSystem` instances correctly when scanning bundled skills from classpath resources.
+
+### Configuration
+
+New Telegram configuration properties:
+
+| Property | Default | Description |
+|---|---|---|
+| `jaiclaw.channels.telegram.http-client` | `default` | HTTP client implementation: `default` (JDK HttpClient) or bean name |
+| `jaiclaw.channels.telegram.polling-strategy` | `builtin` | Polling strategy: `builtin` (getUpdates loop) or `camel` (Apache Camel) |
+| `jaiclaw.channels.telegram.rate-limit` | `10` | Max messages per minute per user (auto-configured `UserRateLimiter`) |
+| `jaiclaw.channels.telegram.allowed-users` | — | Comma-separated Telegram user IDs for authorization |
+
+### New Classes
+
+| Class | Module | Description |
+|---|---|---|
+| `TelegramHttpClient` | jaiclaw-channel-telegram | Interface for pluggable HTTP transport |
+| `DefaultTelegramHttpClient` | jaiclaw-channel-telegram | Default JDK HttpClient implementation |
+| `TelegramPollingStrategy` | jaiclaw-channel-telegram | Interface for pluggable polling |
+| `CamelTelegramPollingStrategy` | jaiclaw-channel-telegram | Apache Camel-based polling implementation |
+| `CamelPollingAutoConfiguration` | jaiclaw-spring-boot-starter | Auto-configures Camel polling when Camel is on classpath |
+
+---
+
+## 0.3.0
+
+Released 2026-05-10.
+
+### New Features
+
+- **Project Scaffolder** — New `jaiclaw-project-scaffolder` CLI tool for YAML manifest-driven project generation. Generates complete Spring Boot project structures from declarative specifications.
+
+### Infrastructure
+
+- Version bump to 0.3.0 release. All modules aligned to 0.3.0.
+
+---
+
 ## 0.2.0
 
 Released 2026-05-04.

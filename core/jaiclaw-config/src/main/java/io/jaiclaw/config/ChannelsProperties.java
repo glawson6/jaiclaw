@@ -65,10 +65,13 @@ public record ChannelsProperties(
             int pollingTimeoutSeconds,
             boolean verifyWebhook,
             String webhookSecretToken,
-            boolean maskBotToken
+            boolean maskBotToken,
+            int rateLimit,
+            String httpClient,
+            String pollingStrategy
     ) {
         public static final TelegramProperties DEFAULT = new TelegramProperties(
-                false, null, null, null, 30, false, null, false
+                false, null, null, null, 30, false, null, false, 10, "jdk", "native"
         );
 
         public Set<String> allowedUserIds() {
@@ -90,6 +93,9 @@ public record ChannelsProperties(
             private boolean verifyWebhook;
             private String webhookSecretToken;
             private boolean maskBotToken;
+            private int rateLimit = 10;
+            private String httpClient = "jdk";
+            private String pollingStrategy = "native";
 
             public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
             public Builder botToken(String botToken) { this.botToken = botToken; return this; }
@@ -99,10 +105,14 @@ public record ChannelsProperties(
             public Builder verifyWebhook(boolean verifyWebhook) { this.verifyWebhook = verifyWebhook; return this; }
             public Builder webhookSecretToken(String webhookSecretToken) { this.webhookSecretToken = webhookSecretToken; return this; }
             public Builder maskBotToken(boolean maskBotToken) { this.maskBotToken = maskBotToken; return this; }
+            public Builder rateLimit(int rateLimit) { this.rateLimit = rateLimit; return this; }
+            public Builder httpClient(String httpClient) { this.httpClient = httpClient; return this; }
+            public Builder pollingStrategy(String pollingStrategy) { this.pollingStrategy = pollingStrategy; return this; }
 
             public TelegramProperties build() {
                 return new TelegramProperties(enabled, botToken, webhookUrl, allowedUsers,
-                        pollingTimeoutSeconds, verifyWebhook, webhookSecretToken, maskBotToken);
+                        pollingTimeoutSeconds, verifyWebhook, webhookSecretToken, maskBotToken,
+                        rateLimit, httpClient, pollingStrategy);
             }
         }
     }

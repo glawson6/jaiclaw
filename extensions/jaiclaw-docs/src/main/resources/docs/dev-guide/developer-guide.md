@@ -27,7 +27,7 @@
 | Spring Boot | 3.5.6 | Application framework |
 | Spring AI | 1.1.1 | LLM integration (Anthropic, OpenAI, Gemini, Ollama) |
 | Spring Shell | 3.4.0 | Interactive CLI |
-| Embabel Agent | 0.3.4 | Goal-oriented agent orchestration |
+| Embabel Agent | 0.3.5 | Goal-oriented agent orchestration |
 | Spock | 2.4-M4 | Testing framework (Groovy 4.0) |
 
 ### Directory Layout
@@ -205,6 +205,8 @@ Every class in JaiClaw, alphabetically. Click **Details** to jump to the module 
 | BrowserTools | jaiclaw-browser | class | Factory for browser tools | [View](dev-guide/extensions.md#jaiclaw-browser) |
 | BrowserLauncher | jaiclaw-identity | class | Platform-specific browser opening | [View](dev-guide/extensions.md#jaiclaw-identity) |
 | BuiltinTools | jaiclaw-tools | class | Factory for all built-in tools | [View](dev-guide/core-modules.md#jaiclaw-tools) |
+| CamelPollingAutoConfiguration | jaiclaw-spring-boot-starter | class | Auto-configures CamelTelegramPollingStrategy when Camel is on classpath | [View](dev-guide/starter.md) |
+| CamelTelegramPollingStrategy | jaiclaw-channel-telegram | class | Apache Camel-based Telegram polling implementation | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
 | CanvasAction | jaiclaw-core | record | Action for canvas visual output | [View](dev-guide/core-modules.md#jaiclaw-core) |
 | CanvasConfig | jaiclaw-canvas | record | Canvas host config | [View](dev-guide/extensions.md#jaiclaw-canvas) |
 | CanvasFileManager | jaiclaw-canvas | class | Manages HTML files | [View](dev-guide/extensions.md#jaiclaw-canvas) |
@@ -262,6 +264,7 @@ Every class in JaiClaw, alphabetically. Click **Details** to jump to the module 
 | CredentialStateEvaluator | jaiclaw-identity | class | Token expiry state and eligibility | [View](dev-guide/extensions.md#jaiclaw-identity) |
 | CryptoService | jaiclaw-tools-security | class | Cryptographic operations | [View](dev-guide/extensions.md#jaiclaw-tools-security) |
 | DailyLogAppender | jaiclaw-memory | class | Daily markdown log appender | [View](dev-guide/core-modules.md#jaiclaw-memory) |
+| DefaultTelegramHttpClient | jaiclaw-channel-telegram | class | Default JDK HttpClient-based Telegram HTTP transport | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
 | DefaultTenantContext | jaiclaw-core | record | TenantContext implementation | [View](dev-guide/core-modules.md#jaiclaw-core) |
 | DeliveryResult | jaiclaw-channel-api | sealed interface | Delivery: Success or Failure | [View](dev-guide/core-modules.md#jaiclaw-channel-api) |
 | DescribeResourceTool | jaiclaw-tools-k8s | class | K8s resource describer | [View](dev-guide/extensions.md#jaiclaw-tools-k8s) |
@@ -293,6 +296,8 @@ Every class in JaiClaw, alphabetically. Click **Details** to jump to the module 
 | GatewayController | jaiclaw-gateway | class | REST controller | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | GatewayHealthIndicator | jaiclaw-gateway | class | Health indicator | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | GatewayLifecycle | jaiclaw-gateway | class | SmartLifecycle | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
+| FilteredGatewayLifecycle | jaiclaw-gateway | class | Filtered SmartLifecycle | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
+| GatewayMessageFilter | jaiclaw-gateway | interface | Message filter SPI | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | GatewayMetrics | jaiclaw-gateway | class | Metrics collector | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | GatewayService | jaiclaw-gateway | class | Core gateway service | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | GenerateKeyPairTool | jaiclaw-tools-security | class | Key pair generation | [View](dev-guide/extensions.md#jaiclaw-tools-security) |
@@ -516,8 +521,10 @@ Every class in JaiClaw, alphabetically. Click **Details** to jump to the module 
 | TelegramAccessController | jaiclaw-subscription-telegram | class | Telegram access control | [View](dev-guide/extensions.md#jaiclaw-subscription-telegram) |
 | TelegramAdapter | jaiclaw-channel-telegram | class | Telegram channel adapter | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
 | TelegramConfig | jaiclaw-channel-telegram | record | Telegram config | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
+| TelegramHttpClient | jaiclaw-channel-telegram | interface | Pluggable HTTP transport for Telegram Bot API calls | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
 | TelegramDocStorePlugin | jaiclaw-docstore-telegram | class | Telegram DocStore plugin | [View](dev-guide/extensions.md#jaiclaw-docstore-telegram) |
 | TelegramGroupManager | jaiclaw-subscription-telegram | class | Telegram admin operations | [View](dev-guide/extensions.md#jaiclaw-subscription-telegram) |
+| TelegramPollingStrategy | jaiclaw-channel-telegram | interface | Pluggable polling strategy for Telegram getUpdates replacement | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |
 | TelegramPaymentProvider | jaiclaw-subscription | class | Telegram Payments | [View](dev-guide/extensions.md#jaiclaw-subscription) |
 | TelegramSubscriptionPlugin | jaiclaw-subscription-telegram | class | Telegram subscription plugin | [View](dev-guide/extensions.md#jaiclaw-subscription-telegram) |
 | TelegramUserIdFilter | jaiclaw-channel-telegram | class | Gateway filter for Telegram user authorization and rate limiting | [View](dev-guide/channels.md#jaiclaw-channel-telegram) |

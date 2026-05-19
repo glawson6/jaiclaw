@@ -1,5 +1,6 @@
 package io.jaiclaw.agent.tenant;
 
+import io.jaiclaw.agent.SystemPromptBuilder;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.config.prompt.SystemPromptLoaderFactory;
 import io.jaiclaw.core.skill.SkillDefinition;
@@ -50,11 +51,20 @@ public class TenantAgentRuntimeFactory {
         ToolProfile profile = resolveProfile(config.tools().profile());
         List<ToolCallback> tools = toolRegistry.resolveForPolicy(
                 profile, config.tools().allow(), config.tools().deny());
+        log.info("Tenant '{}' tool resolution: profile={}, registry size={}, resolved {} tools: {}",
+                config.tenantId(), profile,
+                toolRegistry.size(),
+                tools.size(),
+                tools.stream().map(t -> t.definition().name()).toList());
 
-        // 4. Load system prompt using the configured strategy
-        String systemPrompt = "";
+        // 4. Load system prompt using the configured strategy, or build a default
+        String systemPrompt;
         if (config.systemPrompt() != null) {
             systemPrompt = promptLoaderFactory.load(config.systemPrompt());
+        } else {
+            systemPrompt = new SystemPromptBuilder()
+                    .skills(defaultSkills)
+                    .build();
         }
 
         log.debug("Created execution context for tenant '{}': {} tools, prompt length={}",

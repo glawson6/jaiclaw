@@ -6,9 +6,6 @@ import io.jaiclaw.channel.ChannelMessage
 import io.jaiclaw.channel.ChannelMessageHandler
 import io.jaiclaw.channel.DeliveryResult
 import io.jaiclaw.gateway.WebhookDispatcher
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.web.client.RestTemplate
 import spock.lang.Specification
 
 class TelegramAdapterSpec extends Specification {
@@ -16,11 +13,11 @@ class TelegramAdapterSpec extends Specification {
     static final ObjectMapper MAPPER = new ObjectMapper()
 
     WebhookDispatcher webhookDispatcher = new WebhookDispatcher()
-    RestTemplate mockRestTemplate = Mock(RestTemplate)
+    TelegramHttpClient mockHttpClient = Mock(TelegramHttpClient)
 
     // Webhook mode config (has webhookUrl set)
     TelegramConfig webhookConfig = new TelegramConfig("test-bot-token", "https://example.com/webhook/telegram", true)
-    TelegramAdapter webhookAdapter = new TelegramAdapter(webhookConfig, webhookDispatcher, mockRestTemplate)
+    TelegramAdapter webhookAdapter = new TelegramAdapter(webhookConfig, webhookDispatcher, mockHttpClient)
 
     def "channelId is telegram"() {
         expect:
@@ -126,11 +123,11 @@ class TelegramAdapterSpec extends Specification {
             "ok": true,
             "result": {"file_id": "file123", "file_path": "documents/report.pdf"}
         }''')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(getFileResponse, HttpStatus.OK)
+        mockHttpClient.get(_) >> getFileResponse
         // Mock file download
-        mockRestTemplate.getForObject(_, byte[].class) >> pdfBytes
+        mockHttpClient.getBytes(_) >> pdfBytes
         // Mock setWebhook
-        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        mockHttpClient.post(_, _) >> MAPPER.readTree('{"ok": true}')
 
         def updateJson = '''
         {
@@ -288,7 +285,7 @@ class TelegramAdapterSpec extends Specification {
 
     def "extractAttachments returns empty list for text-only message"() {
         given:
-        def adapter = new TelegramAdapter(webhookConfig, webhookDispatcher, mockRestTemplate)
+        def adapter = new TelegramAdapter(webhookConfig, webhookDispatcher, mockHttpClient)
 
         def messageNode = MAPPER.readTree('''{
             "message_id": 1,
@@ -327,7 +324,7 @@ class TelegramAdapterSpec extends Specification {
     // --- Helper: creates adapter subclass with overridden downloadFile ---
 
     private TelegramAdapter createAdapterWithMockDownload(byte[] returnBytes) {
-        new TelegramAdapter(webhookConfig, webhookDispatcher, mockRestTemplate) {
+        new TelegramAdapter(webhookConfig, webhookDispatcher, mockHttpClient) {
             @Override
             byte[] downloadFile(String fileId) {
                 return returnBytes
@@ -336,7 +333,7 @@ class TelegramAdapterSpec extends Specification {
     }
 
     private TelegramAdapter createAdapterTrackingDownloads(byte[] returnBytes, List<String> tracker) {
-        new TelegramAdapter(webhookConfig, webhookDispatcher, mockRestTemplate) {
+        new TelegramAdapter(webhookConfig, webhookDispatcher, mockHttpClient) {
             @Override
             byte[] downloadFile(String fileId) {
                 tracker.add(fileId)
@@ -386,9 +383,9 @@ class TelegramAdapterSpec extends Specification {
         def verifyConfig = new TelegramConfig(
                 "test-bot-token", "https://example.com/webhook/telegram", true,
                 30, Set.of(), true, "my-secret-token", false)
-        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockRestTemplate)
+        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockHttpClient)
         def handler = Mock(ChannelMessageHandler)
-        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        mockHttpClient.post(_, _) >> MAPPER.readTree('{"ok": true}')
         verifyAdapter.start(handler)
 
         def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'
@@ -407,9 +404,9 @@ class TelegramAdapterSpec extends Specification {
         def verifyConfig = new TelegramConfig(
                 "test-bot-token", "https://example.com/webhook/telegram", true,
                 30, Set.of(), true, "my-secret-token", false)
-        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockRestTemplate)
+        def verifyAdapter = new TelegramAdapter(verifyConfig, webhookDispatcher, mockHttpClient)
         def handler = Mock(ChannelMessageHandler)
-        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        mockHttpClient.post(_, _) >> MAPPER.readTree('{"ok": true}')
         verifyAdapter.start(handler)
 
         def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'
@@ -427,7 +424,7 @@ class TelegramAdapterSpec extends Specification {
         given:
         // Default config has verifyWebhook=false
         def handler = Mock(ChannelMessageHandler)
-        mockRestTemplate.postForEntity(_, _, String.class) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        mockHttpClient.post(_, _) >> MAPPER.readTree('{"ok": true}')
         webhookAdapter.start(handler)
 
         def body = '{"update_id":1,"message":{"message_id":1,"from":{"id":111},"chat":{"id":222},"text":"hi"}}'

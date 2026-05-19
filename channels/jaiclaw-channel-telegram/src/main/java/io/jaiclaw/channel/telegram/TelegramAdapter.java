@@ -6,33 +6,32 @@ import io.jaiclaw.channel.*;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Telegram Bot API channel adapter with two inbound modes:
  *
- * <p><b>Polling mode</b> (local dev): Calls getUpdates in a loop on a virtual thread.
- * No public endpoint needed. Activated when {@code webhookUrl} is blank.
+ * <p><b>Polling mode</b> (local dev): Delegates to a {@link TelegramPollingStrategy}
+ * to fetch updates. No public endpoint needed. Activated when {@code webhookUrl} is blank.
  *
  * <p><b>Webhook mode</b> (production): Receives updates via POST /webhook/telegram.
  * Activated when {@code webhookUrl} is set.
  *
  * <p>Outbound: Always uses Telegram Bot API sendMessage.
+ *
+ * <p>HTTP transport is delegated to a {@link TelegramHttpClient} implementation,
+ * selectable via {@code jaiclaw.channels.telegram.http-client} (jdk | rest-template | web-client).
+ *
+ * <p>Polling strategy is delegated to a {@link TelegramPollingStrategy} implementation,
+ * selectable via {@code jaiclaw.channels.telegram.polling-strategy} (native | camel).
  */
 public class TelegramAdapter implements ChannelAdapter {
 
@@ -42,21 +41,31 @@ public class TelegramAdapter implements ChannelAdapter {
 
     private final TelegramConfig config;
     private final WebhookDispatcher webhookDispatcher;
-    private final RestTemplate restTemplate;
+    private final TelegramHttpClient httpClient;
+    private final TelegramPollingStrategy pollingStrategy;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private final AtomicLong pollingOffset = new AtomicLong(0);
     private ChannelMessageHandler handler;
-    private Thread pollingThread;
 
     public TelegramAdapter(TelegramConfig config, WebhookDispatcher webhookDispatcher) {
-        this(config, webhookDispatcher, new RestTemplate());
+        this(config, webhookDispatcher,
+                new JdkHttpClientTelegramHttpClient(config.pollingTimeoutSeconds()),
+                new NativeTelegramPollingStrategy(
+                        new JdkHttpClientTelegramHttpClient(config.pollingTimeoutSeconds())));
     }
 
     public TelegramAdapter(TelegramConfig config, WebhookDispatcher webhookDispatcher,
-                           RestTemplate restTemplate) {
+                           TelegramHttpClient httpClient) {
+        this(config, webhookDispatcher, httpClient,
+                new NativeTelegramPollingStrategy(httpClient));
+    }
+
+    public TelegramAdapter(TelegramConfig config, WebhookDispatcher webhookDispatcher,
+                           TelegramHttpClient httpClient,
+                           TelegramPollingStrategy pollingStrategy) {
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
+        this.pollingStrategy = pollingStrategy;
     }
 
     @Override
@@ -72,17 +81,17 @@ public class TelegramAdapter implements ChannelAdapter {
     @Override
     public void start(ChannelMessageHandler handler) {
         this.handler = handler;
+        running.set(true);
 
         if (config.usePolling()) {
-            startPolling();
-            log.info("Telegram adapter started in POLLING mode (no public endpoint needed)");
+            pollingStrategy.startPolling(config, this::processUpdate);
+            log.info("Telegram adapter started in POLLING mode ({} strategy)",
+                    config.pollingStrategyType());
         } else {
             webhookDispatcher.register("telegram", this::handleWebhook);
             registerWebhook();
             log.info("Telegram adapter started in WEBHOOK mode: {}", config.webhookUrl());
         }
-
-        running.set(true);
     }
 
     @Override
@@ -117,26 +126,35 @@ public class TelegramAdapter implements ChannelAdapter {
 
     /**
      * Send a text message to a Telegram chat.
+     * Attempts Markdown parse mode first; falls back to plain text if Telegram rejects the entities.
      */
     DeliveryResult sendText(String chatId, String text) {
         String url = TELEGRAM_API_BASE + config.botToken() + "/sendMessage";
 
-        Map<String, Object> body = Map.of(
-                "chat_id", chatId,
-                "text", text,
-                "parse_mode", "Markdown"
-        );
-
-        var response = restTemplate.postForEntity(url, body, JsonNode.class);
-
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            String messageId = response.getBody().path("result").path("message_id").asText();
+        // Try with Markdown first
+        try {
+            Map<String, Object> body = Map.of(
+                    "chat_id", chatId,
+                    "text", text,
+                    "parse_mode", "Markdown"
+            );
+            JsonNode response = httpClient.post(url, body);
+            String messageId = response.path("result").path("message_id").asText();
             return new DeliveryResult.Success(messageId);
-        } else {
-            return new DeliveryResult.Failure(
-                    "telegram_api_error",
-                    "HTTP " + response.getStatusCode(),
-                    true);
+        } catch (Exception markdownEx) {
+            String msg = markdownEx.getMessage();
+            if (msg != null && msg.contains("can't parse entities")) {
+                log.warn("Markdown parse failed for chat {}, retrying as plain text", chatId);
+                // Retry without parse_mode
+                Map<String, Object> fallbackBody = Map.of(
+                        "chat_id", chatId,
+                        "text", text
+                );
+                JsonNode response = httpClient.post(url, fallbackBody);
+                String messageId = response.path("result").path("message_id").asText();
+                return new DeliveryResult.Success(messageId);
+            }
+            throw markdownEx;
         }
     }
 
@@ -147,38 +165,17 @@ public class TelegramAdapter implements ChannelAdapter {
         try {
             String url = TELEGRAM_API_BASE + config.botToken() + "/sendDocument";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("chat_id", chatId);
-
-            // Wrap byte array as a named resource for multipart
-            ByteArrayResource resource = new ByteArrayResource(fileData) {
-                @Override
-                public String getFilename() {
-                    return filename;
-                }
-            };
-            body.add("document", resource);
-
+            Map<String, Object> parts = new LinkedHashMap<>();
+            parts.put("chat_id", chatId);
+            parts.put("document", new MultipartFile(filename, fileData));
             if (caption != null && !caption.isBlank()) {
-                body.add("caption", caption);
+                parts.put("caption", caption);
             }
 
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            var response = restTemplate.postForEntity(url, requestEntity, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String messageId = response.getBody().path("result").path("message_id").asText();
-                log.debug("Sent document '{}' to chat {}, messageId={}", filename, chatId, messageId);
-                return new DeliveryResult.Success(messageId);
-            } else {
-                return new DeliveryResult.Failure(
-                        "telegram_api_error",
-                        "HTTP " + response.getStatusCode(),
-                        true);
-            }
+            JsonNode response = httpClient.postMultipart(url, parts);
+            String messageId = response.path("result").path("message_id").asText();
+            log.debug("Sent document '{}' to chat {}, messageId={}", filename, chatId, messageId);
+            return new DeliveryResult.Success(messageId);
         } catch (Exception e) {
             log.error("Failed to send document '{}' to chat {}", filename, chatId, e);
             return new DeliveryResult.Failure("send_document_failed", e.getMessage(), true);
@@ -188,76 +185,23 @@ public class TelegramAdapter implements ChannelAdapter {
     @Override
     public void stop() {
         running.set(false);
-        if (pollingThread != null) {
-            pollingThread.interrupt();
+        if (config.usePolling()) {
+            pollingStrategy.stopPolling();
         }
         log.info("Telegram adapter stopped");
     }
 
     @Override
     public boolean isRunning() {
+        if (config.usePolling()) {
+            return running.get() && pollingStrategy.isPolling();
+        }
         return running.get();
     }
 
-    // --- Polling mode ---
+    // --- Update processing (shared by both polling and webhook) ---
 
-    private void startPolling() {
-        // Delete any existing webhook so polling works
-        deleteWebhook();
-
-        pollingThread = Thread.ofVirtual().name("telegram-poller").start(() -> {
-            log.info("Telegram polling started (timeout={}s)", config.pollingTimeoutSeconds());
-            while (running.get() || !Thread.currentThread().isInterrupted()) {
-                try {
-                    pollUpdates();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    log.warn("Telegram polling error (will retry): {}", e.getMessage());
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-            log.info("Telegram polling stopped");
-        });
-    }
-
-    private void pollUpdates() throws InterruptedException {
-        String url = TELEGRAM_API_BASE + config.botToken() + "/getUpdates"
-                + "?offset=" + pollingOffset.get()
-                + "&timeout=" + config.pollingTimeoutSeconds()
-                + "&allowed_updates=%5B%22message%22%5D";
-
-        try {
-            var response = restTemplate.getForEntity(url, JsonNode.class);
-
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return;
-            }
-
-            JsonNode result = response.getBody().path("result");
-            if (!result.isArray()) return;
-
-            for (JsonNode update : result) {
-                long updateId = update.path("update_id").asLong();
-                pollingOffset.set(updateId + 1);
-                processUpdate(update);
-            }
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            // Timeout or connection issue — normal during long polling
-            if (e.getCause() instanceof java.net.SocketTimeoutException) {
-                return; // Normal — no updates within timeout period
-            }
-            throw e;
-        }
-    }
-
-    private void processUpdate(JsonNode update) {
+    void processUpdate(JsonNode update) {
         JsonNode messageNode = update.path("message");
         if (messageNode.isMissingNode()) return;
 
@@ -292,7 +236,12 @@ public class TelegramAdapter implements ChannelAdapter {
                 updateId, "telegram", config.accountId(), chatId, text, attachments, platformData);
 
         if (handler != null) {
-            handler.onMessage(channelMessage);
+            try {
+                handler.onMessage(channelMessage);
+            } catch (Exception e) {
+                log.error("Error processing Telegram message from user {}: {}",
+                        fromId, e.getMessage(), e);
+            }
         }
     }
 
@@ -307,22 +256,28 @@ public class TelegramAdapter implements ChannelAdapter {
         if (messageNode.has("document")) {
             JsonNode doc = messageNode.path("document");
             String fileId = doc.path("file_id").asText();
-            String fileName = doc.has("file_name") ? doc.path("file_name").asText() : "document";
-            String mimeType = doc.has("mime_type") ? doc.path("mime_type").asText() : "application/octet-stream";
-            byte[] data = downloadFile(fileId);
-            if (data != null) {
-                attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+            if (!fileId.isBlank()) {
+                String fileName = doc.has("file_name") ? doc.path("file_name").asText() : "document";
+                String mimeType = doc.has("mime_type") ? doc.path("mime_type").asText() : "application/octet-stream";
+                byte[] data = downloadFile(fileId);
+                if (data != null) {
+                    attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+                }
             }
         }
 
         // Photo — Telegram sends multiple sizes; pick the largest (last in array)
         if (messageNode.has("photo") && messageNode.path("photo").isArray()) {
             JsonNode photos = messageNode.path("photo");
-            JsonNode largest = photos.get(photos.size() - 1);
-            String fileId = largest.path("file_id").asText();
-            byte[] data = downloadFile(fileId);
-            if (data != null) {
-                attachments.add(new ChannelMessage.Attachment("photo.jpg", "image/jpeg", null, data));
+            if (photos.size() > 0) {
+                JsonNode largest = photos.get(photos.size() - 1);
+                String fileId = largest.path("file_id").asText();
+                if (!fileId.isBlank()) {
+                    byte[] data = downloadFile(fileId);
+                    if (data != null) {
+                        attachments.add(new ChannelMessage.Attachment("photo.jpg", "image/jpeg", null, data));
+                    }
+                }
             }
         }
 
@@ -330,10 +285,12 @@ public class TelegramAdapter implements ChannelAdapter {
         if (messageNode.has("video")) {
             JsonNode video = messageNode.path("video");
             String fileId = video.path("file_id").asText();
-            String mimeType = video.has("mime_type") ? video.path("mime_type").asText() : "video/mp4";
-            byte[] data = downloadFile(fileId);
-            if (data != null) {
-                attachments.add(new ChannelMessage.Attachment("video.mp4", mimeType, null, data));
+            if (!fileId.isBlank()) {
+                String mimeType = video.has("mime_type") ? video.path("mime_type").asText() : "video/mp4";
+                byte[] data = downloadFile(fileId);
+                if (data != null) {
+                    attachments.add(new ChannelMessage.Attachment("video.mp4", mimeType, null, data));
+                }
             }
         }
 
@@ -341,11 +298,13 @@ public class TelegramAdapter implements ChannelAdapter {
         if (messageNode.has("audio")) {
             JsonNode audio = messageNode.path("audio");
             String fileId = audio.path("file_id").asText();
-            String fileName = audio.has("file_name") ? audio.path("file_name").asText() : "audio.mp3";
-            String mimeType = audio.has("mime_type") ? audio.path("mime_type").asText() : "audio/mpeg";
-            byte[] data = downloadFile(fileId);
-            if (data != null) {
-                attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+            if (!fileId.isBlank()) {
+                String fileName = audio.has("file_name") ? audio.path("file_name").asText() : "audio.mp3";
+                String mimeType = audio.has("mime_type") ? audio.path("mime_type").asText() : "audio/mpeg";
+                byte[] data = downloadFile(fileId);
+                if (data != null) {
+                    attachments.add(new ChannelMessage.Attachment(fileName, mimeType, null, data));
+                }
             }
         }
 
@@ -353,10 +312,12 @@ public class TelegramAdapter implements ChannelAdapter {
         if (messageNode.has("voice")) {
             JsonNode voice = messageNode.path("voice");
             String fileId = voice.path("file_id").asText();
-            String mimeType = voice.has("mime_type") ? voice.path("mime_type").asText() : "audio/ogg";
-            byte[] data = downloadFile(fileId);
-            if (data != null) {
-                attachments.add(new ChannelMessage.Attachment("voice.ogg", mimeType, null, data));
+            if (!fileId.isBlank()) {
+                String mimeType = voice.has("mime_type") ? voice.path("mime_type").asText() : "audio/ogg";
+                byte[] data = downloadFile(fileId);
+                if (data != null) {
+                    attachments.add(new ChannelMessage.Attachment("voice.ogg", mimeType, null, data));
+                }
             }
         }
 
@@ -371,14 +332,9 @@ public class TelegramAdapter implements ChannelAdapter {
         try {
             // Step 1: Get file path via getFile API
             String getFileUrl = TELEGRAM_API_BASE + config.botToken() + "/getFile?file_id=" + fileId;
-            var fileResponse = restTemplate.getForEntity(getFileUrl, JsonNode.class);
+            JsonNode fileResponse = httpClient.get(getFileUrl);
 
-            if (!fileResponse.getStatusCode().is2xxSuccessful() || fileResponse.getBody() == null) {
-                log.warn("Failed to get file info for fileId={}", fileId);
-                return null;
-            }
-
-            String filePath = fileResponse.getBody().path("result").path("file_path").asText();
+            String filePath = fileResponse.path("result").path("file_path").asText();
             if (filePath.isEmpty()) {
                 log.warn("Empty file_path for fileId={}", fileId);
                 return null;
@@ -386,21 +342,10 @@ public class TelegramAdapter implements ChannelAdapter {
 
             // Step 2: Download the file bytes
             String downloadUrl = "https://api.telegram.org/file/bot" + config.botToken() + "/" + filePath;
-            byte[] bytes = restTemplate.getForObject(downloadUrl, byte[].class);
-            return bytes;
+            return httpClient.getBytes(downloadUrl);
         } catch (Exception e) {
             log.warn("Failed to download Telegram file fileId={}: {}", fileId, e.getMessage());
             return null;
-        }
-    }
-
-    private void deleteWebhook() {
-        try {
-            String url = TELEGRAM_API_BASE + config.botToken() + "/deleteWebhook";
-            restTemplate.getForEntity(url, String.class);
-            log.debug("Deleted existing Telegram webhook (switching to polling)");
-        } catch (Exception e) {
-            log.warn("Failed to delete Telegram webhook: {}", e.getMessage());
         }
     }
 
@@ -418,7 +363,7 @@ public class TelegramAdapter implements ChannelAdapter {
                 body.put("secret_token", config.webhookSecretToken());
             }
 
-            restTemplate.postForEntity(url, body, String.class);
+            httpClient.post(url, body);
             log.info("Registered Telegram webhook: {}", config.webhookUrl());
         } catch (Exception e) {
             log.warn("Failed to register Telegram webhook: {}", e.getMessage());

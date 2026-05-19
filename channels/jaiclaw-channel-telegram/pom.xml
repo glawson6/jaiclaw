@@ -7,12 +7,16 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-channels</artifactId>
-        <version>0.4.0-SNAPSHOT</version>
+        <version>0.4.0</version>
     </parent>
 
     <artifactId>jaiclaw-channel-telegram</artifactId>
     <name>JaiClaw :: Channel :: Telegram</name>
     <description>Telegram Bot API channel adapter</description>
+
+    <properties>
+        <camel.version>4.18.1</camel.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -34,6 +38,22 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-telegram-starter</artifactId>
+            <version>${camel.version}</version>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -59,6 +79,17 @@
         <dependency>
             <groupId>org.objenesis</groupId>
             <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-core</artifactId>
+            <version>${camel.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -75,8 +75,13 @@ JaiClawAutoConfiguration
   ├── channelRegistry           ChannelRegistry
   │     (auto-collects all ChannelAdapter beans via ObjectProvider)
   │
-  └── noOpOrchestrationPort     NoOpOrchestrationPort
-        @ConditionalOnMissingBean(AgentOrchestrationPort.class)
+  ├── noOpOrchestrationPort     NoOpOrchestrationPort
+  │     @ConditionalOnMissingBean(AgentOrchestrationPort.class)
+  │
+  └── resolveToolsFromEnvironment()  (internal)
+        Reads jaiclaw.agent.agents.{name}.tools.profile from Environment
+        as fallback for Spring Boot record binding failures with
+        Map<String, Record> nesting. Follows existing llmOverride pattern.
 ```
 
 ### Key Conditions
@@ -115,8 +120,9 @@ JaiClawGatewayAutoConfiguration
   ├── gatewayService              GatewayService
   │     (AgentRuntime, SessionManager, ChannelRegistry, WebhookDispatcher, ...)
   │
-  ├── gatewayLifecycle            GatewayLifecycle
-  │     (starts/stops channel adapters on Spring lifecycle events)
+  ├── gatewayLifecycle            GatewayLifecycle or FilteredGatewayLifecycle
+  │     (starts/stops channel adapters; uses FilteredGatewayLifecycle when a
+  │      GatewayMessageFilter bean is present, e.g. TelegramUserIdFilter)
   │
   ├── gatewayController           GatewayController
   │     @RestController — /api/chat, /api/health, /webhook/*
@@ -162,6 +168,14 @@ JaiClawChannelAutoConfiguration
   │     @ConditionalOnBean(WebhookDispatcher.class)
   │     ─── creates ──→ TelegramAdapter
   │     (passes verifyWebhook, webhookSecretToken, maskBotToken from config)
+  │     ─── creates ──→ DefaultTelegramHttpClient (if no TelegramHttpClient bean)
+  │     ─── creates ──→ TelegramUserIdFilter + UserRateLimiter
+  │           (when jaiclaw.channels.telegram.allowed-users is set)
+  │
+  ├── CamelPollingAutoConfiguration
+  │     @ConditionalOnClass(CamelContext.class, TelegramComponent.class)
+  │     ─── creates ──→ CamelTelegramPollingStrategy
+  │     (auto-activates when Apache Camel + camel-telegram are on classpath)
   │
   ├── SlackAutoConfiguration
   │     @ConditionalOnClass(SlackAdapter.class)
@@ -206,7 +220,7 @@ ChatModel (Spring AI — Phase 1)
         └─→ AgentRuntime (Phase 2)
               └─→ GatewayService (Phase 3)
                     ├─→ GatewayController   (/api/chat, /api/health, /webhook/*)
-                    ├─→ GatewayLifecycle    (starts channel adapters)
+                    ├─→ GatewayLifecycle / FilteredGatewayLifecycle (starts channel adapters)
                     └─→ WebSocketSessionHandler (/ws/session/{id})
                           │
                     Channel Adapters (Phase 4)

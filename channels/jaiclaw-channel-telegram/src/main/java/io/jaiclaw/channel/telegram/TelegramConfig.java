@@ -19,6 +19,12 @@ import java.util.Set;
  *
  * <p>If {@code allowedUserIds} is non-empty, only messages from those Telegram user IDs
  * are processed; all others are silently dropped. An empty set means allow everyone.
+ *
+ * <p>In polling mode, the {@code pollingStrategyType} selects the polling implementation:
+ * <ul>
+ *   <li>{@link TelegramPollingStrategyType#CAMEL} — Apache Camel's {@code camel-telegram} consumer</li>
+ *   <li>{@link TelegramPollingStrategyType#NATIVE} — hand-rolled loop on a virtual thread (default)</li>
+ * </ul>
  */
 public record TelegramConfig(
         String botToken,
@@ -28,7 +34,8 @@ public record TelegramConfig(
         Set<String> allowedUserIds,
         boolean verifyWebhook,
         String webhookSecretToken,
-        boolean maskBotToken
+        boolean maskBotToken,
+        TelegramPollingStrategyType pollingStrategyType
 ) {
     public TelegramConfig {
         if (botToken == null) botToken = "";
@@ -36,19 +43,35 @@ public record TelegramConfig(
         if (pollingTimeoutSeconds <= 0) pollingTimeoutSeconds = 30;
         if (allowedUserIds == null) allowedUserIds = Set.of();
         if (webhookSecretToken == null) webhookSecretToken = "";
+        if (pollingStrategyType == null) pollingStrategyType = TelegramPollingStrategyType.NATIVE;
     }
 
     public TelegramConfig(String botToken, String webhookUrl, boolean enabled) {
-        this(botToken, webhookUrl, enabled, 30, Set.of(), false, "", false);
+        this(botToken, webhookUrl, enabled, 30, Set.of(), false, "", false,
+                TelegramPollingStrategyType.NATIVE);
     }
 
     public TelegramConfig(String botToken, String webhookUrl, boolean enabled, int pollingTimeoutSeconds) {
-        this(botToken, webhookUrl, enabled, pollingTimeoutSeconds, Set.of(), false, "", false);
+        this(botToken, webhookUrl, enabled, pollingTimeoutSeconds, Set.of(), false, "", false,
+                TelegramPollingStrategyType.NATIVE);
     }
 
     public TelegramConfig(String botToken, String webhookUrl, boolean enabled,
                            int pollingTimeoutSeconds, Set<String> allowedUserIds) {
-        this(botToken, webhookUrl, enabled, pollingTimeoutSeconds, allowedUserIds, false, "", false);
+        this(botToken, webhookUrl, enabled, pollingTimeoutSeconds, allowedUserIds, false, "", false,
+                TelegramPollingStrategyType.NATIVE);
+    }
+
+    /**
+     * Backward-compatible constructor without pollingStrategyType.
+     */
+    public TelegramConfig(String botToken, String webhookUrl, boolean enabled,
+                           int pollingTimeoutSeconds, Set<String> allowedUserIds,
+                           boolean verifyWebhook, String webhookSecretToken,
+                           boolean maskBotToken) {
+        this(botToken, webhookUrl, enabled, pollingTimeoutSeconds, allowedUserIds,
+                verifyWebhook, webhookSecretToken, maskBotToken,
+                TelegramPollingStrategyType.NATIVE);
     }
 
     /**
@@ -95,6 +118,7 @@ public record TelegramConfig(
         private boolean verifyWebhook;
         private String webhookSecretToken;
         private boolean maskBotToken;
+        private TelegramPollingStrategyType pollingStrategyType;
 
         public Builder botToken(String botToken) { this.botToken = botToken; return this; }
         public Builder webhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; return this; }
@@ -104,11 +128,12 @@ public record TelegramConfig(
         public Builder verifyWebhook(boolean verifyWebhook) { this.verifyWebhook = verifyWebhook; return this; }
         public Builder webhookSecretToken(String webhookSecretToken) { this.webhookSecretToken = webhookSecretToken; return this; }
         public Builder maskBotToken(boolean maskBotToken) { this.maskBotToken = maskBotToken; return this; }
+        public Builder pollingStrategyType(TelegramPollingStrategyType pollingStrategyType) { this.pollingStrategyType = pollingStrategyType; return this; }
 
         public TelegramConfig build() {
             return new TelegramConfig(
                     botToken, webhookUrl, enabled, pollingTimeoutSeconds, allowedUserIds,
-                    verifyWebhook, webhookSecretToken, maskBotToken);
+                    verifyWebhook, webhookSecretToken, maskBotToken, pollingStrategyType);
         }
     }
 }

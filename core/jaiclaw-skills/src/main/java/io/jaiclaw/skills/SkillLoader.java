@@ -50,8 +50,14 @@ public class SkillLoader {
             var uri = resource.toURI();
             Path skillsPath;
             if (uri.getScheme().equals("jar")) {
-                // Running from JAR — use filesystem provider
-                var fs = FileSystems.newFileSystem(uri, java.util.Map.of());
+                // Running from JAR — get existing filesystem (opened by Spring Boot's
+                // launcher) or create a new one if not yet opened.
+                FileSystem fs;
+                try {
+                    fs = FileSystems.getFileSystem(uri);
+                } catch (FileSystemNotFoundException e) {
+                    fs = FileSystems.newFileSystem(uri, java.util.Map.of());
+                }
                 skillsPath = fs.getPath(SKILLS_RESOURCE_PATH);
             } else {
                 skillsPath = Paths.get(uri);

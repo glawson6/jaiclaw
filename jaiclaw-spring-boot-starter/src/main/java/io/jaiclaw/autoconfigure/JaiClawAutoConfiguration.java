@@ -313,8 +313,12 @@ public class JaiClawAutoConfiguration {
                                                               org.springframework.core.env.Environment env) {
         io.jaiclaw.config.AgentLoopDelegateConfig loopDelegateOverride =
                 resolveLoopDelegateFromEnvironment(properties, env);
+        io.jaiclaw.config.LlmConfig llmOverride = resolveLlmFromEnvironment(properties, env);
+        io.jaiclaw.config.AgentProperties.ToolPolicyConfig toolsOverride =
+                resolveToolsFromEnvironment(properties, env);
         return new TenantAgentConfigService(
-                properties.tenant(), properties.agent(), envLoader, resourceLoader, loopDelegateOverride);
+                properties.tenant(), properties.agent(), envLoader, resourceLoader,
+                loopDelegateOverride, llmOverride, toolsOverride);
     }
 
     @Bean
@@ -507,6 +511,76 @@ public class JaiClawAutoConfiguration {
 
         log.info("Loop-delegate resolved from Environment — enabled: {}, delegateId: {}, workflow: {}",
                 enabled, envDelegateId, workflow);
+        return config;
+    }
+
+    /**
+     * Resolve LLM config from Environment as a fallback when Spring Boot's record binding
+     * silently drops the {@code jaiclaw.agent.agents.<name>.llm} fields.
+     */
+    private io.jaiclaw.config.LlmConfig resolveLlmFromEnvironment(
+            JaiClawProperties properties,
+            org.springframework.core.env.Environment env) {
+        String prefix = "jaiclaw.agent.agents." + properties.agent().defaultAgent() + ".llm";
+        String envPrimary = env.getProperty(prefix + ".primary");
+
+        if (envPrimary == null) {
+            return null;
+        }
+
+        // Check if record binding already got the right value
+        Map<String, io.jaiclaw.config.AgentProperties.AgentConfig> agents = properties.agent().agents();
+        io.jaiclaw.config.AgentProperties.AgentConfig agentConfig = agents != null
+                ? agents.get(properties.agent().defaultAgent()) : null;
+        if (agentConfig != null && agentConfig.llm() != null
+                && envPrimary.equals(agentConfig.llm().primary())) {
+            return null; // Record binding worked correctly — no override needed
+        }
+
+        String envProvider = env.getProperty(prefix + ".provider");
+        String envThinkingModel = env.getProperty(prefix + ".thinking-model");
+        double temperature = Double.parseDouble(env.getProperty(prefix + ".temperature", "0.7"));
+        int maxTokens = Integer.parseInt(env.getProperty(prefix + ".max-tokens", "4096"));
+        int timeoutSeconds = Integer.parseInt(env.getProperty(prefix + ".timeout-seconds", "120"));
+
+        io.jaiclaw.config.LlmConfig config = new io.jaiclaw.config.LlmConfig(
+                envProvider, envPrimary, List.of(), envThinkingModel,
+                temperature, maxTokens, timeoutSeconds);
+
+        log.info("LLM config resolved from Environment (record binding fallback) — provider: {}, primary: {}",
+                envProvider, envPrimary);
+        return config;
+    }
+
+    /**
+     * Resolve tools policy config from Environment as a fallback when Spring Boot's record binding
+     * silently drops the {@code jaiclaw.agent.agents.<name>.tools} fields.
+     */
+    private io.jaiclaw.config.AgentProperties.ToolPolicyConfig resolveToolsFromEnvironment(
+            JaiClawProperties properties,
+            org.springframework.core.env.Environment env) {
+        String prefix = "jaiclaw.agent.agents." + properties.agent().defaultAgent() + ".tools";
+        String envProfile = env.getProperty(prefix + ".profile");
+
+        if (envProfile == null) {
+            return null;
+        }
+
+        // Check if record binding already got the right value
+        Map<String, io.jaiclaw.config.AgentProperties.AgentConfig> agents = properties.agent().agents();
+        io.jaiclaw.config.AgentProperties.AgentConfig agentConfig = agents != null
+                ? agents.get(properties.agent().defaultAgent()) : null;
+        if (agentConfig != null && agentConfig.tools() != null
+                && envProfile.equals(agentConfig.tools().profile())) {
+            return null; // Record binding worked correctly — no override needed
+        }
+
+        io.jaiclaw.config.AgentProperties.ToolPolicyConfig config =
+                new io.jaiclaw.config.AgentProperties.ToolPolicyConfig(
+                        envProfile, List.of(), List.of());
+
+        log.info("Tools config resolved from Environment (record binding fallback) — profile: {}",
+                envProfile);
         return config;
     }
 }
