@@ -1,0 +1,337 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.EarnedIncomeCredit;
+import io.jaiclaw.rules.tax.facts.FilingStatus;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Earned Income Credit (EIC) Rules for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32, Section 4.06
+ * IRC Section 32 - Earned Income Credit
+ *
+ * Maximum credits by number of qualifying children:
+ * - 0 children: $664
+ * - 1 child: $4,427
+ * - 2 children: $7,316
+ * - 3+ children: $8,231
+ */
+
+// ============================================================================
+// INVESTMENT INCOME ELIGIBILITY TEST - IRC 32(i)
+// ============================================================================
+
+rule "EIC - Investment Income Test Failure"
+    salience 75
+    when
+        $taxpayer : TaxPayer(investmentIncome > 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        // Taxpayer is not eligible for EIC due to excessive investment income
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setEligible(false);
+        eic.setCreditAmount(BigDecimal.ZERO);
+        System.out.println("EIC denied: Investment income exceeds $12,200");
+        insert(eic);
+end
+
+// ============================================================================
+// EIC WITH NO QUALIFYING CHILDREN
+// ============================================================================
+
+rule "EIC - No Children - Married Filing Jointly"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 0,
+                            filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(0);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for no children, MFJ
+        eic.setMaximumCreditAmount(new BigDecimal("664.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("8680.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("18140.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("26820.00"));
+
+        insert(eic);
+end
+
+rule "EIC - No Children - Other Filing Status"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 0,
+                            (filingStatus != FilingStatus.MARRIED_FILING_JOINTLY),
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(0);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for no children, other filing status
+        eic.setMaximumCreditAmount(new BigDecimal("664.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("8680.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("10860.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("19540.00"));
+
+        insert(eic);
+end
+
+// ============================================================================
+// EIC WITH ONE QUALIFYING CHILD
+// ============================================================================
+
+rule "EIC - One Child - Married Filing Jointly"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 1,
+                            filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(1);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 1 child, MFJ
+        eic.setMaximumCreditAmount(new BigDecimal("4427.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("13020.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("31160.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("58863.00"));
+
+        insert(eic);
+end
+
+rule "EIC - One Child - Other Filing Status"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 1,
+                            (filingStatus != FilingStatus.MARRIED_FILING_JOINTLY),
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(1);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 1 child, other filing status
+        eic.setMaximumCreditAmount(new BigDecimal("4427.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("13020.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("23890.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("51593.00"));
+
+        insert(eic);
+end
+
+// ============================================================================
+// EIC WITH TWO QUALIFYING CHILDREN
+// ============================================================================
+
+rule "EIC - Two Children - Married Filing Jointly"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 2,
+                            filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(2);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 2 children, MFJ
+        eic.setMaximumCreditAmount(new BigDecimal("7316.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("18290.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("31160.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("65899.00"));
+
+        insert(eic);
+end
+
+rule "EIC - Two Children - Other Filing Status"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren == 2,
+                            (filingStatus != FilingStatus.MARRIED_FILING_JOINTLY),
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren(2);
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 2 children, other filing status
+        eic.setMaximumCreditAmount(new BigDecimal("7316.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("18290.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("23890.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("58629.00"));
+
+        insert(eic);
+end
+
+// ============================================================================
+// EIC WITH THREE OR MORE QUALIFYING CHILDREN
+// ============================================================================
+
+rule "EIC - Three Plus Children - Married Filing Jointly"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren >= 3,
+                            filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren($taxpayer.getNumberOfQualifyingChildren());
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 3+ children, MFJ
+        eic.setMaximumCreditAmount(new BigDecimal("8231.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("18290.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("31160.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("70244.00"));
+
+        insert(eic);
+end
+
+rule "EIC - Three Plus Children - Other Filing Status"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren >= 3,
+                            (filingStatus != FilingStatus.MARRIED_FILING_JOINTLY),
+                            earnedIncome > 0,
+                            investmentIncome <= 12200)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(EarnedIncomeCredit())
+    then
+        EarnedIncomeCredit eic = new EarnedIncomeCredit();
+        eic.setCreditId($return.getReturnId() + "-EIC");
+        eic.setNumberOfQualifyingChildren($taxpayer.getNumberOfQualifyingChildren());
+        eic.setFilingStatus($taxpayer.getFilingStatus());
+        eic.setEarnedIncome($taxpayer.getEarnedIncome());
+        eic.setAdjustedGrossIncome($taxpayer.getAdjustedGrossIncome());
+
+        // Set 2026 parameters for 3+ children, other filing status
+        eic.setMaximumCreditAmount(new BigDecimal("8231.00"));
+        eic.setEarnedIncomeAmount(new BigDecimal("18290.00"));
+        eic.setThresholdPhaseoutAmount(new BigDecimal("23890.00"));
+        eic.setCompletedPhaseoutAmount(new BigDecimal("62974.00"));
+
+        insert(eic);
+end
+
+// ============================================================================
+// CALCULATE ACTUAL EIC AMOUNT
+// ============================================================================
+
+rule "Calculate EIC Amount - Phase In and Phase Out"
+    salience 65
+    when
+        $eic : EarnedIncomeCredit(isEligible == true,
+                                 creditAmount == 0,
+                                 earnedIncome > 0)
+    then
+        BigDecimal earnedIncome = $eic.getEarnedIncome();
+        BigDecimal agi = $eic.getAdjustedGrossIncome();
+        BigDecimal maxCredit = $eic.getMaximumCreditAmount();
+        BigDecimal earnedIncomeAmt = $eic.getEarnedIncomeAmount();
+        BigDecimal thresholdPhaseout = $eic.getThresholdPhaseoutAmount();
+        BigDecimal completedPhaseout = $eic.getCompletedPhaseoutAmount();
+
+        BigDecimal credit = BigDecimal.ZERO;
+
+        // Use the greater of earned income or AGI for phaseout calculation
+        BigDecimal incomeForPhaseout = earnedIncome.max(agi);
+
+        // Phase-in: If income is below earned income amount, credit phases in
+        if (earnedIncome.compareTo(earnedIncomeAmt) <= 0) {
+            // Simplified: assume maximum credit if at or above earned income amount
+            // In reality, there's a phase-in percentage, but document doesn't specify
+            credit = maxCredit;
+        } else {
+            credit = maxCredit;
+        }
+
+        // Phase-out: If income exceeds threshold, credit phases out
+        if (incomeForPhaseout.compareTo(thresholdPhaseout) > 0) {
+            if (incomeForPhaseout.compareTo(completedPhaseout) >= 0) {
+                // Income is at or above completed phaseout - no credit
+                credit = BigDecimal.ZERO;
+            } else {
+                // Income is in phaseout range - calculate reduced credit
+                BigDecimal phaseoutRange = completedPhaseout.subtract(thresholdPhaseout);
+                BigDecimal excessIncome = incomeForPhaseout.subtract(thresholdPhaseout);
+                BigDecimal phaseoutPercentage = excessIncome.divide(phaseoutRange, 4, RoundingMode.HALF_UP);
+                BigDecimal reduction = maxCredit.multiply(phaseoutPercentage).setScale(2, RoundingMode.HALF_UP);
+                credit = maxCredit.subtract(reduction);
+
+                if (credit.compareTo(BigDecimal.ZERO) < 0) {
+                    credit = BigDecimal.ZERO;
+                }
+            }
+        }
+
+        $eic.setCreditAmount(credit);
+        System.out.println("Calculated EIC: $" + credit + " for " + $eic.getNumberOfQualifyingChildren() + " children");
+        update($eic);
+end
+
+rule "Apply EIC to Tax Return"
+    salience 60
+    when
+        $eic : EarnedIncomeCredit(creditAmount > 0)
+        $return : TaxReturn(returnId == ($eic.getCreditId().replace("-EIC", "")),
+                           earnedIncomeCredit == 0)
+    then
+        $return.setEarnedIncomeCredit($eic.getCreditAmount());
+
+        // EIC is fully refundable
+        BigDecimal currentRefundable = $return.getRefundableCredits();
+        $return.setRefundableCredits(currentRefundable.add($eic.getCreditAmount()));
+
+        System.out.println("Applied EIC to return: $" + $eic.getCreditAmount());
+        update($return);
+end

@@ -1,0 +1,236 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.AdoptionCredit;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Other Tax Credits for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32
+ *
+ * Includes:
+ * - Adoption Credit (IRC 23) - Section 4.04
+ * - Capital Gains calculations could be added here
+ */
+
+// ============================================================================
+// ADOPTION CREDIT - IRC Section 23
+// Section 4.04 of Rev. Proc. 2025-32
+// ============================================================================
+
+rule "Adoption Credit - Calculate for Special Needs Child"
+    salience 70
+    when
+        $return : TaxReturn()
+        not(AdoptionCredit())
+    then
+        // Create AdoptionCredit fact if needed
+        AdoptionCredit credit = new AdoptionCredit();
+        credit.setCreditId($return.getReturnId() + "-ADOPT");
+
+        // 2026 amounts
+        credit.setMaximumCreditPerAdoption(new BigDecimal("17670.00"));
+        credit.setRefundablePortionPerAdoption(new BigDecimal("5120.00"));
+        credit.setPhaseoutBeginMAGI(new BigDecimal("265080.00"));
+        credit.setPhaseoutCompleteMAGI(new BigDecimal("305080.00"));
+
+        insert(credit);
+end
+
+rule "Calculate Adoption Credit - Special Needs"
+    salience 65
+    when
+        $credit : AdoptionCredit(hasSpecialNeedsChild == true,
+                                numberOfAdoptions > 0,
+                                totalCredit == 0)
+    then
+        // For special needs adoption, full credit is allowed regardless of expenses
+        BigDecimal totalCredit = $credit.getMaximumCreditPerAdoption()
+                .multiply(new BigDecimal($credit.getNumberOfAdoptions()))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $credit.setTotalCredit(totalCredit);
+
+        // Calculate refundable portion
+        BigDecimal refundable = $credit.getRefundablePortionPerAdoption()
+                .multiply(new BigDecimal($credit.getNumberOfAdoptions()))
+                .setScale(2, RoundingMode.HALF_UP);
+        $credit.setRefundableAmount(refundable);
+
+        BigDecimal nonRefundable = totalCredit.subtract(refundable);
+        $credit.setNonRefundableAmount(nonRefundable);
+
+        System.out.println("Adoption Credit (Special Needs): $" + totalCredit);
+        update($credit);
+end
+
+rule "Calculate Adoption Credit - Regular Adoption"
+    salience 65
+    when
+        $credit : AdoptionCredit(hasSpecialNeedsChild == false,
+                                numberOfAdoptions > 0,
+                                qualifiedAdoptionExpenses > 0,
+                                totalCredit == 0)
+    then
+        // For regular adoption, credit is limited to actual expenses up to maximum
+        BigDecimal maxPerAdoption = $credit.getMaximumCreditPerAdoption();
+        BigDecimal expensesPerAdoption = $credit.getQualifiedAdoptionExpenses()
+                .divide(new BigDecimal($credit.getNumberOfAdoptions()), 2, RoundingMode.HALF_UP);
+
+        BigDecimal creditPerAdoption = expensesPerAdoption.min(maxPerAdoption);
+
+        BigDecimal totalCredit = creditPerAdoption
+                .multiply(new BigDecimal($credit.getNumberOfAdoptions()))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $credit.setTotalCredit(totalCredit);
+
+        // Calculate refundable portion (limited by actual credit)
+        BigDecimal refundablePerAdoption = $credit.getRefundablePortionPerAdoption().min(creditPerAdoption);
+        BigDecimal refundable = refundablePerAdoption
+                .multiply(new BigDecimal($credit.getNumberOfAdoptions()))
+                .setScale(2, RoundingMode.HALF_UP);
+        $credit.setRefundableAmount(refundable);
+
+        BigDecimal nonRefundable = totalCredit.subtract(refundable);
+        $credit.setNonRefundableAmount(nonRefundable);
+
+        System.out.println("Adoption Credit (Regular): $" + totalCredit);
+        update($credit);
+end
+
+rule "Apply Adoption Credit Phaseout"
+    salience 60
+    when
+        $credit : AdoptionCredit(totalCredit > 0,
+                                modifiedAdjustedGrossIncome > 0)
+    then
+        BigDecimal magi = $credit.getModifiedAdjustedGrossIncome();
+        BigDecimal phaseoutBegin = $credit.getPhaseoutBeginMAGI();
+        BigDecimal phaseoutComplete = $credit.getPhaseoutCompleteMAGI();
+        BigDecimal currentCredit = $credit.getTotalCredit();
+
+        BigDecimal finalCredit = currentCredit;
+
+        // Apply phaseout if MAGI exceeds threshold
+        if (magi.compareTo(phaseoutBegin) > 0) {
+            if (magi.compareTo(phaseoutComplete) >= 0) {
+                // MAGI exceeds complete phaseout - no credit
+                finalCredit = BigDecimal.ZERO;
+                $credit.setRefundableAmount(BigDecimal.ZERO);
+                $credit.setNonRefundableAmount(BigDecimal.ZERO);
+            } else {
+                // Calculate phaseout
+                BigDecimal phaseoutRange = phaseoutComplete.subtract(phaseoutBegin);
+                BigDecimal excessMAGI = magi.subtract(phaseoutBegin);
+                BigDecimal phaseoutPercentage = excessMAGI.divide(phaseoutRange, 4, RoundingMode.HALF_UP);
+                BigDecimal reduction = currentCredit.multiply(phaseoutPercentage)
+                        .setScale(2, RoundingMode.HALF_UP);
+                finalCredit = currentCredit.subtract(reduction);
+
+                // Reduce refundable and non-refundable proportionally
+                BigDecimal reductionRatio = finalCredit.divide(currentCredit, 4, RoundingMode.HALF_UP);
+                BigDecimal newRefundable = $credit.getRefundableAmount().multiply(reductionRatio)
+                        .setScale(2, RoundingMode.HALF_UP);
+                BigDecimal newNonRefundable = $credit.getNonRefundableAmount().multiply(reductionRatio)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+                $credit.setRefundableAmount(newRefundable);
+                $credit.setNonRefundableAmount(newNonRefundable);
+            }
+
+            $credit.setTotalCredit(finalCredit);
+            System.out.println("Adoption Credit after phaseout: $" + finalCredit);
+            update($credit);
+        }
+end
+
+rule "Apply Adoption Credit to Tax Return"
+    salience 55
+    when
+        $credit : AdoptionCredit(totalCredit > 0)
+        $return : TaxReturn(returnId == ($credit.getCreditId().replace("-ADOPT", "")),
+                           adoptionCredit == 0)
+    then
+        $return.setAdoptionCredit($credit.getTotalCredit());
+
+        // Add refundable portion to total refundable credits
+        BigDecimal currentRefundable = $return.getRefundableCredits();
+        $return.setRefundableCredits(currentRefundable.add($credit.getRefundableAmount()));
+
+        System.out.println("Applied Adoption Credit to return: $" + $credit.getTotalCredit());
+        update($return);
+end
+
+// ============================================================================
+// TOTAL ALL CREDITS
+// ============================================================================
+
+rule "Calculate Total Credits"
+    salience 50
+    when
+        $return : TaxReturn(totalCredits == 0,
+                           (childTaxCredit > 0 || earnedIncomeCredit > 0 || adoptionCredit > 0 || otherCredits > 0))
+    then
+        BigDecimal total = $return.getChildTaxCredit()
+                .add($return.getEarnedIncomeCredit())
+                .add($return.getAdoptionCredit())
+                .add($return.getOtherCredits());
+
+        $return.setTotalCredits(total);
+        System.out.println("Total credits calculated: $" + total);
+        update($return);
+end
+
+// ============================================================================
+// FINAL TAX CALCULATION
+// ============================================================================
+
+rule "Calculate Final Tax After Credits"
+    salience 45
+    when
+        $return : TaxReturn(totalTaxBeforeCredits > 0 || regularTax > 0,
+                           totalCredits > 0,
+                           totalTaxAfterCredits == 0)
+    then
+        // Use totalTaxBeforeCredits if AMT was applied, otherwise use regularTax
+        BigDecimal taxBeforeCredits = $return.getTotalTaxBeforeCredits().compareTo(BigDecimal.ZERO) > 0
+                ? $return.getTotalTaxBeforeCredits()
+                : $return.getRegularTax();
+
+        // Non-refundable credits can only reduce tax to zero
+        BigDecimal nonRefundableCredits = $return.getTotalCredits().subtract($return.getRefundableCredits());
+
+        BigDecimal taxAfterNonRefundable = taxBeforeCredits.subtract(nonRefundableCredits);
+        if (taxAfterNonRefundable.compareTo(BigDecimal.ZERO) < 0) {
+            taxAfterNonRefundable = BigDecimal.ZERO;
+        }
+
+        $return.setTotalTaxAfterCredits(taxAfterNonRefundable);
+
+        // Calculate refund or amount due
+        BigDecimal refundableCredits = $return.getRefundableCredits();
+        if (taxAfterNonRefundable.compareTo(BigDecimal.ZERO) == 0 && refundableCredits.compareTo(BigDecimal.ZERO) > 0) {
+            // Taxpayer gets a refund
+            $return.setRefundAmount(refundableCredits);
+            $return.setTaxDue(BigDecimal.ZERO);
+        } else if (taxAfterNonRefundable.compareTo(refundableCredits) > 0) {
+            // Taxpayer owes tax
+            BigDecimal taxDue = taxAfterNonRefundable.subtract(refundableCredits);
+            $return.setTaxDue(taxDue);
+            $return.setRefundAmount(BigDecimal.ZERO);
+        } else {
+            // Taxpayer gets a refund
+            BigDecimal refund = refundableCredits.subtract(taxAfterNonRefundable);
+            $return.setRefundAmount(refund);
+            $return.setTaxDue(BigDecimal.ZERO);
+        }
+
+        System.out.println("Final tax calculation complete:");
+        System.out.println("  Tax after credits: $" + taxAfterNonRefundable);
+        System.out.println("  Refund amount: $" + $return.getRefundAmount());
+        System.out.println("  Tax due: $" + $return.getTaxDue());
+        update($return);
+end

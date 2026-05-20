@@ -1,0 +1,107 @@
+package rules;
+
+import io.jaiclaw.rules.engine.facts.ValidationFact;
+
+// Email Validation Rules
+
+rule "Validate Email Required"
+    when
+        $fact : ValidationFact(get("email") == null || get("email").toString().trim().isEmpty())
+    then
+        $fact.addError("Email is required");
+end
+
+rule "Validate Email Format"
+    when
+        $fact : ValidationFact(
+            get("email") != null,
+            !get("email").toString().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+        )
+    then
+        $fact.addError("Email format is invalid");
+end
+
+// Name Validation Rules
+
+rule "Validate Name Required"
+    when
+        $fact : ValidationFact(get("name") == null || get("name").toString().trim().isEmpty())
+    then
+        $fact.addError("Name is required");
+end
+
+rule "Validate Name Length"
+    when
+        $fact : ValidationFact(
+            get("name") != null,
+            get("name").toString().length() < 2
+        )
+    then
+        $fact.addError("Name must be at least 2 characters long");
+end
+
+rule "Warn About Short Names"
+    when
+        $fact : ValidationFact(
+            get("name") != null,
+            get("name").toString().length() < 3
+        )
+    then
+        $fact.addWarning("Name is unusually short");
+end
+
+// Age Validation Rules
+
+rule "Validate Age Required"
+    when
+        $fact : ValidationFact(get("age") == null)
+    then
+        $fact.addError("Age is required");
+end
+
+rule "Validate Age Range"
+    when
+        $fact : ValidationFact(
+            get("age") != null,
+            Integer.parseInt(get("age").toString()) < 18 || 
+            Integer.parseInt(get("age").toString()) > 120
+        )
+    then
+        $fact.addError("Age must be between 18 and 120");
+end
+
+// Phone Validation Rules
+
+rule "Validate Phone Format"
+    when
+        $fact : ValidationFact(
+            get("phone") != null,
+            !get("phone").toString().matches("^\\+?[0-9]{10,15}$")
+        )
+    then
+        $fact.addError("Phone number format is invalid (10-15 digits expected)");
+end
+
+// Password Validation Rules
+
+rule "Validate Password Strength"
+    when
+        $fact : ValidationFact(
+            get("password") != null,
+            get("password").toString().length() < 8
+        )
+    then
+        $fact.addError("Password must be at least 8 characters long");
+end
+
+rule "Warn About Weak Passwords"
+    when
+        $fact : ValidationFact(
+            get("password") != null,
+            !get("password").toString().matches(".*[A-Z].*") ||
+            !get("password").toString().matches(".*[a-z].*") ||
+            !get("password").toString().matches(".*[0-9].*")
+        )
+    then
+        $fact.addWarning("Password should contain uppercase, lowercase, and numbers for better security");
+end

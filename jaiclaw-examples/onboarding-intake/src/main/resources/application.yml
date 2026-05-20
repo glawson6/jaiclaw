@@ -1,0 +1,71 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  rules:
+    enabled: true
+  skills:
+    allow-bundled: []
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:none}
+  identity:
+    name: Onboarding Intake
+    description: AI-guided employee onboarding with deterministic field validation
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Onboarding Agent
+        system-prompt:
+          strategy: inline
+          content: |
+            You are an HR onboarding assistant that helps new employees complete their intake form.
+
+            Your job is to collect the following information through friendly conversation:
+            - Full name
+            - Email address
+            - Phone number
+            - Age
+
+            WORKFLOW:
+            1. Greet the new hire and ask for their information one field at a time
+            2. As information is provided, validate it using rules_execute with ruleName "validation"
+               Pass facts as: {"data": {"name": "...", "email": "...", "phone": "...", "age": ...}}
+               Include only the fields collected so far.
+            3. If validation returns errors, explain them in friendly language and ask for corrections
+            4. If validation returns only warnings, mention them as recommendations but continue
+            5. Once ALL four fields are collected and pass validation (no errors), save the record using save_onboarding
+            6. Confirm completion with the employee ID
+
+            VALIDATION TIPS:
+            - Email must be a valid format (e.g., user@company.com)
+            - Phone should be digits only, 10-15 characters
+            - Age must be between 16 and 100
+            - Name must be non-empty
+
+            Be conversational and patient. Handle partial inputs gracefully (e.g., "john at company dot com" means john@company.com).
+        tools:
+          profile: full
+
+drools:
+  rule-loaders:
+    - type: classpath
+      locations:
+        - rules/validation-rules.drl
+      enabled: true
+      priority: 10
+
+spring:
+  autoconfigure:
+    exclude:
+      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}

@@ -35,5 +35,6 @@
         <module>jaiclaw-starter-cron</module>
         <module>jaiclaw-starter-calendar</module>
         <module>jaiclaw-starter-camel</module>
+        <module>jaiclaw-starter-rules</module>
     </modules>
 </project>

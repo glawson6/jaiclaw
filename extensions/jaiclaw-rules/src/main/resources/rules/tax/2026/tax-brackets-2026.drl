@@ -1,0 +1,933 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.FilingStatus;
+import io.jaiclaw.rules.tax.facts.TaxBracketCalculation;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Tax Bracket Rules for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32, Section 4.01
+ * Implements 7-bracket progressive tax rates: 10%, 12%, 22%, 24%, 32%, 35%, 37%
+ */
+
+// ============================================================================
+// MARRIED FILING JOINTLY AND SURVIVING SPOUSES - IRC 1(j)(2)(A)
+// ============================================================================
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 1 (10%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 0, taxableIncome <= 24800)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Tax = 10% of taxable income
+        BigDecimal tax = $taxpayer.getTaxableIncome()
+                .multiply(new BigDecimal("0.10"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $return.setRegularTax(tax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(1);
+        calc.setTaxRate(new BigDecimal("10"));
+        calc.setIncomeInBracket($taxpayer.getTaxableIncome());
+        calc.setTaxFromBracket(tax);
+        calc.setBracketFloor(BigDecimal.ZERO);
+        calc.setBracketCeiling(new BigDecimal("24800"));
+        calc.setDescription("10% on income up to $24,800");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 2 (12%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 24800, taxableIncome <= 100800)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $2,480
+        // Plus 12% of excess over $24,800
+        BigDecimal baseTax = new BigDecimal("2480.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("24800"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.12"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(2);
+        calc.setTaxRate(new BigDecimal("12"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("24800"));
+        calc.setBracketCeiling(new BigDecimal("100800"));
+        calc.setDescription("$2,480 plus 12% of excess over $24,800");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 3 (22%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 100800, taxableIncome <= 211400)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $11,600
+        // Plus 22% of excess over $100,800
+        BigDecimal baseTax = new BigDecimal("11600.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("100800"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.22"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(3);
+        calc.setTaxRate(new BigDecimal("22"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("100800"));
+        calc.setBracketCeiling(new BigDecimal("211400"));
+        calc.setDescription("$11,600 plus 22% of excess over $100,800");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 4 (24%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 211400, taxableIncome <= 403550)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $35,932
+        // Plus 24% of excess over $211,400
+        BigDecimal baseTax = new BigDecimal("35932.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("211400"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.24"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(4);
+        calc.setTaxRate(new BigDecimal("24"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("211400"));
+        calc.setBracketCeiling(new BigDecimal("403550"));
+        calc.setDescription("$35,932 plus 24% of excess over $211,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 5 (32%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 403550, taxableIncome <= 512450)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $82,048
+        // Plus 32% of excess over $403,550
+        BigDecimal baseTax = new BigDecimal("82048.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("403550"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.32"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(5);
+        calc.setTaxRate(new BigDecimal("32"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("403550"));
+        calc.setBracketCeiling(new BigDecimal("512450"));
+        calc.setDescription("$82,048 plus 32% of excess over $403,550");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 6 (35%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 512450, taxableIncome <= 768700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $116,896
+        // Plus 35% of excess over $512,450
+        BigDecimal baseTax = new BigDecimal("116896.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("512450"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.35"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(6);
+        calc.setTaxRate(new BigDecimal("35"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("512450"));
+        calc.setBracketCeiling(new BigDecimal("768700"));
+        calc.setDescription("$116,896 plus 35% of excess over $512,450");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Jointly - Bracket 7 (37%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            taxableIncome > 768700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        // Base tax: $206,583.50
+        // Plus 37% of excess over $768,700
+        BigDecimal baseTax = new BigDecimal("206583.50");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("768700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.37"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(7);
+        calc.setTaxRate(new BigDecimal("37"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("768700"));
+        calc.setBracketCeiling(null);
+        calc.setDescription("$206,583.50 plus 37% of excess over $768,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+// ============================================================================
+// HEAD OF HOUSEHOLD - IRC 1(j)(2)(B)
+// ============================================================================
+
+rule "Calculate Tax - Head of Household - Bracket 1 (10%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 0, taxableIncome <= 17700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal tax = $taxpayer.getTaxableIncome()
+                .multiply(new BigDecimal("0.10"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $return.setRegularTax(tax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(1);
+        calc.setTaxRate(new BigDecimal("10"));
+        calc.setIncomeInBracket($taxpayer.getTaxableIncome());
+        calc.setTaxFromBracket(tax);
+        calc.setBracketFloor(BigDecimal.ZERO);
+        calc.setBracketCeiling(new BigDecimal("17700"));
+        calc.setDescription("10% on income up to $17,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 2 (12%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 17700, taxableIncome <= 67450)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("1770.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("17700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.12"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(2);
+        calc.setTaxRate(new BigDecimal("12"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("17700"));
+        calc.setBracketCeiling(new BigDecimal("67450"));
+        calc.setDescription("$1,770 plus 12% of excess over $17,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 3 (22%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 67450, taxableIncome <= 105700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("7740.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("67450"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.22"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(3);
+        calc.setTaxRate(new BigDecimal("22"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("67450"));
+        calc.setBracketCeiling(new BigDecimal("105700"));
+        calc.setDescription("$7,740 plus 22% of excess over $67,450");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 4 (24%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 105700, taxableIncome <= 201750)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("16155.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("105700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.24"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(4);
+        calc.setTaxRate(new BigDecimal("24"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("105700"));
+        calc.setBracketCeiling(new BigDecimal("201750"));
+        calc.setDescription("$16,155 plus 24% of excess over $105,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 5 (32%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 201750, taxableIncome <= 256200)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("39207.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("201750"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.32"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(5);
+        calc.setTaxRate(new BigDecimal("32"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("201750"));
+        calc.setBracketCeiling(new BigDecimal("256200"));
+        calc.setDescription("$39,207 plus 32% of excess over $201,750");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 6 (35%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 256200, taxableIncome <= 640600)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("56631.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("256200"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.35"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(6);
+        calc.setTaxRate(new BigDecimal("35"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("256200"));
+        calc.setBracketCeiling(new BigDecimal("640600"));
+        calc.setDescription("$56,631 plus 35% of excess over $256,200");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Head of Household - Bracket 7 (37%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            taxableIncome > 640600)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("191171.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("640600"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.37"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(7);
+        calc.setTaxRate(new BigDecimal("37"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("640600"));
+        calc.setBracketCeiling(null);
+        calc.setDescription("$191,171 plus 37% of excess over $640,600");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+// ============================================================================
+// SINGLE FILERS - IRC 1(j)(2)(C)
+// ============================================================================
+
+rule "Calculate Tax - Single - Bracket 1 (10%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 0, taxableIncome <= 12400)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal tax = $taxpayer.getTaxableIncome()
+                .multiply(new BigDecimal("0.10"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $return.setRegularTax(tax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(1);
+        calc.setTaxRate(new BigDecimal("10"));
+        calc.setIncomeInBracket($taxpayer.getTaxableIncome());
+        calc.setTaxFromBracket(tax);
+        calc.setBracketFloor(BigDecimal.ZERO);
+        calc.setBracketCeiling(new BigDecimal("12400"));
+        calc.setDescription("10% on income up to $12,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 2 (12%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 12400, taxableIncome <= 50400)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("1240.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("12400"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.12"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(2);
+        calc.setTaxRate(new BigDecimal("12"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("12400"));
+        calc.setBracketCeiling(new BigDecimal("50400"));
+        calc.setDescription("$1,240 plus 12% of excess over $12,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 3 (22%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 50400, taxableIncome <= 105700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("5800.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("50400"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.22"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(3);
+        calc.setTaxRate(new BigDecimal("22"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("50400"));
+        calc.setBracketCeiling(new BigDecimal("105700"));
+        calc.setDescription("$5,800 plus 22% of excess over $50,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 4 (24%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 105700, taxableIncome <= 201775)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("17966.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("105700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.24"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(4);
+        calc.setTaxRate(new BigDecimal("24"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("105700"));
+        calc.setBracketCeiling(new BigDecimal("201775"));
+        calc.setDescription("$17,966 plus 24% of excess over $105,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 5 (32%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 201775, taxableIncome <= 256225)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("41024.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("201775"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.32"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(5);
+        calc.setTaxRate(new BigDecimal("32"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("201775"));
+        calc.setBracketCeiling(new BigDecimal("256225"));
+        calc.setDescription("$41,024 plus 32% of excess over $201,775");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 6 (35%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 256225, taxableIncome <= 640600)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("58448.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("256225"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.35"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(6);
+        calc.setTaxRate(new BigDecimal("35"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("256225"));
+        calc.setBracketCeiling(new BigDecimal("640600"));
+        calc.setDescription("$58,448 plus 35% of excess over $256,225");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Single - Bracket 7 (37%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            taxableIncome > 640600)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("192979.25");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("640600"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.37"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(7);
+        calc.setTaxRate(new BigDecimal("37"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("640600"));
+        calc.setBracketCeiling(null);
+        calc.setDescription("$192,979.25 plus 37% of excess over $640,600");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+// ============================================================================
+// MARRIED FILING SEPARATELY - IRC 1(j)(2)(D)
+// ============================================================================
+
+rule "Calculate Tax - Married Filing Separately - Bracket 1 (10%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 0, taxableIncome <= 12400)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal tax = $taxpayer.getTaxableIncome()
+                .multiply(new BigDecimal("0.10"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $return.setRegularTax(tax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(1);
+        calc.setTaxRate(new BigDecimal("10"));
+        calc.setIncomeInBracket($taxpayer.getTaxableIncome());
+        calc.setTaxFromBracket(tax);
+        calc.setBracketFloor(BigDecimal.ZERO);
+        calc.setBracketCeiling(new BigDecimal("12400"));
+        calc.setDescription("10% on income up to $12,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 2 (12%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 12400, taxableIncome <= 50400)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("1240.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("12400"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.12"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(2);
+        calc.setTaxRate(new BigDecimal("12"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("12400"));
+        calc.setBracketCeiling(new BigDecimal("50400"));
+        calc.setDescription("$1,240 plus 12% of excess over $12,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 3 (22%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 50400, taxableIncome <= 105700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("5800.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("50400"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.22"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(3);
+        calc.setTaxRate(new BigDecimal("22"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("50400"));
+        calc.setBracketCeiling(new BigDecimal("105700"));
+        calc.setDescription("$5,800 plus 22% of excess over $50,400");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 4 (24%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 105700, taxableIncome <= 201775)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("17966.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("105700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.24"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(4);
+        calc.setTaxRate(new BigDecimal("24"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("105700"));
+        calc.setBracketCeiling(new BigDecimal("201775"));
+        calc.setDescription("$17,966 plus 24% of excess over $105,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 5 (32%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 201775, taxableIncome <= 256225)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("41024.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("201775"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.32"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(5);
+        calc.setTaxRate(new BigDecimal("32"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("201775"));
+        calc.setBracketCeiling(new BigDecimal("256225"));
+        calc.setDescription("$41,024 plus 32% of excess over $201,775");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 6 (35%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 256225, taxableIncome <= 384350)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("58448.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("256225"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.35"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(6);
+        calc.setTaxRate(new BigDecimal("35"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("256225"));
+        calc.setBracketCeiling(new BigDecimal("384350"));
+        calc.setDescription("$58,448 plus 35% of excess over $256,225");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Married Filing Separately - Bracket 7 (37%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            taxableIncome > 384350)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("103291.75");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("384350"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.37"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(7);
+        calc.setTaxRate(new BigDecimal("37"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("384350"));
+        calc.setBracketCeiling(null);
+        calc.setDescription("$103,291.75 plus 37% of excess over $384,350");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+// ============================================================================
+// ESTATES AND TRUSTS - IRC 1(j)(2)(E)
+// ============================================================================
+
+rule "Calculate Tax - Estate or Trust - Bracket 1 (10%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.ESTATE_OR_TRUST,
+                            taxableIncome > 0, taxableIncome <= 3300)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal tax = $taxpayer.getTaxableIncome()
+                .multiply(new BigDecimal("0.10"))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        $return.setRegularTax(tax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(1);
+        calc.setTaxRate(new BigDecimal("10"));
+        calc.setIncomeInBracket($taxpayer.getTaxableIncome());
+        calc.setTaxFromBracket(tax);
+        calc.setBracketFloor(BigDecimal.ZERO);
+        calc.setBracketCeiling(new BigDecimal("3300"));
+        calc.setDescription("10% on income up to $3,300");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Estate or Trust - Bracket 2 (24%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.ESTATE_OR_TRUST,
+                            taxableIncome > 3300, taxableIncome <= 11700)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("330.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("3300"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.24"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(2);
+        calc.setTaxRate(new BigDecimal("24"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("3300"));
+        calc.setBracketCeiling(new BigDecimal("11700"));
+        calc.setDescription("$330 plus 24% of excess over $3,300");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Estate or Trust - Bracket 3 (35%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.ESTATE_OR_TRUST,
+                            taxableIncome > 11700, taxableIncome <= 16000)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("2346.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("11700"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.35"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(3);
+        calc.setTaxRate(new BigDecimal("35"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("11700"));
+        calc.setBracketCeiling(new BigDecimal("16000"));
+        calc.setDescription("$2,346 plus 35% of excess over $11,700");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end
+
+rule "Calculate Tax - Estate or Trust - Bracket 4 (37%)"
+    salience 100
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.ESTATE_OR_TRUST,
+                            taxableIncome > 16000)
+        $return : TaxReturn(taxPayer == $taxpayer, regularTax == 0)
+    then
+        BigDecimal baseTax = new BigDecimal("3851.00");
+        BigDecimal excess = $taxpayer.getTaxableIncome().subtract(new BigDecimal("16000"));
+        BigDecimal additionalTax = excess.multiply(new BigDecimal("0.37"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTax = baseTax.add(additionalTax);
+
+        $return.setRegularTax(totalTax);
+
+        TaxBracketCalculation calc = new TaxBracketCalculation();
+        calc.setBracketNumber(4);
+        calc.setTaxRate(new BigDecimal("37"));
+        calc.setIncomeInBracket(excess);
+        calc.setTaxFromBracket(additionalTax);
+        calc.setBracketFloor(new BigDecimal("16000"));
+        calc.setBracketCeiling(null);
+        calc.setDescription("$3,851 plus 37% of excess over $16,000");
+        $return.getBracketCalculations().add(calc);
+
+        update($return);
+end

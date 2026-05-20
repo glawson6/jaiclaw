@@ -1,0 +1,275 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.AlternativeMinimumTax;
+import io.jaiclaw.rules.tax.facts.FilingStatus;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Alternative Minimum Tax (AMT) Rules for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32, Section 4.10
+ * IRC Section 55 - Alternative Minimum Tax
+ *
+ * AMT Exemption Amounts:
+ * - Joint Returns or Surviving Spouses: $140,200
+ * - Unmarried Individuals: $90,100
+ * - Married Filing Separately: $70,100
+ * - Estates and Trusts: $31,400
+ *
+ * AMT Rates: 26% and 28%
+ * 28% rate threshold:
+ * - Married Filing Separately: $122,250
+ * - All Other Taxpayers: $244,500
+ */
+
+// ============================================================================
+// AMT EXEMPTION AMOUNTS - IRC 55(d)(1)
+// ============================================================================
+
+rule "AMT - Set Exemption - Married Filing Jointly"
+    salience 70
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(AlternativeMinimumTax())
+    then
+        AlternativeMinimumTax amt = new AlternativeMinimumTax();
+        amt.setAmtId($return.getReturnId() + "-AMT");
+        amt.setFilingStatus($taxpayer.getFilingStatus());
+
+        // 2026 exemption for MFJ: $140,200
+        amt.setExemptionAmount(new BigDecimal("140200.00"));
+
+        // Phaseout thresholds for MFJ
+        amt.setThresholdPhaseoutAmount(new BigDecimal("1000000.00"));
+        amt.setCompletePhaseoutAmount(new BigDecimal("1280400.00"));
+
+        // 28% rate threshold for MFJ
+        amt.setExcessTaxableIncomeThreshold(new BigDecimal("244500.00"));
+
+        insert(amt);
+end
+
+rule "AMT - Set Exemption - Single"
+    salience 70
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(AlternativeMinimumTax())
+    then
+        AlternativeMinimumTax amt = new AlternativeMinimumTax();
+        amt.setAmtId($return.getReturnId() + "-AMT");
+        amt.setFilingStatus($taxpayer.getFilingStatus());
+
+        // 2026 exemption for Single: $90,100
+        amt.setExemptionAmount(new BigDecimal("90100.00"));
+
+        // Phaseout thresholds for Single
+        amt.setThresholdPhaseoutAmount(new BigDecimal("500000.00"));
+        amt.setCompletePhaseoutAmount(new BigDecimal("680200.00"));
+
+        // 28% rate threshold for Single
+        amt.setExcessTaxableIncomeThreshold(new BigDecimal("244500.00"));
+
+        insert(amt);
+end
+
+rule "AMT - Set Exemption - Head of Household"
+    salience 70
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(AlternativeMinimumTax())
+    then
+        AlternativeMinimumTax amt = new AlternativeMinimumTax();
+        amt.setAmtId($return.getReturnId() + "-AMT");
+        amt.setFilingStatus($taxpayer.getFilingStatus());
+
+        // 2026 exemption for HOH: $90,100 (same as Single)
+        amt.setExemptionAmount(new BigDecimal("90100.00"));
+
+        // Phaseout thresholds for HOH
+        amt.setThresholdPhaseoutAmount(new BigDecimal("500000.00"));
+        amt.setCompletePhaseoutAmount(new BigDecimal("680200.00"));
+
+        // 28% rate threshold for HOH
+        amt.setExcessTaxableIncomeThreshold(new BigDecimal("244500.00"));
+
+        insert(amt);
+end
+
+rule "AMT - Set Exemption - Married Filing Separately"
+    salience 70
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(AlternativeMinimumTax())
+    then
+        AlternativeMinimumTax amt = new AlternativeMinimumTax();
+        amt.setAmtId($return.getReturnId() + "-AMT");
+        amt.setFilingStatus($taxpayer.getFilingStatus());
+
+        // 2026 exemption for MFS: $70,100
+        amt.setExemptionAmount(new BigDecimal("70100.00"));
+
+        // Phaseout thresholds for MFS
+        amt.setThresholdPhaseoutAmount(new BigDecimal("500000.00"));
+        amt.setCompletePhaseoutAmount(new BigDecimal("640200.00"));
+
+        // 28% rate threshold for MFS
+        amt.setExcessTaxableIncomeThreshold(new BigDecimal("122250.00"));
+
+        insert(amt);
+end
+
+rule "AMT - Set Exemption - Estate or Trust"
+    salience 70
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.ESTATE_OR_TRUST)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(AlternativeMinimumTax())
+    then
+        AlternativeMinimumTax amt = new AlternativeMinimumTax();
+        amt.setAmtId($return.getReturnId() + "-AMT");
+        amt.setFilingStatus($taxpayer.getFilingStatus());
+
+        // 2026 exemption for Estate/Trust: $31,400
+        amt.setExemptionAmount(new BigDecimal("31400.00"));
+
+        // Phaseout thresholds for Estate/Trust
+        amt.setThresholdPhaseoutAmount(new BigDecimal("104800.00"));
+        amt.setCompletePhaseoutAmount(new BigDecimal("167600.00"));
+
+        // 28% rate threshold for Estate/Trust
+        amt.setExcessTaxableIncomeThreshold(new BigDecimal("244500.00"));
+
+        insert(amt);
+end
+
+// ============================================================================
+// CALCULATE AMT EXEMPTION AFTER PHASEOUT - IRC 55(d)(2)
+// ============================================================================
+
+rule "Calculate AMT Exemption After Phaseout"
+    salience 65
+    when
+        $amt : AlternativeMinimumTax(exemptionAmount > 0,
+                                    alternativeMinimumTaxableIncome > 0,
+                                    exemptionAfterPhaseout == 0)
+    then
+        BigDecimal amti = $amt.getAlternativeMinimumTaxableIncome();
+        BigDecimal exemption = $amt.getExemptionAmount();
+        BigDecimal thresholdPhaseout = $amt.getThresholdPhaseoutAmount();
+        BigDecimal completePhaseout = $amt.getCompletePhaseoutAmount();
+
+        BigDecimal finalExemption = exemption;
+
+        // Exemption phases out at 25% of AMTI exceeding threshold
+        if (amti.compareTo(thresholdPhaseout) > 0) {
+            if (amti.compareTo(completePhaseout) >= 0) {
+                // AMTI exceeds complete phaseout - no exemption
+                finalExemption = BigDecimal.ZERO;
+            } else {
+                // Calculate phaseout
+                BigDecimal excessAMTI = amti.subtract(thresholdPhaseout);
+                BigDecimal reduction = excessAMTI.multiply(new BigDecimal("0.25"))
+                        .setScale(2, RoundingMode.HALF_UP);
+                finalExemption = exemption.subtract(reduction);
+
+                if (finalExemption.compareTo(BigDecimal.ZERO) < 0) {
+                    finalExemption = BigDecimal.ZERO;
+                }
+            }
+        }
+
+        $amt.setExemptionAfterPhaseout(finalExemption);
+
+        // Calculate AMTI after exemption
+        BigDecimal amtiAfterExemption = amti.subtract(finalExemption);
+        if (amtiAfterExemption.compareTo(BigDecimal.ZERO) < 0) {
+            amtiAfterExemption = BigDecimal.ZERO;
+        }
+        $amt.setAmtIncomeAfterExemption(amtiAfterExemption);
+
+        System.out.println("AMT Exemption after phaseout: $" + finalExemption);
+        update($amt);
+end
+
+// ============================================================================
+// CALCULATE AMT TAX - IRC 55(b)(1)
+// ============================================================================
+
+rule "Calculate AMT Tax"
+    salience 60
+    when
+        $amt : AlternativeMinimumTax(amtIncomeAfterExemption > 0,
+                                    amtCalculated == 0)
+    then
+        BigDecimal amtiAfterExemption = $amt.getAmtIncomeAfterExemption();
+        BigDecimal threshold28Percent = $amt.getExcessTaxableIncomeThreshold();
+
+        BigDecimal amtTax = BigDecimal.ZERO;
+
+        if (amtiAfterExemption.compareTo(threshold28Percent) <= 0) {
+            // All income taxed at 26%
+            amtTax = amtiAfterExemption.multiply(new BigDecimal("0.26"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        } else {
+            // 26% on first portion, 28% on excess
+            BigDecimal taxAt26 = threshold28Percent.multiply(new BigDecimal("0.26"))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal excessIncome = amtiAfterExemption.subtract(threshold28Percent);
+            BigDecimal taxAt28 = excessIncome.multiply(new BigDecimal("0.28"))
+                    .setScale(2, RoundingMode.HALF_UP);
+            amtTax = taxAt26.add(taxAt28);
+        }
+
+        $amt.setAmtCalculated(amtTax);
+        System.out.println("Calculated AMT: $" + amtTax);
+        update($amt);
+end
+
+// ============================================================================
+// DETERMINE AMT DUE (if AMT exceeds regular tax)
+// ============================================================================
+
+rule "Determine AMT Due"
+    salience 55
+    when
+        $amt : AlternativeMinimumTax(amtCalculated > 0,
+                                    regularTax > 0,
+                                    amtDue == 0)
+    then
+        BigDecimal amtCalculated = $amt.getAmtCalculated();
+        BigDecimal regularTax = $amt.getRegularTax();
+
+        // AMT is only due if it exceeds regular tax
+        BigDecimal amtDue = BigDecimal.ZERO;
+        if (amtCalculated.compareTo(regularTax) > 0) {
+            amtDue = amtCalculated.subtract(regularTax);
+        }
+
+        $amt.setAmtDue(amtDue);
+        System.out.println("AMT Due: $" + amtDue);
+        update($amt);
+end
+
+rule "Apply AMT to Tax Return"
+    salience 50
+    when
+        $amt : AlternativeMinimumTax(amtDue > 0)
+        $return : TaxReturn(returnId == ($amt.getAmtId().replace("-AMT", "")),
+                           alternativeMinimumTax == 0)
+    then
+        $return.setAlternativeMinimumTax($amt.getAmtDue());
+
+        // Total tax is regular tax plus AMT (but AMT is the difference)
+        // So total tax is actually just the higher of the two
+        BigDecimal totalTax = $return.getRegularTax().add($amt.getAmtDue());
+        $return.setTotalTaxBeforeCredits(totalTax);
+
+        System.out.println("Applied AMT to return: $" + $amt.getAmtDue());
+        update($return);
+end

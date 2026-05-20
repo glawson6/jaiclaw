@@ -1,0 +1,103 @@
+package rules;
+
+import io.jaiclaw.rules.engine.facts.DecisionFact;
+
+// Priority Assignment Rules
+
+rule "High Priority for Urgent Requests"
+    salience 100
+    activation-group "priority-assignment"
+    when
+        $fact : DecisionFact()
+        eval(
+            ($fact.getParameter("urgency") != null && "high".equals($fact.getParameter("urgency").toString())) ||
+            ($fact.getParameter("severity") != null && "critical".equals($fact.getParameter("severity").toString()))
+        )
+    then
+        $fact.setPriority(1);
+        $fact.setDecision("ESCALATE");
+        $fact.setRecommendation("Immediate attention required");
+        $fact.setReasoning("High urgency or critical severity detected");
+end
+
+rule "Medium Priority for Important Requests"
+    salience 50
+    activation-group "priority-assignment"
+    when
+        $fact : DecisionFact()
+        eval(
+            ($fact.getParameter("urgency") != null && "medium".equals($fact.getParameter("urgency").toString())) ||
+            ($fact.getParameter("importance") != null && "high".equals($fact.getParameter("importance").toString()))
+        )
+    then
+        $fact.setPriority(2);
+        $fact.setDecision("SCHEDULE");
+        $fact.setRecommendation("Address within 24 hours");
+        $fact.setReasoning("Medium urgency or high importance identified");
+end
+
+rule "Low Priority for Routine Requests"
+    salience 10
+    activation-group "priority-assignment"
+    when
+        $fact : DecisionFact()
+    then
+        $fact.setPriority(3);
+        $fact.setDecision("QUEUE");
+        $fact.setRecommendation("Handle in standard workflow");
+        $fact.setReasoning("No special priority indicators found");
+end
+
+// Routing Decisions
+
+rule "Route to Technical Team"
+    salience 20
+    when
+        $fact : DecisionFact(recommendation == null)
+        eval(
+            ($fact.getParameter("type") != null && "technical".equals($fact.getParameter("type").toString())) ||
+            ($fact.getParameter("category") != null && "bug".equals($fact.getParameter("category").toString()))
+        )
+    then
+        $fact.setRecommendation("Route to Technical Support Team");
+        $fact.setReasoning("Technical issue identified");
+end
+
+rule "Route to Sales Team"
+    salience 20
+    when
+        $fact : DecisionFact(recommendation == null)
+        eval(
+            ($fact.getParameter("type") != null && "sales".equals($fact.getParameter("type").toString())) ||
+            ($fact.getParameter("category") != null && "pricing".equals($fact.getParameter("category").toString()))
+        )
+    then
+        $fact.setRecommendation("Route to Sales Team");
+        $fact.setReasoning("Sales-related inquiry detected");
+end
+
+// Approval Decisions
+
+rule "Auto-Approve Small Requests"
+    salience 90
+    activation-group "priority-assignment"
+    when
+        $fact : DecisionFact(getParameter("amount") != null)
+        eval(Integer.parseInt($fact.getParameter("amount").toString()) < 100)
+    then
+        $fact.setDecision("APPROVED");
+        $fact.setRecommendation("Auto-approved due to small amount");
+        $fact.setReasoning("Amount under approval threshold");
+end
+
+rule "Require Manager Approval"
+    salience 80
+    activation-group "priority-assignment"
+    when
+        $fact : DecisionFact(getParameter("amount") != null)
+        eval(Integer.parseInt($fact.getParameter("amount").toString()) >= 100)
+    then
+        $fact.setDecision("PENDING_APPROVAL");
+        $fact.setRecommendation("Manager approval required");
+        $fact.setReasoning("Amount exceeds auto-approval threshold");
+end

@@ -14,7 +14,7 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │                                                                              │
 │  ┌───────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
 │  │jaiclaw-gateway-app│  │  jaiclaw-shell   │  │     jaiclaw-examples     │   │
-│  │ REST + WS + Chans │  │ Spring Shell CLI │  │  10 standalone apps      │   │
+│  │ REST + WS + Chans │  │ Spring Shell CLI │  │  32 standalone apps      │   │
 │  └────────┬──────────┘  └────────┬─────────┘  └────────────┬─────────────┘   │
 ├───────────┼──────────────────────┼──────────────────────────┼────────────────┤
 │           │            STARTERS  (Layer 6)                  │                │
@@ -76,11 +76,11 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │  │ automation   │ │ virtual thr  │ │              │ │ user linking     │     │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘     │
 │                                                                              │
-│  ┌──────────────┐ ┌──────────────┐ ┌─────────────────┐                       │
-│  │jaiclaw-canvas│ │ jaiclaw-code │ │jaiclaw-messaging│                       │
-│  │ A2UI / HTML  │ │  file edit   │ │ MCP channel     │                       │
-│  │ artifacts    │ │  code tools  │ │ messaging tools │                       │
-│  └──────────────┘ └──────────────┘ └─────────────────┘                       │
+│  ┌──────────────┐ ┌──────────────┐ ┌─────────────────┐ ┌──────────────────┐  │
+│  │jaiclaw-canvas│ │ jaiclaw-code │ │jaiclaw-messaging│ │  jaiclaw-rules   │  │
+│  │ A2UI / HTML  │ │  file edit   │ │ MCP channel     │ │ Drools 9.44 rule │  │
+│  │ artifacts    │ │  code tools  │ │ messaging tools │ │ execution engine │  │
+│  └──────────────┘ └──────────────┘ └─────────────────┘ └──────────────────┘  │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                      TOOL LAYER  (Layer 2)                                   │
 │                                                                              │
@@ -144,6 +144,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-canvas  (A2UI artifact rendering, HTML file management)
   +---> jaiclaw-code  (file editing, code generation tools)
   +---> jaiclaw-messaging  (MCP server: channel messaging, sessions, agent-routed chat)
+  +---> jaiclaw-rules  (Drools 9.44 rule execution — text-analysis, decision, validation, tax)
   +---> jaiclaw-config  (@ConfigurationProperties records)
           |
           +---> jaiclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
@@ -153,7 +154,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
           |       +---> jaiclaw-gateway-app  (standalone gateway server)
           |       +---> jaiclaw-shell  (Spring Shell CLI)
           |
-          +---> jaiclaw-examples  (10 standalone example applications)
+          +---> jaiclaw-examples  (32 standalone example applications)
           +---> jaiclaw-maven-plugin  (jaiclaw:analyze goal — CI token budget enforcement)
 ```
 
@@ -485,6 +486,7 @@ env:
 | Docker image build (JKube)       | Done         | `-Pk8s` profile in POMs      |
 | HTTP proxy support               | Done         | `jaiclaw-core` + `jaiclaw-config` + starter |
 | Maven plugin (CI token check)   | Done         | `jaiclaw-maven-plugin`         |
+| Rules engine (Drools 9.44)     | Done         | `jaiclaw-rules`                |
 | **Helm chart**                   | **Needed**   | `helm/spring-boot-app/`      |
 | **Redis session store**          | **Planned**  | `jaiclaw-agent` (swap in-mem)  |
 | **Kafka event bus**              | **Optional** | cross-cutting                |
@@ -587,6 +589,11 @@ JaiClawCalendarAutoConfiguration     @ConditionalOnProperty(jaiclaw.calendar.ena
 
 JaiClawMessagingAutoConfiguration    @ConditionalOnProperty(jaiclaw.messaging.enabled=true)
   └── MessagingMcpToolProvider       (8 tools: channel messaging, sessions, agent chat)
+
+JaiClawRulesAutoConfiguration        @ConditionalOnProperty(jaiclaw.rules.enabled=true)
+  ├── DroolsConfig                   (KieContainer, StatelessKieSession, DRL loaders)
+  ├── DroolsRuleExecutionService     (text-analysis, decision, validation rule types)
+  └── ExecuteRuleTool, ListRulesTool, CheckRuleTool  (3 LLM tools: rules_execute, rules_list, rules_check)
 ```
 
 ### Complete Bean Dependency Chain

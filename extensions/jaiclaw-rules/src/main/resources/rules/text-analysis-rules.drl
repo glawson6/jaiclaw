@@ -1,0 +1,338 @@
+package rules;
+
+import io.jaiclaw.rules.engine.facts.TextAnalysisFact;
+import io.jaiclaw.rules.engine.util.RuleLogger;
+
+// Sentiment Analysis Rules
+
+rule "Detect Positive Sentiment - great"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*great.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment (detected 'great')");
+        RuleLogger.logFact($fact);
+end
+
+rule "Detect Positive Sentiment - excellent"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*excellent.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment (detected 'excellent')");
+end
+
+rule "Detect Positive Sentiment - amazing"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*amazing.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment (detected 'amazing')");
+end
+
+rule "Detect Positive Sentiment - wonderful"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*wonderful.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment");
+end
+
+rule "Detect Positive Sentiment - fantastic"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*fantastic.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment");
+end
+
+rule "Detect Positive Sentiment - love"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*love.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment");
+end
+
+rule "Detect Positive Sentiment - perfect"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*perfect.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment");
+end
+
+rule "Detect Positive Sentiment - best"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*best.*")
+    then
+        $fact.setSentiment("positive");
+        $fact.setSummary("The text expresses positive sentiment");
+end
+
+rule "Detect Negative Sentiment - bad"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*bad.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - terrible"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*terrible.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - awful"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*awful.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - worst"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*worst.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - hate"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*hate.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - poor"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*poor.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Negative Sentiment - disappointing"
+    salience 10
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower != null, textLower matches ".*disappointing.*")
+    then
+        $fact.setSentiment("negative");
+        $fact.setSummary("The text expresses negative sentiment");
+end
+
+rule "Detect Neutral Sentiment"
+    salience 1
+    activation-group "sentiment-detection"
+    when
+        $fact : TextAnalysisFact(sentiment == null)
+    then
+        $fact.setSentiment("neutral");
+        $fact.setSummary("The text has neutral sentiment");
+        RuleLogger.logFact($fact);
+end
+
+// Keyword Extraction Rules
+
+rule "Extract Technology Keywords - AI"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*\\bai\\b.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - Machine Learning"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*machine learning.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - Cloud"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*cloud.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - API"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*api.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - Microservices"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*microservices.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - Kubernetes"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*kubernetes.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Technology Keywords - Docker"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*docker.*")
+    then
+        $fact.addKeyword("technology");
+        $fact.addCategory("Technical Content");
+end
+
+rule "Extract Business Keywords - Sales"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*sales.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Business Keywords - Revenue"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*revenue.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Business Keywords - Profit"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*profit.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Business Keywords - Customer"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*customer.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Business Keywords - Market"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*market.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Business Keywords - Strategy"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*strategy.*")
+    then
+        $fact.addKeyword("business");
+        $fact.addCategory("Business Content");
+end
+
+rule "Extract Support Keywords - Help"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*help.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+rule "Extract Support Keywords - Support"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*support.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+rule "Extract Support Keywords - Issue"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*issue.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+rule "Extract Support Keywords - Problem"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*problem.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+rule "Extract Support Keywords - Question"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*question.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+rule "Extract Support Keywords - Assistance"
+    when
+        $fact : TextAnalysisFact(textLower != null, textLower matches ".*assistance.*")
+    then
+        $fact.addKeyword("support");
+        $fact.addCategory("Customer Support");
+end
+
+// Text Length Analysis
+
+rule "Analyze Short Text"
+    when
+        $fact : TextAnalysisFact(text.length() < 50)
+    then
+        $fact.addCategory("Short Message");
+end
+
+rule "Analyze Long Text"
+    when
+        $fact : TextAnalysisFact(text.length() > 500)
+    then
+        $fact.addCategory("Long Document");
+end

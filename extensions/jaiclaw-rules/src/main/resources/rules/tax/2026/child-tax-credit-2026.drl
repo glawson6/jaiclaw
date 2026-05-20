@@ -1,0 +1,90 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.ChildTaxCredit;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Child Tax Credit Rules for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32, Section 4.05
+ * IRC Section 24 - Child Tax Credit
+ *
+ * Maximum credit per child: $2,200
+ * Refundable portion per child: $1,700
+ */
+
+// ============================================================================
+// CHILD TAX CREDIT CALCULATION - IRC 24
+// ============================================================================
+
+rule "Calculate Child Tax Credit - Base Amount"
+    salience 70
+    when
+        $taxpayer : TaxPayer(numberOfQualifyingChildren > 0)
+        $return : TaxReturn(taxPayer == $taxpayer)
+        not(ChildTaxCredit(numberOfQualifyingChildren == $taxpayer.numberOfQualifyingChildren))
+    then
+        // Create ChildTaxCredit fact for calculation
+        ChildTaxCredit credit = new ChildTaxCredit();
+        credit.setCreditId($return.getReturnId() + "-CTC");
+        credit.setNumberOfQualifyingChildren($taxpayer.getNumberOfQualifyingChildren());
+
+        // 2026 amounts from IRC 24(h)(2)
+        credit.setMaximumCreditPerChild(new BigDecimal("2200.00"));
+        credit.setRefundablePortionPerChild(new BigDecimal("1700.00"));
+
+        // Calculate total credit
+        BigDecimal totalCredit = credit.getMaximumCreditPerChild()
+                .multiply(new BigDecimal($taxpayer.getNumberOfQualifyingChildren()))
+                .setScale(2, RoundingMode.HALF_UP);
+        credit.setTotalCredit(totalCredit);
+
+        // Calculate refundable and non-refundable portions
+        BigDecimal refundableTotal = credit.getRefundablePortionPerChild()
+                .multiply(new BigDecimal($taxpayer.getNumberOfQualifyingChildren()))
+                .setScale(2, RoundingMode.HALF_UP);
+        credit.setRefundableAmount(refundableTotal);
+
+        BigDecimal nonRefundableTotal = totalCredit.subtract(refundableTotal);
+        credit.setNonRefundableAmount(nonRefundableTotal);
+
+        System.out.println("Child Tax Credit: " + $taxpayer.getNumberOfQualifyingChildren() +
+                          " children, Total credit: $" + totalCredit +
+                          ", Refundable: $" + refundableTotal);
+
+        insert(credit);
+end
+
+rule "Apply Child Tax Credit to Tax Return"
+    salience 65
+    when
+        $credit : ChildTaxCredit(totalCredit > 0)
+        $return : TaxReturn(returnId == ($credit.getCreditId().replace("-CTC", "")),
+                           childTaxCredit == 0)
+    then
+        $return.setChildTaxCredit($credit.getTotalCredit());
+        System.out.println("Applied Child Tax Credit to return: $" + $credit.getTotalCredit());
+        update($return);
+end
+
+rule "Track Refundable Portion of Child Tax Credit"
+    salience 60
+    when
+        $credit : ChildTaxCredit(refundableAmount > 0)
+        $return : TaxReturn(returnId == ($credit.getCreditId().replace("-CTC", "")))
+    then
+        // Add refundable portion to total refundable credits
+        BigDecimal currentRefundable = $return.getRefundableCredits();
+        BigDecimal newRefundable = currentRefundable.add($credit.getRefundableAmount());
+        $return.setRefundableCredits(newRefundable);
+        System.out.println("Added refundable CTC: $" + $credit.getRefundableAmount());
+        update($return);
+end
+
+// ============================================================================
+// PHASE-OUT CALCULATIONS (if needed in future)
+// Note: The document doesn't specify phaseout thresholds for CTC in 2026
+// This would be added if phaseout rules apply
+// ============================================================================

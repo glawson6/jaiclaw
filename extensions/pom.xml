@@ -40,5 +40,6 @@
         <module>jaiclaw-camel</module>
         <module>jaiclaw-embabel-delegate</module>
         <module>jaiclaw-docs</module>
+        <module>jaiclaw-rules</module>
     </modules>
 </project>

@@ -1,0 +1,21 @@
+package rules.test;
+
+import io.jaiclaw.rules.engine.facts.TextAnalysisFact;
+
+rule "Test Simple Match"
+    salience 100
+    when
+        $fact : TextAnalysisFact(textLower != null)
+    then
+        System.out.println("Rule fired! textLower = " + $fact.getTextLower());
+        $fact.setSentiment("test-match");
+end
+
+rule "Test With Pattern"
+    salience 99
+    when
+        $fact : TextAnalysisFact(sentiment == null, textLower matches ".*great.*")
+    then
+        System.out.println("Pattern matched!");
+        $fact.setSentiment("pattern-matched");
+end

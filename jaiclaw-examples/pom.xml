@@ -48,5 +48,9 @@
         <module>camel-pdf-filler-telegram</module>
         <module>mcp-docs-server</module>
         <module>gemma4-local</module>
+        <module>onboarding-intake</module>
+        <module>support-triage</module>
+        <module>procurement-approval</module>
+        <module>tax-advisor</module>
     </modules>
 </project>

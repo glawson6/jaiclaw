@@ -1,0 +1,194 @@
+package io.jaiclaw.rules.tax;
+
+import io.jaiclaw.rules.tax.facts.TaxPayer;
+import io.jaiclaw.rules.tax.facts.TaxReturn;
+import io.jaiclaw.rules.tax.facts.FilingStatus;
+import java.math.BigDecimal;
+
+/**
+ * Standard Deduction Rules for Tax Year 2026
+ * Based on IRS Revenue Procedure 2025-32, Section 4.14
+ * IRC Section 63(c)(2) - Basic Standard Deduction Amounts
+ * IRC Section 63(c)(5) - Dependent Deduction Limitation
+ * IRC Section 63(f) - Additional Standard Deduction for Aged or Blind
+ */
+
+// ============================================================================
+// BASIC STANDARD DEDUCTION AMOUNTS - IRC 63(c)(2)
+// ============================================================================
+
+rule "Standard Deduction - Married Filing Jointly"
+    salience 90
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_JOINTLY,
+                            useStandardDeduction == true,
+                            isDependent == false)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // 2026 standard deduction for MFJ: $32,200
+        BigDecimal deduction = new BigDecimal("32200.00");
+        $return.setStandardDeduction(deduction);
+        $return.setTotalDeductions(deduction);
+        System.out.println("Applied standard deduction for Married Filing Jointly: $" + deduction);
+        update($return);
+end
+
+rule "Standard Deduction - Head of Household"
+    salience 90
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD,
+                            useStandardDeduction == true,
+                            isDependent == false)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // 2026 standard deduction for HOH: $24,150
+        BigDecimal deduction = new BigDecimal("24150.00");
+        $return.setStandardDeduction(deduction);
+        $return.setTotalDeductions(deduction);
+        System.out.println("Applied standard deduction for Head of Household: $" + deduction);
+        update($return);
+end
+
+rule "Standard Deduction - Single"
+    salience 90
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.SINGLE,
+                            useStandardDeduction == true,
+                            isDependent == false)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // 2026 standard deduction for Single: $16,100
+        BigDecimal deduction = new BigDecimal("16100.00");
+        $return.setStandardDeduction(deduction);
+        $return.setTotalDeductions(deduction);
+        System.out.println("Applied standard deduction for Single: $" + deduction);
+        update($return);
+end
+
+rule "Standard Deduction - Married Filing Separately"
+    salience 90
+    when
+        $taxpayer : TaxPayer(filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY,
+                            useStandardDeduction == true,
+                            isDependent == false)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // 2026 standard deduction for MFS: $16,100
+        BigDecimal deduction = new BigDecimal("16100.00");
+        $return.setStandardDeduction(deduction);
+        $return.setTotalDeductions(deduction);
+        System.out.println("Applied standard deduction for Married Filing Separately: $" + deduction);
+        update($return);
+end
+
+// ============================================================================
+// DEPENDENT STANDARD DEDUCTION - IRC 63(c)(5)
+// ============================================================================
+
+rule "Standard Deduction - Dependent Taxpayer"
+    salience 90
+    when
+        $taxpayer : TaxPayer(isDependent == true,
+                            useStandardDeduction == true)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // For dependents, standard deduction is the GREATER of:
+        // (1) $1,350, or
+        // (2) $450 + earned income
+        BigDecimal minimumDeduction = new BigDecimal("1350.00");
+        BigDecimal earnedIncomeFormula = new BigDecimal("450.00")
+                .add($taxpayer.getEarnedIncome());
+
+        BigDecimal deduction = minimumDeduction.max(earnedIncomeFormula);
+
+        $return.setStandardDeduction(deduction);
+        $return.setTotalDeductions(deduction);
+        System.out.println("Applied standard deduction for dependent: $" + deduction);
+        update($return);
+end
+
+// ============================================================================
+// ADDITIONAL STANDARD DEDUCTION FOR AGED OR BLIND - IRC 63(f)
+// ============================================================================
+
+rule "Additional Standard Deduction - Aged or Blind (Married)"
+    salience 85
+    when
+        $taxpayer : TaxPayer(isAgedOrBlind == true,
+                            (filingStatus == FilingStatus.MARRIED_FILING_JOINTLY ||
+                             filingStatus == FilingStatus.MARRIED_FILING_SEPARATELY),
+                            useStandardDeduction == true)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction > 0)
+    then
+        // Additional deduction for aged or blind (married): $1,650
+        BigDecimal additionalDeduction = new BigDecimal("1650.00");
+        BigDecimal newDeduction = $return.getStandardDeduction().add(additionalDeduction);
+
+        $return.setStandardDeduction(newDeduction);
+        $return.setTotalDeductions(newDeduction);
+        System.out.println("Added additional deduction for aged/blind (married): $" + additionalDeduction);
+        update($return);
+end
+
+rule "Additional Standard Deduction - Aged or Blind (Unmarried Not Surviving Spouse)"
+    salience 85
+    when
+        $taxpayer : TaxPayer(isAgedOrBlind == true,
+                            (filingStatus == FilingStatus.SINGLE ||
+                             filingStatus == FilingStatus.HEAD_OF_HOUSEHOLD),
+                            useStandardDeduction == true)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction > 0)
+    then
+        // Additional deduction for aged or blind (unmarried, not surviving spouse): $2,050
+        BigDecimal additionalDeduction = new BigDecimal("2050.00");
+        BigDecimal newDeduction = $return.getStandardDeduction().add(additionalDeduction);
+
+        $return.setStandardDeduction(newDeduction);
+        $return.setTotalDeductions(newDeduction);
+        System.out.println("Added additional deduction for aged/blind (unmarried): $" + additionalDeduction);
+        update($return);
+end
+
+// ============================================================================
+// ITEMIZED DEDUCTIONS
+// ============================================================================
+
+rule "Use Itemized Deductions Instead of Standard"
+    salience 80
+    when
+        $taxpayer : TaxPayer(useStandardDeduction == false,
+                            itemizedDeductions > 0)
+        $return : TaxReturn(taxPayer == $taxpayer, standardDeduction == 0)
+    then
+        // Taxpayer is itemizing deductions instead of taking standard deduction
+        $return.setItemizedDeductions($taxpayer.getItemizedDeductions());
+        $return.setTotalDeductions($taxpayer.getItemizedDeductions());
+        System.out.println("Using itemized deductions: $" + $taxpayer.getItemizedDeductions());
+        update($return);
+end
+
+// ============================================================================
+// CALCULATE TAXABLE INCOME AFTER DEDUCTIONS
+// ============================================================================
+
+rule "Calculate Taxable Income from AGI and Deductions"
+    salience 75
+    when
+        $taxpayer : TaxPayer(adjustedGrossIncome > 0)
+        $return : TaxReturn(taxPayer == $taxpayer,
+                           totalDeductions > 0,
+                           taxPayer.taxableIncome == 0)
+    then
+        // Taxable income = AGI - Total Deductions
+        BigDecimal taxableIncome = $taxpayer.getAdjustedGrossIncome()
+                .subtract($return.getTotalDeductions());
+
+        // Taxable income cannot be negative
+        if (taxableIncome.compareTo(BigDecimal.ZERO) < 0) {
+            taxableIncome = BigDecimal.ZERO;
+        }
+
+        $taxpayer.setTaxableIncome(taxableIncome);
+        System.out.println("Calculated taxable income: $" + taxableIncome);
+        update($taxpayer);
+end
