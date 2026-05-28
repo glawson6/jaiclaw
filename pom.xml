@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-parent</artifactId>
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.5.0</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw</name>
@@ -617,6 +617,15 @@
     <profiles>
         <profile>
             <id>release</id>
+            <properties>
+                <!-- Skip the Spring Boot repackage goal in the release profile.
+                     Fat JARs (60-90 MB each) from apps/ and jaiclaw-examples/ accumulate
+                     into a single central-bundle.zip that Maven Central rejects with HTTP 413.
+                     ${spring-boot.repackage.skip} is checked directly by spring-boot-maven-plugin,
+                     bypassing pluginManagement merge issues with child POMs that redeclare the plugin.
+                     Normal builds (without -Prelease) still produce the runnable fat JAR. -->
+                <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+            </properties>
             <build>
                 <plugins>
                     <!-- Central Portal publishing -->
