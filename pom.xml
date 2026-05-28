@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-parent</artifactId>
-    <version>0.4.0</version>
+    <version>0.5.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw</name>
@@ -55,9 +55,9 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- Aligned with Embabel 0.3.4 compatibility -->
+        <!-- Aligned with Embabel 0.3.5 compatibility -->
         <spring-boot.version>3.5.14</spring-boot.version>
-        <spring-ai.version>1.1.4</spring-ai.version>
+        <spring-ai.version>1.1.7</spring-ai.version>
         <embabel-agent.version>0.3.5</embabel-agent.version>
         <spring-shell.version>3.4.2</spring-shell.version>
 
@@ -227,6 +227,11 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-rules</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-email</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -416,6 +421,12 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-oci-genai</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-email</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>

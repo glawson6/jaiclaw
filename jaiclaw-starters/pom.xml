@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>0.4.0</version>
+        <version>0.5.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-starters</artifactId>
@@ -36,5 +36,6 @@
         <module>jaiclaw-starter-calendar</module>
         <module>jaiclaw-starter-camel</module>
         <module>jaiclaw-starter-rules</module>
+        <module>jaiclaw-starter-email</module>
     </modules>
 </project>
