@@ -3,6 +3,7 @@ package io.jaiclaw.channel.teams;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,11 @@ public class TeamsAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return "Microsoft Teams";
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return PlatformLimits.TEAMS;
     }
 
     @Override

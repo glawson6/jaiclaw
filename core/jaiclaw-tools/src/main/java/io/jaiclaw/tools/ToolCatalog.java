@@ -24,4 +24,5 @@ public final class ToolCatalog {
     public static final String SECTION_DOCUMENTS = "Documents";
     public static final String SECTION_RULES = "Rules";
     public static final String SECTION_EMAIL = "Email";
+    public static final String SECTION_MEDIA = "Media";
 }

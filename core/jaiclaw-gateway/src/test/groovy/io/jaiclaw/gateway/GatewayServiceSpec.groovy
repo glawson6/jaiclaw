@@ -4,6 +4,7 @@ import io.jaiclaw.agent.AgentRuntime
 import io.jaiclaw.agent.AgentRuntimeContext
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.channel.*
+import io.jaiclaw.channel.chunking.PlatformLimits
 import io.jaiclaw.core.model.AssistantMessage
 import io.jaiclaw.core.model.Session
 import io.jaiclaw.gateway.attachment.AttachmentRouter
@@ -27,6 +28,7 @@ class GatewayServiceSpec extends Specification {
         def adapter = Mock(ChannelAdapter)
         adapter.channelId() >> "telegram"
         adapter.displayName() >> "Telegram"
+        adapter.platformLimits() >> PlatformLimits.DEFAULT
         adapter.sendMessage(_) >> new DeliveryResult.Success("tg_msg_1")
         channelRegistry.register(adapter)
 
@@ -82,6 +84,7 @@ class GatewayServiceSpec extends Specification {
         def adapter = Mock(ChannelAdapter)
         adapter.channelId() >> "telegram"
         adapter.displayName() >> "Telegram"
+        adapter.platformLimits() >> PlatformLimits.DEFAULT
         adapter.sendMessage(_) >> new DeliveryResult.Success("tg_msg_1")
         channelRegistry.register(adapter)
 
@@ -108,6 +111,7 @@ class GatewayServiceSpec extends Specification {
         def adapter = Mock(ChannelAdapter)
         adapter.channelId() >> "telegram"
         adapter.displayName() >> "Telegram"
+        adapter.platformLimits() >> PlatformLimits.DEFAULT
         adapter.sendMessage(_) >> new DeliveryResult.Success("tg_msg_1")
         channelRegistry.register(adapter)
 
@@ -132,6 +136,7 @@ class GatewayServiceSpec extends Specification {
         adapter.channelId() >> "batch"
         adapter.displayName() >> "Batch"
         adapter.isStateless() >> true
+        adapter.platformLimits() >> PlatformLimits.DEFAULT
         adapter.sendMessage(_) >> new DeliveryResult.Success("msg_1")
         channelRegistry.register(adapter)
 
@@ -156,6 +161,7 @@ class GatewayServiceSpec extends Specification {
         def adapter = Mock(ChannelAdapter)
         adapter.channelId() >> "webhook"
         adapter.displayName() >> "Webhook"
+        adapter.platformLimits() >> PlatformLimits.DEFAULT
         adapter.sendMessage(_) >> new DeliveryResult.Success("msg_1")
         channelRegistry.register(adapter)
         channelRegistry.markStateless("webhook")

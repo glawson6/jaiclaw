@@ -5,6 +5,7 @@ import io.jaiclaw.channel.ChannelMessage;
 import io.jaiclaw.channel.ChannelMessageHandler;
 import io.jaiclaw.channel.ChannelRegistry;
 import io.jaiclaw.channel.DeliveryResult;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.ProducerTemplate;
@@ -68,6 +69,11 @@ public class CamelChannelAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return config.displayName();
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return config.platformLimits();
     }
 
     @Override

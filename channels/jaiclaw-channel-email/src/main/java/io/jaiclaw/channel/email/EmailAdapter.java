@@ -1,6 +1,7 @@
 package io.jaiclaw.channel.email;
 
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,11 @@ public class EmailAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return "Email";
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return PlatformLimits.EMAIL;
     }
 
     @Override

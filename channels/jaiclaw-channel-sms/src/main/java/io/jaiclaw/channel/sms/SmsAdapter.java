@@ -1,6 +1,7 @@
 package io.jaiclaw.channel.sms;
 
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestTemplate;
@@ -42,6 +43,11 @@ public class SmsAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return "SMS";
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return PlatformLimits.SMS;
     }
 
     @Override

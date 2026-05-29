@@ -3,6 +3,7 @@ package io.jaiclaw.channel.slack;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,11 @@ public class SlackAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return "Slack";
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return PlatformLimits.SLACK;
     }
 
     @Override

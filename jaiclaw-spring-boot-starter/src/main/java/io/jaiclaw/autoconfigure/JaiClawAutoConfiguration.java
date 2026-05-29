@@ -31,6 +31,7 @@ import io.jaiclaw.skills.SkillLoader;
 import io.jaiclaw.tools.ToolRegistry;
 import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort;
 import io.jaiclaw.tools.builtin.BuiltinTools;
+import io.jaiclaw.tools.builtin.ImageGenerationTool;
 import io.jaiclaw.tools.exec.ExecPolicyConfig;
 import io.jaiclaw.tools.exec.KubectlPolicyConfig;
 
@@ -38,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.image.ImageModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -470,6 +472,16 @@ public class JaiClawAutoConfiguration {
         var registry = new ChannelRegistry();
         adapters.forEach(registry::register);
         return registry;
+    }
+
+    @Bean
+    @ConditionalOnBean(ImageModel.class)
+    @ConditionalOnMissingBean(ImageGenerationTool.class)
+    public ImageGenerationTool imageGenerationTool(ImageModel imageModel, ToolRegistry toolRegistry) {
+        var tool = new ImageGenerationTool(imageModel);
+        toolRegistry.register(tool);
+        log.info("ImageGenerationTool registered (generate_image)");
+        return tool;
     }
 
     /**

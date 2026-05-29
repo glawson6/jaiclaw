@@ -3,6 +3,7 @@ package io.jaiclaw.channel.signal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.channel.process.CliProcessBridge;
 import io.jaiclaw.channel.process.CliProcessConfig;
 import org.slf4j.Logger;
@@ -63,6 +64,11 @@ public class SignalAdapter implements ChannelAdapter {
     @Override
     public String displayName() {
         return "Signal";
+    }
+
+    @Override
+    public PlatformLimits platformLimits() {
+        return PlatformLimits.SIGNAL;
     }
 
     @Override

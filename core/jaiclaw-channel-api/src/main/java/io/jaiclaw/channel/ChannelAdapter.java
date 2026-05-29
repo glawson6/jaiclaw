@@ -1,5 +1,7 @@
 package io.jaiclaw.channel;
 
+import io.jaiclaw.channel.chunking.PlatformLimits;
+
 /**
  * SPI for messaging platform adapters. Each adapter handles one channel
  * (Telegram, Slack, Discord, etc.) and converts between platform-native
@@ -48,5 +50,14 @@ public interface ChannelAdapter {
      */
     default boolean isStateless() {
         return false;
+    }
+
+    /**
+     * Platform-specific message length limits. The gateway uses these to
+     * chunk long responses before delivery via {@link io.jaiclaw.channel.chunking.MessageChunker}.
+     * Override in channel adapters with platform-specific constants.
+     */
+    default PlatformLimits platformLimits() {
+        return PlatformLimits.DEFAULT;
     }
 }

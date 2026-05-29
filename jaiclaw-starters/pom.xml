@@ -37,5 +37,7 @@
         <module>jaiclaw-starter-camel</module>
         <module>jaiclaw-starter-rules</module>
         <module>jaiclaw-starter-email</module>
+        <module>jaiclaw-starter-whatsapp</module>
+        <module>jaiclaw-starter-observability</module>
     </modules>
 </project>

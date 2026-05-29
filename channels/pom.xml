@@ -22,5 +22,6 @@
         <module>jaiclaw-channel-sms</module>
         <module>jaiclaw-channel-signal</module>
         <module>jaiclaw-channel-teams</module>
+        <module>jaiclaw-channel-whatsapp</module>
     </modules>
 </project>

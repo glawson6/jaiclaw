@@ -8,6 +8,8 @@ import io.jaiclaw.tools.ToolCatalog;
 
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
 import io.jaiclaw.tools.exec.SsrfGuard;
+import net.dankito.readability4j.Readability4J;
+import net.dankito.readability4j.Article;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -34,6 +36,10 @@ public class WebFetchTool extends AbstractBuiltinTool {
                 "timeout": {
                   "type": "integer",
                   "description": "Timeout in seconds (default 30)"
+                },
+                "extractReadable": {
+                  "type": "boolean",
+                  "description": "Extract clean readable text from HTML using Readability (default true)"
                 }
               },
               "required": ["url"]
@@ -74,6 +80,8 @@ public class WebFetchTool extends AbstractBuiltinTool {
         String url = requireParam(parameters, "url");
         int timeout = parameters.containsKey("timeout")
                 ? ((Number) parameters.get("timeout")).intValue() : 30;
+        boolean extractReadable = parameters.containsKey("extractReadable")
+                ? Boolean.TRUE.equals(parameters.get("extractReadable")) : true;
 
         // SSRF protection: block requests to private/internal addresses
         if (ssrfProtection) {
@@ -97,7 +105,34 @@ public class WebFetchTool extends AbstractBuiltinTool {
         if (status >= 400) {
             return new ToolResult.Error("HTTP " + status + ":\n" + truncate(body, 2000));
         }
+
+        // Extract readable content from HTML if requested
+        if (extractReadable && isHtml(body)) {
+            body = extractReadableContent(url, body);
+        }
+
         return new ToolResult.Success(truncate(body, 50_000), Map.of("statusCode", status));
+    }
+
+    private static String extractReadableContent(String url, String html) {
+        try {
+            Article article = new Readability4J(url, html).parse();
+            String readable = article.getTextContent();
+            if (readable != null && !readable.isBlank()) {
+                String title = article.getTitle();
+                String prefix = title != null && !title.isBlank() ? "# " + title + "\n\n" : "";
+                return prefix + readable.strip();
+            }
+        } catch (Exception ignored) {
+            // Fall back to raw HTML on extraction failure
+        }
+        return html;
+    }
+
+    private static boolean isHtml(String body) {
+        if (body == null || body.length() < 15) return false;
+        String trimmed = body.stripLeading().toLowerCase();
+        return trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html");
     }
 
     private static String truncate(String s, int maxLength) {

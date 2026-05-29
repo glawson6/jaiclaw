@@ -42,5 +42,6 @@
         <module>jaiclaw-docs</module>
         <module>jaiclaw-rules</module>
         <module>jaiclaw-email</module>
+        <module>jaiclaw-observability</module>
     </modules>
 </project>

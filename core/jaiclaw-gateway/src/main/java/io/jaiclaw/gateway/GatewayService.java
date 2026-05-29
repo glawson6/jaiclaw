@@ -4,6 +4,7 @@ import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.AgentRuntimeContext;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.chunking.MessageChunker;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.config.TenantAgentConfigService;
 import io.jaiclaw.core.model.AgentIdentity;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.jaiclaw.core.model.Session;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -232,13 +234,6 @@ public class GatewayService implements ChannelMessageHandler {
     }
 
     private void deliverResponse(ChannelMessage inbound, AssistantMessage response) {
-        ChannelMessage outbound = ChannelMessage.outbound(
-                UUID.randomUUID().toString(),
-                inbound.channelId(),
-                inbound.accountId(),
-                inbound.peerId(),
-                response.content());
-
         // Try tenant-specific adapter first, then fall back to global
         Optional<ChannelAdapter> adapter = Optional.empty();
         if (tenantChannelAdapterRegistry != null) {
@@ -253,10 +248,20 @@ public class GatewayService implements ChannelMessageHandler {
 
         adapter.ifPresentOrElse(
                 a -> {
-                    DeliveryResult result = a.sendMessage(outbound);
-                    if (result instanceof DeliveryResult.Failure f) {
-                        log.warn("Failed to deliver response on {}: {} - {}",
-                                inbound.channelId(), f.errorCode(), f.message());
+                    List<String> chunks = MessageChunker.chunk(response.content(), a.platformLimits());
+                    for (String chunk : chunks) {
+                        ChannelMessage outbound = ChannelMessage.outbound(
+                                UUID.randomUUID().toString(),
+                                inbound.channelId(),
+                                inbound.accountId(),
+                                inbound.peerId(),
+                                chunk);
+                        DeliveryResult result = a.sendMessage(outbound);
+                        if (result instanceof DeliveryResult.Failure f) {
+                            log.warn("Failed to deliver chunk on {}: {} - {}",
+                                    inbound.channelId(), f.errorCode(), f.message());
+                            break;
+                        }
                     }
                 },
                 () -> log.warn("No adapter found for channel: {}", inbound.channelId())
