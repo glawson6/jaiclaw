@@ -100,6 +100,21 @@
         </dependency>
         <dependency>
             <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-line</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-matrix</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-googlechat</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-audit</artifactId>
             <optional>true</optional>
         </dependency>
@@ -121,6 +136,13 @@
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-identity</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Circuit breaker support (optional — only used when on classpath) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
             <optional>true</optional>
         </dependency>
 

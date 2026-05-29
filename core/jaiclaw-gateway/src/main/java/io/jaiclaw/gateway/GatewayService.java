@@ -2,6 +2,8 @@ package io.jaiclaw.gateway;
 
 import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.AgentRuntimeContext;
+import io.jaiclaw.agent.ownership.MentionDetector;
+import io.jaiclaw.agent.ownership.ThreadOwnershipTracker;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.*;
 import io.jaiclaw.channel.chunking.MessageChunker;
@@ -47,6 +49,7 @@ public class GatewayService implements ChannelMessageHandler {
     private final TenantGuard tenantGuard;
     private final TenantAgentConfigService tenantAgentConfigService;
     private final TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
+    private final ThreadOwnershipTracker ownershipTracker;
 
     public static Builder builder() { return new Builder(); }
 
@@ -55,7 +58,7 @@ public class GatewayService implements ChannelMessageHandler {
                           SessionManager sessionManager,
                           ChannelRegistry channelRegistry,
                           String defaultAgentId) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, null, null, null, null, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, null, null, null, null, null, null);
     }
 
     @Deprecated
@@ -64,7 +67,7 @@ public class GatewayService implements ChannelMessageHandler {
                           ChannelRegistry channelRegistry,
                           String defaultAgentId,
                           TenantResolver tenantResolver) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, null, null, null, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, null, null, null, null, null);
     }
 
     @Deprecated
@@ -74,7 +77,7 @@ public class GatewayService implements ChannelMessageHandler {
                           String defaultAgentId,
                           TenantResolver tenantResolver,
                           AttachmentRouter attachmentRouter) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, null, null, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, null, null, null, null);
     }
 
     @Deprecated
@@ -85,7 +88,21 @@ public class GatewayService implements ChannelMessageHandler {
                           TenantResolver tenantResolver,
                           AttachmentRouter attachmentRouter,
                           TenantGuard tenantGuard) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, tenantGuard, null, null);
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, tenantGuard, null, null, null);
+    }
+
+    @Deprecated
+    public GatewayService(AgentRuntime agentRuntime,
+                          SessionManager sessionManager,
+                          ChannelRegistry channelRegistry,
+                          String defaultAgentId,
+                          TenantResolver tenantResolver,
+                          AttachmentRouter attachmentRouter,
+                          TenantGuard tenantGuard,
+                          TenantAgentConfigService tenantAgentConfigService,
+                          TenantChannelAdapterRegistry tenantChannelAdapterRegistry) {
+        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver,
+                attachmentRouter, tenantGuard, tenantAgentConfigService, tenantChannelAdapterRegistry, null);
     }
 
     public GatewayService(AgentRuntime agentRuntime,
@@ -96,7 +113,8 @@ public class GatewayService implements ChannelMessageHandler {
                           AttachmentRouter attachmentRouter,
                           TenantGuard tenantGuard,
                           TenantAgentConfigService tenantAgentConfigService,
-                          TenantChannelAdapterRegistry tenantChannelAdapterRegistry) {
+                          TenantChannelAdapterRegistry tenantChannelAdapterRegistry,
+                          ThreadOwnershipTracker ownershipTracker) {
         this.agentRuntime = agentRuntime;
         this.sessionManager = sessionManager;
         this.channelRegistry = channelRegistry;
@@ -106,6 +124,7 @@ public class GatewayService implements ChannelMessageHandler {
         this.tenantGuard = tenantGuard;
         this.tenantAgentConfigService = tenantAgentConfigService;
         this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry;
+        this.ownershipTracker = ownershipTracker;
     }
 
     /**
@@ -169,6 +188,9 @@ public class GatewayService implements ChannelMessageHandler {
                     : AgentIdentity.DEFAULT;
 
             String agentId = tenantConfig != null ? tenantConfig.agentId() : defaultAgentId;
+
+            // Thread ownership: check @mentions and existing ownership
+            agentId = resolveAgentViaOwnership(message.content(), sessionKey, agentId);
 
             AgentRuntimeContext context = new AgentRuntimeContext(
                     agentId, sessionKey, session, identity, toolProfile, ".", tenantConfig, stateless);
@@ -268,6 +290,38 @@ public class GatewayService implements ChannelMessageHandler {
         );
     }
 
+    /**
+     * Resolve which agent should handle the message based on @mentions and thread ownership.
+     * If an @mention is detected, force-assign ownership. Otherwise, check existing ownership.
+     * Falls back to the provided defaultAgent if ownership tracking is disabled or no owner exists.
+     */
+    private String resolveAgentViaOwnership(String content, String threadKey, String defaultAgent) {
+        if (ownershipTracker == null) {
+            return defaultAgent;
+        }
+
+        // Check for @mention → force-assign to mentioned agent
+        Optional<String> mention = MentionDetector.firstMention(content);
+        if (mention.isPresent()) {
+            String mentionedAgent = mention.get();
+            ownershipTracker.forceAssign(threadKey, mentionedAgent);
+            log.debug("@mention detected: agent {} now owns thread {}", mentionedAgent, threadKey);
+            return mentionedAgent;
+        }
+
+        // Check existing thread ownership
+        Optional<String> owner = ownershipTracker.getOwner(threadKey);
+        if (owner.isPresent()) {
+            // Refresh ownership TTL on continued conversation
+            ownershipTracker.claim(threadKey, owner.get());
+            return owner.get();
+        }
+
+        // No mention and no existing owner — claim for default agent
+        ownershipTracker.claim(threadKey, defaultAgent);
+        return defaultAgent;
+    }
+
     private void deliverErrorResponse(ChannelMessage inbound, String errorMessage) {
         ChannelMessage outbound = ChannelMessage.outbound(
                 UUID.randomUUID().toString(),
@@ -306,6 +360,7 @@ public class GatewayService implements ChannelMessageHandler {
         private TenantGuard tenantGuard;
         private TenantAgentConfigService tenantAgentConfigService;
         private TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
+        private ThreadOwnershipTracker ownershipTracker;
 
         public Builder agentRuntime(AgentRuntime agentRuntime) { this.agentRuntime = agentRuntime; return this; }
         public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
@@ -316,11 +371,12 @@ public class GatewayService implements ChannelMessageHandler {
         public Builder tenantGuard(TenantGuard tenantGuard) { this.tenantGuard = tenantGuard; return this; }
         public Builder tenantAgentConfigService(TenantAgentConfigService tenantAgentConfigService) { this.tenantAgentConfigService = tenantAgentConfigService; return this; }
         public Builder tenantChannelAdapterRegistry(TenantChannelAdapterRegistry tenantChannelAdapterRegistry) { this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry; return this; }
+        public Builder ownershipTracker(ThreadOwnershipTracker ownershipTracker) { this.ownershipTracker = ownershipTracker; return this; }
 
         public GatewayService build() {
             return new GatewayService(agentRuntime, sessionManager, channelRegistry, defaultAgentId,
                     tenantResolver, attachmentRouter, tenantGuard, tenantAgentConfigService,
-                    tenantChannelAdapterRegistry);
+                    tenantChannelAdapterRegistry, ownershipTracker);
         }
     }
 }

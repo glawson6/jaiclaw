@@ -456,7 +456,33 @@ public class TenantAgentConfigService {
                     getBool(teamsMap, "enabled", false))
                 : null;
 
-        return new TenantChannelsConfig(telegram, slack, discord, sms, email, signal, teams);
+        var lineMap = getMap(map, "line");
+        TenantChannelsConfig.LineChannelConfig line = lineMap != null
+                ? new TenantChannelsConfig.LineChannelConfig(
+                    getStr(lineMap, "channel-access-token", null),
+                    getStr(lineMap, "channel-secret", null),
+                    getBool(lineMap, "enabled", false))
+                : null;
+
+        var matrixMap = getMap(map, "matrix");
+        TenantChannelsConfig.MatrixChannelConfig matrix = matrixMap != null
+                ? new TenantChannelsConfig.MatrixChannelConfig(
+                    getStr(matrixMap, "homeserver-url", null),
+                    getStr(matrixMap, "access-token", null),
+                    getStr(matrixMap, "user-id", null),
+                    getBool(matrixMap, "enabled", false))
+                : null;
+
+        var googleChatMap = getMap(map, "google-chat");
+        TenantChannelsConfig.GoogleChatChannelConfig googleChat = googleChatMap != null
+                ? new TenantChannelsConfig.GoogleChatChannelConfig(
+                    getStr(googleChatMap, "project-id", null),
+                    getStr(googleChatMap, "service-account-key-path", null),
+                    getBool(googleChatMap, "enabled", false))
+                : null;
+
+        return new TenantChannelsConfig(telegram, slack, discord, sms, email, signal, teams,
+                line, matrix, googleChat);
     }
 
     private FeatureFlags parseFeatures(Map<String, Object> map, AgentProperties.AgentConfig defaults) {

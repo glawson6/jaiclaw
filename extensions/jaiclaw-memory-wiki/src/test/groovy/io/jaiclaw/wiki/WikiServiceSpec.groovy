@@ -1,5 +1,6 @@
 package io.jaiclaw.wiki
 
+import io.jaiclaw.docstore.repository.JsonFileDocStoreRepository
 import spock.lang.Specification
 import spock.lang.TempDir
 
@@ -13,7 +14,8 @@ class WikiServiceSpec extends Specification {
     WikiService service
 
     def setup() {
-        def repo = new JsonFileWikiRepository(tempDir)
+        def docStore = new JsonFileDocStoreRepository(tempDir)
+        def repo = new DocStoreWikiRepository(docStore)
         service = new WikiService(repo)
     }
 

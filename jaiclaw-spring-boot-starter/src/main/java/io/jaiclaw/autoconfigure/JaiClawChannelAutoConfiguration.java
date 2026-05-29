@@ -345,4 +345,73 @@ public class JaiClawChannelAutoConfiguration {
             return new io.jaiclaw.channel.teams.TeamsAdapter(config, webhookDispatcher);
         }
     }
+
+    /**
+     * LINE adapter auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.channel.line.LineAdapter")
+    @ConditionalOnProperty(prefix = "jaiclaw.channels.line", name = "enabled", havingValue = "true")
+    static class LineAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.channel.line.LineAdapter lineAdapter(JaiClawProperties properties) {
+            var line = properties.channels().line();
+            var config = new io.jaiclaw.channel.line.LineConfig(
+                    line.channelAccessToken(),
+                    line.channelSecret(),
+                    line.enabled(),
+                    line.allowedSenderIds());
+            return new io.jaiclaw.channel.line.LineAdapter(config);
+        }
+    }
+
+    /**
+     * Matrix adapter auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.channel.matrix.MatrixAdapter")
+    @ConditionalOnProperty(prefix = "jaiclaw.channels.matrix", name = "enabled", havingValue = "true")
+    static class MatrixAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.channel.matrix.MatrixAdapter matrixAdapter(JaiClawProperties properties) {
+            var matrix = properties.channels().matrix();
+            var apiClient = new io.jaiclaw.channel.matrix.MatrixApiClient(
+                    matrix.homeserverUrl(),
+                    matrix.accessToken());
+            var config = new io.jaiclaw.channel.matrix.MatrixConfig(
+                    matrix.homeserverUrl(),
+                    matrix.accessToken(),
+                    matrix.userId(),
+                    matrix.enabled(),
+                    matrix.syncTimeoutMs(),
+                    matrix.allowedSenderIds());
+            return new io.jaiclaw.channel.matrix.MatrixAdapter(config, apiClient);
+        }
+    }
+
+    /**
+     * Google Chat adapter auto-configuration.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.channel.googlechat.GoogleChatAdapter")
+    @ConditionalOnProperty(prefix = "jaiclaw.channels.google-chat", name = "enabled", havingValue = "true")
+    static class GoogleChatAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.channel.googlechat.GoogleChatAdapter googleChatAdapter(JaiClawProperties properties) {
+            var gc = properties.channels().googleChat();
+            var config = new io.jaiclaw.channel.googlechat.GoogleChatConfig(
+                    gc.projectId(),
+                    gc.serviceAccountKeyPath(),
+                    gc.webhookPath(),
+                    gc.enabled(),
+                    gc.allowedSenderIds());
+            return new io.jaiclaw.channel.googlechat.GoogleChatAdapter(config);
+        }
+    }
 }

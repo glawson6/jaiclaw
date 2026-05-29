@@ -28,4 +28,12 @@ public class ObservabilityAutoConfiguration {
         log.info("JaiClaw observability initialized — custom metrics enabled");
         return new JaiClawMetrics(meterRegistry);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnBean(JaiClawMetrics.class)
+    public ObservabilityPlugin observabilityPlugin(JaiClawMetrics metrics) {
+        log.info("ObservabilityPlugin created — hooks will be wired on plugin registration");
+        return new ObservabilityPlugin(metrics);
+    }
 }

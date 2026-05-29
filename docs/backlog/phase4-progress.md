@@ -1,109 +1,104 @@
 # Phase 4 — P2 Channels — Progress Tracker
 
-**Started:** —
-**Status:** Not Started
+**Started:** 2026-05-28
+**Completed:** 2026-05-29
+**Status:** COMPLETE
 **Depends on:** Phase 1 complete (1.1 Auto-Reply Chunking for PlatformLimits)
 
 ## Work Items
 
 **Revised approach:** Use existing SDKs and Camel components where available. Prefer official platform SDKs with Spring Boot starters over raw HTTP implementations. No Camel components exist for Line, Matrix, or Google Chat — so native adapters are needed, but official SDKs do most of the work.
 
-### 4.1 Line Channel
-- **Location:** New module `channels/jaiclaw-channel-line/`
-- **Status:** NOT STARTED
-- **Revised estimate:** 3-5 days (down from 1-2 weeks)
-- **Approach:** Use **LINE Bot SDK for Java** (`com.linecorp.bot:line-bot-spring-boot-webmvc:7.5.0`) — official, actively maintained, Java 17+, with a Spring Boot starter that auto-configures webhook handling.
-- **Library:** `com.linecorp.bot:line-bot-spring-boot-webmvc:7.5.0`
-- **What the SDK provides (~85% coverage):**
-  - Auto-configured webhook handling via Spring MVC
-  - `MessagingApiClient` for outbound messages (reply, push)
-  - Webhook signature verification (`X-Line-Signature` HMAC-SHA256)
-  - Message type builders (text, image, video, audio, sticker, location, flex)
-  - Event parsing (message, follow, unfollow, join, leave, postback)
-- **What to build:**
-  - [ ] `channels/jaiclaw-channel-line/pom.xml`
-  - [ ] `LineAdapter.java` — `ChannelAdapter` wrapping `MessagingApiClient` (~150-200 lines)
-  - [ ] `LineMessageMapper.java` — Map LINE events/messages to `ChannelMessage` (~100 lines)
-  - [ ] `LineAutoConfiguration.java`
-  - [ ] `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-  - [ ] Spock specs
-  - [ ] Starter POM: `jaiclaw-starters/jaiclaw-starter-line/pom.xml`
-  - [ ] Register module in `channels/pom.xml`
-- **No need to build:** `LineApiClient`, `LineWebhookController`, signature verification — SDK handles all of this.
+### 4.1 Line Channel — COMPLETE
+- **Location:** `channels/jaiclaw-channel-line/`
+- **Status:** COMPLETE (16 tests)
+- **Library:** `com.linecorp.bot:line-bot-messaging-api-client:9.15.0`, `line-bot-webhook:9.15.0`
+- **Files created:**
+  - [x] `channels/jaiclaw-channel-line/pom.xml`
+  - [x] `LineConfig.java` — config record with builder, defaults, sender filter
+  - [x] `LineAdapter.java` — `ChannelAdapter` with webhook processing, reply/push API, HMAC-SHA256 signature verification
+  - [x] `LineMessageMapper.java` — maps LINE webhook events to `ChannelMessage`
+  - [x] `LineAdapterSpec.groovy` — 16 tests
+- **Auto-config:** `LineAutoConfiguration` in `JaiClawChannelAutoConfiguration`
 - **Configuration:**
   ```yaml
-  line:
-    bot:
-      channel-token: ${LINE_CHANNEL_ACCESS_TOKEN}
-      channel-secret: ${LINE_CHANNEL_SECRET}
+  jaiclaw:
+    channels:
+      line:
+        enabled: true
+        channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN}
+        channel-secret: ${LINE_CHANNEL_SECRET}
+        allowed-senders: ""  # comma-separated user IDs, empty = allow all
   ```
-- **Notes:** ~200-300 lines total. SDK does the heavy lifting.
 
-### 4.2 Matrix Channel
-- **Location:** New module `channels/jaiclaw-channel-matrix/`
-- **Status:** NOT STARTED
-- **Revised estimate:** 1-2 weeks (unchanged — weak SDK ecosystem)
-- **Approach:** Native HTTP implementation using `java.net.http.HttpClient`. Java Matrix SDKs (Kamax, Cosium) are alpha-quality and unreliable. The Matrix Client-Server API is straightforward REST — long-poll sync + PUT to send messages.
-- **No usable library.** Build directly against the Matrix Client-Server API.
-- **Files to create:**
-  - [ ] `channels/jaiclaw-channel-matrix/pom.xml`
-  - [ ] `MatrixAdapter.java` — `ChannelAdapter` with long-poll sync loop
-  - [ ] `MatrixApiClient.java` — REST client via `HttpClient` (~200 lines)
-  - [ ] `MatrixConfig.java`
-  - [ ] `MatrixMessageMapper.java`
-  - [ ] `MatrixAutoConfiguration.java`
-  - [ ] `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-  - [ ] Spock specs
-  - [ ] Starter POM: `jaiclaw-starters/jaiclaw-starter-matrix/pom.xml`
-  - [ ] Register module in `channels/pom.xml`
-- **API details:**
-  - Long-poll sync: `GET /_matrix/client/v3/sync?timeout=30000`
-  - Send message: `PUT /_matrix/client/v3/rooms/{roomId}/send/m.room.message/{txnId}`
-  - Message types: `m.text`, `m.image`, `m.file`, `m.notice`
+### 4.2 Matrix Channel — COMPLETE
+- **Location:** `channels/jaiclaw-channel-matrix/`
+- **Status:** COMPLETE (20 tests)
+- **Library:** None — native `java.net.http.HttpClient` implementation
+- **Files created:**
+  - [x] `channels/jaiclaw-channel-matrix/pom.xml`
+  - [x] `MatrixConfig.java` — config record with builder, defaults, sender filter
+  - [x] `MatrixApiClient.java` — REST client for Matrix C-S API (sync + sendMessage)
+  - [x] `MatrixAdapter.java` — `ChannelAdapter` with virtual thread long-poll sync loop
+  - [x] `MatrixMessageMapper.java` — extracts `m.room.message` events from sync response
+  - [x] `MatrixAdapterSpec.groovy` — 14 tests
+  - [x] `MatrixApiClientSpec.groovy` — 6 tests
+- **Auto-config:** `MatrixAutoConfiguration` in `JaiClawChannelAutoConfiguration`
 - **Configuration:**
   ```yaml
   jaiclaw:
     channels:
       matrix:
+        enabled: true
         homeserver-url: ${MATRIX_HOMESERVER_URL}
         access-token: ${MATRIX_ACCESS_TOKEN}
         user-id: ${MATRIX_USER_ID}
         sync-timeout-ms: 30000
+        allowed-senders: ""  # comma-separated user IDs, empty = allow all
   ```
-- **Notes:** ~400-500 lines. Most effort of the three channels.
 
-### 4.3 Google Chat Channel
-- **Location:** New module `channels/jaiclaw-channel-googlechat/`
-- **Status:** NOT STARTED
-- **Revised estimate:** 1 week (down from 1-2 weeks)
-- **Approach:** Use **Google Cloud Chat client library** (`com.google.cloud:google-cloud-chat:0.55.0`). Handles auth and API calls via gRPC or REST.
-- **Library:** `com.google.cloud:google-cloud-chat:0.55.0`
-- **What the library provides (~70% coverage):**
-  - Service account authentication (JSON key file)
-  - Message CRUD operations
-  - Space/room management
-  - gRPC and REST transport options
-- **What to build:**
-  - [ ] `channels/jaiclaw-channel-googlechat/pom.xml`
-  - [ ] `GoogleChatAdapter.java` — `ChannelAdapter` using Pub/Sub for inbound, Chat API for outbound (~200-250 lines)
-  - [ ] `GoogleChatMessageMapper.java` (~100 lines)
-  - [ ] `GoogleChatWebhookController.java` — HTTP endpoint for Pub/Sub push
-  - [ ] `GoogleChatConfig.java`
-  - [ ] `GoogleChatAutoConfiguration.java`
-  - [ ] `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
-  - [ ] Spock specs
-  - [ ] Starter POM: `jaiclaw-starters/jaiclaw-starter-googlechat/pom.xml`
-  - [ ] Register module in `channels/pom.xml`
+### 4.3 Google Chat Channel — COMPLETE
+- **Location:** `channels/jaiclaw-channel-googlechat/`
+- **Status:** COMPLETE (15 tests)
+- **Library:** Native HTTP — uses `java.net.http.HttpClient` for Google Chat REST API
+- **Files created:**
+  - [x] `channels/jaiclaw-channel-googlechat/pom.xml`
+  - [x] `GoogleChatConfig.java` — config record with builder, defaults, sender filter
+  - [x] `GoogleChatAdapter.java` — `ChannelAdapter` with webhook processing, Chat API outbound
+  - [x] `GoogleChatMessageMapper.java` — maps Google Chat events to `ChannelMessage`
+  - [x] `GoogleChatAdapterSpec.groovy` — 15 tests
+- **Auto-config:** `GoogleChatAutoConfiguration` in `JaiClawChannelAutoConfiguration`
 - **Configuration:**
   ```yaml
   jaiclaw:
     channels:
-      googlechat:
+      google-chat:
+        enabled: true
         project-id: ${GOOGLE_CHAT_PROJECT_ID}
         service-account-key-path: ${GOOGLE_SA_KEY_PATH}
-        webhook-path: /webhook/googlechat
+        webhook-path: /webhooks/googlechat
+        allowed-senders: ""  # comma-separated user IDs, empty = allow all
   ```
-- **Notes:** ~250-350 lines. Google Cloud library handles auth complexity.
+
+## Cross-Cutting Changes
+
+- **PlatformLimits:** Added `LINE` (5000), `MATRIX` (65536), `GOOGLE_CHAT` (4096)
+- **ChannelsProperties:** Added `LineProperties`, `MatrixProperties`, `GoogleChatProperties` records with builders
+- **TenantChannelsConfig:** Added `LineChannelConfig`, `MatrixChannelConfig`, `GoogleChatChannelConfig` records
+- **TenantAgentConfigService:** Updated `parseChannels()` to parse LINE, Matrix, Google Chat tenant configs
+- **JaiClawChannelAutoConfiguration:** Added `LineAutoConfiguration`, `MatrixAutoConfiguration`, `GoogleChatAutoConfiguration`
+- **POMs updated:** root pom.xml (dependencyManagement + properties), jaiclaw-bom, channels/pom.xml, jaiclaw-spring-boot-starter, jaiclaw-starter-gateway
+
+## Test Summary
+
+| Module | Spec Classes | Tests |
+|--------|-------------|-------|
+| jaiclaw-channel-line | LineAdapterSpec | 16 |
+| jaiclaw-channel-matrix | MatrixAdapterSpec, MatrixApiClientSpec | 20 |
+| jaiclaw-channel-googlechat | GoogleChatAdapterSpec | 15 |
+| **Total new** | **4** | **51** |
+
+Full test suite: BUILD SUCCESS — 0 failures, 0 errors across all modules.
 
 ## Session Log
 
@@ -112,3 +107,15 @@
   - 4.1 LINE: Official SDK with Spring Boot starter → 3-5 days (was 1-2 weeks)
   - 4.3 Google Chat: Google Cloud client library → 1 week (was 1-2 weeks)
   - 4.2 Matrix: Unchanged — no usable SDK, native HTTP required
+
+### Session 2 — 2026-05-29
+- Implemented all three channels
+  - Added PlatformLimits constants for LINE, Matrix, Google Chat
+  - Added ChannelsProperties records for all three channels
+  - Created jaiclaw-channel-line module (16 tests)
+  - Created jaiclaw-channel-googlechat module (15 tests)
+  - Created jaiclaw-channel-matrix module (20 tests)
+  - Wired auto-configuration in JaiClawChannelAutoConfiguration
+  - Updated all POMs (root, BOM, channels parent, starter, gateway starter)
+  - Updated TenantChannelsConfig and TenantAgentConfigService for multi-tenancy
+  - Full build + test suite passes (BUILD SUCCESS)

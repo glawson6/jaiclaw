@@ -1,20 +1,22 @@
 package io.jaiclaw.wiki
 
+import io.jaiclaw.docstore.repository.JsonFileDocStoreRepository
 import spock.lang.Specification
 import spock.lang.TempDir
 
 import java.nio.file.Path
 import java.time.Instant
 
-class JsonFileWikiRepositorySpec extends Specification {
+class DocStoreWikiRepositorySpec extends Specification {
 
     @TempDir
     Path tempDir
 
-    JsonFileWikiRepository repo
+    DocStoreWikiRepository repo
 
     def setup() {
-        repo = new JsonFileWikiRepository(tempDir)
+        def docStore = new JsonFileDocStoreRepository(tempDir)
+        repo = new DocStoreWikiRepository(docStore)
     }
 
     def "save and find by id"() {
@@ -60,13 +62,14 @@ class JsonFileWikiRepositorySpec extends Specification {
         repo.findById("p1").isEmpty()
     }
 
-    def "persists to disk and reloads"() {
+    def "persists to disk and reloads via docstore"() {
         given:
         repo.save(new WikiPage("p1", "Persisted", null, ["t1"], "content", Map.of(),
                 Instant.now(), Instant.now(), null))
 
         when:
-        def repo2 = new JsonFileWikiRepository(tempDir)
+        def docStore2 = new JsonFileDocStoreRepository(tempDir)
+        def repo2 = new DocStoreWikiRepository(docStore2)
 
         then:
         repo2.findById("p1").isPresent()

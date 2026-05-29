@@ -192,6 +192,21 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-channel-line</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-channel-matrix</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-channel-googlechat</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-security</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -504,6 +519,17 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-wiki</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-tasks</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-tasks</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>

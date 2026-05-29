@@ -46,5 +46,6 @@
         <module>jaiclaw-web-search</module>
         <module>jaiclaw-model-catalog</module>
         <module>jaiclaw-memory-wiki</module>
+        <module>jaiclaw-tasks</module>
     </modules>
 </project>

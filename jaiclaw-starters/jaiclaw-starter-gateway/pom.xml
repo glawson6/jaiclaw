@@ -52,6 +52,18 @@
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-channel-signal</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-line</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-matrix</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-googlechat</artifactId>
+        </dependency>
 
         <!-- Embedded web server -->
         <dependency>

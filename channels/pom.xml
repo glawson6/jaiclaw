@@ -23,5 +23,8 @@
         <module>jaiclaw-channel-signal</module>
         <module>jaiclaw-channel-teams</module>
         <module>jaiclaw-channel-whatsapp</module>
+        <module>jaiclaw-channel-line</module>
+        <module>jaiclaw-channel-matrix</module>
+        <module>jaiclaw-channel-googlechat</module>
     </modules>
 </project>

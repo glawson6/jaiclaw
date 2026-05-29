@@ -20,6 +20,10 @@
             <artifactId>jaiclaw-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-plugin-sdk</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-observation</artifactId>
         </dependency>
@@ -51,6 +55,16 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-observation-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

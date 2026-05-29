@@ -41,6 +41,11 @@
             <artifactId>resilience4j-circuitbreaker</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Test: Spock + Groovy -->
         <dependency>

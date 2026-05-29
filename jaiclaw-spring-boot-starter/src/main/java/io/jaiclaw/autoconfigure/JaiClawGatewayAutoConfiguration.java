@@ -12,7 +12,9 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
@@ -86,13 +88,25 @@ public class JaiClawGatewayAutoConfiguration {
             io.jaiclaw.gateway.attachment.AttachmentRouter attachmentRouter,
             ObjectProvider<io.jaiclaw.core.tenant.TenantGuard> tenantGuardProvider,
             ObjectProvider<TenantAgentConfigService> configServiceProvider,
-            ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider) {
+            ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider,
+            ObjectProvider<io.jaiclaw.agent.ownership.ThreadOwnershipTracker> ownershipTrackerProvider) {
         return new io.jaiclaw.gateway.GatewayService(
                 agentRuntime, sessionManager, channelRegistry,
                 properties.agent().defaultAgent(), tenantResolver, attachmentRouter,
                 tenantGuardProvider.getIfAvailable(),
                 configServiceProvider.getIfAvailable(),
-                tenantChannelRegistryProvider.getIfAvailable());
+                tenantChannelRegistryProvider.getIfAvailable(),
+                ownershipTrackerProvider.getIfAvailable());
+    }
+
+    /**
+     * Thread ownership tracker — activated when {@code jaiclaw.agent.ownership.enabled=true}.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "jaiclaw.agent.ownership.enabled", havingValue = "true", matchIfMissing = false)
+    public io.jaiclaw.agent.ownership.ThreadOwnershipTracker threadOwnershipTracker() {
+        return new io.jaiclaw.agent.ownership.ThreadOwnershipTracker();
     }
 
     /**
@@ -182,5 +196,49 @@ public class JaiClawGatewayAutoConfiguration {
             ChannelRegistry channelRegistry,
             io.jaiclaw.gateway.observability.GatewayMetrics metrics) {
         return new io.jaiclaw.gateway.observability.GatewayHealthIndicator(channelRegistry, metrics);
+    }
+
+    /**
+     * Webhook event routing — activated when {@code jaiclaw.webhooks.enabled=true}.
+     * Registers a {@link io.jaiclaw.gateway.webhook.WebhookRouteRegistry} and
+     * {@link io.jaiclaw.gateway.webhook.WebhookEventController} for dispatching
+     * incoming webhook events to registered route handlers.
+     */
+    @Configuration
+    @ConditionalOnProperty(name = "jaiclaw.webhooks.enabled", havingValue = "true", matchIfMissing = false)
+    static class WebhookRoutingConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.gateway.webhook.WebhookRouteRegistry webhookRouteRegistry() {
+            return new io.jaiclaw.gateway.webhook.WebhookRouteRegistry();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.gateway.webhook.WebhookEventController webhookEventController(
+                io.jaiclaw.gateway.webhook.WebhookRouteRegistry registry) {
+            return new io.jaiclaw.gateway.webhook.WebhookEventController(registry);
+        }
+    }
+
+    /**
+     * Admin HTTP RPC — activated when {@code jaiclaw.admin.enabled=true}.
+     * Provides REST endpoints for session management, channel control,
+     * tool listing, and runtime metrics.
+     */
+    @Configuration
+    @ConditionalOnProperty(name = "jaiclaw.admin.enabled", havingValue = "true", matchIfMissing = false)
+    static class AdminConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.gateway.admin.AdminController adminController(
+                SessionManager sessionManager,
+                ChannelRegistry channelRegistry,
+                io.jaiclaw.tools.ToolRegistry toolRegistry) {
+            return new io.jaiclaw.gateway.admin.AdminController(
+                    sessionManager, channelRegistry, toolRegistry);
+        }
     }
 }

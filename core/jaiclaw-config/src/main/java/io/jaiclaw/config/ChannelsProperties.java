@@ -11,7 +11,10 @@ public record ChannelsProperties(
         SlackProperties slack,
         DiscordProperties discord,
         SignalProperties signal,
-        TeamsProperties teams
+        TeamsProperties teams,
+        LineProperties line,
+        MatrixProperties matrix,
+        GoogleChatProperties googleChat
 ) {
     public static final ChannelsProperties DEFAULT = new ChannelsProperties(
             TelegramProperties.DEFAULT,
@@ -20,7 +23,10 @@ public record ChannelsProperties(
             SlackProperties.DEFAULT,
             DiscordProperties.DEFAULT,
             SignalProperties.DEFAULT,
-            TeamsProperties.DEFAULT
+            TeamsProperties.DEFAULT,
+            LineProperties.DEFAULT,
+            MatrixProperties.DEFAULT,
+            GoogleChatProperties.DEFAULT
     );
 
     public ChannelsProperties {
@@ -31,6 +37,9 @@ public record ChannelsProperties(
         if (discord == null) discord = DiscordProperties.DEFAULT;
         if (signal == null) signal = SignalProperties.DEFAULT;
         if (teams == null) teams = TeamsProperties.DEFAULT;
+        if (line == null) line = LineProperties.DEFAULT;
+        if (matrix == null) matrix = MatrixProperties.DEFAULT;
+        if (googleChat == null) googleChat = GoogleChatProperties.DEFAULT;
     }
 
     public static Builder builder() { return new Builder(); }
@@ -43,6 +52,9 @@ public record ChannelsProperties(
         private DiscordProperties discord;
         private SignalProperties signal;
         private TeamsProperties teams;
+        private LineProperties line;
+        private MatrixProperties matrix;
+        private GoogleChatProperties googleChat;
 
         public Builder telegram(TelegramProperties telegram) { this.telegram = telegram; return this; }
         public Builder email(EmailProperties email) { this.email = email; return this; }
@@ -51,9 +63,13 @@ public record ChannelsProperties(
         public Builder discord(DiscordProperties discord) { this.discord = discord; return this; }
         public Builder signal(SignalProperties signal) { this.signal = signal; return this; }
         public Builder teams(TeamsProperties teams) { this.teams = teams; return this; }
+        public Builder line(LineProperties line) { this.line = line; return this; }
+        public Builder matrix(MatrixProperties matrix) { this.matrix = matrix; return this; }
+        public Builder googleChat(GoogleChatProperties googleChat) { this.googleChat = googleChat; return this; }
 
         public ChannelsProperties build() {
-            return new ChannelsProperties(telegram, email, sms, slack, discord, signal, teams);
+            return new ChannelsProperties(telegram, email, sms, slack, discord, signal, teams,
+                    line, matrix, googleChat);
         }
     }
 
@@ -388,6 +404,126 @@ public record ChannelsProperties(
 
             public TeamsProperties build() {
                 return new TeamsProperties(enabled, appId, appSecret, tenantId, skipJwtValidation, allowedSenders);
+            }
+        }
+    }
+
+    public record LineProperties(
+            boolean enabled,
+            String channelAccessToken,
+            String channelSecret,
+            String allowedSenders
+    ) {
+        public static final LineProperties DEFAULT = new LineProperties(
+                false, null, null, null
+        );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private boolean enabled;
+            private String channelAccessToken;
+            private String channelSecret;
+            private String allowedSenders;
+
+            public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+            public Builder channelAccessToken(String channelAccessToken) { this.channelAccessToken = channelAccessToken; return this; }
+            public Builder channelSecret(String channelSecret) { this.channelSecret = channelSecret; return this; }
+            public Builder allowedSenders(String allowedSenders) { this.allowedSenders = allowedSenders; return this; }
+
+            public LineProperties build() {
+                return new LineProperties(enabled, channelAccessToken, channelSecret, allowedSenders);
+            }
+        }
+    }
+
+    public record MatrixProperties(
+            boolean enabled,
+            String homeserverUrl,
+            String accessToken,
+            String userId,
+            int syncTimeoutMs,
+            String allowedSenders
+    ) {
+        public static final MatrixProperties DEFAULT = new MatrixProperties(
+                false, null, null, null, 30000, null
+        );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private boolean enabled;
+            private String homeserverUrl;
+            private String accessToken;
+            private String userId;
+            private int syncTimeoutMs = 30000;
+            private String allowedSenders;
+
+            public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+            public Builder homeserverUrl(String homeserverUrl) { this.homeserverUrl = homeserverUrl; return this; }
+            public Builder accessToken(String accessToken) { this.accessToken = accessToken; return this; }
+            public Builder userId(String userId) { this.userId = userId; return this; }
+            public Builder syncTimeoutMs(int syncTimeoutMs) { this.syncTimeoutMs = syncTimeoutMs; return this; }
+            public Builder allowedSenders(String allowedSenders) { this.allowedSenders = allowedSenders; return this; }
+
+            public MatrixProperties build() {
+                return new MatrixProperties(enabled, homeserverUrl, accessToken, userId, syncTimeoutMs, allowedSenders);
+            }
+        }
+    }
+
+    public record GoogleChatProperties(
+            boolean enabled,
+            String projectId,
+            String serviceAccountKeyPath,
+            String webhookPath,
+            String allowedSenders
+    ) {
+        public static final GoogleChatProperties DEFAULT = new GoogleChatProperties(
+                false, null, null, "/webhooks/googlechat", null
+        );
+
+        public Set<String> allowedSenderIds() {
+            if (allowedSenders == null || allowedSenders.isBlank()) return Set.of();
+            return Arrays.stream(allowedSenders.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        }
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private boolean enabled;
+            private String projectId;
+            private String serviceAccountKeyPath;
+            private String webhookPath = "/webhooks/googlechat";
+            private String allowedSenders;
+
+            public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
+            public Builder projectId(String projectId) { this.projectId = projectId; return this; }
+            public Builder serviceAccountKeyPath(String serviceAccountKeyPath) { this.serviceAccountKeyPath = serviceAccountKeyPath; return this; }
+            public Builder webhookPath(String webhookPath) { this.webhookPath = webhookPath; return this; }
+            public Builder allowedSenders(String allowedSenders) { this.allowedSenders = allowedSenders; return this; }
+
+            public GoogleChatProperties build() {
+                return new GoogleChatProperties(enabled, projectId, serviceAccountKeyPath, webhookPath, allowedSenders);
             }
         }
     }

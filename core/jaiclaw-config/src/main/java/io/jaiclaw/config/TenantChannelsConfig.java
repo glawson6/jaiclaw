@@ -20,10 +20,13 @@ public record TenantChannelsConfig(
         SmsChannelConfig sms,
         EmailChannelConfig email,
         SignalChannelConfig signal,
-        TeamsChannelConfig teams
+        TeamsChannelConfig teams,
+        LineChannelConfig line,
+        MatrixChannelConfig matrix,
+        GoogleChatChannelConfig googleChat
 ) {
     public static final TenantChannelsConfig EMPTY = new TenantChannelsConfig(
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
     );
 
     public static Builder builder() { return new Builder(); }
@@ -36,6 +39,9 @@ public record TenantChannelsConfig(
         private EmailChannelConfig email;
         private SignalChannelConfig signal;
         private TeamsChannelConfig teams;
+        private LineChannelConfig line;
+        private MatrixChannelConfig matrix;
+        private GoogleChatChannelConfig googleChat;
 
         public Builder telegram(TelegramChannelConfig telegram) { this.telegram = telegram; return this; }
         public Builder slack(SlackChannelConfig slack) { this.slack = slack; return this; }
@@ -44,9 +50,13 @@ public record TenantChannelsConfig(
         public Builder email(EmailChannelConfig email) { this.email = email; return this; }
         public Builder signal(SignalChannelConfig signal) { this.signal = signal; return this; }
         public Builder teams(TeamsChannelConfig teams) { this.teams = teams; return this; }
+        public Builder line(LineChannelConfig line) { this.line = line; return this; }
+        public Builder matrix(MatrixChannelConfig matrix) { this.matrix = matrix; return this; }
+        public Builder googleChat(GoogleChatChannelConfig googleChat) { this.googleChat = googleChat; return this; }
 
         public TenantChannelsConfig build() {
-            return new TenantChannelsConfig(telegram, slack, discord, sms, email, signal, teams);
+            return new TenantChannelsConfig(telegram, slack, discord, sms, email, signal, teams,
+                    line, matrix, googleChat);
         }
     }
 
@@ -142,6 +152,25 @@ public record TenantChannelsConfig(
             String appId,
             String appSecret,
             String tenantId,
+            boolean enabled
+    ) {}
+
+    public record LineChannelConfig(
+            String channelAccessToken,
+            String channelSecret,
+            boolean enabled
+    ) {}
+
+    public record MatrixChannelConfig(
+            String homeserverUrl,
+            String accessToken,
+            String userId,
+            boolean enabled
+    ) {}
+
+    public record GoogleChatChannelConfig(
+            String projectId,
+            String serviceAccountKeyPath,
             boolean enabled
     ) {}
 }
