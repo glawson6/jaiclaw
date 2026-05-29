@@ -1,0 +1,39 @@
+- id: claude-sonnet-4-5
+  provider: anthropic
+  displayName: Claude Sonnet 4.5
+  contextWindow: 200000
+  costTier: MEDIUM
+  capabilities: [CHAT, VISION, TOOL_CALLING, JSON_MODE, STREAMING, CODE, REASONING]
+  aliases: [claude-sonnet, sonnet]
+
+- id: claude-opus-4-1
+  provider: anthropic
+  displayName: Claude Opus 4.1
+  contextWindow: 200000
+  costTier: HIGH
+  capabilities: [CHAT, VISION, TOOL_CALLING, JSON_MODE, STREAMING, CODE, REASONING]
+  aliases: [claude-opus, opus]
+
+- id: claude-haiku-4-5
+  provider: anthropic
+  displayName: Claude Haiku 4.5
+  contextWindow: 200000
+  costTier: LOW
+  capabilities: [CHAT, VISION, TOOL_CALLING, JSON_MODE, STREAMING, CODE]
+  aliases: [claude-haiku, haiku]
+
+- id: gpt-4o
+  provider: openai
+  displayName: GPT-4o
+  contextWindow: 128000
+  costTier: MEDIUM
+  capabilities: [CHAT, VISION, TOOL_CALLING, JSON_MODE, STREAMING, CODE]
+  aliases: [gpt4o]
+
+- id: gpt-4o-mini
+  provider: openai
+  displayName: GPT-4o Mini
+  contextWindow: 128000
+  costTier: LOW
+  capabilities: [CHAT, VISION, TOOL_CALLING, JSON_MODE, STREAMING, CODE]
+  aliases: [gpt4o-mini]

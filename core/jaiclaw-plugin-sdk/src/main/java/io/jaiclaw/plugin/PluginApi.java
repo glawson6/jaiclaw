@@ -22,4 +22,6 @@ public interface PluginApi {
     <E, C> void on(HookName hookName, HookHandler<E, C> handler, int priority);
 
     Map<String, Object> pluginConfig();
+
+    PluginStateStore stateStore();
 }

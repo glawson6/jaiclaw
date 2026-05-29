@@ -28,6 +28,11 @@ public class CompactionService {
         this.tokenEstimator = new TokenEstimator();
     }
 
+    public CompactionService(CompactionConfig config, TokenEstimator tokenEstimator) {
+        this.config = config;
+        this.tokenEstimator = tokenEstimator;
+    }
+
     /**
      * Check if compaction is needed and perform it if so.
      *

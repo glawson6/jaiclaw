@@ -280,9 +280,13 @@ public class JaiClawAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(ContextCompactor.class)
     @ConditionalOnClass(name = "io.jaiclaw.compaction.CompactionServiceAdapter")
-    public ContextCompactor contextCompactor() {
+    public ContextCompactor contextCompactor(
+            ObjectProvider<io.jaiclaw.compaction.TokenEstimator> tokenEstimatorProvider) {
         var config = io.jaiclaw.core.model.CompactionConfig.DEFAULT;
-        var service = new io.jaiclaw.compaction.CompactionService(config);
+        io.jaiclaw.compaction.TokenEstimator estimator = tokenEstimatorProvider.getIfAvailable();
+        var service = estimator != null
+                ? new io.jaiclaw.compaction.CompactionService(config, estimator)
+                : new io.jaiclaw.compaction.CompactionService(config);
         return new io.jaiclaw.compaction.CompactionServiceAdapter(service);
     }
 

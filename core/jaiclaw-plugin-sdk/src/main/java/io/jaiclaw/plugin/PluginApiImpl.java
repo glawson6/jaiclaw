@@ -19,6 +19,7 @@ public class PluginApiImpl implements PluginApi {
     private final ToolRegistry toolRegistry;
     private final PluginRegistry pluginRegistry;
     private final Map<String, Object> config;
+    private final CaffeinePluginStateStore stateStore;
 
     private final Set<String> registeredTools = new LinkedHashSet<>();
     private final Set<String> registeredHooks = new LinkedHashSet<>();
@@ -31,6 +32,7 @@ public class PluginApiImpl implements PluginApi {
         this.toolRegistry = toolRegistry;
         this.pluginRegistry = pluginRegistry;
         this.config = config != null ? Map.copyOf(config) : Map.of();
+        this.stateStore = new CaffeinePluginStateStore();
     }
 
     @Override
@@ -60,6 +62,11 @@ public class PluginApiImpl implements PluginApi {
     @Override
     public Map<String, Object> pluginConfig() {
         return config;
+    }
+
+    @Override
+    public PluginStateStore stateStore() {
+        return stateStore;
     }
 
     public Set<String> registeredTools() { return Set.copyOf(registeredTools); }

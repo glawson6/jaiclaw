@@ -39,5 +39,8 @@
         <module>jaiclaw-starter-email</module>
         <module>jaiclaw-starter-whatsapp</module>
         <module>jaiclaw-starter-observability</module>
+        <module>jaiclaw-starter-web-search</module>
+        <module>jaiclaw-starter-model-catalog</module>
+        <module>jaiclaw-starter-wiki</module>
     </modules>
 </project>
