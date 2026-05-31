@@ -72,6 +72,15 @@ public record ProjectManifest(
     public record DockerConfig(boolean enabled, String baseImage) {}
     public record ReadmeConfig(String problem, String solution) {}
 
+    /**
+     * Returns a copy of this manifest with the given JaiClaw BOM version.
+     */
+    public ProjectManifest withJaiclawVersion(String newVersion) {
+        return new ProjectManifest(name, description, groupId, javaPackage, version,
+                newVersion, parentMode, archetype, aiProvider, extensions, channels,
+                agent, skills, security, customTools, camel, embabel, server, docker, readme);
+    }
+
     // --- Derived helpers ---
 
     public String artifactId() {
@@ -95,7 +104,7 @@ public record ProjectManifest(
         String groupId = stringOrDefault(map, "group-id", "com.example");
         String javaPackage = stringOrDefault(map, "java-package", null);
         String version = stringOrDefault(map, "version", "0.1.0-SNAPSHOT");
-        String jaiclawVersion = stringOrDefault(map, "jaiclaw-version", "0.3.0-SNAPSHOT");
+        String jaiclawVersion = stringOrDefault(map, "jaiclaw-version", "0.6.0-SNAPSHOT");
         ParentMode parentMode = ParentMode.fromString(stringOrDefault(map, "parent", "standalone"));
         Archetype archetype = Archetype.fromString(stringOrDefault(map, "archetype", "gateway"));
 
@@ -281,7 +290,7 @@ public record ProjectManifest(
         private String groupId = "com.example";
         private String javaPackage;
         private String version = "0.1.0-SNAPSHOT";
-        private String jaiclawVersion = "0.3.0-SNAPSHOT";
+        private String jaiclawVersion = "0.6.0-SNAPSHOT";
         private ParentMode parentMode = ParentMode.STANDALONE;
         private Archetype archetype = Archetype.GATEWAY;
         private AiProvider aiProvider = new AiProvider("anthropic", List.of());

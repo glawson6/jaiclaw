@@ -39,6 +39,14 @@ public class ScaffoldMojo extends AbstractMojo {
     @Parameter(property = "jaiclaw.scaffold.outputDir", defaultValue = ".")
     private File outputDir;
 
+    /**
+     * JaiClaw BOM version to use in generated projects.
+     * Defaults to the current Maven project version when run inside the JaiClaw build,
+     * or can be set explicitly via {@code -Djaiclaw.scaffold.jaiclawVersion=...}.
+     */
+    @Parameter(property = "jaiclaw.scaffold.jaiclawVersion")
+    private String jaiclawVersion;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (!manifest.isFile()) {
@@ -51,6 +59,10 @@ public class ScaffoldMojo extends AbstractMojo {
             Map<String, Object> yamlMap = yamlMapper.readValue(manifest, Map.class);
 
             ProjectManifest projectManifest = ProjectManifest.fromYamlMap(yamlMap);
+            // Override jaiclaw version from Maven if manifest didn't specify one
+            if (!yamlMap.containsKey("jaiclaw-version") && jaiclawVersion != null) {
+                projectManifest = projectManifest.withJaiclawVersion(jaiclawVersion);
+            }
             projectManifest.validate();
 
             ProjectGenerator generator = new ProjectGenerator();

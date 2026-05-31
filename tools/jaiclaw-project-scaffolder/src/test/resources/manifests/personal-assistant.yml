@@ -5,7 +5,7 @@ archetype: comprehensive
 group-id: io.mycompany
 java-package: io.mycompany.assistant
 version: 1.0.0-SNAPSHOT
-jaiclaw-version: 0.3.0-SNAPSHOT
+jaiclaw-version: 0.6.0-SNAPSHOT
 
 ai-provider:
   primary: anthropic

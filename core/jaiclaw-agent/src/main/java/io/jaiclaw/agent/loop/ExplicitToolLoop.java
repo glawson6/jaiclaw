@@ -52,7 +52,9 @@ public class ExplicitToolLoop {
                               String userInput, Map<String, ToolCallback> toolsByName,
                               String sessionKey) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemPrompt));
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(new SystemMessage(systemPrompt));
+        }
         messages.addAll(history);
         messages.add(new UserMessage(userInput));
 
