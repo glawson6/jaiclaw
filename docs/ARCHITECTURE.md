@@ -67,7 +67,8 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐     │
 │  │  jaiclaw-docs│ │ jaiclaw-media│ │jaiclaw-audit │ │jaiclaw-compaction│     │
 │  │  PDF / HTML  │ │ vision/audio │ │ AuditLogger  │ │ context window   │     │
-│  │  parse+fill  │ │ analysis     │ │              │ │ summarization    │     │
+│  │  parse+fill  │ │ analysis     │ │ Trajectory   │ │ summarization    │     │
+│  │              │ │              │ │ Transcripts  │ │                  │     │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘     │
 │                                                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐     │
@@ -135,11 +136,11 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-security  (JWT auth, TenantResolver, SecurityContext)
   +---> jaiclaw-documents  (PDF/HTML/text parsing, PDF form reading/filling, chunking pipeline)
   +---> jaiclaw-media  (async media analysis SPI, CompositeMediaAnalyzer)
-  +---> jaiclaw-audit  (AuditEvent, AuditLogger SPI, InMemoryAuditLogger)
+  +---> jaiclaw-audit  (AuditEvent, AuditLogger SPI, InMemory/FileAuditLogger, TrajectoryRecorder, TranscriptStore)
   +---> jaiclaw-compaction  (context window compaction via summarization)
   +---> jaiclaw-browser  (Playwright-based browser automation)
   +---> jaiclaw-cron  (cron job scheduling, JSON persistence, virtual threads)
-  +---> jaiclaw-voice  (TTS/STT SPI, OpenAI provider)
+  +---> jaiclaw-voice  (TTS/STT SPI, OpenAI/ElevenLabs/Deepgram providers)
   +---> jaiclaw-identity  (cross-channel identity linking, JSON persistence)
   +---> jaiclaw-canvas  (A2UI artifact rendering, HTML file management)
   +---> jaiclaw-code  (file editing, code generation tools)
@@ -464,7 +465,8 @@ env:
 | PDF form reading + filling       | Done         | `jaiclaw-documents`            |
 | Artifact storage SPI             | Done         | `jaiclaw-core` (artifact/)     |
 | Media analysis SPI               | Done         | `jaiclaw-media`                |
-| Audit logging SPI                | Done         | `jaiclaw-audit`                |
+| Audit logging + trajectory + transcripts | Done | `jaiclaw-audit`              |
+| Internationalization (i18n)      | Done         | `jaiclaw-core` (i18n/)         |
 | Auto-configuration               | Done         | `jaiclaw-spring-boot-starter`  |
 | Spring Shell CLI                 | Done         | `jaiclaw-shell`                |
 | Interactive onboarding wizard    | Done         | `jaiclaw-shell`                |

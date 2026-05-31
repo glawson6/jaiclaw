@@ -13,7 +13,9 @@ public record VoiceConfig(
         String openaiSttModel,
         String elevenLabsApiKey,
         String elevenLabsVoiceId,
-        String elevenLabsModelId
+        String elevenLabsModelId,
+        String deepgramApiKey,
+        String deepgramModel
 ) {
     public VoiceConfig {
         if (ttsProvider == null) ttsProvider = "openai";
@@ -22,6 +24,7 @@ public record VoiceConfig(
         if (sttProvider == null) sttProvider = "openai";
         if (openaiTtsModel == null) openaiTtsModel = "tts-1";
         if (openaiSttModel == null) openaiSttModel = "whisper-1";
+        if (deepgramModel == null) deepgramModel = "nova-2";
     }
 
     public boolean isTtsAuto() {
@@ -31,7 +34,8 @@ public record VoiceConfig(
     public static final VoiceConfig DEFAULT = new VoiceConfig(
             "openai", "off", "alloy", "openai",
             null, "tts-1", "whisper-1",
-            null, null, null);
+            null, null, null,
+            null, "nova-2");
 
     public static Builder builder() { return new Builder(); }
 
@@ -46,6 +50,8 @@ public record VoiceConfig(
         private String elevenLabsApiKey;
         private String elevenLabsVoiceId;
         private String elevenLabsModelId;
+        private String deepgramApiKey;
+        private String deepgramModel;
 
         public Builder ttsProvider(String ttsProvider) { this.ttsProvider = ttsProvider; return this; }
         public Builder ttsAutoMode(String ttsAutoMode) { this.ttsAutoMode = ttsAutoMode; return this; }
@@ -57,10 +63,15 @@ public record VoiceConfig(
         public Builder elevenLabsApiKey(String elevenLabsApiKey) { this.elevenLabsApiKey = elevenLabsApiKey; return this; }
         public Builder elevenLabsVoiceId(String elevenLabsVoiceId) { this.elevenLabsVoiceId = elevenLabsVoiceId; return this; }
         public Builder elevenLabsModelId(String elevenLabsModelId) { this.elevenLabsModelId = elevenLabsModelId; return this; }
+        public Builder deepgramApiKey(String deepgramApiKey) { this.deepgramApiKey = deepgramApiKey; return this; }
+        public Builder deepgramModel(String deepgramModel) { this.deepgramModel = deepgramModel; return this; }
 
         public VoiceConfig build() {
             return new VoiceConfig(
-                    ttsProvider, ttsAutoMode, defaultVoice, sttProvider, openaiApiKey, openaiTtsModel, openaiSttModel, elevenLabsApiKey, elevenLabsVoiceId, elevenLabsModelId);
+                    ttsProvider, ttsAutoMode, defaultVoice, sttProvider,
+                    openaiApiKey, openaiTtsModel, openaiSttModel,
+                    elevenLabsApiKey, elevenLabsVoiceId, elevenLabsModelId,
+                    deepgramApiKey, deepgramModel);
         }
     }
 }

@@ -18,7 +18,9 @@ public record JaiClawProperties(
         McpServerProperties mcpServers,
         ChannelsProperties channels,
         HttpProperties http,
-        TenantConfigProperties tenant
+        TenantConfigProperties tenant,
+        VoiceProperties voice,
+        VideoProperties video
 ) {
     public JaiClawProperties {
         if (identity == null) identity = IdentityProperties.DEFAULT;
@@ -33,6 +35,8 @@ public record JaiClawProperties(
         if (channels == null) channels = ChannelsProperties.DEFAULT;
         if (http == null) http = HttpProperties.DEFAULT;
         if (tenant == null) tenant = TenantConfigProperties.DEFAULT;
+        if (voice == null) voice = VoiceProperties.DEFAULT;
+        if (video == null) video = VideoProperties.DEFAULT;
     }
 
     public static Builder builder() { return new Builder(); }
@@ -50,6 +54,8 @@ public record JaiClawProperties(
         private ChannelsProperties channels;
         private HttpProperties http;
         private TenantConfigProperties tenant;
+        private VoiceProperties voice;
+        private VideoProperties video;
 
         public Builder identity(IdentityProperties identity) { this.identity = identity; return this; }
         public Builder agent(AgentProperties agent) { this.agent = agent; return this; }
@@ -63,10 +69,12 @@ public record JaiClawProperties(
         public Builder channels(ChannelsProperties channels) { this.channels = channels; return this; }
         public Builder http(HttpProperties http) { this.http = http; return this; }
         public Builder tenant(TenantConfigProperties tenant) { this.tenant = tenant; return this; }
+        public Builder voice(VoiceProperties voice) { this.voice = voice; return this; }
+        public Builder video(VideoProperties video) { this.video = video; return this; }
 
         public JaiClawProperties build() {
             return new JaiClawProperties(identity, agent, tools, skills, plugins, memory,
-                    models, session, mcpServers, channels, http, tenant);
+                    models, session, mcpServers, channels, http, tenant, voice, video);
         }
     }
 }

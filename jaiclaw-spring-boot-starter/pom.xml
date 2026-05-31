@@ -138,6 +138,16 @@
             <artifactId>jaiclaw-identity</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-voice</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-video-generation</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Circuit breaker support (optional — only used when on classpath) -->
         <dependency>

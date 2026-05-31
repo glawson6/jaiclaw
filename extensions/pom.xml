@@ -47,5 +47,6 @@
         <module>jaiclaw-model-catalog</module>
         <module>jaiclaw-memory-wiki</module>
         <module>jaiclaw-tasks</module>
+        <module>jaiclaw-video-generation</module>
     </modules>
 </project>

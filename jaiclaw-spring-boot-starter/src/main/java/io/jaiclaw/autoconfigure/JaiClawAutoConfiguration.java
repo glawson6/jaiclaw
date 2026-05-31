@@ -50,6 +50,7 @@ import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -655,5 +656,73 @@ public class JaiClawAutoConfiguration {
         log.info("Tools config resolved from Environment (record binding fallback) — profile: {}",
                 envProfile);
         return config;
+    }
+
+    // --- Voice provider auto-configuration ---
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.voice.tts.ElevenLabsTtsProvider")
+    static class ElevenLabsTtsAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(name = "elevenLabsTtsProvider")
+        @ConditionalOnProperty(prefix = "jaiclaw.voice", name = "elevenlabs-api-key")
+        public io.jaiclaw.voice.tts.ElevenLabsTtsProvider elevenLabsTtsProvider(JaiClawProperties properties) {
+            io.jaiclaw.config.VoiceProperties voice = properties.voice();
+            return new io.jaiclaw.voice.tts.ElevenLabsTtsProvider(
+                    voice.elevenLabsApiKey(), voice.elevenLabsVoiceId(), voice.elevenLabsModelId());
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.voice.stt.DeepgramSttProvider")
+    static class DeepgramSttAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(name = "deepgramSttProvider")
+        @ConditionalOnProperty(prefix = "jaiclaw.voice", name = "deepgram-api-key")
+        public io.jaiclaw.voice.stt.DeepgramSttProvider deepgramSttProvider(JaiClawProperties properties) {
+            io.jaiclaw.config.VoiceProperties voice = properties.voice();
+            return new io.jaiclaw.voice.stt.DeepgramSttProvider(
+                    voice.deepgramApiKey(), voice.deepgramModel());
+        }
+    }
+
+    // --- Video generation auto-configuration ---
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.video.VideoGenerationRegistry")
+    static class VideoGenerationAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnProperty(prefix = "jaiclaw.video", name = "runway-api-key")
+        public io.jaiclaw.video.RunwayVideoProvider runwayVideoProvider(JaiClawProperties properties) {
+            io.jaiclaw.config.VideoProperties video = properties.video();
+            return new io.jaiclaw.video.RunwayVideoProvider(video.runwayApiKey(), video.runwayModel());
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.video.VideoGenerationRegistry videoGenerationRegistry(
+                ObjectProvider<List<io.jaiclaw.video.VideoGenerationProvider>> providersProvider) {
+            List<io.jaiclaw.video.VideoGenerationProvider> providers = providersProvider.getIfAvailable();
+            return new io.jaiclaw.video.VideoGenerationRegistry(
+                    providers != null ? providers : List.of());
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnBean(io.jaiclaw.video.VideoGenerationRegistry.class)
+        public io.jaiclaw.video.VideoGenerationTool videoGenerationTool(
+                io.jaiclaw.video.VideoGenerationRegistry registry,
+                ToolRegistry toolRegistry,
+                JaiClawProperties properties) {
+            String defaultProvider = properties.video().defaultProvider();
+            io.jaiclaw.video.VideoGenerationTool tool = new io.jaiclaw.video.VideoGenerationTool(registry, defaultProvider);
+            toolRegistry.register(tool);
+            log.info("VideoGenerationTool registered (video_generate)");
+            return tool;
+        }
     }
 }
