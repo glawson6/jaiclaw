@@ -1,7 +1,4 @@
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   application:
     name: security-handshake-demo
   ai:

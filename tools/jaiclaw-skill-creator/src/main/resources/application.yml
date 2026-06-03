@@ -23,9 +23,6 @@ spring:
   main:
     web-application-type: none
     banner-mode: "off"
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

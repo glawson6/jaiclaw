@@ -34,9 +34,6 @@ jaiclaw:
 # Spring AI auto-config creates a default ChatModel with a placeholder key,
 # but our custom TenantChatModelFactory overrides it with the OAuth token.
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   application:
     name: jaiclaw-oauth-provider-demo
   ai:

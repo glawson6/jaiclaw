@@ -22,9 +22,6 @@ jaiclaw:
     enabled: true
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

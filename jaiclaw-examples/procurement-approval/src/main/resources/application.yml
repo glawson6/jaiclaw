@@ -78,9 +78,6 @@ drools:
       priority: 10
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

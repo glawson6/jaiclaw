@@ -165,10 +165,11 @@
             <artifactId>spring-boot</artifactId>
         </dependency>
 
-        <!-- Embabel starter (brings platform autoconfigure) -->
+        <!-- Embabel starter — optional; pulled transitively only by jaiclaw-starter-embabel -->
         <dependency>
             <groupId>com.embabel.agent</groupId>
             <artifactId>embabel-agent-starter</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- Spring AI provider starters -->

@@ -89,7 +89,7 @@ The `-Pjbang` profile repackages the fat JAR with `exec` classifier, leaving the
 
 | Class | Type | Description |
 |---|---|---|
-| JaiClawShellApplication | class | Spring Boot entry point (excludes AgentPlatformAutoConfiguration) |
+| JaiClawShellApplication | class | Spring Boot entry point |
 | ChatCommands | class | Shell commands for multi-turn agent chat with session management |
 | StatusCommands | class | Show system status (identity, agent, tools, plugins, sessions) |
 | OnboardCommands | class | Shell command entry point for onboarding wizard |
@@ -253,4 +253,4 @@ The `StandaloneCronManagerConfiguration` provides `McpServerRegistry` and `McpCo
 ./mvnw spring-boot:run -pl :jaiclaw-cron-manager-app
 ```
 
-Excludes `AgentPlatformAutoConfiguration`, `JaiClawGatewayAutoConfiguration`, and `JaiClawChannelAutoConfiguration` -- runs only the cron scheduling and execution engine with MCP hosting and shell commands.
+Excludes `JaiClawGatewayAutoConfiguration` and `JaiClawChannelAutoConfiguration` -- runs only the cron scheduling and execution engine with MCP hosting and shell commands.

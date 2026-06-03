@@ -48,9 +48,6 @@ logging:
     io.jaiclaw.agent.LlmTraceLogger: TRACE
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   shell:
     interactive:
       enabled: true

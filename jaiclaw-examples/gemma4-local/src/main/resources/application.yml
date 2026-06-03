@@ -25,9 +25,6 @@ jaiclaw:
     enabled: false
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   application:
     name: jaiclaw-gemma4-local
   shell:

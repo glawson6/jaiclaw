@@ -25,9 +25,6 @@ jaiclaw:
       from-number: ${TWILIO_FROM_NUMBER:}
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

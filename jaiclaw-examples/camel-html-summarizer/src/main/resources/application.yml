@@ -46,9 +46,6 @@ logging:
     io.jaiclaw.agent.LlmTraceLogger: TRACE
 
 spring:
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

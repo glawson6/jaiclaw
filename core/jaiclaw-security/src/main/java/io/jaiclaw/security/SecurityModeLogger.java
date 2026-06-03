@@ -32,6 +32,10 @@ public class SecurityModeLogger implements SmartInitializingSingleton {
     }
 
     private void logApiKeyMode() {
+        if (apiKeyProvider == null) {
+            log.warn("Security mode: api-key — but no ApiKeyProvider bean found");
+            return;
+        }
         log.info("Security mode: api-key — API key: {} (source: {})",
                 apiKeyProvider.getMaskedKey(), apiKeyProvider.getSource());
     }

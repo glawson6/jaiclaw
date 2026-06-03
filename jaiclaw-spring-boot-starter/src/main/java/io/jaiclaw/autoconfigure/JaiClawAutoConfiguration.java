@@ -465,12 +465,13 @@ public class JaiClawAutoConfiguration {
         if (systemPromptConfig == null) {
             String prefix = "jaiclaw.agent.agents." + properties.agent().defaultAgent() + ".system-prompt";
             String strategy = env.getProperty(prefix + ".strategy");
-            if (strategy != null) {
-                String content = env.getProperty(prefix + ".content");
-                String source = env.getProperty(prefix + ".source");
+            String content = env.getProperty(prefix + ".content");
+            String source = env.getProperty(prefix + ".source");
+            // Resolve if strategy is explicit OR if content/source is present (strategy defaults to "inline")
+            if (strategy != null || content != null || source != null) {
                 boolean append = Boolean.parseBoolean(env.getProperty(prefix + ".append", "false"));
                 systemPromptConfig = new io.jaiclaw.config.SystemPromptConfig(strategy, content, source, append);
-                log.info("System prompt resolved from Environment (record binding fallback) — strategy: {}", strategy);
+                log.info("System prompt resolved from Environment (record binding fallback) — strategy: {}", systemPromptConfig.strategy());
             }
         }
 

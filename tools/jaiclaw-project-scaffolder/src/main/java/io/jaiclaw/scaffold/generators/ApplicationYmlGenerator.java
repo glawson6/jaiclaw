@@ -57,10 +57,12 @@ public final class ApplicationYmlGenerator {
             String strategy = manifest.agent().systemPrompt().strategy();
             if ("classpath".equals(strategy) && manifest.agent().systemPrompt().source() != null) {
                 sb.append("        system-prompt:\n");
+                sb.append("          strategy: classpath\n");
                 sb.append("          source: ").append(manifest.agent().systemPrompt().source()).append("\n");
             } else if ("inline".equals(strategy) && manifest.agent().systemPrompt().content() != null
                     && !manifest.agent().systemPrompt().content().isBlank()) {
                 sb.append("        system-prompt:\n");
+                sb.append("          strategy: inline\n");
                 sb.append("          content: |\n");
                 for (String line : manifest.agent().systemPrompt().content().split("\n")) {
                     sb.append("            ").append(line).append("\n");
@@ -80,13 +82,6 @@ public final class ApplicationYmlGenerator {
 
         // Spring config
         sb.append("spring:\n");
-
-        // Embabel exclusion (unless archetype is embabel)
-        if (manifest.archetype() != Archetype.EMBABEL) {
-            sb.append("  autoconfigure:\n");
-            sb.append("    exclude:\n");
-            sb.append("      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration\n");
-        }
 
         // AI provider config
         sb.append("  ai:\n");

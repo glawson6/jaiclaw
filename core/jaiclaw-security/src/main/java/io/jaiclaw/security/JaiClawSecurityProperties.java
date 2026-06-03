@@ -31,13 +31,10 @@ public record JaiClawSecurityProperties(
     }
 
     public JaiClawSecurityProperties {
-        // Backward compatibility: derive mode from enabled flag if mode not set explicitly
-        if (mode == null || mode.isBlank()) {
-            if (enabled) {
-                mode = "jwt";
-            } else {
-                mode = "api-key";
-            }
+        // Backward compatibility: derive mode from enabled flag if mode not set explicitly.
+        // Only default when mode is genuinely absent (null), not when set to an explicit value.
+        if (mode == null) {
+            mode = enabled ? "jwt" : "api-key";
         }
         if (apiKeyFile == null || apiKeyFile.isBlank()) {
             apiKeyFile = System.getProperty("user.home") + "/.jaiclaw/api-key";

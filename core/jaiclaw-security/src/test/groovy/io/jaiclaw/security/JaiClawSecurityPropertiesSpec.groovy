@@ -46,6 +46,28 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         props.mode() == "none"
     }
 
+    def "explicit mode 'none' is preserved even when enabled=false"() {
+        when:
+        def props = new JaiClawSecurityProperties(false, "none", null, null, false,
+                new JaiClawSecurityProperties.JwtProperties(),
+                new JaiClawSecurityProperties.RoleMappingProperties(),
+                new JaiClawSecurityProperties.RateLimitProperties())
+
+        then:
+        props.mode() == "none"
+    }
+
+    def "explicit mode 'api-key' is preserved when enabled=true"() {
+        when:
+        def props = new JaiClawSecurityProperties(true, "api-key", null, null, false,
+                new JaiClawSecurityProperties.JwtProperties(),
+                new JaiClawSecurityProperties.RoleMappingProperties(),
+                new JaiClawSecurityProperties.RateLimitProperties())
+
+        then: "explicit api-key is not overridden to jwt despite enabled=true"
+        props.mode() == "api-key"
+    }
+
     def "apiKeyFile defaults to ~/.jaiclaw/api-key"() {
         when:
         def props = new JaiClawSecurityProperties()

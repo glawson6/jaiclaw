@@ -40,6 +40,22 @@ class SecurityModeLoggerSpec extends Specification {
         noExceptionThrown()
     }
 
+    def "logs warning for api-key mode when apiKeyProvider is null"() {
+        given:
+        def properties = new JaiClawSecurityProperties(false, "api-key", null, "/tmp/key",
+                false,
+                new JaiClawSecurityProperties.JwtProperties(),
+                new JaiClawSecurityProperties.RoleMappingProperties(),
+                new JaiClawSecurityProperties.RateLimitProperties())
+        def logger = new SecurityModeLogger(properties, null)
+
+        when:
+        logger.afterSingletonsInstantiated()
+
+        then:
+        noExceptionThrown()
+    }
+
     def "logs info for jwt mode without error"() {
         given:
         def properties = new JaiClawSecurityProperties(true, "jwt", null, "/tmp/key",

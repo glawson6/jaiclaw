@@ -95,9 +95,6 @@ spring:
     web-application-type: none
   config:
     import: optional:file:${user.home}/.jaiclaw/application-local.yml
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
   ai:
     model:
       chat: ${AI_PROVIDER:anthropic}

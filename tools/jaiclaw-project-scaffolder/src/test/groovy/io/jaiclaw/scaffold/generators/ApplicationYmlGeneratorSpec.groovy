@@ -42,7 +42,7 @@ class ApplicationYmlGeneratorSpec extends Specification {
         yml.contains("api-key: \${JAICLAW_API_KEY:}")
     }
 
-    def "generates YAML with Embabel exclusion for non-embabel archetypes"() {
+    def "does not generate Embabel exclusion for any archetype"() {
         given:
         def manifest = loadManifest("minimal.yml")
 
@@ -50,10 +50,10 @@ class ApplicationYmlGeneratorSpec extends Specification {
         def yml = ApplicationYmlGenerator.generate(manifest)
 
         then:
-        yml.contains("AgentPlatformAutoConfiguration")
+        !yml.contains("AgentPlatformAutoConfiguration")
     }
 
-    def "generates YAML without Embabel exclusion for embabel archetype"() {
+    def "generates Embabel config for embabel archetype"() {
         given:
         def manifest = loadManifest("research-planner.yml")
 

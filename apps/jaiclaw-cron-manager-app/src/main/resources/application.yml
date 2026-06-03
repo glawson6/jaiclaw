@@ -32,9 +32,6 @@ spring:
     name: jaiclaw-cron-manager
   config:
     import: optional:file:${user.home}/.jaiclaw/application-local.yml
-  autoconfigure:
-    exclude:
-      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
       - io.jaiclaw.autoconfigure.JaiClawGatewayAutoConfiguration
       - io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration
   datasource:
