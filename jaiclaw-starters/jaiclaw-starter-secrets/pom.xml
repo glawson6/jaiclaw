@@ -16,7 +16,7 @@
     <description>Pre-packaged secrets management via Spring Cloud Vault and Camel vault components</description>
 
     <properties>
-        <camel.version>4.18.1</camel.version>
+        <camel.version>4.18.2</camel.version>
     </properties>
 
     <dependencies>

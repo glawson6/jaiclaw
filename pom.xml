@@ -60,7 +60,12 @@
         <spring-ai.version>1.1.7</spring-ai.version>
         <embabel-agent.version>0.3.5</embabel-agent.version>
         <spring-shell.version>3.4.2</spring-shell.version>
-        <spring-cloud.version>2025.0.1</spring-cloud.version>
+        <spring-cloud.version>2025.0.2</spring-cloud.version>
+
+        <!-- CVE version overrides (Spring Boot 3.5.14 BOM manages older vulnerable versions) -->
+        <tomcat.version>10.1.55</tomcat.version>
+        <netty.version>4.1.135.Final</netty.version>
+        <log4j2.version>2.26.0</log4j2.version>
 
         <!-- Testing -->
         <spock.version>2.4-groovy-4.0</spock.version>
@@ -76,6 +81,7 @@
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <jkube.version>1.17.0</jkube.version>
+        <dependency-check.version>12.1.0</dependency-check.version>
     </properties>
 
     <dependencyManagement>
@@ -694,6 +700,11 @@
                             </goals>
                         </execution>
                     </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.owasp</groupId>
+                    <artifactId>dependency-check-maven</artifactId>
+                    <version>${dependency-check.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

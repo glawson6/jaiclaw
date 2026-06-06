@@ -9,6 +9,7 @@ import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.agent.tenant.TenantAgentExecutionContext;
 import io.jaiclaw.agent.tenant.TenantAgentRuntimeFactory;
 import io.jaiclaw.config.AgentProperties;
+import io.jaiclaw.config.CompositeToolProfileRegistry;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.hook.HookName;
@@ -16,6 +17,7 @@ import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.model.TokenUsage;
 import io.jaiclaw.core.model.UserMessage;
 import io.jaiclaw.core.skill.SkillDefinition;
+import io.jaiclaw.core.tool.CompositeToolProfile;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolProfile;
@@ -74,6 +76,9 @@ public class AgentRuntime {
     // Deployment-time tool policy from YAML (profile + allow/deny)
     private final AgentProperties.ToolPolicyConfig defaultToolPolicy;
 
+    // Composite tool profiles (nullable — null means no composite profiles defined)
+    private final CompositeToolProfileRegistry compositeProfileRegistry;
+
     // Per-tenant support (nullable — null means singleton path)
     private final TenantAgentRuntimeFactory tenantRuntimeFactory;
     private final AgentLoopDelegateRegistry delegateRegistry;
@@ -82,7 +87,49 @@ public class AgentRuntime {
     public static Builder builder() { return new Builder(); }
 
     /**
-     * Full constructor with all SPI collaborators and per-tenant support.
+     * Full constructor with all SPI collaborators, per-tenant support, and composite profiles.
+     */
+    public AgentRuntime(
+            SessionManager sessionManager,
+            ChatClient.Builder chatClientBuilder,
+            ToolRegistry toolRegistry,
+            List<SkillDefinition> skills,
+            ChatModel chatModel,
+            ToolLoopConfig toolLoopConfig,
+            ContextCompactor compactor,
+            AgentHookDispatcher hooks,
+            MemoryProvider memoryProvider,
+            ToolApprovalHandler approvalHandler,
+            AgentOrchestrationPort orchestrationPort,
+            TenantAgentRuntimeFactory tenantRuntimeFactory,
+            AgentLoopDelegateRegistry delegateRegistry,
+            TenantGuard tenantGuard,
+            String defaultAdditionalInstructions,
+            boolean replaceSystemPrompt,
+            AgentProperties.ToolPolicyConfig defaultToolPolicy,
+            CompositeToolProfileRegistry compositeProfileRegistry) {
+        this.sessionManager = sessionManager;
+        this.chatClientBuilder = chatClientBuilder;
+        this.toolRegistry = toolRegistry;
+        this.skills = skills;
+        this.chatModel = chatModel;
+        this.toolLoopConfig = toolLoopConfig != null ? toolLoopConfig : ToolLoopConfig.DEFAULT;
+        this.compactor = compactor;
+        this.hooks = hooks;
+        this.memoryProvider = memoryProvider;
+        this.approvalHandler = approvalHandler;
+        this.orchestrationPort = orchestrationPort;
+        this.tenantRuntimeFactory = tenantRuntimeFactory;
+        this.delegateRegistry = delegateRegistry;
+        this.tenantGuard = tenantGuard;
+        this.defaultAdditionalInstructions = defaultAdditionalInstructions != null ? defaultAdditionalInstructions : "";
+        this.replaceSystemPrompt = replaceSystemPrompt;
+        this.defaultToolPolicy = defaultToolPolicy != null ? defaultToolPolicy : AgentProperties.ToolPolicyConfig.DEFAULT;
+        this.compositeProfileRegistry = compositeProfileRegistry;
+    }
+
+    /**
+     * Full constructor without composite profile registry (backward-compatible).
      */
     public AgentRuntime(
             SessionManager sessionManager,
@@ -102,23 +149,11 @@ public class AgentRuntime {
             String defaultAdditionalInstructions,
             boolean replaceSystemPrompt,
             AgentProperties.ToolPolicyConfig defaultToolPolicy) {
-        this.sessionManager = sessionManager;
-        this.chatClientBuilder = chatClientBuilder;
-        this.toolRegistry = toolRegistry;
-        this.skills = skills;
-        this.chatModel = chatModel;
-        this.toolLoopConfig = toolLoopConfig != null ? toolLoopConfig : ToolLoopConfig.DEFAULT;
-        this.compactor = compactor;
-        this.hooks = hooks;
-        this.memoryProvider = memoryProvider;
-        this.approvalHandler = approvalHandler;
-        this.orchestrationPort = orchestrationPort;
-        this.tenantRuntimeFactory = tenantRuntimeFactory;
-        this.delegateRegistry = delegateRegistry;
-        this.tenantGuard = tenantGuard;
-        this.defaultAdditionalInstructions = defaultAdditionalInstructions != null ? defaultAdditionalInstructions : "";
-        this.replaceSystemPrompt = replaceSystemPrompt;
-        this.defaultToolPolicy = defaultToolPolicy != null ? defaultToolPolicy : AgentProperties.ToolPolicyConfig.DEFAULT;
+        this(sessionManager, chatClientBuilder, toolRegistry, skills,
+                chatModel, toolLoopConfig, compactor, hooks, memoryProvider,
+                approvalHandler, orchestrationPort, tenantRuntimeFactory,
+                delegateRegistry, tenantGuard, defaultAdditionalInstructions,
+                replaceSystemPrompt, defaultToolPolicy, null);
     }
 
     /**
@@ -498,9 +533,22 @@ public class AgentRuntime {
 
     /**
      * Resolve tools for the singleton (non-tenant) path using the deployment-time tool policy.
+     * Checks composite profile registry first; falls through to base enum profiles if not found.
      */
     private List<ToolCallback> resolveToolsForSingleton() {
-        ToolProfile profile = resolveProfile(defaultToolPolicy.profile());
+        String profileName = defaultToolPolicy.profile();
+
+        // Check composite registry first
+        if (compositeProfileRegistry != null && profileName != null) {
+            Optional<CompositeToolProfile> composite = compositeProfileRegistry.resolve(profileName);
+            if (composite.isPresent()) {
+                return toolRegistry.resolveForCompositePolicy(
+                        composite.get(), defaultToolPolicy.allow(), defaultToolPolicy.deny());
+            }
+        }
+
+        // Fall through to base enum profile
+        ToolProfile profile = resolveProfile(profileName);
         return toolRegistry.resolveForPolicy(profile, defaultToolPolicy.allow(), defaultToolPolicy.deny());
     }
 
@@ -623,6 +671,7 @@ public class AgentRuntime {
         private AgentLoopDelegateRegistry delegateRegistry;
         private TenantGuard tenantGuard;
         private AgentProperties.ToolPolicyConfig defaultToolPolicy;
+        private CompositeToolProfileRegistry compositeProfileRegistry;
 
         public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
         public Builder chatClientBuilder(ChatClient.Builder chatClientBuilder) { this.chatClientBuilder = chatClientBuilder; return this; }
@@ -639,12 +688,13 @@ public class AgentRuntime {
         public Builder delegateRegistry(AgentLoopDelegateRegistry delegateRegistry) { this.delegateRegistry = delegateRegistry; return this; }
         public Builder tenantGuard(TenantGuard tenantGuard) { this.tenantGuard = tenantGuard; return this; }
         public Builder defaultToolPolicy(AgentProperties.ToolPolicyConfig defaultToolPolicy) { this.defaultToolPolicy = defaultToolPolicy; return this; }
+        public Builder compositeProfileRegistry(CompositeToolProfileRegistry compositeProfileRegistry) { this.compositeProfileRegistry = compositeProfileRegistry; return this; }
 
         public AgentRuntime build() {
             return new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills,
                     chatModel, toolLoopConfig, compactor, hooks, memoryProvider,
                     approvalHandler, orchestrationPort, tenantRuntimeFactory, delegateRegistry, tenantGuard,
-                    null, false, defaultToolPolicy);
+                    null, false, defaultToolPolicy, compositeProfileRegistry);
         }
     }
 }

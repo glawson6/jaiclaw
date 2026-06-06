@@ -9,10 +9,14 @@ import io.jaiclaw.agent.tenant.TenantAgentRuntimeFactory;
 import io.jaiclaw.agent.tenant.TenantChatModelFactory;
 import io.jaiclaw.channel.ChannelAdapter;
 import io.jaiclaw.channel.ChannelRegistry;
+import io.jaiclaw.config.CompositeToolProfileRegistry;
 import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.config.TenantAgentConfigService;
 import io.jaiclaw.config.TenantEnvLoader;
+import io.jaiclaw.config.ToolsProperties;
 import io.jaiclaw.config.prompt.SystemPromptLoaderFactory;
+import io.jaiclaw.core.tool.CompositeToolProfile;
+import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory.ProxyConfig;
@@ -193,6 +197,37 @@ public class JaiClawAutoConfiguration {
         ExecPolicyConfig execPolicyConfig = toExecPolicyConfig(properties.tools().exec());
         boolean ssrfProtection = properties.tools().web().ssrfProtection();
         BuiltinTools.registerAll(registry, execPolicyConfig, ssrfProtection);
+        return registry;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public CompositeToolProfileRegistry compositeToolProfileRegistry(JaiClawProperties properties) {
+        CompositeToolProfileRegistry registry = new CompositeToolProfileRegistry();
+        Map<String, ToolsProperties.CompositeProfileEntry> entries = properties.tools().compositeProfiles();
+        for (Map.Entry<String, ToolsProperties.CompositeProfileEntry> entry : entries.entrySet()) {
+            String name = entry.getKey();
+            ToolsProperties.CompositeProfileEntry cfg = entry.getValue();
+
+            Set<ToolProfile> baseProfiles = new java.util.LinkedHashSet<>();
+            for (String profileName : cfg.profiles()) {
+                try {
+                    baseProfiles.add(ToolProfile.valueOf(profileName.toUpperCase()));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Unknown base profile '{}' in composite profile '{}' — skipping", profileName, name);
+                }
+            }
+
+            if (baseProfiles.isEmpty()) {
+                log.warn("Composite profile '{}' has no valid base profiles — skipping", name);
+                continue;
+            }
+
+            CompositeToolProfile composite = new CompositeToolProfile(name, baseProfiles, cfg.allow(), cfg.deny());
+            registry.register(composite);
+            log.info("Registered composite tool profile '{}': profiles={}, allow={}, deny={}",
+                    name, baseProfiles, cfg.allow(), cfg.deny());
+        }
         return registry;
     }
 
@@ -403,12 +438,14 @@ public class JaiClawAutoConfiguration {
             ToolRegistry toolRegistry,
             SkillLoader skillLoader,
             JaiClawProperties properties,
-            SystemPromptLoaderFactory promptLoaderFactory) {
+            SystemPromptLoaderFactory promptLoaderFactory,
+            CompositeToolProfileRegistry compositeToolProfileRegistry) {
         List<SkillDefinition> skills = skillLoader.loadConfigured(
                 properties.skills().allowBundled(),
                 properties.skills().workspaceDir());
         return new TenantAgentRuntimeFactory(
-                chatModelFactory, toolRegistry, skills, promptLoaderFactory);
+                chatModelFactory, toolRegistry, skills, promptLoaderFactory,
+                compositeToolProfileRegistry);
     }
 
     @Bean
@@ -436,6 +473,7 @@ public class JaiClawAutoConfiguration {
             SkillLoader skillLoader,
             JaiClawProperties properties,
             TenantGuard tenantGuard,
+            CompositeToolProfileRegistry compositeToolProfileRegistry,
             org.springframework.core.env.Environment env,
             SystemPromptLoaderFactory promptLoaderFactory,
             ObjectProvider<ChatModel> chatModelProvider,
@@ -515,7 +553,8 @@ public class JaiClawAutoConfiguration {
                 tenantGuard,
                 additionalInstructions,
                 replaceSystemPrompt,
-                toolPolicy
+                toolPolicy,
+                compositeToolProfileRegistry
         );
 
         Set<String> toolNames = toolRegistry.toolNames();

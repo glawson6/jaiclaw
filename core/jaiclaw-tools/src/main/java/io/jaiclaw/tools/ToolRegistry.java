@@ -1,10 +1,12 @@
 package io.jaiclaw.tools;
 
+import io.jaiclaw.core.tool.CompositeToolProfile;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolProfile;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  * Central registry for all tools available to the agent runtime.
@@ -56,6 +58,57 @@ public class ToolRegistry {
                     String name = t.definition().name();
                     if (deny != null && deny.contains(name)) return false;
                     if (allow != null && !allow.isEmpty()) return allow.contains(name);
+                    return true;
+                })
+                .toList();
+    }
+
+    /**
+     * Resolve tools for a composite profile: union tools from all constituent base profiles,
+     * then apply the composite's own deny list, then the composite's own allow list.
+     */
+    public List<ToolCallback> resolveForComposite(CompositeToolProfile composite) {
+        // Union tools from all base profiles (deduplicate by name)
+        Map<String, ToolCallback> union = new LinkedHashMap<>();
+        for (ToolProfile base : composite.profiles()) {
+            for (ToolCallback tool : resolveForProfile(base)) {
+                union.putIfAbsent(tool.definition().name(), tool);
+            }
+        }
+
+        Stream<ToolCallback> stream = union.values().stream();
+
+        // Apply composite deny (deny-wins)
+        if (!composite.deny().isEmpty()) {
+            Set<String> denySet = Set.copyOf(composite.deny());
+            stream = stream.filter(t -> !denySet.contains(t.definition().name()));
+        }
+
+        // Apply composite allow (keep only these if non-empty)
+        if (!composite.allow().isEmpty()) {
+            Set<String> allowSet = Set.copyOf(composite.allow());
+            stream = stream.filter(t -> allowSet.contains(t.definition().name()));
+        }
+
+        return stream.toList();
+    }
+
+    /**
+     * Resolve tools for a composite profile, then layer agent-level allow/deny on top.
+     */
+    public List<ToolCallback> resolveForCompositePolicy(CompositeToolProfile composite,
+                                                         List<String> agentAllow,
+                                                         List<String> agentDeny) {
+        List<ToolCallback> compositeTools = resolveForComposite(composite);
+        if ((agentAllow == null || agentAllow.isEmpty()) && (agentDeny == null || agentDeny.isEmpty())) {
+            return compositeTools;
+        }
+
+        return compositeTools.stream()
+                .filter(t -> {
+                    String name = t.definition().name();
+                    if (agentDeny != null && agentDeny.contains(name)) return false;
+                    if (agentAllow != null && !agentAllow.isEmpty()) return agentAllow.contains(name);
                     return true;
                 })
                 .toList();

@@ -15,7 +15,7 @@
     <description>Apache Camel channel adapter for JaiClaw — exposes 390+ Camel connectors as inbound/outbound channels</description>
 
     <properties>
-        <camel.version>4.18.1</camel.version>
+        <camel.version>4.18.2</camel.version>
     </properties>
 
     <dependencies>

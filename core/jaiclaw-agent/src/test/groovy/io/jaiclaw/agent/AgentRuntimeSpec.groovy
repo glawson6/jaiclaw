@@ -2,12 +2,14 @@ package io.jaiclaw.agent
 
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.config.AgentProperties
+import io.jaiclaw.config.CompositeToolProfileRegistry
 import io.jaiclaw.core.agent.*
 import io.jaiclaw.core.hook.HookName
 import io.jaiclaw.core.model.AgentIdentity
 import io.jaiclaw.core.model.Session
 import io.jaiclaw.core.model.UserMessage
 import io.jaiclaw.core.skill.SkillDefinition
+import io.jaiclaw.core.tool.CompositeToolProfile
 import io.jaiclaw.core.tool.ToolProfile
 import io.jaiclaw.tools.ToolRegistry
 import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort
@@ -166,6 +168,53 @@ class AgentRuntimeSpec extends Specification {
                 .toolRegistry(toolRegistry)
                 .skills(skills)
                 .build()
+
+        then:
+        runtime != null
+    }
+
+    def "constructor accepts CompositeToolProfileRegistry"() {
+        given:
+        def registry = new CompositeToolProfileRegistry()
+        registry.register(CompositeToolProfile.builder("devops")
+                .profiles(ToolProfile.CODING, ToolProfile.MESSAGING)
+                .build())
+
+        when:
+        def runtime = new AgentRuntime(
+                sessionManager, chatClientBuilder, toolRegistry, skills,
+                null, null, null, null, null, null, null,
+                null, null, null, null, false, null, registry
+        )
+
+        then:
+        runtime != null
+    }
+
+    def "builder supports compositeProfileRegistry"() {
+        given:
+        def registry = new CompositeToolProfileRegistry()
+
+        when:
+        def runtime = AgentRuntime.builder()
+                .sessionManager(sessionManager)
+                .chatClientBuilder(chatClientBuilder)
+                .toolRegistry(toolRegistry)
+                .skills(skills)
+                .compositeProfileRegistry(registry)
+                .build()
+
+        then:
+        runtime != null
+    }
+
+    def "null compositeProfileRegistry is backward compatible"() {
+        when:
+        def runtime = new AgentRuntime(
+                sessionManager, chatClientBuilder, toolRegistry, skills,
+                null, null, null, null, null, null, null,
+                null, null, null, null, false, null, null
+        )
 
         then:
         runtime != null

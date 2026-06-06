@@ -1,9 +1,11 @@
 package io.jaiclaw.agent.tenant;
 
 import io.jaiclaw.agent.SystemPromptBuilder;
+import io.jaiclaw.config.CompositeToolProfileRegistry;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.config.prompt.SystemPromptLoaderFactory;
 import io.jaiclaw.core.skill.SkillDefinition;
+import io.jaiclaw.core.tool.CompositeToolProfile;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.tools.ToolRegistry;
@@ -13,6 +15,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Creates complete per-tenant execution contexts combining ChatModel, tools,
@@ -26,15 +29,31 @@ public class TenantAgentRuntimeFactory {
     private final ToolRegistry toolRegistry;
     private final List<SkillDefinition> defaultSkills;
     private final SystemPromptLoaderFactory promptLoaderFactory;
+    private final CompositeToolProfileRegistry compositeProfileRegistry;
 
+    /**
+     * Full constructor with composite profile registry.
+     */
     public TenantAgentRuntimeFactory(TenantChatModelFactory chatModelFactory,
                                       ToolRegistry toolRegistry,
                                       List<SkillDefinition> defaultSkills,
-                                      SystemPromptLoaderFactory promptLoaderFactory) {
+                                      SystemPromptLoaderFactory promptLoaderFactory,
+                                      CompositeToolProfileRegistry compositeProfileRegistry) {
         this.chatModelFactory = chatModelFactory;
         this.toolRegistry = toolRegistry;
         this.defaultSkills = defaultSkills;
         this.promptLoaderFactory = promptLoaderFactory;
+        this.compositeProfileRegistry = compositeProfileRegistry;
+    }
+
+    /**
+     * Backward-compatible constructor without composite profile registry.
+     */
+    public TenantAgentRuntimeFactory(TenantChatModelFactory chatModelFactory,
+                                      ToolRegistry toolRegistry,
+                                      List<SkillDefinition> defaultSkills,
+                                      SystemPromptLoaderFactory promptLoaderFactory) {
+        this(chatModelFactory, toolRegistry, defaultSkills, promptLoaderFactory, null);
     }
 
     /**
@@ -47,15 +66,26 @@ public class TenantAgentRuntimeFactory {
         // 2. Build a ChatClient.Builder for this tenant's model
         ChatClient.Builder chatClientBuilder = ChatClient.builder(chatModel);
 
-        // 3. Resolve tools by tenant's tool policy
-        ToolProfile profile = resolveProfile(config.tools().profile());
-        List<ToolCallback> tools = toolRegistry.resolveForPolicy(
-                profile, config.tools().allow(), config.tools().deny());
-        log.info("Tenant '{}' tool resolution: profile={}, registry size={}, resolved {} tools: {}",
-                config.tenantId(), profile,
-                toolRegistry.size(),
-                tools.size(),
-                tools.stream().map(t -> t.definition().name()).toList());
+        // 3. Resolve tools by tenant's tool policy — check composite registry first
+        String profileName = config.tools().profile();
+        List<ToolCallback> tools;
+
+        if (compositeProfileRegistry != null && profileName != null) {
+            Optional<CompositeToolProfile> composite = compositeProfileRegistry.resolve(profileName);
+            if (composite.isPresent()) {
+                tools = toolRegistry.resolveForCompositePolicy(
+                        composite.get(), config.tools().allow(), config.tools().deny());
+                log.info("Tenant '{}' tool resolution: composite profile={}, registry size={}, resolved {} tools: {}",
+                        config.tenantId(), profileName,
+                        toolRegistry.size(),
+                        tools.size(),
+                        tools.stream().map(t -> t.definition().name()).toList());
+            } else {
+                tools = resolveWithBaseProfile(config, profileName);
+            }
+        } else {
+            tools = resolveWithBaseProfile(config, profileName);
+        }
 
         // 4. Load system prompt using the configured strategy, or build a default
         String systemPrompt;
@@ -73,6 +103,18 @@ public class TenantAgentRuntimeFactory {
         return new TenantAgentExecutionContext(
                 config, chatModel, chatClientBuilder, tools, defaultSkills, systemPrompt
         );
+    }
+
+    private List<ToolCallback> resolveWithBaseProfile(TenantAgentConfig config, String profileName) {
+        ToolProfile profile = resolveProfile(profileName);
+        List<ToolCallback> tools = toolRegistry.resolveForPolicy(
+                profile, config.tools().allow(), config.tools().deny());
+        log.info("Tenant '{}' tool resolution: profile={}, registry size={}, resolved {} tools: {}",
+                config.tenantId(), profile,
+                toolRegistry.size(),
+                tools.size(),
+                tools.stream().map(t -> t.definition().name()).toList());
+        return tools;
     }
 
     private ToolProfile resolveProfile(String profileName) {

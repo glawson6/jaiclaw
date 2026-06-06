@@ -1,5 +1,6 @@
 package io.jaiclaw.tools
 
+import io.jaiclaw.core.tool.CompositeToolProfile
 import io.jaiclaw.core.tool.ToolCallback
 import io.jaiclaw.core.tool.ToolContext
 import io.jaiclaw.core.tool.ToolDefinition
@@ -141,6 +142,129 @@ class ToolRegistrySpec extends Specification {
         expect:
         registry.contains("exists")
         !registry.contains("nope")
+    }
+
+    // --- Composite tool profile tests ---
+
+    def "resolveForComposite unions tools from multiple base profiles"() {
+        given:
+        registry.register(stubTool("coding_tool", "C", "Test", ToolProfile.CODING))
+        registry.register(stubTool("messaging_tool", "M", "Test", ToolProfile.MESSAGING))
+        registry.register(stubTool("minimal_tool", "Min", "Test", ToolProfile.MINIMAL))
+        def composite = CompositeToolProfile.builder("devops")
+                .profiles(ToolProfile.CODING, ToolProfile.MESSAGING)
+                .build()
+
+        when:
+        def tools = registry.resolveForComposite(composite)
+
+        then:
+        tools.collect { it.definition().name() } as Set == ["coding_tool", "messaging_tool"] as Set
+    }
+
+    def "resolveForComposite deduplicates tools in multiple profiles"() {
+        given: "a tool tagged with both CODING and MESSAGING"
+        def definition = new ToolDefinition("shared", "S", "Test",
+                '{"type":"object","properties":{},"required":[]}',
+                Set.of(ToolProfile.CODING, ToolProfile.MESSAGING))
+        registry.register(new ToolCallback() {
+            @Override ToolDefinition definition() { return definition }
+            @Override ToolResult execute(Map<String, Object> parameters, ToolContext context) {
+                return new ToolResult.Success("ok")
+            }
+        })
+        def composite = CompositeToolProfile.builder("both")
+                .profiles(ToolProfile.CODING, ToolProfile.MESSAGING)
+                .build()
+
+        when:
+        def tools = registry.resolveForComposite(composite)
+
+        then:
+        tools.size() == 1
+        tools[0].definition().name() == "shared"
+    }
+
+    def "resolveForComposite applies composite deny"() {
+        given:
+        registry.register(stubTool("file_read", "FR", "Test", ToolProfile.CODING))
+        registry.register(stubTool("shell_exec", "SE", "Test", ToolProfile.CODING))
+        def composite = CompositeToolProfile.builder("safe-coding")
+                .profiles(ToolProfile.CODING)
+                .deny("shell_exec")
+                .build()
+
+        when:
+        def tools = registry.resolveForComposite(composite)
+
+        then:
+        tools.collect { it.definition().name() } == ["file_read"]
+    }
+
+    def "resolveForComposite applies composite allow"() {
+        given:
+        registry.register(stubTool("file_read", "FR", "Test", ToolProfile.CODING))
+        registry.register(stubTool("shell_exec", "SE", "Test", ToolProfile.CODING))
+        registry.register(stubTool("file_write", "FW", "Test", ToolProfile.CODING))
+        def composite = CompositeToolProfile.builder("read-only")
+                .profiles(ToolProfile.CODING)
+                .allow("file_read")
+                .build()
+
+        when:
+        def tools = registry.resolveForComposite(composite)
+
+        then:
+        tools.collect { it.definition().name() } == ["file_read"]
+    }
+
+    def "resolveForCompositePolicy applies agent deny on top of composite"() {
+        given:
+        registry.register(stubTool("file_read", "FR", "Test", ToolProfile.CODING))
+        registry.register(stubTool("shell_exec", "SE", "Test", ToolProfile.CODING))
+        registry.register(stubTool("send_message", "SM", "Test", ToolProfile.MESSAGING))
+        def composite = CompositeToolProfile.builder("devops")
+                .profiles(ToolProfile.CODING, ToolProfile.MESSAGING)
+                .build()
+
+        when:
+        def tools = registry.resolveForCompositePolicy(composite, [], ["shell_exec"])
+
+        then:
+        tools.collect { it.definition().name() } as Set == ["file_read", "send_message"] as Set
+    }
+
+    def "deny-wins across composite and agent layers"() {
+        given:
+        registry.register(stubTool("file_read", "FR", "Test", ToolProfile.CODING))
+        registry.register(stubTool("shell_exec", "SE", "Test", ToolProfile.CODING))
+        registry.register(stubTool("kubectl", "K", "Test", ToolProfile.CODING))
+        def composite = CompositeToolProfile.builder("devops")
+                .profiles(ToolProfile.CODING)
+                .deny("shell_exec")
+                .build()
+
+        when: "agent also denies kubectl"
+        def tools = registry.resolveForCompositePolicy(composite, [], ["kubectl"])
+
+        then: "both composite deny and agent deny are applied"
+        tools.collect { it.definition().name() } == ["file_read"]
+    }
+
+    def "FULL in composite profile set returns all tools"() {
+        given:
+        registry.register(stubTool("coding_tool", "C", "Test", ToolProfile.CODING))
+        registry.register(stubTool("messaging_tool", "M", "Test", ToolProfile.MESSAGING))
+        registry.register(stubTool("any_tool", "A", "Test", ToolProfile.NONE))
+        def composite = CompositeToolProfile.builder("everything")
+                .profiles(ToolProfile.FULL)
+                .build()
+
+        when:
+        def tools = registry.resolveForComposite(composite)
+
+        then:
+        tools.size() == 3
     }
 
     private ToolCallback stubTool(String name, String description, String section, ToolProfile profile) {

@@ -15,7 +15,7 @@
     <description>Telegram Bot API channel adapter</description>
 
     <properties>
-        <camel.version>4.18.1</camel.version>
+        <camel.version>4.18.2</camel.version>
     </properties>
 
     <dependencies>
