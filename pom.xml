@@ -342,6 +342,11 @@
                 <artifactId>jaiclaw-gateway-app</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-shell-commands</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Starters -->
             <dependency>

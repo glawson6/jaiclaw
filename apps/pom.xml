@@ -19,8 +19,10 @@
     </properties>
 
     <modules>
+        <module>jaiclaw-shell-commands</module>
         <module>jaiclaw-gateway-app</module>
         <module>jaiclaw-shell</module>
+        <module>jaiclaw-cli</module>
         <module>jaiclaw-cron-manager-app</module>
     </modules>
 </project>

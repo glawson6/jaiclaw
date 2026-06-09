@@ -12,11 +12,18 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                          RUNNABLE APPS  (Layer 7)                            │
 │                                                                              │
-│  ┌───────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-│  │jaiclaw-gateway-app│  │  jaiclaw-shell   │  │     jaiclaw-examples     │   │
-│  │ REST + WS + Chans │  │ Spring Shell CLI │  │  32 standalone apps      │   │
-│  └────────┬──────────┘  └────────┬─────────┘  └────────────┬─────────────┘   │
-├───────────┼──────────────────────┼──────────────────────────┼────────────────┤
+│  ┌───────────────────┐  ┌──────────────────┐  ┌─────────────────┐  ┌──────────────────────────┐   │
+│  │jaiclaw-gateway-app│  │  jaiclaw-shell   │  │  jaiclaw-cli    │  │     jaiclaw-examples     │   │
+│  │ REST + WS + Chans │  │ Spring Shell CLI │  │ Standalone CLI  │  │  32 standalone apps      │   │
+│  └────────┬──────────┘  └────────┬─────────┘  └────────┬────────┘  └────────────┬─────────────┘   │
+│           │                      │                      │                        │                 │
+│           │              ┌───────┴──────────────────────┘                        │                 │
+│           │              │                                                       │                 │
+│           │       ┌──────┴──────────────┐                                        │                 │
+│           │       │jaiclaw-shell-commands│                                        │                 │
+│           │       │ Shared command lib   │                                        │                 │
+│           │       └──────┬──────────────┘                                        │                 │
+├───────────┼──────────────┼───────────────────────────────────────────────────────┼────────────────┤
 │           │            STARTERS  (Layer 6)                  │                │
 │                                                                              │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────────┐      │
@@ -153,7 +160,9 @@ jaiclaw-core  (pure Java — NO Spring dependency)
           +---> jaiclaw-spring-boot-starter  (auto-configuration wiring)
           |       |
           |       +---> jaiclaw-gateway-app  (standalone gateway server)
-          |       +---> jaiclaw-shell  (Spring Shell CLI)
+          |       +---> jaiclaw-shell-commands  (shared command library)
+          |       |       +---> jaiclaw-shell  (Spring Shell CLI)
+          |       |       +---> jaiclaw-cli  (Standalone CLI with profile support)
           |
           +---> jaiclaw-examples  (32 standalone example applications)
           +---> jaiclaw-maven-plugin  (jaiclaw:analyze goal — CI token budget enforcement)
@@ -469,7 +478,10 @@ env:
 | Internationalization (i18n)      | Done         | `jaiclaw-core` (i18n/)         |
 | Auto-configuration               | Done         | `jaiclaw-spring-boot-starter`  |
 | Spring Shell CLI                 | Done         | `jaiclaw-shell`                |
-| Interactive onboarding wizard    | Done         | `jaiclaw-shell`                |
+| Interactive onboarding wizard    | Done         | `jaiclaw-shell-commands`       |
+| Shared shell commands            | Done         | `jaiclaw-shell-commands`       |
+| Standalone CLI (bin/jaiclaw)     | Done         | `jaiclaw-cli` + `bin/jaiclaw`  |
+| CLI installer                    | Done         | `install.sh`                   |
 | Channel adapter SPI + attachments| Done         | `jaiclaw-channel-api`          |
 | Gateway (REST + WS + webhooks)   | Done         | `jaiclaw-gateway`              |
 | MCP server hosting (tools)       | Done         | `jaiclaw-gateway` (mcp/)       |

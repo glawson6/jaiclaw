@@ -12,7 +12,7 @@ public class OnboardCommands {
         this.orchestrator = orchestrator;
     }
 
-    @ShellMethod(key = "onboard", value = "Interactive setup wizard for JaiClaw configuration")
+    @ShellMethod(key = {"setup", "onboard"}, value = "Interactive setup wizard for JaiClaw configuration")
     public String onboard() {
         return orchestrator.run();
     }

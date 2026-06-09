@@ -216,6 +216,100 @@ The wizard writes `application-local.yml` + `.env` to `~/.jaiclaw/` (or current 
 
 ---
 
+## bin/jaiclaw — Unified CLI
+
+`bin/jaiclaw` is a standalone CLI launcher that provides a single entry point for all JaiClaw operations. It uses a two-path dispatch strategy for fast startup:
+
+- **Fast-path** (no JVM startup): Pure bash commands that complete in milliseconds
+- **JVM-path**: Delegates to the `jaiclaw-cli.jar` fat JAR via Spring Shell's non-interactive runner
+
+### Installation
+
+```bash
+# Option 1: Build from source
+./mvnw package -pl :jaiclaw-cli -am -DskipTests
+
+# Option 2: Curl-installable installer
+curl -sSL https://raw.githubusercontent.com/.../install.sh | bash
+```
+
+The installer creates `~/.jaiclaw/bin/`, copies the launcher and JAR, sets up the default profile, and adds to PATH.
+
+### Fast-Path Commands (no JVM)
+
+These commands are handled entirely in bash and require no Java:
+
+```bash
+bin/jaiclaw version              # print version
+bin/jaiclaw doctor               # diagnose environment (Java, config, API keys, tools)
+bin/jaiclaw config show          # display active profile configuration
+bin/jaiclaw config edit          # open config in $EDITOR
+bin/jaiclaw profiles list        # list all profiles in ~/.jaiclaw/profiles/
+bin/jaiclaw profiles create work # create a new profile
+bin/jaiclaw profiles switch work # switch active profile
+bin/jaiclaw auth status          # show auth profile status
+bin/jaiclaw help                 # show usage
+```
+
+### JVM-Path Commands (full CLI)
+
+These commands start the JVM and delegate to `jaiclaw-cli.jar`:
+
+```bash
+bin/jaiclaw chat "hello"         # one-shot chat message
+bin/jaiclaw setup                # interactive setup wizard (alias for onboard)
+bin/jaiclaw tools                # list registered tools
+bin/jaiclaw skills               # list loaded skills
+bin/jaiclaw status               # system status
+bin/jaiclaw model-list           # list configured LLM providers
+bin/jaiclaw gateway start        # start the gateway server
+bin/jaiclaw gateway stop         # stop the gateway server
+bin/jaiclaw gateway status       # check gateway health
+bin/jaiclaw login chutes         # OAuth login for a provider
+bin/jaiclaw                      # interactive REPL (no subcommand)
+```
+
+### Profile Isolation
+
+Profiles provide isolated configuration environments. Each profile is a directory under `~/.jaiclaw/profiles/<name>/` containing its own `application-local.yml`, `.env`, and `sessions/`.
+
+```bash
+# Create and use profiles
+bin/jaiclaw profiles create work
+bin/jaiclaw profiles create personal
+bin/jaiclaw profiles switch work
+
+# Override active profile for a single command
+bin/jaiclaw --profile personal chat "hello"
+```
+
+**Profile resolution order:**
+1. Explicit `--profile <name>` flag
+2. `JAICLAW_PROFILE` environment variable
+3. `active-profile:` key in `~/.jaiclaw/config.yaml`
+4. Default: `"default"`
+
+### Configuration
+
+| Path | Description |
+|------|-------------|
+| `~/.jaiclaw/config.yaml` | Global config (active profile selector) |
+| `~/.jaiclaw/profiles/<name>/application-local.yml` | Per-profile Spring configuration |
+| `~/.jaiclaw/profiles/<name>/.env` | Per-profile environment variables (API keys) |
+| `~/.jaiclaw/profiles/<name>/sessions/` | Per-profile session history |
+| `~/.jaiclaw/bin/jaiclaw-cli.jar` | Installed CLI fat JAR |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JAICLAW_HOME` | `~/.jaiclaw` | Base directory for all JaiClaw config |
+| `JAICLAW_PROFILE` | — | Override active profile name |
+| `JAICLAW_PROFILE_DIR` | `~/.jaiclaw/profiles/default` | Override profile directory path |
+| `JAICLAW_PROJECT_ROOT` | — | Development mode: find gateway JAR in project |
+
+---
+
 ## Running Locally (Manual Configuration)
 
 If you prefer to pass environment variables directly instead of using `docker-compose/.env`:
@@ -459,7 +553,7 @@ Once the shell is running, the following commands are available:
 
 | Command | Description |
 |---------|-------------|
-| `onboard` | Interactive setup wizard — configures LLM, channels, writes config files |
+| `onboard` / `setup` | Interactive setup wizard — configures LLM, channels, writes config files |
 | `chat <message>` | Send a message to the agent |
 | `new-session` | Start a fresh chat session |
 | `sessions` | List all active sessions |
@@ -1051,6 +1145,8 @@ Token usage is also recorded on each `AssistantMessage` in the session via the `
 | `NO_PROXY` | No | Comma-separated hosts that bypass the proxy (e.g. `localhost,127.0.0.1`) |
 | `JAVA_HOME` | Yes | Path to Java 21 JDK |
 | `JAICLAW_HOME` | No | Config directory override (default: `~/.jaiclaw/`) |
+| `JAICLAW_PROFILE` | No | Override active profile name for `bin/jaiclaw` CLI |
+| `JAICLAW_PROFILE_DIR` | No | Override profile directory path (default: `~/.jaiclaw/profiles/default`) |
 | `JAICLAW_ENV_FILE` | No | Path to `.env` file (default: `docker-compose/.env`). Auto-set by `~/.jaiclawrc`. |
 | `JAICLAW_SECURITY_MODE` | No | Security mode: `api-key` (default), `jwt`, or `none` |
 | `JAICLAW_API_KEY` | No | Custom API key (auto-generated if not set) |

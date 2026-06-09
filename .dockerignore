@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+*.iml
+.vscode
+.claude
+
+# Build artifacts (except the specific target dirs we need)
+**/target/**
+!apps/jaiclaw-cli/target/*.jar
+
+# Node
+**/node_modules
+
+# Documentation (not needed in image)
+docs/
+releases/
+*.md
+!bin/jaiclaw
+!scripts/auth-status.sh
+
+# Examples and tools (not needed in CLI image)
+jaiclaw-examples/
+tools/
+
+# Maven wrapper (not needed in image)
+.mvn
+mvnw
+mvnw.cmd
+
+# Docker files
+**/Dockerfile
+**/.dockerignore
+docker-compose/

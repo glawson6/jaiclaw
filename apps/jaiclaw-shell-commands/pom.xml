@@ -10,22 +10,15 @@
         <version>0.7.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>jaiclaw-shell</artifactId>
-    <name>JaiClaw :: Shell</name>
-    <description>Spring Shell CLI application</description>
+    <artifactId>jaiclaw-shell-commands</artifactId>
+    <name>JaiClaw :: Shell Commands</name>
+    <description>Shared Spring Shell command library for JaiClaw CLI applications</description>
 
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <dependencies>
-        <!-- Shared Shell commands (chat, status, login, auth, onboard wizard) -->
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-shell-commands</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!-- Shell starter (auto-config + Spring Shell + Embabel shell + spring-web) -->
         <dependency>
             <groupId>io.jaiclaw</groupId>
@@ -37,33 +30,6 @@
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-identity</artifactId>
-        </dependency>
-
-        <!-- Core AI providers -->
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-starter-anthropic</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-starter-openai</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-starter-ollama</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-starter-gemini</artifactId>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-starter-bedrock</artifactId>
-            <type>pom</type>
         </dependency>
 
         <!-- Test -->
@@ -97,27 +63,9 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>k8s</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.eclipse.jkube</groupId>
-                        <artifactId>kubernetes-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

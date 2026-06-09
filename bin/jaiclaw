@@ -1,0 +1,529 @@
+#!/usr/bin/env bash
+#
+# jaiclaw — Unified CLI launcher for JaiClaw
+#
+# Dispatches to fast-path (pure bash, no JVM) or JVM-path (jaiclaw-cli.jar)
+# depending on the subcommand.
+#
+# Usage:
+#   jaiclaw                         # interactive REPL
+#   jaiclaw chat "hello"            # one-shot message
+#   jaiclaw setup                   # onboard wizard
+#   jaiclaw doctor                  # diagnose environment (fast-path)
+#   jaiclaw version                 # print version (fast-path)
+#   jaiclaw config show             # show config (fast-path)
+#   jaiclaw config edit             # edit config (fast-path)
+#   jaiclaw profiles list           # list profiles (fast-path)
+#   jaiclaw profiles create <name>  # create profile (fast-path)
+#   jaiclaw profiles switch <name>  # switch profile (fast-path)
+#   jaiclaw auth status             # auth status (fast-path)
+#   jaiclaw --profile work <cmd>    # use named profile
+#   jaiclaw gateway start           # start gateway server
+#   jaiclaw tools                   # list tools
+#   jaiclaw skills                  # list skills
+#   jaiclaw model list              # list models
+#
+set -euo pipefail
+
+# ─── Constants ────────────────────────────────────────────────────────────────
+
+JAICLAW_VERSION="0.7.1-SNAPSHOT"
+
+# ─── Colors ───────────────────────────────────────────────────────────────────
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+DIM='\033[2m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+
+info()   { printf "${CYAN}▸${NC} %s\n" "$*"; }
+ok()     { printf "${GREEN}✓${NC} %s\n" "$*"; }
+warn()   { printf "${YELLOW}!${NC} %s\n" "$*"; }
+err()    { printf "${RED}✗${NC} %s\n" "$*" >&2; }
+
+# ─── Resolve JAICLAW_HOME ────────────────────────────────────────────────────
+
+JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
+
+# ─── Parse global --profile flag ─────────────────────────────────────────────
+
+JAICLAW_PROFILE=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profile)
+            JAICLAW_PROFILE="$2"
+            shift 2
+            ;;
+        --profile=*)
+            JAICLAW_PROFILE="${1#*=}"
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# ─── Resolve active profile ──────────────────────────────────────────────────
+
+resolve_profile() {
+    # Explicit flag takes precedence
+    if [[ -n "$JAICLAW_PROFILE" ]]; then
+        echo "$JAICLAW_PROFILE"
+        return
+    fi
+
+    # Check env var
+    if [[ -n "${JAICLAW_PROFILE:-}" ]]; then
+        echo "$JAICLAW_PROFILE"
+        return
+    fi
+
+    # Read from config.yaml
+    local config_file="$JAICLAW_HOME/config.yaml"
+    if [[ -f "$config_file" ]]; then
+        local profile
+        profile=$(grep '^active-profile:' "$config_file" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
+        if [[ -n "$profile" ]]; then
+            echo "$profile"
+            return
+        fi
+    fi
+
+    echo "default"
+}
+
+ACTIVE_PROFILE=$(resolve_profile)
+JAICLAW_PROFILE_DIR="$JAICLAW_HOME/profiles/$ACTIVE_PROFILE"
+
+# ─── Source profile .env ──────────────────────────────────────────────────────
+
+if [[ -f "$JAICLAW_PROFILE_DIR/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$JAICLAW_PROFILE_DIR/.env"
+    set +a
+fi
+
+# ─── Resolve Java ─────────────────────────────────────────────────────────────
+
+resolve_java() {
+    # 1. Explicit JAVA_HOME
+    if [[ -n "${JAVA_HOME:-}" ]] && [[ -x "$JAVA_HOME/bin/java" ]]; then
+        echo "$JAVA_HOME/bin/java"
+        return
+    fi
+
+    # 2. SDKMAN
+    if [[ -x "$HOME/.sdkman/candidates/java/current/bin/java" ]]; then
+        echo "$HOME/.sdkman/candidates/java/current/bin/java"
+        return
+    fi
+
+    # 3. PATH
+    if command -v java &>/dev/null; then
+        command -v java
+        return
+    fi
+
+    return 1
+}
+
+# ─── Resolve CLI JAR ─────────────────────────────────────────────────────────
+
+resolve_jar() {
+    # 0. Explicit override (e.g., Docker containers)
+    if [[ -n "${JAICLAW_CLI_JAR:-}" ]] && [[ -f "$JAICLAW_CLI_JAR" ]]; then
+        echo "$JAICLAW_CLI_JAR"
+        return
+    fi
+
+    # 1. Installed JAR in JAICLAW_HOME
+    if [[ -f "$JAICLAW_HOME/bin/jaiclaw-cli.jar" ]]; then
+        echo "$JAICLAW_HOME/bin/jaiclaw-cli.jar"
+        return
+    fi
+
+    # 2. Co-located JAR (same directory as the launcher script)
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$script_dir/jaiclaw-cli.jar" ]]; then
+        echo "$script_dir/jaiclaw-cli.jar"
+        return
+    fi
+
+    # 3. Development mode — look for built JAR relative to this script
+    local project_root
+    project_root="$(cd "$script_dir/.." && pwd)"
+
+    local target_dir="$project_root/apps/jaiclaw-cli/target"
+    if [[ -d "$target_dir" ]]; then
+        local jar
+        jar=$(find "$target_dir" -maxdepth 1 -name "jaiclaw-cli-*.jar" ! -name "*-original*" -type f 2>/dev/null | head -1)
+        if [[ -n "$jar" ]]; then
+            echo "$jar"
+            return
+        fi
+    fi
+
+    return 1
+}
+
+# ─── Fast-path commands (no JVM) ─────────────────────────────────────────────
+
+cmd_version() {
+    echo "jaiclaw $JAICLAW_VERSION"
+}
+
+cmd_doctor() {
+    echo "JaiClaw Doctor"
+    echo "=============="
+    echo ""
+
+    # Java
+    if JAVA_BIN=$(resolve_java 2>/dev/null); then
+        local java_ver
+        java_ver=$("$JAVA_BIN" -version 2>&1 | head -1)
+        ok "Java:           $java_ver"
+    else
+        err "Java:           not found"
+    fi
+
+    # JAICLAW_HOME
+    if [[ -d "$JAICLAW_HOME" ]]; then
+        ok "JAICLAW_HOME:   $JAICLAW_HOME"
+    else
+        warn "JAICLAW_HOME:   $JAICLAW_HOME (not created yet)"
+    fi
+
+    # Active profile
+    info "Profile:        $ACTIVE_PROFILE"
+
+    # Config files
+    local config_file="$JAICLAW_PROFILE_DIR/application-local.yml"
+    if [[ -f "$config_file" ]]; then
+        ok "Config:         $config_file"
+    else
+        warn "Config:         $config_file (missing)"
+    fi
+
+    local env_file="$JAICLAW_PROFILE_DIR/.env"
+    if [[ -f "$env_file" ]]; then
+        ok "Env file:       $env_file"
+    else
+        warn "Env file:       $env_file (missing)"
+    fi
+
+    # CLI JAR
+    if JAR_PATH=$(resolve_jar 2>/dev/null); then
+        ok "CLI JAR:        $JAR_PATH"
+    else
+        warn "CLI JAR:        not found (build with: ./mvnw package -pl :jaiclaw-cli -am -DskipTests)"
+    fi
+
+    echo ""
+    echo "LLM Providers:"
+
+    # API keys
+    check_env_key "Anthropic" "ANTHROPIC_API_KEY"
+    check_env_key "OpenAI"    "OPENAI_API_KEY"
+    check_env_key "Gemini"    "GEMINI_API_KEY"
+    check_env_key "Bedrock"   "AWS_ACCESS_KEY_ID"
+
+    # Ollama
+    local ollama_url="${OLLAMA_BASE_URL:-http://localhost:11434}"
+    if curl -s -o /dev/null --connect-timeout 2 "$ollama_url" 2>/dev/null; then
+        ok "  Ollama:       reachable at $ollama_url"
+    else
+        warn "  Ollama:       not reachable at $ollama_url"
+    fi
+
+    echo ""
+    echo "Channels:"
+    check_env_key "Telegram" "TELEGRAM_BOT_TOKEN"
+    check_env_key "Slack"    "SLACK_BOT_TOKEN"
+    check_env_key "Discord"  "DISCORD_BOT_TOKEN"
+
+    echo ""
+    echo "External:"
+    # Docker
+    if docker_ver=$(docker version --format '{{.Server.Version}}' 2>/dev/null); then
+        ok "  Docker:       v$docker_ver"
+    else
+        warn "  Docker:       not available"
+    fi
+}
+
+check_env_key() {
+    local label="$1"
+    local var_name="$2"
+    local value="${!var_name:-}"
+    if [[ -n "$value" && "$value" != "not-set" ]]; then
+        printf "  ${GREEN}[ok]${NC} %-13s configured\n" "$label:"
+    else
+        printf "  ${DIM}[--]${NC} %-13s not configured\n" "$label:"
+    fi
+}
+
+cmd_config_show() {
+    local config_file="$JAICLAW_PROFILE_DIR/application-local.yml"
+    if [[ -f "$config_file" ]]; then
+        echo "# Profile: $ACTIVE_PROFILE"
+        echo "# File: $config_file"
+        echo ""
+        cat "$config_file"
+    else
+        warn "No config file found at $config_file"
+        echo "Run 'jaiclaw setup' to create one."
+    fi
+}
+
+cmd_config_edit() {
+    local config_file="$JAICLAW_PROFILE_DIR/application-local.yml"
+    if [[ ! -f "$config_file" ]]; then
+        mkdir -p "$JAICLAW_PROFILE_DIR"
+        echo "# JaiClaw configuration — profile: $ACTIVE_PROFILE" > "$config_file"
+    fi
+    local editor="${EDITOR:-${VISUAL:-vi}}"
+    exec "$editor" "$config_file"
+}
+
+cmd_profiles_list() {
+    local profiles_dir="$JAICLAW_HOME/profiles"
+    if [[ ! -d "$profiles_dir" ]]; then
+        warn "No profiles directory found at $profiles_dir"
+        echo "Run 'jaiclaw profiles create <name>' to create one."
+        return
+    fi
+
+    echo "Profiles ($profiles_dir)"
+    echo "─────────────────────────"
+
+    for dir in "$profiles_dir"/*/; do
+        [[ ! -d "$dir" ]] && continue
+        local name
+        name=$(basename "$dir")
+        local marker="  "
+        [[ "$name" == "$ACTIVE_PROFILE" ]] && marker=" *"
+
+        local has_yml="---"
+        [[ -f "$dir/application-local.yml" ]] && has_yml="yml"
+        local has_env="---"
+        [[ -f "$dir/.env" ]] && has_env="env"
+
+        printf "%s %-20s [%s %s]\n" "$marker" "$name" "$has_yml" "$has_env"
+    done
+}
+
+cmd_profiles_create() {
+    local name="$1"
+    local profile_dir="$JAICLAW_HOME/profiles/$name"
+
+    if [[ -d "$profile_dir" ]]; then
+        err "Profile already exists: $name"
+        return 1
+    fi
+
+    mkdir -p "$profile_dir/sessions"
+
+    cat > "$profile_dir/application-local.yml" <<YAML
+# JaiClaw configuration — profile: $name
+# Edit this file to configure your LLM provider and other settings.
+jaiclaw:
+  identity:
+    name: JaiClaw
+  security:
+    mode: none
+
+spring:
+  ai:
+    anthropic:
+      api-key: \${ANTHROPIC_API_KEY:not-set}
+YAML
+
+    cat > "$profile_dir/.env" <<ENV
+# JaiClaw secrets — profile: $name
+# Source this file before running JaiClaw: source $profile_dir/.env
+
+# export ANTHROPIC_API_KEY=sk-ant-...
+# export OPENAI_API_KEY=sk-...
+ENV
+
+    ok "Created profile: $name"
+    echo "  Location: $profile_dir"
+    echo "  Run 'jaiclaw --profile $name setup' to configure it."
+}
+
+cmd_profiles_switch() {
+    local name="$1"
+    local profile_dir="$JAICLAW_HOME/profiles/$name"
+
+    if [[ ! -d "$profile_dir" ]]; then
+        err "Profile not found: $name"
+        echo "Use 'jaiclaw profiles create $name' first."
+        return 1
+    fi
+
+    local config_file="$JAICLAW_HOME/config.yaml"
+    cat > "$config_file" <<YAML
+# JaiClaw CLI config
+active-profile: $name
+YAML
+
+    ok "Switched to profile: $name"
+    echo "  Config dir: $profile_dir"
+}
+
+cmd_auth_status() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local auth_script="$script_dir/../scripts/auth-status.sh"
+
+    if [[ -x "$auth_script" ]]; then
+        exec "$auth_script" "${1:-full}"
+    else
+        err "Auth status script not found at $auth_script"
+        echo "Run from the JaiClaw project directory, or install auth-status.sh."
+        return 1
+    fi
+}
+
+# ─── JVM-path dispatch ───────────────────────────────────────────────────────
+
+run_jvm() {
+    local JAVA_BIN
+    JAVA_BIN=$(resolve_java) || {
+        err "Java not found. Install Java 21+ via SDKMAN: sdk install java 21.0.9-oracle"
+        exit 1
+    }
+
+    local JAR_PATH
+    JAR_PATH=$(resolve_jar) || {
+        err "jaiclaw-cli JAR not found."
+        echo "Build it with: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
+        echo "Or install to: $JAICLAW_HOME/bin/jaiclaw-cli.jar"
+        exit 1
+    }
+
+    local JVM_OPTS=()
+
+    # Profile directory for Spring config import
+    JVM_OPTS+=("-DJAICLAW_PROFILE_DIR=$JAICLAW_PROFILE_DIR")
+
+    # Lazy init for read-only commands (faster startup)
+    case "${1:-}" in
+        tools|skills|status|model|model-list|model-show|profile|profile-list|profile-show|config|doctor)
+            JVM_OPTS+=("-Dspring.main.lazy-initialization=true")
+            ;;
+    esac
+
+    # CDS archive if available
+    local CDS_ARCHIVE="$JAICLAW_HOME/bin/jaiclaw-cli.jsa"
+    if [[ -f "$CDS_ARCHIVE" ]]; then
+        JVM_OPTS+=("-XX:SharedArchiveFile=$CDS_ARCHIVE")
+    fi
+
+    exec "$JAVA_BIN" "${JVM_OPTS[@]}" -jar "$JAR_PATH" "$@"
+}
+
+# ─── Main dispatch ────────────────────────────────────────────────────────────
+
+SUBCOMMAND="${1:-}"
+
+case "$SUBCOMMAND" in
+    "")
+        # No subcommand — launch interactive REPL
+        run_jvm
+        ;;
+    version|--version|-v)
+        cmd_version
+        ;;
+    doctor|doc)
+        cmd_doctor
+        ;;
+    config)
+        shift
+        SUB="${1:-show}"
+        case "$SUB" in
+            show)   cmd_config_show ;;
+            edit)   cmd_config_edit ;;
+            *)      err "Unknown config command: $SUB"; echo "Usage: jaiclaw config show|edit" ;;
+        esac
+        ;;
+    profiles)
+        shift
+        SUB="${1:-list}"
+        case "$SUB" in
+            list)           cmd_profiles_list ;;
+            create)         cmd_profiles_create "${2:?Profile name required}" ;;
+            switch)         cmd_profiles_switch "${2:?Profile name required}" ;;
+            *)              err "Unknown profiles command: $SUB"; echo "Usage: jaiclaw profiles list|create|switch <name>" ;;
+        esac
+        ;;
+    auth)
+        shift
+        SUB="${1:-status}"
+        case "$SUB" in
+            status) cmd_auth_status "${2:-full}" ;;
+            *)      run_jvm auth "$@" ;;
+        esac
+        ;;
+    # JVM-path commands
+    chat|setup|onboard|gateway|gateway-start|gateway-stop|gateway-status|\
+    tools|skills|status|models|login|logout|\
+    model|model-list|model-show|\
+    profile|profile-list|profile-create|profile-switch|profile-show|\
+    sessions|session-history|new-session)
+        run_jvm "$@"
+        ;;
+    help|--help|-h)
+        cat <<'HELP'
+JaiClaw CLI — Unified command-line interface
+
+Usage: jaiclaw [--profile <name>] <command> [args]
+
+Fast commands (no JVM):
+  version                   Print version
+  doctor                    Diagnose environment
+  config show               Show current config
+  config edit               Edit config in $EDITOR
+  profiles list             List profiles
+  profiles create <name>    Create a new profile
+  profiles switch <name>    Switch active profile
+  auth status               Show auth profile status
+
+JVM commands:
+  chat <message>            Send a message (or start REPL)
+  setup / onboard           Interactive setup wizard
+  gateway start [--port N]  Start gateway server
+  gateway stop              Stop gateway server
+  gateway status            Check gateway status
+  tools                     List registered tools
+  skills                    List loaded skills
+  status                    Show system status
+  models                    Show configured providers
+  model list                List providers and models
+  model show                Show active model
+  login [provider]          OAuth login
+  auth status/rotate/pin    Auth management
+
+Global options:
+  --profile <name>          Use named profile (default: from config.yaml)
+
+Environment:
+  JAICLAW_HOME              Base directory (default: ~/.jaiclaw)
+  JAICLAW_PROFILE           Override active profile
+  JAVA_HOME                 Java installation directory
+HELP
+        ;;
+    *)
+        err "Unknown command: $SUBCOMMAND"
+        echo "Run 'jaiclaw help' for usage."
+        exit 1
+        ;;
+esac

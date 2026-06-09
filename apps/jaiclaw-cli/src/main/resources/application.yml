@@ -1,0 +1,94 @@
+jaiclaw:
+  security:
+    mode: none
+  identity:
+    name: JaiClaw
+    description: Personal AI assistant
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Default Agent
+        tools:
+          profile: coding
+  tools:
+    profile: coding
+  skills:
+    allow-bundled:
+      - "*"
+  plugins:
+    enabled: true
+  models:
+    providers:
+      openai:
+        display-name: OpenAI
+        fallback-model: gpt-4o-mini
+        wizard-models:
+          - gpt-4o
+          - gpt-4o-mini
+          - gpt-4.1
+          - gpt-4.1-mini
+          - o3-mini
+      anthropic:
+        display-name: Anthropic
+        fallback-model: claude-haiku-4-5-20251001
+        wizard-models:
+          - claude-sonnet-4-6
+          - claude-opus-4-6
+          - claude-haiku-4-5-20251001
+      bedrock:
+        display-name: AWS Bedrock
+        fallback-model: us.anthropic.claude-3-haiku-20240307-v1:0
+        wizard-models:
+          - us.anthropic.claude-3-5-sonnet-20241022-v2:0
+          - us.anthropic.claude-3-haiku-20240307-v1:0
+          - us.meta.llama3-1-70b-instruct-v1:0
+          - amazon.nova-pro-v1:0
+      ollama:
+        display-name: Ollama
+        wizard-models:
+          - llama3
+          - "llama3:70b"
+          - mistral
+          - codellama
+          - gemma2
+
+spring:
+  main:
+    web-application-type: none
+  config:
+    import: optional:file:${JAICLAW_PROFILE_DIR:${user.home}/.jaiclaw/profiles/default}/application-local.yml,optional:file:${user.home}/.jaiclaw/application-local.yml
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    openai:
+      enabled: ${OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:not-set}
+    anthropic:
+      enabled: ${ANTHROPIC_ENABLED:true}
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    ollama:
+      enabled: ${OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    google:
+      genai:
+        enabled: ${GEMINI_ENABLED:false}
+        api-key: ${GEMINI_API_KEY:not-set}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-2.0-flash}
+    bedrock:
+      converse:
+        enabled: ${BEDROCK_ENABLED:false}
+        chat:
+          options:
+            model: ${BEDROCK_MODEL:us.anthropic.claude-3-5-sonnet-20241022-v2:0}
+      aws:
+        region: ${AWS_REGION:us-east-1}
+  shell:
+    interactive:
+      enabled: true

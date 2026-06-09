@@ -38,21 +38,33 @@ public class JaiClawChannelAutoConfiguration {
     private static final Logger log = LoggerFactory.getLogger(JaiClawChannelAutoConfiguration.class);
 
     /**
-     * Startup hook that scans and pre-loads tenant configs in MULTI mode,
-     * registers bot-token-to-tenant mappings, and starts per-tenant channel adapters.
+     * Startup hook that scans and pre-loads tenant configs in MULTI mode.
+     * Bot-token-to-tenant registration is handled separately when the gateway module is present.
      */
     @Bean
     @ConditionalOnBean({TenantAgentConfigService.class})
-    public ApplicationRunner tenantConfigStartupHook(
-            TenantAgentConfigService configService,
-            ObjectProvider<io.jaiclaw.gateway.tenant.BotTokenTenantResolver> botTokenResolverProvider) {
-        return args -> {
-            // Scan and load all tenant configs
-            configService.scanAndLoadAll();
+    public ApplicationRunner tenantConfigStartupHook(TenantAgentConfigService configService) {
+        return args -> configService.scanAndLoadAll();
+    }
 
-            // Auto-register bot token → tenant mappings
-            var botTokenResolver = botTokenResolverProvider.getIfAvailable();
-            if (botTokenResolver != null) {
+    /**
+     * Bot-token-to-tenant registration — only when the gateway module is on the classpath.
+     * Separated from {@code tenantConfigStartupHook} to avoid {@link TypeNotPresentException}
+     * when {@code BotTokenTenantResolver} is not available (e.g., in shell/CLI mode).
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.jaiclaw.gateway.tenant.BotTokenTenantResolver")
+    @ConditionalOnBean({TenantAgentConfigService.class})
+    static class BotTokenRegistrationAutoConfiguration {
+
+        @Bean
+        public ApplicationRunner botTokenRegistrationHook(
+                TenantAgentConfigService configService,
+                ObjectProvider<io.jaiclaw.gateway.tenant.BotTokenTenantResolver> botTokenResolverProvider) {
+            return args -> {
+                var botTokenResolver = botTokenResolverProvider.getIfAvailable();
+                if (botTokenResolver == null) return;
+
                 for (var entry : configService.allConfigurations().entrySet()) {
                     String tenantId = entry.getKey();
                     TenantAgentConfig config = entry.getValue();
@@ -69,8 +81,8 @@ public class JaiClawChannelAutoConfiguration {
                     }
                 }
                 log.info("Registered {} bot-token-to-tenant mappings", botTokenResolver.mappingCount());
-            }
-        };
+            };
+        }
     }
 
     /**

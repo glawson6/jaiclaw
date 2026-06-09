@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-apps</artifactId>
+        <version>0.7.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-cli</artifactId>
+    <name>JaiClaw :: CLI</name>
+    <description>Standalone CLI application for JaiClaw — unified command-line interface</description>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <!-- Shared Shell commands (chat, status, login, auth, onboard wizard) -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-shell-commands</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Shell starter (auto-config + Spring Shell + Embabel shell + spring-web) -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-shell</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Identity / OAuth support -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-identity</artifactId>
+        </dependency>
+
+        <!-- Core AI providers -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-anthropic</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-openai</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-ollama</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-gemini</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-bedrock</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+            Default Docker image build — uses exec-maven-plugin to invoke docker build
+            with a standalone Dockerfile. Builds native platform images (arm64 on Apple
+            Silicon, amd64 on x86), uses .dockerignore for build context filtering.
+
+            Build: ./mvnw package -pl :jaiclaw-cli -Pk8s -DskipTests
+        -->
+        <profile>
+            <id>k8s</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>docker-build</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>docker</executable>
+                                    <workingDirectory>${project.basedir}/../..</workingDirectory>
+                                    <arguments>
+                                        <argument>build</argument>
+                                        <argument>-t</argument>
+                                        <argument>${project.groupId}/${project.artifactId}:${project.version}</argument>
+                                        <argument>--build-arg</argument>
+                                        <argument>CLI_JAR=apps/jaiclaw-cli/target/${project.build.finalName}.jar</argument>
+                                        <argument>-f</argument>
+                                        <argument>apps/jaiclaw-cli/Dockerfile</argument>
+                                        <argument>.</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+            Alternative: JKube inline assembly — no Dockerfile, all config in XML.
+            Produces linux/amd64 images only (JKube limitation).
+
+            Build: ./mvnw k8s:build -pl :jaiclaw-cli -Pk8s-inline -DskipTests
+        -->
+        <profile>
+            <id>k8s-inline</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.eclipse.jkube</groupId>
+                        <artifactId>kubernetes-maven-plugin</artifactId>
+                        <version>${jkube.version}</version>
+                        <configuration>
+                            <images>
+                                <image>
+                                    <name>${project.groupId}/${project.artifactId}:${project.version}</name>
+                                    <build>
+                                        <from>eclipse-temurin:21-jre</from>
+                                        <runCmds>
+                                            <run>groupadd -r jaiclaw &amp;&amp; useradd -r -g jaiclaw -m -d /home/jaiclaw -s /bin/bash jaiclaw</run>
+                                            <run>mkdir -p /opt/jaiclaw/bin /opt/jaiclaw/scripts /home/jaiclaw/.jaiclaw/profiles/default/sessions</run>
+                                            <run>chown -R jaiclaw:jaiclaw /home/jaiclaw /opt/jaiclaw</run>
+                                        </runCmds>
+                                        <assembly>
+                                            <targetDir>/opt/jaiclaw</targetDir>
+                                            <inline>
+                                                <fileSets>
+                                                    <fileSet>
+                                                        <directory>${project.basedir}/../../bin</directory>
+                                                        <outputDirectory>bin</outputDirectory>
+                                                        <includes>
+                                                            <include>jaiclaw</include>
+                                                        </includes>
+                                                        <fileMode>0755</fileMode>
+                                                    </fileSet>
+                                                    <fileSet>
+                                                        <directory>${project.basedir}/../../scripts</directory>
+                                                        <outputDirectory>scripts</outputDirectory>
+                                                        <includes>
+                                                            <include>auth-status.sh</include>
+                                                        </includes>
+                                                        <fileMode>0755</fileMode>
+                                                    </fileSet>
+                                                </fileSets>
+                                                <files>
+                                                    <file>
+                                                        <source>${project.build.directory}/${project.build.finalName}.jar</source>
+                                                        <outputDirectory>bin</outputDirectory>
+                                                        <destName>jaiclaw-cli.jar</destName>
+                                                    </file>
+                                                </files>
+                                            </inline>
+                                        </assembly>
+                                        <env>
+                                            <JAICLAW_HOME>/home/jaiclaw/.jaiclaw</JAICLAW_HOME>
+                                        </env>
+                                        <user>jaiclaw</user>
+                                        <workdir>/home/jaiclaw</workdir>
+                                        <entryPoint>
+                                            <exec>
+                                                <arg>/opt/jaiclaw/bin/jaiclaw</arg>
+                                            </exec>
+                                        </entryPoint>
+                                    </build>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

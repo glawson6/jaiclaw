@@ -1,0 +1,62 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: 'Scenarios to run (comma-separated: 1,2,3,4,5 or "all")'
+        default: 'all'
+        type: string
+      ai_provider:
+        description: 'AI provider (anthropic, openai, gemini)'
+        default: 'anthropic'
+        type: string
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'releases/**'
+      - 'jaiclaw-examples/**'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build all modules
+        run: ./mvnw install -DskipTests -B
+        env:
+          MAVEN_OPTS: '-Xmx2g'
+
+      - name: Run E2E tests
+        run: |
+          chmod +x e2e/run-e2e-tests.sh
+          e2e/run-e2e-tests.sh
+        env:
+          E2E_SCENARIOS: ${{ github.event.inputs.scenarios || '1,3,4,5' }}
+          AI_PROVIDER: ${{ github.event.inputs.ai_provider || 'anthropic' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: /tmp/jaiclaw-e2e-*/
+          retention-days: 7
+          if-no-files-found: ignore
