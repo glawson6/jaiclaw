@@ -89,6 +89,14 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │  │ A2UI / HTML  │ │  file edit   │ │ MCP channel     │ │ Drools 9.44 rule │  │
 │  │ artifacts    │ │  code tools  │ │ messaging tools │ │ execution engine │  │
 │  └──────────────┘ └──────────────┘ └─────────────────┘ └──────────────────┘  │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐     │
+│  │                       jaiclaw-pipeline                               │     │
+│  │  Declarative multi-stage pipeline DSL (YAML + Java code)            │     │
+│  │  3 stage processors: Agent, Bean, Camel                              │     │
+│  │  Configurable transport: SEDA (default), Kafka, AMQP per-stage      │     │
+│  │  Audit, hooks, metrics, transport auth (HMAC/Bearer)                 │     │
+│  └──────────────────────────────────────────────────────────────────────┘     │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                      TOOL LAYER  (Layer 2)                                   │
 │                                                                              │
@@ -153,6 +161,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-code  (file editing, code generation tools)
   +---> jaiclaw-messaging  (MCP server: channel messaging, sessions, agent-routed chat)
   +---> jaiclaw-rules  (Drools 9.44 rule execution — text-analysis, decision, validation, tax)
+  +---> jaiclaw-pipeline  (declarative multi-stage pipeline DSL; depends on jaiclaw-camel, jaiclaw-config, jaiclaw-core; optional: jaiclaw-audit, jaiclaw-plugin-sdk, jaiclaw-security)
   +---> jaiclaw-config  (@ConfigurationProperties records)
           |
           +---> jaiclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)

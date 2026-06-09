@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-starters</artifactId>
+        <version>0.7.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-starter-pipeline</artifactId>
+    <packaging>pom</packaging>
+    <name>JaiClaw :: Starter :: Pipeline</name>
+    <description>JaiClaw starter for declarative multi-stage pipeline orchestration</description>
+
+    <properties>
+        <camel.version>4.18.2</camel.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-pipeline</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-camel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-spring-boot-starter</artifactId>
+            <version>${camel.version}</version>
+        </dependency>
+    </dependencies>
+</project>

@@ -3,6 +3,9 @@
 # JaiClaw Installer — curl-installable setup script
 #
 # Usage:
+#   curl -fsSL https://jaiclaw.io/install.sh | bash
+#
+# Or from GitHub:
 #   curl -sSL https://raw.githubusercontent.com/glawson6/jaiclaw/main/install.sh | bash
 #
 # Or from the repo:

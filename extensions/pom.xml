@@ -48,5 +48,6 @@
         <module>jaiclaw-memory-wiki</module>
         <module>jaiclaw-tasks</module>
         <module>jaiclaw-video-generation</module>
+        <module>jaiclaw-pipeline</module>
     </modules>
 </project>

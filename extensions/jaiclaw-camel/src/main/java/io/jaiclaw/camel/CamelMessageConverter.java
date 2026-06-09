@@ -15,6 +15,7 @@ public final class CamelMessageConverter {
 
     public static final String HEADER_PEER_ID = "JaiClawPeerId";
     public static final String HEADER_PIPELINE = "JaiClawPipeline";
+    public static final String HEADER_PIPELINE_CONTEXT = "JaiClawPipelineContext";
     public static final String HEADER_CHANNEL_ID = "JaiClawChannelId";
     public static final String HEADER_SESSION_KEY = "JaiClawSessionKey";
 
@@ -37,6 +38,11 @@ public final class CamelMessageConverter {
         Object pipeline = exchange.getIn().getHeader(HEADER_PIPELINE);
         if (pipeline instanceof PipelineEnvelope envelope) {
             platformData.put("pipeline", envelope);
+        }
+
+        Object pipelineContext = exchange.getIn().getHeader(HEADER_PIPELINE_CONTEXT);
+        if (pipelineContext != null) {
+            platformData.put("pipelineContext", pipelineContext);
         }
 
         return ChannelMessage.inbound(
@@ -66,6 +72,11 @@ public final class CamelMessageConverter {
         Object pipeline = message.platformData().get("pipeline");
         if (pipeline instanceof PipelineEnvelope envelope) {
             exchange.getIn().setHeader(HEADER_PIPELINE, envelope);
+        }
+
+        Object pipelineContext = message.platformData().get("pipelineContext");
+        if (pipelineContext != null) {
+            exchange.getIn().setHeader(HEADER_PIPELINE_CONTEXT, pipelineContext);
         }
 
         return exchange;

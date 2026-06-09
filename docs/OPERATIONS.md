@@ -1073,6 +1073,128 @@ See [Token Usage Logging](#token-usage-logging) for how to enable detailed reque
 
 ---
 
+## Pipeline Configuration
+
+JaiClaw's `jaiclaw-pipeline` extension provides declarative multi-stage pipeline orchestration via Apache Camel. Pipelines can be defined in YAML or Java code (or both — code wins on ID conflict).
+
+**Starter dependency:**
+
+```xml
+<dependency>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-starter-pipeline</artifactId>
+</dependency>
+```
+
+### Pipeline Defaults
+
+Global defaults for inter-stage SEDA queue configuration:
+
+```yaml
+jaiclaw:
+  pipeline:
+    defaults:
+      seda-size: 100              # SEDA queue capacity (default: 100)
+      concurrent-consumers: 5     # Parallel consumers per stage (default: 5)
+      block-when-full: true       # Block producer when queue is full (default: true)
+```
+
+### Pipeline Definition (YAML)
+
+```yaml
+jaiclaw:
+  pipeline:
+    pipelines:
+      - id: doc-processor
+        name: "Document Processor"
+        tenant-ids: []              # empty = all tenants
+        enabled: true
+        trigger:
+          type: manual              # file | cron | http | camel-uri | manual
+        error-strategy: stop        # dead-letter | retry-then-fail | stop
+        max-retries: 0
+        stages:
+          - name: parse
+            type: processor         # agent | processor | camel
+            bean: documentParser
+          - name: summarize
+            type: agent
+            agent-id: default
+            system-prompt: "Summarize: {{stages.parse.output}}"
+          - name: store
+            type: camel
+            uri: "jpa:io.example.DocumentSummary"
+        output:
+          type: log                 # channel | camel-uri | log | none
+```
+
+### Pipeline Definition (Java Code DSL)
+
+```java
+@Configuration
+public class ContentPipeline extends JaiClawPipeline {
+    @Override
+    public void define() {
+        pipeline("content-pipeline")
+            .name("Content Pipeline")
+            .trigger().manual()
+            .stage("research").agent("researcher")
+                .systemPrompt("Research the given topic.")
+            .stage("draft").agent("writer")
+                .systemPrompt("Write using: {{stages.research.output}}")
+            .stage("store").camel("jpa:io.example.Article")
+            .output().log();
+    }
+}
+```
+
+### Per-Stage Transport Override
+
+By default, inter-stage communication uses SEDA queues. Override per-stage with any Camel URI:
+
+```yaml
+stages:
+  - name: ingest
+    type: processor
+    bean: dataIngester
+    transport:
+      uri: "kafka:raw-events?brokers=kafka:9092"
+      auth:
+        auth-type: HMAC_SHA256
+        secret: "${PIPELINE_HMAC_SECRET}"
+        header-name: X-Hub-Signature-256
+```
+
+Transport authentication types: `NONE`, `HMAC_SHA256`, `BEARER_TOKEN`.
+
+### Pipeline Security
+
+All security features default to off. Enable via `jaiclaw.pipeline.security.*`:
+
+```yaml
+jaiclaw:
+  pipeline:
+    security:
+      enabled: false                    # Master switch (default: off)
+      require-authentication: false     # Require auth for HTTP triggers
+      enforce-tenant-isolation: false   # Strict tenant matching
+      validate-stage-inputs: false      # Prompt injection detection for agent stages
+      max-output-size-bytes: 1048576    # 1MB stage output cap
+      audit-security-events: true       # Log denials when security is enabled
+```
+
+### Pipeline Metrics
+
+When Micrometer is on the classpath, the following metrics are recorded:
+
+| Metric | Type | Tags |
+|--------|------|------|
+| `jaiclaw.pipeline.executions` | Timer | `pipelineId`, `tenantId`, `outcome` |
+| `jaiclaw.pipeline.stage.duration` | Timer | `pipelineId`, `stageName`, `stageType`, `outcome` |
+| `jaiclaw.pipeline.active` | Gauge | `pipelineId` |
+
+---
+
 ## Token Usage Logging
 
 JaiClaw logs token usage after every LLM call. Two loggers provide different levels of detail:
