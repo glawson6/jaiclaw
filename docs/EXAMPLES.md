@@ -36,6 +36,17 @@ Example applications demonstrating JaiClaw framework capabilities. Each is a sta
 | 26 | [camel-html-summarizer-embabel](../jaiclaw-examples/camel-html-summarizer-embabel/) | Camel | Camel, Embabel | HTML summarizer with Embabel GOAP orchestration |
 | 27 | [camel-pdf-filler](../jaiclaw-examples/camel-pdf-filler/) | Camel | Camel, Documents | PDF form filling via Apache Camel routes |
 | 28 | [camel-pdf-filler-telegram](../jaiclaw-examples/camel-pdf-filler-telegram/) | Camel | Camel, Telegram, Documents | PDF form filling with Telegram integration |
+| 29 | [pipeline-e2e](../jaiclaw-examples/pipeline-e2e/) | Pipeline | Pipeline | Pipeline-module e2e fixture — code + inline + per-file YAML sources, HTTP/actuator surface |
+| 30 | [support-triage-pipeline](../jaiclaw-examples/support-triage-pipeline/) | Pipeline | Pipeline, Shell | 6-stage Tier-1 ticket triage (MANUAL trigger, confidence-based escalation, Spring Shell driver) |
+| 31 | [invoice-processor](../jaiclaw-examples/invoice-processor/) | Pipeline | Pipeline, Shell | 5-stage AP invoice ingestion (FILE trigger + `DEAD_LETTER` strategy, JSONL audit) |
+| 32 | [aiops-incident-responder](../jaiclaw-examples/aiops-incident-responder/) | Pipeline | Pipeline, Shell | 6-stage alert triage + auto-remediation + 5-Whys post-mortem (CAMEL_URI trigger, embedded runbook library) |
+| 33 | [competitive-intel-briefing](../jaiclaw-examples/competitive-intel-briefing/) | Pipeline | Pipeline, Shell | 5-stage weekday CI digest (CRON via quartz + filesystem signal-cache diff, markdown briefing on disk) |
+| 34 | [sales-enrichment-pipeline](../jaiclaw-examples/sales-enrichment-pipeline/) | Pipeline | Pipeline, Shell | 5-stage nightly lead enrichment (CRON + per-tick queue-pop batch loop) |
+| 35 | [contract-reviewer](../jaiclaw-examples/contract-reviewer/) | Pipeline | Pipeline, Shell | 6-stage contract review (FILE trigger + `RETRY_THEN_FAIL`, inline playbook, risk-score routing) |
+| 36 | [onboarding-intake](../jaiclaw-examples/onboarding-intake/) | Rules | Rules | Drools-driven customer onboarding intake |
+| 37 | [procurement-approval](../jaiclaw-examples/procurement-approval/) | Rules | Rules | Drools-driven procurement approval workflow |
+| 38 | [tax-advisor](../jaiclaw-examples/tax-advisor/) | Rules | Rules | Drools-driven tax-advice rule evaluation |
+| 39 | [support-triage](../jaiclaw-examples/support-triage/) | Embabel | Embabel | Embabel-only support-triage variant (compare with row 30 for pipeline-vs-embabel) |
 
 ## Quick Start
 
@@ -208,6 +219,60 @@ Multi-modal content analysis pipeline. A plugin registers tools for image analys
 ```
 Image/PDF/Audio → ContentAnalysisPlugin → analyze_image / extract_metadata → structured metadata
 ```
+
+---
+
+## Pipeline Examples
+
+Pipeline examples exercise the `jaiclaw-pipeline` module's DSL, triggers, and Phase A–F UX surfaces. Each app drops into an interactive Spring Shell and is opt-in via `jaiclaw.pipeline.enabled: true` in `application.yml`.
+
+### 29. Pipeline E2E
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-audit, jaiclaw-plugin-sdk, spring-boot-starter-web, spring-boot-starter-actuator
+
+End-to-end fixture used by `e2e/run-e2e-tests.sh` scenario 6. Wires all three definition sources at once:
+
+- `processor-pipe` from Java code (`E2ePipelines.java` extending `JaiClawPipeline`)
+- `processor-pipe-from-file` from `src/main/resources/jaiclaw/pipelines/processor-pipe-from-file.yml`
+- `broken-pipe` from `application-broken.yml` (intentionally fails validation — demonstrates Phase A's consolidated error message)
+
+Drives `POST /api/pipelines/{id}/trigger`, `/actuator/pipelines`, and `{{input}}` template resolution.
+
+### 30. Support Triage Pipeline
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic
+
+6 stages: `classify-and-sentiment` (AGENT) → `context-fetch` (PROCESSOR stub CRM) → `knowledge-retrieval` (AGENT) → `resolve-or-draft` (AGENT, emits `confidence:`) → `escalation-gate` (PROCESSOR, parses confidence + VIP) → `close-and-log` (PROCESSOR). MANUAL trigger, driven by the shell command `trigger <ticket text>`. Demonstrates `.then()` DSL, `{{pipeline.executionId}}` in output template, confidence-based escalation.
+
+### 31. Invoice Processor
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic
+
+5 stages: classify (AGENT) → extract (AGENT) → validate (PROCESSOR PO-database stub) → approve-or-flag (AGENT) → notify (PROCESSOR, appends JSONL). **FILE trigger** watching `~/.jaiclaw/invoice-processor/inbox`; `errorStrategy: DEAD_LETTER` routes parse failures to a log queue. Shell `inbox` writes a synthetic invoice.
+
+### 32. AIOps Incident Responder
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic
+
+6 stages: triage → root-cause → runbook-lookup (3× AGENT, embedded 5-runbook library) → auto-remediate (PROCESSOR, parses verbs) → escalate-or-resolve (PROCESSOR) → post-mortem-draft (AGENT, 5-Whys). **CAMEL_URI trigger** at `direct:incident-alert`; the Phase E convergence route makes `PipelineGateway.trigger("aiops-incident", ...)` work too. Shell command `incident <text>` plus `replay <executionId>`.
+
+### 33. Competitive Intel Briefing
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic, camel-quartz-starter
+
+5 stages: collect-signals (AGENT, web-search tool) → detect-changes (PROCESSOR, filesystem-cache diff) → synthesize (AGENT) → impact-analysis (AGENT) → format-briefing (PROCESSOR, writes `<date>.md` to disk). **CRON trigger** `0 0 7 ? * MON-FRI` (real cron expression honored via Camel quartz). `@ConfigurationProperties` for the competitor list. Shell `run-now` short-circuits the schedule.
+
+### 34. Sales Enrichment Pipeline
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic, camel-quartz-starter
+
+5 stages: load-new-leads (PROCESSOR, pops one lead off in-memory queue) → enrich (AGENT, web-search) → score (AGENT) → draft-outreach (AGENT) → write-back (PROCESSOR, appends JSONL). **CRON trigger** `0 0 2 * * ?` with per-tick batch-loop pattern: every cron firing handles exactly one lead, keeping each executionId traceable. Shell `add-lead`, `run-now`, `list-enriched`.
+
+### 35. Contract Reviewer
+
+**Modules:** jaiclaw-starter-pipeline, jaiclaw-starter-shell, spring-ai-starter-model-anthropic
+
+6 stages: extract-structure → playbook-check (5-rule playbook embedded in prompt) → risk-score → redline → compliance-scan (5× AGENT) → route (PROCESSOR, AUTO_APPROVE / COUNSEL_REVIEW / REJECT). **FILE trigger** with `errorStrategy: RETRY_THEN_FAIL` + `maxRetries: 2`. Shell `inbox` writes a synthetic MSA.
 
 ---
 

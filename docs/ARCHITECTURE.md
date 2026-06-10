@@ -92,9 +92,14 @@ JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framewo
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐     │
 │  │                       jaiclaw-pipeline                               │     │
-│  │  Declarative multi-stage pipeline DSL (YAML + Java code)            │     │
+│  │  Declarative multi-stage pipeline DSL (YAML + per-file YAML + Java) │     │
 │  │  3 stage processors: Agent, Bean, Camel                              │     │
+│  │  Triggers: MANUAL, HTTP, FILE, CRON (quartz), CAMEL_URI              │     │
+│  │  Master flag: jaiclaw.pipeline.enabled (opt-in)                      │     │
 │  │  Configurable transport: SEDA (default), Kafka, AMQP per-stage      │     │
+│  │  Phase A–F UX: validator + did-you-mean • {{input}} / {{pipeline.*}} │     │
+│  │  templates • .then() DSL • PipelineGateway + POST /api/pipelines/    │     │
+│  │  {id}/trigger • PipelineExecutionTracker + /actuator/pipelines       │     │
 │  │  Audit, hooks, metrics, transport auth (HMAC/Bearer)                 │     │
 │  └──────────────────────────────────────────────────────────────────────┘     │
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -161,7 +166,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-code  (file editing, code generation tools)
   +---> jaiclaw-messaging  (MCP server: channel messaging, sessions, agent-routed chat)
   +---> jaiclaw-rules  (Drools 9.44 rule execution — text-analysis, decision, validation, tax)
-  +---> jaiclaw-pipeline  (declarative multi-stage pipeline DSL; depends on jaiclaw-camel, jaiclaw-config, jaiclaw-core; optional: jaiclaw-audit, jaiclaw-plugin-sdk, jaiclaw-security)
+  +---> jaiclaw-pipeline  (declarative multi-stage pipeline DSL; depends on jaiclaw-camel, jaiclaw-config, jaiclaw-core, jackson-dataformat-yaml; optional: jaiclaw-audit, jaiclaw-plugin-sdk, jaiclaw-security, jaiclaw-channel-api, spring-boot-actuator, spring-web, camel-quartz-starter)
   +---> jaiclaw-config  (@ConfigurationProperties records)
           |
           +---> jaiclaw-gateway  (REST + WS + webhooks + MCP hosting + observability)
@@ -617,6 +622,22 @@ JaiClawRulesAutoConfiguration        @ConditionalOnProperty(jaiclaw.rules.enable
   ├── DroolsConfig                   (KieContainer, StatelessKieSession, DRL loaders)
   ├── DroolsRuleExecutionService     (text-analysis, decision, validation rule types)
   └── ExecuteRuleTool, ListRulesTool, CheckRuleTool  (3 LLM tools: rules_execute, rules_list, rules_check)
+
+PipelineAutoConfiguration            @ConditionalOnClass(CamelContext)
+  │                                  registry / route-init / validator gated by jaiclaw.pipeline.enabled=true
+  ├── PipelineRegistry               (3-phase loading: inline YAML → per-file YAML → JaiClawPipeline beans)
+  ├── PipelineFileLoader             (Spring ResourcePatternResolver over jaiclaw.pipeline.locations.patterns[])
+  ├── PipelineValidator              (consolidated startup errors + "did you mean?" suggestions)
+  ├── PipelineExecutionTracker       (bounded recent history per pipeline)
+  ├── PipelineGateway                (PipelineGateway.trigger(id, body) → ProducerTemplate)
+  ├── AgentStageProcessor / BeanStageProcessor / CamelStageProcessor
+  └── PipelineAuditor, PipelineHookFirer, PipelineSecurityGuard, PipelineTransportAuthenticator
+
+PipelineActuatorConfiguration        @ConditionalOnClass(actuate.Endpoint)  +  ConditionalOnBean(PipelineExecutionTracker)
+  └── PipelineActuatorEndpoint       /actuator/pipelines  (list, byId, executionById)
+
+PipelineWebConfiguration             @ConditionalOnClass(RestController) + @ConditionalOnProperty(jaiclaw.pipeline.http-trigger.enabled=true, default true)
+  └── PipelineTriggerController      POST /api/pipelines/{id}/trigger → 202 + handle JSON; 404 + error body on unknown id
 ```
 
 ### Complete Bean Dependency Chain
