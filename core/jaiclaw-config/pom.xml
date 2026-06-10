@@ -70,6 +70,16 @@
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
             </plugin>
+            <!--
+                P3.6: opt into the JaCoCo configuration template defined in
+                the root pluginManagement. The {@code check} execution
+                enforces ≥40% line coverage during {@code verify}; this
+                ratchets up as the coverage push lands.
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 </project>
