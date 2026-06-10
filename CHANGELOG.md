@@ -104,6 +104,29 @@ hard-break release; see `docs/MIGRATION-0.8.md`).
   HSTS / X-Frame-Options / Referrer-Policy / X-Content-Type-Options.
 - Governance files: `CONTRIBUTING.md`, `SECURITY.md`,
   `CODE_OF_CONDUCT.md`, GitHub issue/PR templates, `CHANGELOG.md`.
+- **JaCoCo line-coverage gate (P3.6).** Root POM declares JaCoCo
+  0.8.12 in `pluginManagement` with three executions
+  (`prepare-agent` / `report` / `check`). Five audit-flagged modules
+  opt in and now enforce ≥ 40% line coverage at `mvn verify`:
+  `jaiclaw-core` (57.5%), `jaiclaw-config` (50.2%),
+  `jaiclaw-subscription` (40.8%), `jaiclaw-tasks` (42.6%),
+  `jaiclaw-docstore` (54.8%). New specs in `jaiclaw-config`
+  (`ConfigurationDefaultsSpec`, `ConfigurationBuildersSpec`,
+  `TenantEnvLoaderSpec`, `TenantAgentConfigServiceSpec`) and
+  `jaiclaw-docstore` (`DocStoreEntrySpec`, `AnalysisResultSpec`,
+  `InMemoryDocStoreRepositorySpec`, `JsonFileDocStoreRepositorySpec`)
+  drive the lift.
+- **Production deployment guide (P3.7).**
+  `docs/user/PRODUCTION-DEPLOYMENT.md` — K8s manifests, minimal Helm
+  values, secrets, the five `JaiClawObservations` metrics + the
+  `/actuator/pipelines` endpoint, Prometheus scrape config, health
+  probes, resource sizing, `security-hardened` profile, AWS/GCP/Azure
+  notes, runbook with the six most common production failure modes.
+- **Strategy + roadmap docs (P3.8).** `docs/POSITIONING.md` —
+  when to pick JaiClaw vs Spring AI / LangChain4j / Embabel-alone, plus
+  the five differentiators. `docs/ROAD-TO-1.0.md` — what's `@Stable`
+  today, what's still `@Experimental`, and the empirical gates between
+  0.8 → 0.9 → 1.0.
 
 ### Changed
 
