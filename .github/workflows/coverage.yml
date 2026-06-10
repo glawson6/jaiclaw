@@ -1,0 +1,64 @@
+name: Coverage
+
+# Runs JaCoCo on the modules the audit (docs/CODEBASE-ANALYSIS-2026-06-10.md §4.5)
+# flagged as having thin coverage and would be most painful to regress:
+# jaiclaw-config, jaiclaw-core, jaiclaw-subscription, jaiclaw-tasks,
+# jaiclaw-docstore. Initial target is exploratory — the report is uploaded
+# as a build artifact; we'll ratchet a threshold in once a baseline is set.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'releases/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'core/jaiclaw-config/**'
+      - 'core/jaiclaw-core/**'
+      - 'extensions/jaiclaw-subscription/**'
+      - 'extensions/jaiclaw-tasks/**'
+      - 'extensions/jaiclaw-docstore/**'
+
+jobs:
+  jacoco:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compile reactor
+        run: ./mvnw install -DskipTests -B
+        env:
+          MAVEN_OPTS: '-Xmx2g'
+
+      - name: Run tests with JaCoCo on audit-flagged modules
+        run: |
+          ./mvnw -pl :jaiclaw-config,:jaiclaw-core,:jaiclaw-subscription,:jaiclaw-tasks,:jaiclaw-docstore \
+            -am test jacoco:report -B -o \
+            -Djacoco.skip=false || true
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: |
+            core/jaiclaw-config/target/site/jacoco/
+            core/jaiclaw-core/target/site/jacoco/
+            extensions/jaiclaw-subscription/target/site/jacoco/
+            extensions/jaiclaw-tasks/target/site/jacoco/
+            extensions/jaiclaw-docstore/target/site/jacoco/
+          retention-days: 14
+          if-no-files-found: warn

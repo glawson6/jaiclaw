@@ -1,20 +1,29 @@
 package io.jaiclaw.pipeline;
 
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.AgentEndedEvent;
+import io.jaiclaw.core.hook.event.AgentStartedEvent;
+import io.jaiclaw.core.hook.event.ToolCallEndedEvent;
+import io.jaiclaw.core.hook.event.ToolCallStartedEvent;
 import io.jaiclaw.plugin.HookRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
  * Fires pipeline lifecycle events through the existing {@link HookRunner} system.
  *
- * <p>Reuses existing {@link HookName} values ({@code BEFORE_TOOL_CALL}, {@code AFTER_TOOL_CALL},
- * {@code BEFORE_AGENT_START}, {@code AGENT_END}) so that plugins like {@code ObservabilityPlugin}
- * automatically capture pipeline stage metrics without code changes.
+ * <p>0.8.0 hard-break: now emits typed
+ * {@link io.jaiclaw.core.hook.event.HookEvent} subtypes
+ * ({@link AgentStartedEvent}, {@link ToolCallStartedEvent},
+ * {@link ToolCallEndedEvent}, {@link AgentEndedEvent}) — pipeline stages
+ * are reported as tool calls so existing observability plugins capture
+ * pipeline stage metrics without changes.
  *
- * <p>No-ops gracefully when the plugin-sdk module is absent.
+ * <p>The {@code agentId} carried on each event is the pipeline id; the
+ * {@code sessionKey} is the execution id. Plugins listening for tool/agent
+ * events can distinguish pipeline events by inspecting these fields.
+ *
+ * <p>No-ops gracefully when the plugin-sdk module is absent
+ * ({@code hookRunner == null}).
  */
 public class PipelineHookFirer {
 
@@ -27,60 +36,44 @@ public class PipelineHookFirer {
     }
 
     /**
-     * Fire pipeline start event.
+     * Fire pipeline start event (as {@link AgentStartedEvent}).
      */
     public void firePipelineStart(PipelineContext ctx) {
         if (hookRunner == null) return;
-
-        Map<String, Object> event = Map.of(
-                "pipelineId", ctx.pipelineId(),
-                "executionId", ctx.executionId(),
-                "totalStages", ctx.totalStages()
-        );
-        hookRunner.fireVoid(HookName.BEFORE_AGENT_START, event, ctx);
+        hookRunner.fireVoid(AgentStartedEvent.of(
+                ctx.pipelineId(), ctx.executionId(), "pipeline-start"));
     }
 
     /**
-     * Fire stage start event (as BEFORE_TOOL_CALL for plugin compatibility).
+     * Fire stage start event (as {@link ToolCallStartedEvent} for plugin compatibility).
      */
     public void fireStageStart(PipelineContext ctx, StageDefinition stage) {
         if (hookRunner == null) return;
-
-        Map<String, Object> event = Map.of(
-                "toolName", stage.name(),
-                "pipelineId", ctx.pipelineId(),
-                "stageType", stage.type().name(),
-                "stageIndex", ctx.stageIndex()
-        );
-        hookRunner.fireVoid(HookName.BEFORE_TOOL_CALL, event, ctx);
+        hookRunner.fireVoid(ToolCallStartedEvent.of(
+                ctx.pipelineId(), ctx.executionId(),
+                stage.name(), stage.type().name(), ctx.stageIndex()));
     }
 
     /**
-     * Fire stage completion event (as AFTER_TOOL_CALL for plugin compatibility).
+     * Fire stage completion event (as {@link ToolCallEndedEvent}).
      */
     public void fireStageComplete(PipelineContext ctx, StageDefinition stage, String result) {
         if (hookRunner == null) return;
-
-        Map<String, Object> event = Map.of(
-                "toolName", stage.name(),
-                "pipelineId", ctx.pipelineId(),
-                "stageType", stage.type().name(),
-                "resultPreview", result != null ? result.substring(0, Math.min(200, result.length())) : ""
-        );
-        hookRunner.fireVoid(HookName.AFTER_TOOL_CALL, event, ctx);
+        String preview = result != null ? result.substring(0, Math.min(200, result.length())) : "";
+        hookRunner.fireVoid(ToolCallEndedEvent.of(
+                ctx.pipelineId(), ctx.executionId(),
+                stage.name(), stage.type().name(), preview, ctx.stageIndex()));
     }
 
     /**
-     * Fire pipeline end event.
+     * Fire pipeline end event (as {@link AgentEndedEvent}).
+     *
+     * <p>The carried {@link AgentEndedEvent#assistantMessage()} is null on
+     * pipeline events — pipelines don't produce a {@code AssistantMessage}.
      */
     public void firePipelineEnd(PipelineContext ctx) {
         if (hookRunner == null) return;
-
-        Map<String, Object> event = Map.of(
-                "pipelineId", ctx.pipelineId(),
-                "executionId", ctx.executionId(),
-                "completedStages", ctx.stageOutputs().size()
-        );
-        hookRunner.fireVoid(HookName.AGENT_END, event, ctx);
+        hookRunner.fireVoid(AgentEndedEvent.of(
+                ctx.pipelineId(), ctx.executionId(), null));
     }
 }

@@ -134,7 +134,7 @@ public class JaiClawDocker {
             System.out.println("  4. Add to docker-compose/.env:");
             System.out.println("     TELEGRAM_BOT_TOKEN=<your-token>");
             System.out.println();
-            System.out.println("Full guide: docs/TELEGRAM-SETUP.md");
+            System.out.println("Full guide: docs/user/TELEGRAM-SETUP.md");
             System.exit(1);
         }
 

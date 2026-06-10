@@ -1,0 +1,62 @@
+name: Dependency CVE Scan
+
+# Runs OWASP dependency-check across the reactor. Triggered:
+#   - weekly on a schedule (Mondays 09:00 UTC), so the NVD-feed updates land
+#     even if no commits touch dependencies
+#   - on-demand via workflow_dispatch
+#   - on PRs that touch any pom.xml
+#
+# The suppression file at .security/dependency-check-suppressions.xml
+# contains the audit's 45 known false positives — keep it tight; document
+# every suppression with a "why" comment.
+#
+# Fails the build on CVSS >= 7.0 without a matching suppression. Audit
+# reference: docs/CODEBASE-ANALYSIS-2026-06-10.md §2.6, §4.3.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/pom.xml'
+
+jobs:
+  dep-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compile reactor
+        run: ./mvnw install -DskipTests -B
+        env:
+          MAVEN_OPTS: '-Xmx2g'
+
+      - name: Run OWASP dependency-check
+        run: |
+          ./mvnw -B \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7.0 \
+            -DsuppressionFiles=.security/dependency-check-suppressions.xml \
+            -Dformat=ALL
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Upload dependency-check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-reports
+          path: '**/target/dependency-check-report.*'
+          retention-days: 30
+          if-no-files-found: warn

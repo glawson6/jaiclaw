@@ -4,7 +4,6 @@ import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.config.AgentProperties
 import io.jaiclaw.config.CompositeToolProfileRegistry
 import io.jaiclaw.core.agent.*
-import io.jaiclaw.core.hook.HookName
 import io.jaiclaw.core.model.AgentIdentity
 import io.jaiclaw.core.model.Session
 import io.jaiclaw.core.model.UserMessage

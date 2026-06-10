@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnProperty(name = "jaiclaw.email.enabled", havingValue = "true", matchIfMissing = false)
 public class JaiClawEmailAutoConfiguration {
 

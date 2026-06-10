@@ -3,7 +3,8 @@ package io.jaiclaw.agent.loop;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.LlmTraceLogger;
 import io.jaiclaw.core.agent.*;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.ToolCallEndedEvent;
+import io.jaiclaw.core.hook.event.ToolCallStartedEvent;
 import io.jaiclaw.core.model.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public class ExplicitToolLoop {
 
     public LoopResult execute(String systemPrompt, List<Message> history,
                               String userInput, Map<String, ToolCallback> toolsByName,
-                              String sessionKey) {
+                              String agentId, String sessionKey) {
         List<Message> messages = new ArrayList<>();
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             messages.add(new SystemMessage(systemPrompt));
@@ -96,7 +97,8 @@ public class ExplicitToolLoop {
                 // Fire BEFORE_TOOL_CALL hook
                 var beforeEvent = ToolCallEvent.before(tc.name(), tc.arguments(), iteration, sessionKey);
                 if (hooks != null) {
-                    hooks.fireVoid(HookName.BEFORE_TOOL_CALL, beforeEvent, sessionKey);
+                    hooks.fireVoid(ToolCallStartedEvent.of(
+                            agentId, sessionKey, tc.name(), tc.arguments(), iteration));
                 }
 
                 // Optional approval gate
@@ -113,7 +115,8 @@ public class ExplicitToolLoop {
                                 var afterEvent = ToolCallEvent.after(tc.name(), toolArguments, denialResult, iteration, sessionKey);
                                 toolCallHistory.add(afterEvent);
                                 if (hooks != null) {
-                                    hooks.fireVoid(HookName.AFTER_TOOL_CALL, afterEvent, sessionKey);
+                                    hooks.fireVoid(ToolCallEndedEvent.of(
+                                            agentId, sessionKey, tc.name(), toolArguments, denialResult, iteration));
                                 }
                                 continue;
                             }
@@ -152,7 +155,8 @@ public class ExplicitToolLoop {
                 var afterEvent = ToolCallEvent.after(tc.name(), toolArguments, result, iteration, sessionKey);
                 toolCallHistory.add(afterEvent);
                 if (hooks != null) {
-                    hooks.fireVoid(HookName.AFTER_TOOL_CALL, afterEvent, sessionKey);
+                    hooks.fireVoid(ToolCallEndedEvent.of(
+                            agentId, sessionKey, tc.name(), toolArguments, result, iteration));
                 }
             }
 

@@ -23,7 +23,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnProperty(name = "jaiclaw.calendar.enabled", havingValue = "true", matchIfMissing = false)
 public class JaiClawCalendarAutoConfiguration {
 

@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest a capability, channel, tool, or design improvement.
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please skim
+        [open issues](https://github.com/glawson6/jaiclaw/issues?q=is%3Aissue+label%3Aenhancement)
+        and the
+        [Phase 3 roadmap](https://github.com/glawson6/jaiclaw/blob/main/docs/CODEBASE-ANALYSIS-2026-06-10.md#5-prioritized-roadmap)
+        in the codebase analysis — your idea may already be tracked there.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the use case before the solution. What are you trying to do that JaiClaw doesn't make easy today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you want it to work? API shape, config keys, behavior — whatever level of detail you've thought through.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try or rule out?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope estimate (your guess is fine)
+      options:
+        - "Small — config knob, single class, doc tweak"
+        - "Medium — new module, new SPI, or substantial API surface"
+        - "Large — cross-cutting (touches core + multiple extensions)"
+        - "Not sure"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Links, references, related tickets, prior art.
+    validations:
+      required: false

@@ -34,7 +34,7 @@ import java.util.List;
  * example).
  */
 @AutoConfiguration
-@AutoConfigureAfter(JaiClawAutoConfiguration.class)
+@AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "org.springframework.ai.chat.model.ChatModel")
 @ConditionalOnProperty(name = "jaiclaw.models.minimax.filter-thinking", havingValue = "true", matchIfMissing = true)
 public class MiniMaxThinkingFilterAutoConfiguration {

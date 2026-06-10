@@ -1,7 +1,8 @@
 package io.jaiclaw.agent.loop
 
 import io.jaiclaw.core.agent.*
-import io.jaiclaw.core.hook.HookName
+import io.jaiclaw.core.hook.event.ToolCallEndedEvent
+import io.jaiclaw.core.hook.event.ToolCallStartedEvent
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
@@ -46,7 +47,7 @@ class ExplicitToolLoopSpec extends Specification {
         chatModel.call(_ as Prompt) >> response
 
         when:
-        def result = loop.execute("system prompt", [], "hello", [:], "session-1")
+        def result = loop.execute("system prompt", [], "hello", [:], "default", "session-1")
 
         then:
         result.finalText() == "Hello there!"
@@ -69,7 +70,7 @@ class ExplicitToolLoopSpec extends Specification {
         def mockTool = mockToolCallback("myTool", "tool result")
 
         when:
-        def result = loop.execute("system", [], "input", ["myTool": mockTool], "sess-1")
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
         then:
         result.finalText() == "Done!"
@@ -94,11 +95,11 @@ class ExplicitToolLoopSpec extends Specification {
         def mockTool = mockToolCallback("myTool", "result")
 
         when:
-        loop.execute("system", [], "input", ["myTool": mockTool], "sess-1")
+        loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
         then:
-        1 * hooks.fireVoid(HookName.BEFORE_TOOL_CALL, _ as ToolCallEvent, "sess-1")
-        1 * hooks.fireVoid(HookName.AFTER_TOOL_CALL, _ as ToolCallEvent, "sess-1")
+        1 * hooks.fireVoid(_ as ToolCallStartedEvent)
+        1 * hooks.fireVoid(_ as ToolCallEndedEvent)
     }
 
     def "stops at max iterations"() {
@@ -114,7 +115,7 @@ class ExplicitToolLoopSpec extends Specification {
         def mockTool = mockToolCallback("myTool", "result")
 
         when:
-        def result = loop.execute("system", [], "input", ["myTool": mockTool], "sess-1")
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
         then:
         result.finalText().contains("Max iterations reached")
@@ -143,7 +144,7 @@ class ExplicitToolLoopSpec extends Specification {
         }
 
         when:
-        def result = loop.execute("system", [], "input", ["myTool": mockTool], "sess-1")
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
         then:
         result.history().size() == 1
@@ -168,7 +169,7 @@ class ExplicitToolLoopSpec extends Specification {
         def mockTool = mockToolCallback("myTool", "approved result")
 
         when:
-        def result = loop.execute("system", [], "input", ["myTool": mockTool], "sess-1")
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
         then:
         result.finalText() == "Done"

@@ -1,8 +1,9 @@
 package io.jaiclaw.plugin
 
 import io.jaiclaw.core.hook.HookHandler
-import io.jaiclaw.core.hook.HookName
 import io.jaiclaw.core.hook.HookRegistration
+import io.jaiclaw.core.hook.event.AgentEndedEvent
+import io.jaiclaw.core.hook.event.AgentStartedEvent
 import spock.lang.Specification
 
 class PluginRegistrySpec extends Specification {
@@ -37,8 +38,8 @@ class PluginRegistrySpec extends Specification {
 
     def "addHook and retrieve"() {
         given:
-        HookHandler handler = { event, ctx -> null }
-        def hook = new HookRegistration("p1", HookName.BEFORE_AGENT_START, handler)
+        HookHandler handler = { event -> null }
+        def hook = new HookRegistration("p1", AgentStartedEvent.class, handler)
 
         when:
         registry.addHook(hook)
@@ -48,15 +49,15 @@ class PluginRegistrySpec extends Specification {
         registry.hookCount() == 1
     }
 
-    def "hooksFor filters by hook name"() {
+    def "hooksFor filters by event type"() {
         given:
-        HookHandler h1 = { event, ctx -> null }
-        HookHandler h2 = { event, ctx -> null }
-        registry.addHook(new HookRegistration("p1", HookName.BEFORE_AGENT_START, h1))
-        registry.addHook(new HookRegistration("p2", HookName.AGENT_END, h2))
+        HookHandler h1 = { event -> null }
+        HookHandler h2 = { event -> null }
+        registry.addHook(new HookRegistration("p1", AgentStartedEvent.class, h1))
+        registry.addHook(new HookRegistration("p2", AgentEndedEvent.class, h2))
 
         when:
-        def startHooks = registry.hooksFor(HookName.BEFORE_AGENT_START)
+        def startHooks = registry.hooksFor(AgentStartedEvent.class)
 
         then:
         startHooks.size() == 1

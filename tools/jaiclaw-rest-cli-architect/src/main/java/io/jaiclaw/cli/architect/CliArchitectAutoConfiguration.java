@@ -30,7 +30,7 @@ import java.util.Set;
  * Activates when the JAR is on the classpath and a ToolRegistry bean exists.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class CliArchitectAutoConfiguration {
 

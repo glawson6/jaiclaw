@@ -188,6 +188,7 @@ public class JaiClawSecurityAutoConfiguration {
         @Bean
         @ConditionalOnMissingBean(SecurityFilterChain.class)
         SecurityFilterChain permissiveFilterChain(HttpSecurity http) throws Exception {
+            configureSecurityHeaders(http);
             return http
                     .csrf(AbstractHttpConfigurer::disable)
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())

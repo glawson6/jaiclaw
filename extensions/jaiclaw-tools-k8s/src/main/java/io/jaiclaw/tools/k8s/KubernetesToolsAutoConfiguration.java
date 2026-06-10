@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Bean;
  * on each run() call, tools registered here are automatically available to the agent.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnClass(name = "io.fabric8.kubernetes.client.KubernetesClient")
 @ConditionalOnBean(ToolRegistry.class)
 public class KubernetesToolsAutoConfiguration {

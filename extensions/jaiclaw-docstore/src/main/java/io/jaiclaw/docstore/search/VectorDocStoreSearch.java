@@ -1,6 +1,7 @@
 package io.jaiclaw.docstore.search;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +30,31 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
     private final Map<String, DocStoreEntry> entries = new ConcurrentHashMap<>();
 
     public VectorDocStoreSearch(VectorStore vectorStore) {
-        this(vectorStore, null);
+        this(vectorStore, new TenantGuard(TenantProperties.DEFAULT));
     }
 
     public VectorDocStoreSearch(VectorStore vectorStore, TenantGuard tenantGuard) {
         this.vectorStore = vectorStore;
-        this.tenantGuard = tenantGuard;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
+    }
+
+    /** Current tenant id (default-tenant-id in SINGLE, throws in MULTI with no context). */
+    private String currentTenantId() {
+        if (tenantGuard.isMultiTenant()) {
+            return tenantGuard.requireTenantIfMulti();
+        }
+        return tenantGuard.getProperties().defaultTenantId();
+    }
+
+    /** Tenant-scoped storage key for an entry; prefers the entry's own tenantId. */
+    private String storageKey(DocStoreEntry entry) {
+        String tenantId = entry.tenantId() != null ? entry.tenantId() : currentTenantId();
+        return tenantId + ":" + entry.id();
+    }
+
+    /** Tenant-scoped storage key for the given entry id under the current tenant. */
+    private String storageKey(String entryId) {
+        return currentTenantId() + ":" + entryId;
     }
 
     @Override
@@ -52,7 +72,7 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
         FilterExpressionBuilder.Op scopeFilter = null;
 
         // Tenant filter in MULTI mode
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+        if (tenantGuard.isMultiTenant()) {
             String tenantId = tenantGuard.requireTenantIfMulti();
             tenantFilter = fb.eq(TENANT_ID_KEY, tenantId);
         }
@@ -87,7 +107,8 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
 
     @Override
     public void index(DocStoreEntry entry) {
-        entries.put(entry.id(), entry);
+        String key = storageKey(entry);
+        entries.put(key, entry);
 
         String text = buildIndexText(entry);
         if (text.isBlank()) {
@@ -101,7 +122,9 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
         }
 
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put(ENTRY_ID_KEY, entry.id());
+        // ENTRY_ID_KEY is the tenant-scoped storage key so toSearchResult
+        // looks up the right entry without cross-tenant collisions.
+        metadata.put(ENTRY_ID_KEY, key);
         metadata.put("userId", entry.userId() != null ? entry.userId() : "");
         metadata.put("chatId", entry.chatId() != null ? entry.chatId() : "");
         metadata.put("mimeType", entry.mimeType() != null ? entry.mimeType() : "");
@@ -110,22 +133,22 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
         // Tag with tenant for isolation in MULTI mode
         if (entry.tenantId() != null) {
             metadata.put(TENANT_ID_KEY, entry.tenantId());
-        } else if (tenantGuard != null) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            if (tenantId != null) {
-                metadata.put(TENANT_ID_KEY, tenantId);
-            }
+        } else {
+            metadata.put(TENANT_ID_KEY, currentTenantId());
         }
 
-        Document doc = new Document(entry.id(), text, metadata);
+        // Vector-store document id is also tenant-scoped so two tenants
+        // can index different entries that share a business id.
+        Document doc = new Document(key, text, metadata);
         vectorStore.add(List.of(doc));
         log.debug("Indexed entry {} in vector store", entry.shortId());
     }
 
     @Override
     public void remove(String entryId) {
-        entries.remove(entryId);
-        vectorStore.delete(List.of(entryId));
+        String key = storageKey(entryId);
+        entries.remove(key);
+        vectorStore.delete(List.of(key));
     }
 
     private String buildIndexText(DocStoreEntry entry) {
@@ -162,7 +185,7 @@ public class VectorDocStoreSearch implements DocStoreSearchProvider {
 
     private boolean matchesOptions(DocStoreEntry entry, DocStoreSearchOptions options) {
         // Tenant filtering in MULTI mode (defense-in-depth — vector filter should already handle this)
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
+        if (tenantGuard.isMultiTenant()) {
             String tenantId = tenantGuard.requireTenantIfMulti();
             if (!tenantId.equals(entry.tenantId())) return false;
         }

@@ -1,7 +1,7 @@
 package io.jaiclaw.subscription.telegram;
 
 import io.jaiclaw.channel.ChannelMessage;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.MessageReceivedEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.subscription.*;
@@ -55,12 +55,11 @@ public class TelegramSubscriptionPlugin implements JaiClawPlugin {
 
     @Override
     public void register(PluginApi api) {
-        api.on(HookName.MESSAGE_RECEIVED, (event, ctx) -> {
-            if (event instanceof ChannelMessage message && "telegram".equals(message.channelId())) {
-                String response = handleCommand(message.content(), message.peerId());
-                if (response != null) {
-                    groupManager.sendMessage(message.peerId(), response);
-                }
+        api.on(MessageReceivedEvent.class, event -> {
+            if (!"telegram".equals(event.channelId())) return null;
+            String response = handleCommand(event.content(), event.peerId());
+            if (response != null) {
+                groupManager.sendMessage(event.peerId(), response);
             }
             return null;
         });

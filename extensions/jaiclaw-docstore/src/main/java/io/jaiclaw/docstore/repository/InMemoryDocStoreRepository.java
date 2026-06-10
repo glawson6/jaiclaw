@@ -1,6 +1,7 @@
 package io.jaiclaw.docstore.repository;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 
 import java.util.*;
@@ -10,7 +11,11 @@ import java.util.stream.Stream;
 
 /**
  * In-memory DocStore repository. Suitable for testing and ephemeral use.
- * In MULTI mode, all queries are filtered by tenantId.
+ *
+ * <p>Keys are {@code "{tenantId}:{entryId}"} so two tenants using the same
+ * business-domain entry id do not collide on save. Reads always filter by
+ * the current tenant prefix, then check the value's {@code tenantId}
+ * field as a secondary safety net.
  */
 public class InMemoryDocStoreRepository implements DocStoreRepository {
 
@@ -18,60 +23,58 @@ public class InMemoryDocStoreRepository implements DocStoreRepository {
     private final TenantGuard tenantGuard;
 
     public InMemoryDocStoreRepository() {
-        this(null);
+        this(new TenantGuard(TenantProperties.DEFAULT));
     }
 
     public InMemoryDocStoreRepository(TenantGuard tenantGuard) {
-        this.tenantGuard = tenantGuard;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
     }
 
-    private Stream<DocStoreEntry> tenantFiltered() {
-        Stream<DocStoreEntry> stream = entries.values().stream();
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            stream = stream.filter(e -> tenantId.equals(e.tenantId()));
+    /** Current tenant id (default-tenant-id in SINGLE, throws in MULTI with no context). */
+    private String currentTenantId() {
+        if (tenantGuard.isMultiTenant()) {
+            return tenantGuard.requireTenantIfMulti();
         }
-        return stream;
+        return tenantGuard.getProperties().defaultTenantId();
+    }
+
+    /** Storage key for the given entry. Uses the entry's own tenantId when present. */
+    private String storageKey(DocStoreEntry entry) {
+        String tenantId = entry.tenantId() != null ? entry.tenantId() : currentTenantId();
+        return tenantId + ":" + entry.id();
+    }
+
+    /** Storage key for the given entry id, scoped to the current tenant. */
+    private String storageKey(String entryId) {
+        return currentTenantId() + ":" + entryId;
+    }
+
+    /** Stream of entries visible to the current tenant. */
+    private Stream<DocStoreEntry> tenantFiltered() {
+        String prefix = currentTenantId() + ":";
+        return entries.entrySet().stream()
+                .filter(e -> e.getKey().startsWith(prefix))
+                .map(Map.Entry::getValue);
     }
 
     @Override
     public void save(DocStoreEntry entry) {
-        entries.put(entry.id(), entry);
+        entries.put(storageKey(entry), entry);
     }
 
     @Override
     public Optional<DocStoreEntry> findById(String id) {
-        DocStoreEntry entry = entries.get(id);
-        if (entry != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            if (!tenantId.equals(entry.tenantId())) {
-                return Optional.empty();
-            }
-        }
-        return Optional.ofNullable(entry);
+        return Optional.ofNullable(entries.get(storageKey(id)));
     }
 
     @Override
     public void deleteById(String id) {
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            DocStoreEntry entry = entries.get(id);
-            if (entry == null) return;
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            if (!tenantId.equals(entry.tenantId())) return;
-        }
-        entries.remove(id);
+        entries.remove(storageKey(id));
     }
 
     @Override
     public DocStoreEntry update(String id, UnaryOperator<DocStoreEntry> mutator) {
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            return entries.computeIfPresent(id, (k, v) -> {
-                if (!tenantId.equals(v.tenantId())) return v; // no-op for wrong tenant
-                return mutator.apply(v);
-            });
-        }
-        return entries.computeIfPresent(id, (k, v) -> mutator.apply(v));
+        return entries.computeIfPresent(storageKey(id), (k, v) -> mutator.apply(v));
     }
 
     @Override

@@ -1,7 +1,7 @@
 package io.jaiclaw.plugin;
 
-import io.jaiclaw.core.hook.HookName;
 import io.jaiclaw.core.hook.HookRegistration;
+import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.tenant.TenantContextPropagator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,10 +13,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Executes hook handlers for a given hook event.
+ * Executes hook handlers for a given typed event.
+ *
+ * <p>0.8.0 hard-break: dispatch is keyed by the event's runtime class rather
+ * than the pre-0.8.0 {@code HookName} enum. See {@code docs/MIGRATION-0.8.md}
+ * § P3.1.
+ *
  * <ul>
- *   <li>Void hooks (no return expected): run in parallel using virtual threads</li>
- *   <li>Modifying hooks (return a value): run sequentially in priority order</li>
+ *   <li>Void hooks (handler returns null): run in parallel via virtual threads.</li>
+ *   <li>Modifying hooks (handler returns a replacement event): run sequentially
+ *       in priority order, each receiving the previous handler's result.</li>
  * </ul>
  */
 public class HookRunner {
@@ -34,18 +40,19 @@ public class HookRunner {
      * Exceptions in individual handlers are logged but don't block others.
      */
     @SuppressWarnings("unchecked")
-    public <E, C> void fireVoid(HookName hookName, E event, C context) {
-        var handlers = getHandlers(hookName);
+    public <E extends HookEvent> void fireVoid(E event) {
+        Class<? extends HookEvent> eventType = event.getClass();
+        var handlers = getHandlers(eventType);
         if (handlers.isEmpty()) return;
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             var futures = handlers.stream()
                     .map(h -> CompletableFuture.runAsync(TenantContextPropagator.wrap(() -> {
                         try {
-                            ((HookRegistration<E, C>) h).handler().handle(event, context);
+                            ((HookRegistration<E>) h).handler().handle(event);
                         } catch (Exception e) {
                             log.warn("Hook handler {} for {} failed: {}",
-                                    h.pluginId(), hookName, e.getMessage(), e);
+                                    h.pluginId(), eventType.getSimpleName(), e.getMessage(), e);
                         }
                     }), executor))
                     .toArray(CompletableFuture[]::new);
@@ -61,35 +68,36 @@ public class HookRunner {
      * @return the final modified event, or the original if no handlers exist
      */
     @SuppressWarnings("unchecked")
-    public <E, C> E fireModifying(HookName hookName, E event, C context) {
-        var handlers = getHandlers(hookName);
+    public <E extends HookEvent> E fireModifying(E event) {
+        Class<? extends HookEvent> eventType = event.getClass();
+        var handlers = getHandlers(eventType);
         if (handlers.isEmpty()) return event;
 
         E current = event;
         for (var h : handlers) {
             try {
-                Object result = ((HookRegistration<E, C>) h).handler().handle(current, context);
+                E result = ((HookRegistration<E>) h).handler().handle(current);
                 if (result != null) {
-                    current = (E) result;
+                    current = result;
                 }
             } catch (Exception e) {
                 log.warn("Modifying hook handler {} for {} failed: {}",
-                        h.pluginId(), hookName, e.getMessage(), e);
+                        h.pluginId(), eventType.getSimpleName(), e.getMessage(), e);
             }
         }
         return current;
     }
 
     /**
-     * Check if any handlers are registered for the given hook.
+     * Check if any handlers are registered for the given event type.
      */
-    public boolean hasHandlers(HookName hookName) {
-        return !getHandlers(hookName).isEmpty();
+    public <E extends HookEvent> boolean hasHandlers(Class<E> eventType) {
+        return !getHandlers(eventType).isEmpty();
     }
 
-    private List<HookRegistration<?, ?>> getHandlers(HookName hookName) {
+    private List<HookRegistration<? extends HookEvent>> getHandlers(Class<? extends HookEvent> eventType) {
         return pluginRegistry.hooks().stream()
-                .filter(h -> h.hookName() == hookName)
+                .filter(h -> h.eventType().equals(eventType))
                 .sorted(Comparator.comparingInt(HookRegistration::priority))
                 .toList();
     }

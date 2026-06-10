@@ -19,14 +19,18 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 /**
- * Gateway auto-configuration — split from {@link JaiClawAutoConfiguration} so that
- * {@code @ConditionalOnBean(AgentRuntime.class)} evaluates <em>after</em> the
- * AgentRuntime bean is defined by the parent auto-config.
+ * Gateway auto-configuration — runs after {@link JaiClawAgentAutoConfiguration}
+ * so that {@code @ConditionalOnBean(AgentRuntime.class)} evaluates <em>after</em>
+ * the {@code AgentRuntime} bean has been defined.
  *
- * <p>{@code @AutoConfigureAfter(JaiClawAutoConfiguration.class)} ensures ordering.
+ * <p>{@code @AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)} ensures
+ * ordering. The pre-0.8.0 monolithic {@code JaiClawAutoConfiguration} was split
+ * into seven domain-scoped auto-configs (Phase 3 P3.4); the agent auto-config
+ * is last in that DAG, so depending on it is equivalent to the old "after the
+ * whole framework" semantics.
  */
 @AutoConfiguration
-@AutoConfigureAfter(JaiClawAutoConfiguration.class)
+@AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "io.jaiclaw.gateway.GatewayService")
 @ConditionalOnBean(AgentRuntime.class)
 public class JaiClawGatewayAutoConfiguration {

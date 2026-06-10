@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
  * into the JaiClaw tool registry when present on the classpath.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class CodeToolsAutoConfiguration {
 

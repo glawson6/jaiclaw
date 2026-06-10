@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Configuration;
  * Applications can still override by defining their own {@link DocStoreSearchProvider} bean.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 public class DocStoreAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(DocStoreAutoConfiguration.class);

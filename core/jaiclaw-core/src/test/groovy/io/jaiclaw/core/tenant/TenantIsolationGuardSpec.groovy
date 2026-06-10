@@ -35,6 +35,10 @@ class TenantIsolationGuardSpec extends Specification {
             "extensions/jaiclaw-calendar",
             "extensions/jaiclaw-subscription",
             "extensions/jaiclaw-voice-call",
+            // Added in the PR5 audit extension (CODEBASE-ANALYSIS-2026-06-10 §2.5).
+            "extensions/jaiclaw-tasks",
+            "extensions/jaiclaw-browser",
+            "extensions/jaiclaw-docstore",
     ]
 
     /**
@@ -54,6 +58,13 @@ class TenantIsolationGuardSpec extends Specification {
             // Already-keyed-by-tenant registries (API takes tenantId)
             "TenantMcpServerRegistry",
             "TenantChannelAdapterRegistry",
+            // Audited in PR5 (CODEBASE-ANALYSIS-2026-06-10 §2.5).
+            "JsonFileTaskStore",
+            "BrowserService",
+            "InMemoryDocStoreRepository",
+            "JsonFileDocStoreRepository",
+            "FullTextDocStoreSearch",
+            "VectorDocStoreSearch",
     ] as Set
 
     /**

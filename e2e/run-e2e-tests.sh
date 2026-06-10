@@ -38,6 +38,31 @@ readonly E2E_PIPELINE_PORT_DEFAULT=8100
 readonly FAST_PATH_TIMEOUT=5
 readonly JVM_PATH_TIMEOUT=120
 
+# Resolve the timeout(1) binary. Prefer GNU `timeout`; fall back to
+# coreutils-prefixed `gtimeout` (Homebrew's macOS shim); if neither is
+# available, run the command without a timeout wrap so the harness stays
+# portable on stock macOS where GNU coreutils isn't installed.
+if command -v timeout >/dev/null 2>&1; then
+    readonly TIMEOUT_BIN=timeout
+elif command -v gtimeout >/dev/null 2>&1; then
+    readonly TIMEOUT_BIN=gtimeout
+else
+    readonly TIMEOUT_BIN=""
+fi
+
+# _timeout <seconds> <cmd> [args...] — portable timeout wrapper.
+_timeout() {
+    local secs="$1"
+    shift
+    if [[ -n "$TIMEOUT_BIN" ]]; then
+        "$TIMEOUT_BIN" "$secs" "$@"
+    else
+        # No timeout binary — run the command directly. The wall-clock
+        # cap is enforced by the surrounding wait loops in the harness.
+        "$@"
+    fi
+}
+
 # ─── Colors ───────────────────────────────────────────────────────────────────
 
 RED='\033[0;31m'
@@ -441,14 +466,33 @@ run_scenario_3() {
     # Send test message
     log_info "Sending test message to /api/chat..."
     local response
-    response=$(curl -sf -X POST "http://localhost:${port}/api/chat" \
-        -H "Content-Type: application/json" \
-        -d '{
-            "content": "Reply with exactly: E2E_TEST_OK",
-            "channelId": "api",
-            "accountId": "default",
-            "peerId": "e2e-user"
-        }' 2>&1) || true
+    # The gateway boots in the default api-key security mode and reads the
+    # auto-generated key from ~/.jaiclaw/api-key. Include it on the request
+    # so the chat endpoint isn't rejected by the security filter.
+    local jc_api_key=""
+    if [[ -f "${HOME}/.jaiclaw/api-key" ]]; then
+        jc_api_key=$(cat "${HOME}/.jaiclaw/api-key" 2>/dev/null || true)
+    fi
+    if [[ -n "$jc_api_key" ]]; then
+        response=$(curl -sf -X POST "http://localhost:${port}/api/chat" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: $jc_api_key" \
+            -d '{
+                "content": "Reply with exactly: E2E_TEST_OK",
+                "channelId": "api",
+                "accountId": "default",
+                "peerId": "e2e-user"
+            }' 2>&1) || true
+    else
+        response=$(curl -sf -X POST "http://localhost:${port}/api/chat" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "content": "Reply with exactly: E2E_TEST_OK",
+                "channelId": "api",
+                "accountId": "default",
+                "peerId": "e2e-user"
+            }' 2>&1) || true
+    fi
 
     if echo "$response" | grep -q "E2E_TEST_OK"; then
         log_pass "Scenario 3: Provider responded with expected content"
@@ -512,7 +556,7 @@ run_scenario_4() {
 
         local output
         local exit_code=0
-        output=$(timeout "$timeout" "$launcher" "$@" 2>&1) || exit_code=$?
+        output=$(_timeout "$timeout" "$launcher" "$@" 2>&1) || exit_code=$?
 
         if [[ $exit_code -eq 0 ]]; then
             log_pass "$label"
@@ -536,7 +580,7 @@ run_scenario_4() {
     # version
     total=$((total + 1))
     local ver_output
-    ver_output=$(timeout $FAST_PATH_TIMEOUT "$launcher" version 2>&1) || true
+    ver_output=$(_timeout $FAST_PATH_TIMEOUT "$launcher" version 2>&1) || true
     if echo "$ver_output" | grep -q "[0-9]"; then
         log_pass "version — $ver_output"
         pass_count=$((pass_count + 1))
@@ -575,7 +619,7 @@ run_scenario_4() {
     # Create test profile
     total=$((total + 1))
     local profile_output
-    profile_output=$(timeout $FAST_PATH_TIMEOUT "$launcher" profiles create e2e-test 2>&1) || true
+    profile_output=$(_timeout $FAST_PATH_TIMEOUT "$launcher" profiles create e2e-test 2>&1) || true
     if [[ -d "$HOME/.jaiclaw/profiles/e2e-test" ]]; then
         log_pass "profiles create e2e-test"
         pass_count=$((pass_count + 1))
@@ -653,7 +697,7 @@ run_scenario_5() {
 
         local output
         local exit_code=0
-        output=$(timeout 120 docker run --rm "$@" 2>&1) || exit_code=$?
+        output=$(_timeout 120 docker run --rm "$@" 2>&1) || exit_code=$?
 
         if [[ $exit_code -eq 0 ]]; then
             log_pass "$label"
@@ -673,7 +717,7 @@ run_scenario_5() {
     # version
     total=$((total + 1))
     local ver_output
-    ver_output=$(timeout 30 docker run --rm "$image" version 2>&1) || true
+    ver_output=$(_timeout 30 docker run --rm "$image" version 2>&1) || true
     if echo "$ver_output" | grep -q "[0-9]"; then
         log_pass "version — $ver_output"
         pass_count=$((pass_count + 1))

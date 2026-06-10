@@ -17,7 +17,7 @@ import org.springframework.core.env.Environment;
  * and replaces the built-in {@code web_search} tool with the registry-backed version.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class WebSearchAutoConfiguration {
 

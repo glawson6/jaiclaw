@@ -81,9 +81,9 @@ Each example drops into an interactive Spring Shell with a tiny consistent vocab
 
 ### Documentation
 
-- `docs/PIPELINE_UX_IMPROVEMENTS.md` — closing footer captures the six implemented phases and links to follow-up docs.
-- `docs/PIPELINE_EXAMPLES_PLAN.md` — six-example design rationale.
-- `docs/PIPELINE_HOT_RELOAD.md` — future-feature design sketch for filesystem-watcher-driven hot reload (deferred; documents the three API gaps to close first).
+- `docs/dev/PIPELINE_UX_IMPROVEMENTS.md` — closing footer captures the six implemented phases and links to follow-up docs.
+- `PIPELINE_EXAMPLES_PLAN.md` — six-example design rationale. *(Moved out of the public repo in the 2026-06-10 docs reorg; preserved in the private hub at `/Users/tap/dev/docs/jaiclaw/internal/PIPELINE_EXAMPLES_PLAN.md`.)*
+- `PIPELINE_HOT_RELOAD.md` — future-feature design sketch for filesystem-watcher-driven hot reload (deferred; documents the three API gaps to close first). *(Also moved to the private hub.)*
 
 ## New Modules
 

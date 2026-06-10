@@ -189,7 +189,7 @@ CliProcessBridge ← CliProcessConfig
 | IdentityProperties | record | Agent identity (name, description) |
 | AgentProperties | record | Agent config map with default agent, AgentConfig, AgentModelConfig |
 | ToolsProperties | record | Tool visibility, WebToolsProperties (SSRF), ExecToolProperties, CodeToolsProperties (workspace boundary) |
-| SkillsProperties | record | Skills loading, allow list, workspace dir. **Default `allowBundled: ["*"]` loads all bundled skills — see [Skills Configuration](../../jaiclaw/docs/OPERATIONS.md#skills-configuration) for token impact warning** |
+| SkillsProperties | record | Skills loading, allow list, workspace dir. **Default `allowBundled: ["*"]` loads all bundled skills — see [Skills Configuration](../../jaiclaw/docs/user/OPERATIONS.md#skills-configuration) for token impact warning** |
 | PluginsProperties | record | Plugin enabling, allow/deny, PluginEntryConfig |
 | MemoryProperties | record | Memory backend and model config |
 | ModelsProperties | record | Model provider config with ModelProviderConfig, ModelDef |
@@ -331,7 +331,7 @@ JaiClawAgent (Embabel integration)
 **Directory**: `core/jaiclaw-skills`
 **Dependencies**: `jaiclaw-core`
 
-> **Token impact warning**: The bundled skill library contains 59 SKILL.md files (~160KB total). With the default `allow-bundled: ["*"]`, roughly 27 skills pass eligibility checks on a typical machine and are injected verbatim into the system prompt — adding ~26,000 tokens per LLM request. Custom applications and examples should set `jaiclaw.skills.allow-bundled: []` or whitelist specific skills. See [Skills Configuration](../../jaiclaw/docs/OPERATIONS.md#skills-configuration) in the Operations Guide.
+> **Token impact warning**: The bundled skill library contains 59 SKILL.md files (~160KB total). With the default `allow-bundled: ["*"]`, roughly 27 skills pass eligibility checks on a typical machine and are injected verbatim into the system prompt — adding ~26,000 tokens per LLM request. Custom applications and examples should set `jaiclaw.skills.allow-bundled: []` or whitelist specific skills. See [Skills Configuration](../../jaiclaw/docs/user/OPERATIONS.md#skills-configuration) in the Operations Guide.
 
 ### Class Reference
 

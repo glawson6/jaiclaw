@@ -36,7 +36,7 @@ import java.util.Objects;
  */
 @AutoConfiguration
 @AutoConfigureAfter(name = {
-        "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration",
+        "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration",
         "org.apache.camel.spring.boot.CamelAutoConfiguration"
 })
 @ConditionalOnClass(name = "org.apache.camel.CamelContext")

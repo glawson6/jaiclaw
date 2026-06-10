@@ -1,0 +1,34 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  # CRITICAL: empty allow-bundled keeps the system prompt small. The default
+  # `["*"]` loads ~62 bundled skills (~26K tokens) per LLM call — fine for
+  # the general-purpose shell, but pure cost for a hello-world demo.
+  skills:
+    allow-bundled: []
+  # `mode: none` is fine for a localhost demo. Production uses `api-key` or
+  # `jwt` — see docs/user/OPERATIONS.md.
+  security:
+    mode: none
+  identity:
+    name: Hello World
+    description: The smallest possible JaiClaw program
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Hello Agent
+        tools:
+          profile: full
+
+spring:
+  ai:
+    model:
+      chat: anthropic
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}

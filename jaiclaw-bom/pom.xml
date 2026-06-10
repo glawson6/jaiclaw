@@ -50,7 +50,7 @@
     </distributionManagement>
 
     <properties>
-        <spring-ai.version>1.1.4</spring-ai.version>
+        <spring-ai.version>1.1.7</spring-ai.version>
     </properties>
 
     <profiles>

@@ -12,7 +12,12 @@ import io.jaiclaw.config.AgentProperties;
 import io.jaiclaw.config.CompositeToolProfileRegistry;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.core.agent.*;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.AgentEndedEvent;
+import io.jaiclaw.core.hook.event.AgentStartedEvent;
+import io.jaiclaw.core.hook.event.BeforePromptBuildEvent;
+import io.jaiclaw.core.hook.event.HookEvent;
+import io.jaiclaw.core.hook.event.LlmInputEvent;
+import io.jaiclaw.core.hook.event.LlmOutputEvent;
 import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.model.TokenUsage;
 import io.jaiclaw.core.model.UserMessage;
@@ -304,7 +309,7 @@ public class AgentRuntime {
     private AssistantMessage executeSync(String userInput, AgentRuntimeContext context) {
         log.info("executeSync() entered for session={}, tenantConfig={}", context.sessionKey(), context.tenantConfig() != null ? context.tenantConfig().tenantId() : "null");
         // 1. BEFORE_AGENT_START hook
-        fireVoid(HookName.BEFORE_AGENT_START, userInput, context.sessionKey());
+        fireVoid(AgentStartedEvent.of(context.agentId(), context.sessionKey(), userInput));
 
         // 1a. Check if an agent loop delegate should handle this tenant
         if (context.tenantConfig() != null && delegateRegistry != null) {
@@ -324,7 +329,7 @@ public class AgentRuntime {
                 if (!context.stateless()) {
                     sessionManager.appendMessage(context.sessionKey(), assistantMessage);
                 }
-                fireVoid(HookName.AGENT_END, assistantMessage, context.sessionKey());
+                fireVoid(AgentEndedEvent.of(context.agentId(), context.sessionKey(), assistantMessage));
                 return assistantMessage;
             }
         }
@@ -399,10 +404,12 @@ public class AgentRuntime {
         }
 
         // 8. BEFORE_PROMPT_BUILD modifying hook (allows plugins to alter the prompt)
-        systemPrompt = fireModifying(HookName.BEFORE_PROMPT_BUILD, systemPrompt, context.sessionKey());
+        BeforePromptBuildEvent promptEvent = fireModifying(
+                BeforePromptBuildEvent.of(context.agentId(), context.sessionKey(), systemPrompt));
+        systemPrompt = promptEvent.systemPrompt();
 
         // 9. LLM_INPUT hook
-        fireVoid(HookName.LLM_INPUT, userInput, context.sessionKey());
+        fireVoid(LlmInputEvent.of(context.agentId(), context.sessionKey(), userInput));
 
         // 10. Embabel orchestration check (future path)
         if (orchestrationPort != null && orchestrationPort.isAvailable()) {
@@ -423,7 +430,7 @@ public class AgentRuntime {
 
             ExplicitToolLoop loop = new ExplicitToolLoop(effectiveChatModel, effectiveToolLoopConfig, hooks, approvalHandler);
             var result = loop.execute(systemPrompt, new ArrayList<>(historyMessages),
-                    userInput, toolsByName, context.sessionKey());
+                    userInput, toolsByName, context.agentId(), context.sessionKey());
             responseContent = result.finalText();
             tokenUsage = result.totalUsage();
         } else {
@@ -480,7 +487,7 @@ public class AgentRuntime {
         }
 
         // 12. LLM_OUTPUT hook
-        fireVoid(HookName.LLM_OUTPUT, responseContent, context.sessionKey());
+        fireVoid(LlmOutputEvent.of(context.agentId(), context.sessionKey(), responseContent));
 
         // 13. Record assistant message in session
         AssistantMessage assistantMessage = AssistantMessage.builder()
@@ -495,7 +502,7 @@ public class AgentRuntime {
         }
 
         // 14. AGENT_END hook
-        fireVoid(HookName.AGENT_END, assistantMessage, context.sessionKey());
+        fireVoid(AgentEndedEvent.of(context.agentId(), context.sessionKey(), assistantMessage));
 
         return assistantMessage;
     }
@@ -583,23 +590,22 @@ public class AgentRuntime {
         );
     }
 
-    private void fireVoid(HookName hookName, Object event, String sessionKey) {
+    private <E extends HookEvent> void fireVoid(E event) {
         if (hooks != null) {
             try {
-                hooks.fireVoid(hookName, event, sessionKey);
+                hooks.fireVoid(event);
             } catch (Exception e) {
-                log.warn("Hook {} failed: {}", hookName, e.getMessage());
+                log.warn("Hook {} failed: {}", event.getClass().getSimpleName(), e.getMessage());
             }
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> T fireModifying(HookName hookName, T event, String sessionKey) {
+    private <E extends HookEvent> E fireModifying(E event) {
         if (hooks != null) {
             try {
-                return (T) hooks.fireModifying(hookName, event, sessionKey);
+                return hooks.fireModifying(event);
             } catch (Exception e) {
-                log.warn("Modifying hook {} failed: {}", hookName, e.getMessage());
+                log.warn("Modifying hook {} failed: {}", event.getClass().getSimpleName(), e.getMessage());
             }
         }
         return event;

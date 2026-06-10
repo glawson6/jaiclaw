@@ -20,6 +20,7 @@
     </properties>
 
     <modules>
+        <module>hello-world</module>
         <module>daily-briefing</module>
         <module>sales-report</module>
         <module>price-monitor</module>

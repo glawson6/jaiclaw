@@ -1,38 +1,27 @@
 package io.jaiclaw.core.hook;
 
+import io.jaiclaw.core.hook.event.HookEvent;
+
 /**
  * A registered hook handler with priority and source metadata.
+ *
+ * <p>Pre-0.8.0 was keyed by {@link HookName}; now keyed by the event
+ * {@code Class<? extends HookEvent>} so the dispatcher can route events by
+ * type rather than enum discriminator. See {@code docs/MIGRATION-0.8.md}
+ * § P3.1.
+ *
+ * @param <E> the {@link HookEvent} subtype this registration handles
  */
-public record HookRegistration<E, C>(
+public record HookRegistration<E extends HookEvent>(
         String pluginId,
-        HookName hookName,
-        HookHandler<E, C> handler,
+        Class<E> eventType,
+        HookHandler<E> handler,
         int priority,
         String source
 ) {
     public static final int DEFAULT_PRIORITY = 100;
 
-    public HookRegistration(String pluginId, HookName hookName, HookHandler<E, C> handler) {
-        this(pluginId, hookName, handler, DEFAULT_PRIORITY, pluginId);
-    }
-
-    public static <E, C> Builder<E, C> builder() { return new Builder<>(); }
-
-    public static final class Builder<E, C> {
-        private String pluginId;
-        private HookName hookName;
-        private HookHandler<E, C> handler;
-        private int priority;
-        private String source;
-
-        public Builder<E, C> pluginId(String pluginId) { this.pluginId = pluginId; return this; }
-        public Builder<E, C> hookName(HookName hookName) { this.hookName = hookName; return this; }
-        public Builder<E, C> handler(HookHandler<E, C> handler) { this.handler = handler; return this; }
-        public Builder<E, C> priority(int priority) { this.priority = priority; return this; }
-        public Builder<E, C> source(String source) { this.source = source; return this; }
-
-        public HookRegistration<E, C> build() {
-            return new HookRegistration<>(pluginId, hookName, handler, priority, source);
-        }
+    public HookRegistration(String pluginId, Class<E> eventType, HookHandler<E> handler) {
+        this(pluginId, eventType, handler, DEFAULT_PRIORITY, pluginId);
     }
 }

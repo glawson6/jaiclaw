@@ -26,8 +26,12 @@ class VectorDocStoreSearchSpec extends Specification {
             def doc = docs[0]
             def text = doc.getText()
             assert docs.size() == 1
-            assert doc.id == "e1"
-            assert doc.getMetadata()["docstore_entry_id"] == "e1"
+            // After the PR5 tenant-isolation fix, vector-store document IDs
+            // and the docstore_entry_id metadata key are tenant-scoped
+            // ("{tenantId}:{businessId}"). In SINGLE mode the prefix is the
+            // configured defaultTenantId (default: "default").
+            assert doc.id == "default:e1"
+            assert doc.getMetadata()["docstore_entry_id"] == "default:e1"
             assert doc.getMetadata()["userId"] == "user1"
             assert text.contains("report.pdf")
             assert text.contains("Quarterly earnings report")
@@ -40,8 +44,10 @@ class VectorDocStoreSearchSpec extends Specification {
         search.index(entry)
 
         and:
-        def doc = new Document("e1", "report.pdf\nQuarterly earnings report",
-                [docstore_entry_id: "e1", userId: "user1", chatId: "chat1"])
+        // Vector store now returns tenant-scoped keys; the search path
+        // resolves entries via the same scoped key.
+        def doc = new Document("default:e1", "report.pdf\nQuarterly earnings report",
+                [docstore_entry_id: "default:e1", userId: "user1", chatId: "chat1"])
         vectorStore.similaritySearch(_) >> [doc]
 
         when:
@@ -64,7 +70,7 @@ class VectorDocStoreSearchSpec extends Specification {
         search.remove("e1")
 
         then:
-        1 * vectorStore.delete(["e1"])
+        1 * vectorStore.delete(["default:e1"])
     }
 
     def "search filters by tags"() {
@@ -72,7 +78,7 @@ class VectorDocStoreSearchSpec extends Specification {
         def entry = makeEntry("e1", "report.pdf", "desc", Set.of("finance"))
         search.index(entry)
 
-        def doc = new Document("e1", "text", [docstore_entry_id: "e1"])
+        def doc = new Document("default:e1", "text", [docstore_entry_id: "default:e1"])
         vectorStore.similaritySearch(_) >> [doc]
 
         when: "filtering for a tag that matches"

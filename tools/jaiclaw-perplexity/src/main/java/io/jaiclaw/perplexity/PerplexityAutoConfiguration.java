@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class PerplexityAutoConfiguration {
 

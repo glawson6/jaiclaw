@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  OWASP dependency-check suppressions for JaiClaw.
+
+  Keep this tight. Every <suppress> entry MUST include a "why" comment
+  explaining the call: usually one of:
+    - false positive (NVD record matches an unrelated CPE)
+    - vulnerable code path not reachable in JaiClaw's usage
+    - transitive dependency we've upgraded out via property/exclusion
+      but the CPE matcher still flags
+
+  Audit reference: docs/CODEBASE-ANALYSIS-2026-06-10.md §4.3 references
+  "45 known false positives" pulled from security-report-2026-06-06.md.
+  Those entries should be migrated here one-by-one with rationale as
+  CI starts running this scan; until then this file is the canonical
+  starting point and the workflow runs against an empty suppression set.
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      Example suppression shape (commented out — uncomment and adapt as
+      individual CVEs are triaged):
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: NVD record CVE-2024-XXXXX matches CPE for an
+        unrelated artifact with the same Maven coordinate name. Verified
+        on YYYY-MM-DD; revisit if CVE record is updated.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.example/.+@.+$</packageUrl>
+        <cve>CVE-2024-XXXXX</cve>
+    </suppress>
+    -->
+</suppressions>

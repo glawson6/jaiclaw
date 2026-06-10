@@ -79,7 +79,7 @@ public class ShellExecTool extends AbstractBuiltinTool {
         // Cap timeout at configured maximum
         timeout = Math.min(timeout, policyConfig.maxTimeout());
 
-        log.info("Executing shell command: {}", command);
+        log.debug("Executing shell command: {}", command);
 
         ProcessBuilder pb = new ProcessBuilder("sh", "-c", command)
                 .directory(Path.of(context.workspaceDir()).toFile())

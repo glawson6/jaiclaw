@@ -1,6 +1,7 @@
 package io.jaiclaw.examples.research;
 
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.AfterCompactionEvent;
+import io.jaiclaw.core.hook.event.BeforeCompactionEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tool.ToolCallback;
@@ -53,13 +54,15 @@ public class ResearchAssistantPlugin implements JaiClawPlugin {
         api.registerTool(new GenerateReportTool(findings));
 
         // Log compaction events
-        api.on(HookName.BEFORE_COMPACTION, (event, ctx) -> {
-            log.info("[HOOK] BEFORE_COMPACTION: context window approaching limit, compaction starting");
+        api.on(BeforeCompactionEvent.class, event -> {
+            log.info("[HOOK] BEFORE_COMPACTION: context window approaching limit ({} tokens), compaction starting",
+                    event.currentTokens());
             return null;
         });
 
-        api.on(HookName.AFTER_COMPACTION, (event, ctx) -> {
-            log.info("[HOOK] AFTER_COMPACTION: context compacted successfully");
+        api.on(AfterCompactionEvent.class, event -> {
+            log.info("[HOOK] AFTER_COMPACTION: context compacted from {} to {} tokens",
+                    event.tokensSavedBefore(), event.tokensSavedAfter());
             return null;
         });
     }

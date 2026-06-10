@@ -1,6 +1,7 @@
 package io.jaiclaw.docstore.search;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 
 import java.util.*;
@@ -9,7 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Full-text search implementation. Maintains an in-memory inverted index
  * across filenames, descriptions, tags, and extracted text.
- * In MULTI mode, search results are filtered by the current tenant.
+ *
+ * <p>Internal maps are keyed by {@code "{tenantId}:{entryId}"} so two
+ * tenants using the same business-domain entry id do not collide on
+ * {@link #index(DocStoreEntry)}. The {@link #matchesOptions} value-side
+ * tenant check is kept as a secondary safety net for entries indexed
+ * before tenant-aware keys landed.
  */
 public class FullTextDocStoreSearch implements DocStoreSearchProvider {
 
@@ -18,11 +24,30 @@ public class FullTextDocStoreSearch implements DocStoreSearchProvider {
     private final TenantGuard tenantGuard;
 
     public FullTextDocStoreSearch() {
-        this(null);
+        this(new TenantGuard(TenantProperties.DEFAULT));
     }
 
     public FullTextDocStoreSearch(TenantGuard tenantGuard) {
-        this.tenantGuard = tenantGuard;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
+    }
+
+    /** Current tenant id (default-tenant-id in SINGLE, throws in MULTI with no context). */
+    private String currentTenantId() {
+        if (tenantGuard.isMultiTenant()) {
+            return tenantGuard.requireTenantIfMulti();
+        }
+        return tenantGuard.getProperties().defaultTenantId();
+    }
+
+    /** Tenant-scoped storage key for an entry; prefers the entry's own tenantId. */
+    private String storageKey(DocStoreEntry entry) {
+        String tenantId = entry.tenantId() != null ? entry.tenantId() : currentTenantId();
+        return tenantId + ":" + entry.id();
+    }
+
+    /** Tenant-scoped storage key for the given entry id under the current tenant. */
+    private String storageKey(String entryId) {
+        return currentTenantId() + ":" + entryId;
     }
 
     @Override
@@ -48,7 +73,7 @@ public class FullTextDocStoreSearch implements DocStoreSearchProvider {
         return scores.entrySet().stream()
                 .filter(e -> entries.containsKey(e.getKey()))
                 .map(e -> {
-                    var entry = entries.get(e.getKey());
+                    DocStoreEntry entry = entries.get(e.getKey());
                     double normalized = e.getValue() / maxScore;
                     return new DocStoreSearchResult(entry, normalized, buildSnippet(entry, query));
                 })
@@ -60,7 +85,8 @@ public class FullTextDocStoreSearch implements DocStoreSearchProvider {
 
     @Override
     public void index(DocStoreEntry entry) {
-        entries.put(entry.id(), entry);
+        String key = storageKey(entry);
+        entries.put(key, entry);
 
         Set<String> terms = new HashSet<>();
         if (entry.filename() != null) addTerms(terms, entry.filename());
@@ -76,14 +102,15 @@ public class FullTextDocStoreSearch implements DocStoreSearchProvider {
         }
 
         for (String term : terms) {
-            invertedIndex.computeIfAbsent(term, k -> ConcurrentHashMap.newKeySet()).add(entry.id());
+            invertedIndex.computeIfAbsent(term, k -> ConcurrentHashMap.newKeySet()).add(key);
         }
     }
 
     @Override
     public void remove(String entryId) {
-        entries.remove(entryId);
-        invertedIndex.values().forEach(ids -> ids.remove(entryId));
+        String key = storageKey(entryId);
+        entries.remove(key);
+        invertedIndex.values().forEach(ids -> ids.remove(key));
     }
 
     private void addTerms(Set<String> terms, String text) {

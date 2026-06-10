@@ -42,7 +42,7 @@ Data flow:
 - JaiClaw built and installed (`./mvnw install -DskipTests` from project root)
 - **Ollama** installed locally OR Docker
 
-> **Hardware guidance:** See the [Gemma 4 Hardware Guide](../../docs/GEMMA4-HARDWARE-GUIDE.md) for VRAM requirements, expected inference speeds, and model selection advice for your specific hardware.
+> **Hardware guidance:** See the [Gemma 4 Hardware Guide](../../docs/user/GEMMA4-HARDWARE-GUIDE.md) for VRAM requirements, expected inference speeds, and model selection advice for your specific hardware.
 
 ## Gemma 4 Ollama Models
 

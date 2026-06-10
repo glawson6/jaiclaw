@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,69 +32,66 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
     private final TenantGuard tenantGuard;
 
     public JsonFileDocStoreRepository(Path storagePath) {
-        this(storagePath, null);
+        this(storagePath, new TenantGuard(TenantProperties.DEFAULT));
     }
 
     public JsonFileDocStoreRepository(Path storagePath, TenantGuard tenantGuard) {
         this.storePath = storagePath.resolve("docstore.json");
-        this.tenantGuard = tenantGuard;
+        this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
         this.mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
     }
 
-    private Stream<DocStoreEntry> tenantFiltered() {
-        Stream<DocStoreEntry> stream = entries.values().stream();
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            stream = stream.filter(e -> tenantId.equals(e.tenantId()));
+    /** Current tenant id (default-tenant-id in SINGLE, throws in MULTI with no context). */
+    private String currentTenantId() {
+        if (tenantGuard.isMultiTenant()) {
+            return tenantGuard.requireTenantIfMulti();
         }
-        return stream;
+        return tenantGuard.getProperties().defaultTenantId();
+    }
+
+    /** Storage key for the given entry. Uses the entry's own tenantId when present. */
+    private String storageKey(DocStoreEntry entry) {
+        String tenantId = entry.tenantId() != null ? entry.tenantId() : currentTenantId();
+        return tenantId + ":" + entry.id();
+    }
+
+    /** Storage key for the given entry id, scoped to the current tenant. */
+    private String storageKey(String entryId) {
+        return currentTenantId() + ":" + entryId;
+    }
+
+    /** Stream of entries visible to the current tenant. */
+    private Stream<DocStoreEntry> tenantFiltered() {
+        String prefix = currentTenantId() + ":";
+        return entries.entrySet().stream()
+                .filter(e -> e.getKey().startsWith(prefix))
+                .map(Map.Entry::getValue);
     }
 
     @Override
     public void save(DocStoreEntry entry) {
-        entries.put(entry.id(), entry);
+        entries.put(storageKey(entry), entry);
         flushToDisk();
     }
 
     @Override
     public Optional<DocStoreEntry> findById(String id) {
-        DocStoreEntry entry = entries.get(id);
-        if (entry != null && tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            if (!tenantId.equals(entry.tenantId())) {
-                return Optional.empty();
-            }
-        }
-        return Optional.ofNullable(entry);
+        return Optional.ofNullable(entries.get(storageKey(id)));
     }
 
     @Override
     public void deleteById(String id) {
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            DocStoreEntry entry = entries.get(id);
-            if (entry == null) return;
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            if (!tenantId.equals(entry.tenantId())) return;
+        if (entries.remove(storageKey(id)) != null) {
+            flushToDisk();
         }
-        entries.remove(id);
-        flushToDisk();
     }
 
     @Override
     public DocStoreEntry update(String id, UnaryOperator<DocStoreEntry> mutator) {
-        DocStoreEntry updated;
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = tenantGuard.requireTenantIfMulti();
-            updated = entries.computeIfPresent(id, (k, v) -> {
-                if (!tenantId.equals(v.tenantId())) return v; // no-op for wrong tenant
-                return mutator.apply(v);
-            });
-        } else {
-            updated = entries.computeIfPresent(id, (k, v) -> mutator.apply(v));
-        }
+        DocStoreEntry updated = entries.computeIfPresent(storageKey(id), (k, v) -> mutator.apply(v));
         if (updated != null) flushToDisk();
         return updated;
     }
@@ -162,7 +160,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
         try {
             List<DocStoreEntry> loaded = mapper.readValue(storePath.toFile(),
                     new TypeReference<List<DocStoreEntry>>() {});
-            loaded.forEach(e -> entries.put(e.id(), e));
+            loaded.forEach(e -> entries.put(storageKey(e), e));
             log.info("Loaded {} DocStore entries from {}", entries.size(), storePath);
         } catch (IOException e) {
             log.warn("Failed to load DocStore from {}: {}", storePath, e.getMessage());

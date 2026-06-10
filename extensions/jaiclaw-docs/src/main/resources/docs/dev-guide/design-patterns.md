@@ -768,4 +768,4 @@ Add to the module's `pom.xml`:
 
 Name IT specs with the `*IT.groovy` suffix (e.g., `AuthorizationCodeFlowIT.groovy`). Failsafe's `**/*IT.java` include picks up compiled Groovy classes.
 
-See [OAuth Integration Tests Architecture](../../jaiclaw/docs/OAUTH-INTEGRATION-TESTS.md) for the full reference implementation.
+See [OAuth Integration Tests Architecture](../../jaiclaw/docs/dev/OAUTH-INTEGRATION-TESTS.md) for the full reference implementation.

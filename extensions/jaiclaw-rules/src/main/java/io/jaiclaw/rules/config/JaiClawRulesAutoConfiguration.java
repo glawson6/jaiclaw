@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnProperty(name = "jaiclaw.rules.enabled", havingValue = "true", matchIfMissing = false)
 @EnableConfigurationProperties(DroolsProperties.class)
 public class JaiClawRulesAutoConfiguration {

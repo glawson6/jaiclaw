@@ -1,7 +1,8 @@
 package io.jaiclaw.examples.pipeline;
 
-import io.jaiclaw.core.agent.ToolCallEvent;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.AgentEndedEvent;
+import io.jaiclaw.core.hook.event.ToolCallEndedEvent;
+import io.jaiclaw.core.hook.event.ToolCallStartedEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tool.ToolCallback;
@@ -54,32 +55,28 @@ public class DataPipelinePlugin implements JaiClawPlugin {
         api.registerTool(new LoadDataTool());
 
         // Track timing for audit trail
-        api.on(HookName.BEFORE_TOOL_CALL, (event, ctx) -> {
-            if (event instanceof ToolCallEvent e) {
-                auditTrail.add(new AuditEntry(
-                        e.toolName(), e.parameters(), null,
-                        Instant.now(), null, e.iterationNumber()));
-                log.info("[AUDIT] Tool call started: {} (iteration {})", e.toolName(), e.iterationNumber());
-            }
+        api.on(ToolCallStartedEvent.class, e -> {
+            auditTrail.add(new AuditEntry(
+                    e.toolName(), e.parameters(), null,
+                    Instant.now(), null, e.iterationNumber()));
+            log.info("[AUDIT] Tool call started: {} (iteration {})", e.toolName(), e.iterationNumber());
             return null;
         });
 
-        api.on(HookName.AFTER_TOOL_CALL, (event, ctx) -> {
-            if (event instanceof ToolCallEvent e) {
-                // Update the last audit entry with result and end time
-                if (!auditTrail.isEmpty()) {
-                    var last = auditTrail.removeLast();
-                    auditTrail.add(new AuditEntry(
-                            last.toolName(), last.parameters(), e.result(),
-                            last.startTime(), Instant.now(), last.iteration()));
-                }
-                log.info("[AUDIT] Tool call completed: {} (iteration {})", e.toolName(), e.iterationNumber());
+        api.on(ToolCallEndedEvent.class, e -> {
+            // Update the last audit entry with result and end time
+            if (!auditTrail.isEmpty()) {
+                var last = auditTrail.removeLast();
+                auditTrail.add(new AuditEntry(
+                        last.toolName(), last.parameters(), e.result(),
+                        last.startTime(), Instant.now(), last.iteration()));
             }
+            log.info("[AUDIT] Tool call completed: {} (iteration {})", e.toolName(), e.iterationNumber());
             return null;
         });
 
         // Print full audit summary at end of agent run
-        api.on(HookName.AGENT_END, (event, ctx) -> {
+        api.on(AgentEndedEvent.class, e -> {
             if (auditTrail.isEmpty()) return null;
 
             log.info("=== PIPELINE AUDIT SUMMARY ===");

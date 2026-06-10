@@ -18,7 +18,7 @@ import java.util.Map;
  * {@link ToolRegistry} when embedded in a JaiClaw runtime.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class PromptAnalyzerAutoConfiguration {
 

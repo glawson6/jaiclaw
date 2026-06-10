@@ -376,7 +376,7 @@ cmd_telegram() {
         echo "  4. Add to docker-compose/.env:"
         echo "     TELEGRAM_BOT_TOKEN=<your-token>"
         echo ""
-        echo "Full guide: docs/TELEGRAM-SETUP.md"
+        echo "Full guide: docs/user/TELEGRAM-SETUP.md"
         exit 1
     fi
 

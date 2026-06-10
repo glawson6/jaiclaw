@@ -23,7 +23,7 @@ import java.nio.file.Path;
  * it is reused; otherwise a dedicated JsonFileDocStoreRepository is created.
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 @ConditionalOnProperty(name = "jaiclaw.wiki.enabled", havingValue = "true", matchIfMissing = false)
 public class WikiAutoConfiguration {

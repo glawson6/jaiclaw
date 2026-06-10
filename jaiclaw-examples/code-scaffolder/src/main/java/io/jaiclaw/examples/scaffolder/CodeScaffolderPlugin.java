@@ -1,6 +1,6 @@
 package io.jaiclaw.examples.scaffolder;
 
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.BeforePromptBuildEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tool.ToolCallback;
@@ -60,12 +60,9 @@ public class CodeScaffolderPlugin implements JaiClawPlugin {
         api.registerTool(new CreateProjectStructureTool());
 
         // Modifying hook: inject coding standards into system prompt
-        api.on(HookName.BEFORE_PROMPT_BUILD, (event, ctx) -> {
-            if (event instanceof String systemPrompt) {
-                log.info("[HOOK] BEFORE_PROMPT_BUILD: injecting coding standards into system prompt");
-                return systemPrompt + CODING_STANDARDS;
-            }
-            return event;
+        api.on(BeforePromptBuildEvent.class, event -> {
+            log.info("[HOOK] BEFORE_PROMPT_BUILD: injecting coding standards into system prompt");
+            return event.withSystemPrompt(event.systemPrompt() + CODING_STANDARDS);
         });
     }
 

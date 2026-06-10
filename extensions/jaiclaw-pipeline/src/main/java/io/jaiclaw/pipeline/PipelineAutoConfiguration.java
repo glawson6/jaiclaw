@@ -45,7 +45,7 @@ import java.util.List;
 @AutoConfiguration
 @AutoConfigureAfter(name = {
         "io.jaiclaw.camel.JaiClawCamelAutoConfiguration",
-        "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration"
+        "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration"
 })
 @ConditionalOnClass(name = "org.apache.camel.CamelContext")
 @EnableConfigurationProperties(PipelineProperties.class)

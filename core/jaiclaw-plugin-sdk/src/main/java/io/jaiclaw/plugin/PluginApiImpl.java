@@ -1,16 +1,22 @@
 package io.jaiclaw.plugin;
 
 import io.jaiclaw.core.hook.HookHandler;
-import io.jaiclaw.core.hook.HookName;
 import io.jaiclaw.core.hook.HookRegistration;
+import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.tools.ToolRegistry;
 
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Default implementation of PluginApi that delegates registrations to the
  * ToolRegistry and PluginRegistry.
+ *
+ * <p>0.8.0 hard-break: hook registrations are now keyed by the event
+ * {@code Class<? extends HookEvent>}. See {@code docs/MIGRATION-0.8.md}
+ * § P3.1.
  */
 public class PluginApiImpl implements PluginApi {
 
@@ -48,15 +54,15 @@ public class PluginApiImpl implements PluginApi {
     }
 
     @Override
-    public <E, C> void on(HookName hookName, HookHandler<E, C> handler) {
-        on(hookName, handler, HookRegistration.DEFAULT_PRIORITY);
+    public <E extends HookEvent> void on(Class<E> eventType, HookHandler<E> handler) {
+        on(eventType, handler, HookRegistration.DEFAULT_PRIORITY);
     }
 
     @Override
-    public <E, C> void on(HookName hookName, HookHandler<E, C> handler, int priority) {
-        var registration = new HookRegistration<>(pluginId, hookName, handler, priority, pluginId);
+    public <E extends HookEvent> void on(Class<E> eventType, HookHandler<E> handler, int priority) {
+        var registration = new HookRegistration<>(pluginId, eventType, handler, priority, pluginId);
         pluginRegistry.addHook(registration);
-        registeredHooks.add(hookName.name());
+        registeredHooks.add(eventType.getSimpleName());
     }
 
     @Override

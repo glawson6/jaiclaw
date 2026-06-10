@@ -443,7 +443,7 @@ IdentityLinkService
 | `DeviceCodeFlowIT` | 7 | Device code request + polling (pending/slow_down/success/denied) |
 | `OAuthCallbackServerIT` | 5 | Loopback callback + CSRF + error + timeout + e2e |
 
-See [OAuth Integration Tests Architecture](../../docs/OAUTH-INTEGRATION-TESTS.md) for full details.
+See [OAuth Integration Tests Architecture](../../docs/dev/OAUTH-INTEGRATION-TESTS.md) for full details.
 
 ---
 

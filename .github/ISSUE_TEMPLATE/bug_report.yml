@@ -1,0 +1,115 @@
+name: Bug report
+description: Something in JaiClaw doesn't work the way the docs say it does.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. A clear reproduction is the
+        single most useful thing you can include — it usually halves the time
+        to a fix.
+
+        For security vulnerabilities, please email **gregory.lawson@taptech.net**
+        instead. See [SECURITY.md](https://github.com/glawson6/jaiclaw/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: JaiClaw version
+      description: From `bin/jaiclaw version`, the `<version>` in your `pom.xml` import, or `git describe --tags`.
+      placeholder: "0.7.1-SNAPSHOT"
+    validations:
+      required: true
+
+  - type: input
+    id: java-version
+    attributes:
+      label: Java version
+      description: Output of `java -version`.
+      placeholder: "openjdk 21.0.9 2026-01-21"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment path
+      description: How are you running JaiClaw?
+      options:
+        - "Docker (start.sh / quickstart.sh)"
+        - "Local Java (./mvnw spring-boot:run or start.sh local)"
+        - "Library embedded in another Spring Boot app"
+        - "Standalone CLI (bin/jaiclaw)"
+        - "Kubernetes / Helm"
+        - "Other (describe below)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Channel
+      description: If the bug involves a specific channel adapter, pick it. Otherwise leave as "N/A".
+      options:
+        - "N/A"
+        - "Telegram"
+        - "Slack"
+        - "Discord"
+        - "Email"
+        - "SMS"
+        - "Signal"
+        - "Teams"
+        - "WhatsApp"
+        - "LINE"
+        - "Matrix"
+        - "Google Chat"
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: |
+        The shortest sequence of commands / configuration that reproduces the
+        bug. Code snippets, YAML excerpts, and `curl` lines are all welcome.
+      placeholder: |
+        1. Set application.yml: ...
+        2. Run: ./mvnw spring-boot:run -pl :...
+        3. POST /api/...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Paste a focused excerpt — the stack trace, the WARN/ERROR lines, the
+        startup banner. Please don't dump megabytes of debug output.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Context, screenshots, links to related issues.
+    validations:
+      required: false

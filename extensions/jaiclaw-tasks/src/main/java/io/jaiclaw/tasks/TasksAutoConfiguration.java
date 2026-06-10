@@ -1,8 +1,10 @@
 package io.jaiclaw.tasks;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -26,7 +28,7 @@ import java.nio.file.Path;
  * </ul>
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 @ConditionalOnProperty(name = "jaiclaw.tasks.enabled", havingValue = "true", matchIfMissing = false)
 public class TasksAutoConfiguration {
@@ -34,10 +36,10 @@ public class TasksAutoConfiguration {
     private static final Logger log = LoggerFactory.getLogger(TasksAutoConfiguration.class);
 
     @Bean
-    public JsonFileTaskStore taskStore(Environment env) {
+    public JsonFileTaskStore taskStore(Environment env, ObjectProvider<TenantGuard> tenantGuard) {
         String storageDir = env.getProperty("jaiclaw.tasks.storage-dir",
                 System.getProperty("user.home") + "/.jaiclaw/tasks");
-        return new JsonFileTaskStore(Path.of(storageDir));
+        return new JsonFileTaskStore(Path.of(storageDir), tenantGuard.getIfAvailable());
     }
 
     @Bean

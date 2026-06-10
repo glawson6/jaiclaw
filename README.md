@@ -12,9 +12,10 @@
   <a href="https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"><img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white" alt="Java 21"></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="#channels"><img src="https://img.shields.io/badge/Channels-7-blueviolet" alt="7 Channels"></a>
+  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/maven-central/v/io.jaiclaw/jaiclaw-bom.svg?label=Maven%20Central" alt="Maven Central"></a>
+  <a href="#channels"><img src="https://img.shields.io/badge/Channels-11-blueviolet" alt="11 Channels"></a>
   <a href="#configuration"><img src="https://img.shields.io/badge/LLM%20Providers-11-green" alt="11 LLM Providers"></a>
-  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-28-yellow" alt="28 Examples"></a>
+  <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-40-yellow" alt="40 Examples"></a>
 </p>
 
 ---
@@ -29,7 +30,7 @@ Built on Java 21, Spring Boot 3.5, and Spring AI 1.1.4, Embabel 0.3.5
 
 ## Key Features
 
-**7 Messaging Channels** — Telegram, Slack, Discord, Email, SMS, Signal, Teams. All support local dev mode (no public endpoint needed).
+**11 Messaging Channels** — Telegram, Slack, Discord, Email, SMS, Signal, Teams, WhatsApp, Google Chat, LINE, Matrix. All support local dev mode (no public endpoint needed).
 
 **11 LLM Providers** — Anthropic, OpenAI, Google Gemini, Ollama, AWS Bedrock, Azure OpenAI, DeepSeek, Mistral, MiniMax, Vertex AI, OCI GenAI. Swap with one env var.
 
@@ -172,6 +173,42 @@ Or run the gateway instead:
 ./setup.sh --gateway
 ```
 
+### Option 4: Embed in your own Spring Boot app (Maven Central)
+
+If you want to add JaiClaw to an existing project rather than clone
+this repo, pull it from Maven Central. The published `0.7.0` BOM is
+verified live at
+[central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom](https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom).
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-bom</artifactId>
+            <version>0.7.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-starter-model-anthropic</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Smallest possible JaiClaw program: see
+[jaiclaw-examples/hello-world/](jaiclaw-examples/hello-world/) — ~30
+lines of Java + one `application.yml`.
+
 ## Channels
 
 All messaging channels support a **local dev mode** that requires no public endpoint:
@@ -207,13 +244,45 @@ ANTHROPIC_API_KEY=sk-ant-... \
 ./mvnw spring-boot:run -pl jaiclaw-gateway-app
 ```
 
-See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions including Email, SMS, and production webhook configuration.
+See [docs/user/OPERATIONS.md](docs/user/OPERATIONS.md) for full channel setup instructions including Email, SMS, and production webhook configuration.
 
 ## Examples
 
-28 example applications demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app. See [docs/EXAMPLES.md](docs/EXAMPLES.md) for full details.
+**40 example applications** demonstrating JaiClaw capabilities. Each is a standalone Spring Boot app and builds under `./mvnw package -pl :<artifact-id> -am`. See [docs/user/EXAMPLES.md](docs/user/EXAMPLES.md) for the full catalog with build & run instructions.
 
-### Scheduling & Automation
+Brand new? Start at [hello-world](jaiclaw-examples/hello-world/) — the smallest possible JaiClaw program (~30 LOC).
+
+### Getting started
+
+| Example | Description |
+|---------|-------------|
+| [hello-world](jaiclaw-examples/hello-world/) | Minimal chat app with one custom echo tool — the shortest path from clone to "it works" |
+
+### Pipelines (declarative multi-stage workflows)
+
+| Example | Description |
+|---------|-------------|
+| [pipeline-e2e](jaiclaw-examples/pipeline-e2e/) | Exercises every Pipeline UX surface — used by e2e scenario 6 |
+| [support-triage-pipeline](jaiclaw-examples/support-triage-pipeline/) | Classify → route → respond customer-support workflow |
+| [invoice-processor](jaiclaw-examples/invoice-processor/) | Extract → validate → approve invoice ingestion pipeline |
+| [aiops-incident-responder](jaiclaw-examples/aiops-incident-responder/) | Alert → enrich → propose-remediation incident pipeline |
+| [competitive-intel-briefing](jaiclaw-examples/competitive-intel-briefing/) | Scheduled multi-source competitor analysis briefing |
+| [sales-enrichment-pipeline](jaiclaw-examples/sales-enrichment-pipeline/) | Lead → enrich → score sales pipeline |
+| [contract-reviewer](jaiclaw-examples/contract-reviewer/) | Parse → flag → summarize contract review pipeline |
+| [content-pipeline](jaiclaw-examples/content-pipeline/) | Multi-modal content analysis for images, audio, and PDFs |
+| [data-pipeline](jaiclaw-examples/data-pipeline/) | ETL orchestrator with schema validation and human-in-the-loop approval |
+
+### Apache Camel integration
+
+| Example | Description |
+|---------|-------------|
+| [camel-html-summarizer](jaiclaw-examples/camel-html-summarizer/) | Camel route → JaiClaw agent → summary, end-to-end |
+| [camel-html-summarizer-embabel](jaiclaw-examples/camel-html-summarizer-embabel/) | Same flow, GOAP-planned via Embabel |
+| [camel-html-summarizer-telegram](jaiclaw-examples/camel-html-summarizer-telegram/) | Plus Telegram inbound/outbound channel |
+| [camel-pdf-filler](jaiclaw-examples/camel-pdf-filler/) | Camel-driven PDF form filling pipeline |
+| [camel-pdf-filler-telegram](jaiclaw-examples/camel-pdf-filler-telegram/) | PDF filler triggered from Telegram |
+
+### Scheduling & automation
 
 | Example | Description |
 |---------|-------------|
@@ -222,7 +291,7 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 | [price-monitor](jaiclaw-examples/price-monitor/) | Hourly price checker with SMS alerts when prices drop |
 | [system-monitor](jaiclaw-examples/system-monitor/) | Daily server health analysis with Telegram reporting |
 
-### GOAP Multi-Agent (Embabel)
+### GOAP multi-agent (Embabel)
 
 | Example | Description |
 |---------|-------------|
@@ -230,23 +299,30 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 | [travel-planner](jaiclaw-examples/travel-planner/) | Multi-step trip planning with parallel flight/hotel search |
 | [compliance-checker](jaiclaw-examples/compliance-checker/) | Document compliance verification with full audit trail |
 | [incident-responder](jaiclaw-examples/incident-responder/) | DevOps incident triage with health checks, log queries, and remediation |
-| [data-pipeline](jaiclaw-examples/data-pipeline/) | ETL orchestrator with schema validation and human-in-the-loop approval |
 
-### Documents & Knowledge
+### Business workflows
+
+| Example | Description |
+|---------|-------------|
+| [support-triage](jaiclaw-examples/support-triage/) | Customer support ticket triage and routing |
+| [procurement-approval](jaiclaw-examples/procurement-approval/) | Multi-step procurement workflow with approval chain |
+| [tax-advisor](jaiclaw-examples/tax-advisor/) | Tax calculation and comparison tool |
+| [onboarding-intake](jaiclaw-examples/onboarding-intake/) | Employee onboarding intake form workflow |
+| [helpdesk-bot](jaiclaw-examples/helpdesk-bot/) | Multi-tenant support bot with FAQ search and ticket creation |
+
+### Documents & knowledge
 
 | Example | Description |
 |---------|-------------|
 | [document-qa](jaiclaw-examples/document-qa/) | PDF ingestion and semantic search Q&A with citations |
 | [telegram-docstore](jaiclaw-examples/telegram-docstore/) | Telegram bot for document management and semantic search |
 | [research-assistant](jaiclaw-examples/research-assistant/) | Multi-source research with structured report generation |
-| [content-pipeline](jaiclaw-examples/content-pipeline/) | Multi-modal content analysis for images, audio, and PDFs |
 
-### Communication & Voice
+### Communication & voice
 
 | Example | Description |
 |---------|-------------|
 | [meeting-assistant](jaiclaw-examples/meeting-assistant/) | Meeting transcription, speaker identification, and Slack summaries |
-| [helpdesk-bot](jaiclaw-examples/helpdesk-bot/) | Multi-tenant support bot with FAQ search and ticket creation |
 | [voice-call-demo](jaiclaw-examples/voice-call-demo/) | Telephony with outbound reminders and inbound customer service via Twilio |
 
 ### Security
@@ -257,12 +333,13 @@ See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full channel setup instructions
 | [security-handshake-server](jaiclaw-examples/security-handshake-server/) | MCP server implementing full ECDH P-256 security handshake protocol |
 | [oauth-provider-demo](jaiclaw-examples/oauth-provider-demo/) | OAuth-gated LLM access with PKCE and device code flows |
 
-### Developer Tools
+### Developer tools
 
 | Example | Description |
 |---------|-------------|
 | [code-scaffolder](jaiclaw-examples/code-scaffolder/) | Project scaffolding agent that generates complete project structures from templates |
 | [canvas-dashboard](jaiclaw-examples/canvas-dashboard/) | On-demand interactive HTML dashboards with Chart.js via Canvas (A2UI) |
+| [mcp-docs-server](jaiclaw-examples/mcp-docs-server/) | MCP resource server exposing JaiClaw documentation to Claude Desktop, Cursor, etc. |
 
 ### Local LLM
 
@@ -299,7 +376,7 @@ jaiclaw-gateway-app       Standalone gateway server (runnable)
 jaiclaw-shell             Spring Shell CLI (runnable)
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full module graph, message flow diagrams, and Kubernetes deployment patterns.
+See [docs/dev/ARCHITECTURE.md](docs/dev/ARCHITECTURE.md) for the full module graph, message flow diagrams, and Kubernetes deployment patterns.
 
 ## Configuration
 
@@ -323,7 +400,7 @@ You can also set `JAICLAW_ENV_FILE` directly to point to any `.env` file.
 | `MINIMAX_MODEL` | `M2-her` | MiniMax model name |
 | `GATEWAY_PORT` | `8080` | Gateway HTTP port |
 
-See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the full environment variable reference.
+See [docs/user/OPERATIONS.md](docs/user/OPERATIONS.md) for the full environment variable reference.
 
 ## Security
 
@@ -337,7 +414,7 @@ JAICLAW_SECURITY_MODE=none ./start.sh local
 JAICLAW_API_KEY=my-custom-key ./start.sh local
 ```
 
-The `onboard` wizard and `quickstart.sh --reconfigure` also allow configuring the security mode interactively. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for full details.
+The `onboard` wizard and `quickstart.sh --reconfigure` also allow configuring the security mode interactively. See [docs/user/OPERATIONS.md](docs/user/OPERATIONS.md) for full details.
 
 ## Running the Interactive Shell
 
@@ -414,15 +491,15 @@ Images use `eclipse-temurin:21-jre` base and follow `io.jaiclaw/<module>:<versio
 
 | Document | Description |
 |----------|-------------|
-| [What Is Agentic AI?](docs/WHAT-IS-AGENTIC-AI.md) | Plain-English explainer for non-technical audiences |
-| [Architecture](docs/ARCHITECTURE.md) | Module graph, message flow, Kubernetes deployment |
-| [Operations Guide](docs/OPERATIONS.md) | Running, configuring, deploying, full env var reference |
-| [Agentic Workflow](docs/AGENTIC-WORKFLOW.md) | Tool loop, human-in-the-loop, context compaction, memory |
-| [Examples Guide](docs/EXAMPLES.md) | Detailed walkthrough of all example applications |
-| [Enterprise Scaling](docs/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md) | From personal assistant to multi-tenant platform |
-| [Feature Comparison](docs/FEATURE-COMPARISON.md) | OpenClaw vs JaiClaw vs Embabel — full feature matrix |
-| [Telegram Setup](docs/TELEGRAM-SETUP.md) | Step-by-step Telegram bot configuration |
-| [Gemma 4 Hardware Guide](docs/GEMMA4-HARDWARE-GUIDE.md) | Performance benchmarks, VRAM requirements, model selection for local Gemma 4 |
+| [What Is Agentic AI?](docs/user/WHAT-IS-AGENTIC-AI.md) | Plain-English explainer for non-technical audiences |
+| [Architecture](docs/dev/ARCHITECTURE.md) | Module graph, message flow, Kubernetes deployment |
+| [Operations Guide](docs/user/OPERATIONS.md) | Running, configuring, deploying, full env var reference |
+| [Agentic Workflow](docs/dev/AGENTIC-WORKFLOW.md) | Tool loop, human-in-the-loop, context compaction, memory |
+| [Examples Guide](docs/user/EXAMPLES.md) | Detailed walkthrough of all example applications |
+| [Enterprise Scaling](docs/user/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md) | From personal assistant to multi-tenant platform |
+| [Feature Comparison](docs/dev/FEATURE-COMPARISON.md) | OpenClaw vs JaiClaw vs Embabel — full feature matrix |
+| [Telegram Setup](docs/user/TELEGRAM-SETUP.md) | Step-by-step Telegram bot configuration |
+| [Gemma 4 Hardware Guide](docs/user/GEMMA4-HARDWARE-GUIDE.md) | Performance benchmarks, VRAM requirements, model selection for local Gemma 4 |
 
 ## Contributing
 

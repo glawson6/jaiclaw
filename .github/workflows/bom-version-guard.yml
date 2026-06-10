@@ -1,0 +1,59 @@
+name: BOM Version Guard
+
+# Fails the build if jaiclaw-bom/pom.xml pins different versions for
+# shared property keys (spring-ai, spring-boot, embabel-agent) than the
+# root pom.xml. Catches the drift that was the root cause of the audit's
+# §1.5 finding (jaiclaw-bom on spring-ai 1.1.4 while the framework built
+# against 1.1.7).
+#
+# Runs on every PR that touches any pom.xml.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pom.xml'
+      - 'jaiclaw-bom/pom.xml'
+  push:
+    branches: [main]
+    paths:
+      - 'pom.xml'
+      - 'jaiclaw-bom/pom.xml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compare version properties
+        run: |
+          set -euo pipefail
+          fail=0
+
+          check_property() {
+            local prop="$1"
+            local bom_value root_value
+            bom_value=$(grep -oE "<${prop}>[^<]+</${prop}>" jaiclaw-bom/pom.xml | head -1 || true)
+            root_value=$(grep -oE "<${prop}>[^<]+</${prop}>" pom.xml | head -1 || true)
+
+            if [ -z "$bom_value" ] || [ -z "$root_value" ]; then
+              echo "::warning::Property ${prop} not present in both poms — skipping (bom='${bom_value}' root='${root_value}')"
+              return 0
+            fi
+
+            if [ "$bom_value" != "$root_value" ]; then
+              echo "::error::BOM drift on ${prop}: jaiclaw-bom has ${bom_value} but root has ${root_value}"
+              fail=1
+            else
+              echo "OK: ${prop} = ${bom_value}"
+            fi
+          }
+
+          check_property spring-ai.version
+          check_property spring-boot.version
+          check_property embabel-agent.version
+
+          exit $fail

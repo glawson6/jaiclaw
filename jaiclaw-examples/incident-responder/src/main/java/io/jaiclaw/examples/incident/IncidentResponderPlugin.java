@@ -1,7 +1,7 @@
 package io.jaiclaw.examples.incident;
 
-import io.jaiclaw.core.agent.ToolCallEvent;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.ToolCallEndedEvent;
+import io.jaiclaw.core.hook.event.ToolCallStartedEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tool.ToolCallback;
@@ -54,22 +54,18 @@ public class IncidentResponderPlugin implements JaiClawPlugin {
         api.registerTool(new ScaleServiceTool());
 
         // Log all tool invocations
-        api.on(HookName.BEFORE_TOOL_CALL, (event, ctx) -> {
-            if (event instanceof ToolCallEvent e) {
-                log.info("[HOOK] BEFORE_TOOL_CALL: tool={}, iteration={}, session={}",
-                        e.toolName(), e.iterationNumber(), e.sessionKey());
-            }
+        api.on(ToolCallStartedEvent.class, e -> {
+            log.info("[HOOK] BEFORE_TOOL_CALL: tool={}, iteration={}, session={}",
+                    e.toolName(), e.iterationNumber(), e.sessionKey());
             return null;
         });
 
         // Track remediation actions
-        api.on(HookName.AFTER_TOOL_CALL, (event, ctx) -> {
-            if (event instanceof ToolCallEvent e) {
-                if ("restart_service".equals(e.toolName()) || "scale_service".equals(e.toolName())) {
-                    String entry = "[%s] %s — %s".formatted(Instant.now(), e.toolName(), e.result());
-                    remediationLog.add(entry);
-                    log.info("[HOOK] Remediation recorded: {}", entry);
-                }
+        api.on(ToolCallEndedEvent.class, e -> {
+            if ("restart_service".equals(e.toolName()) || "scale_service".equals(e.toolName())) {
+                String entry = "[%s] %s — %s".formatted(Instant.now(), e.toolName(), e.result());
+                remediationLog.add(entry);
+                log.info("[HOOK] Remediation recorded: {}", entry);
             }
             return null;
         });

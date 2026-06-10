@@ -1,0 +1,86 @@
+name: Publish to Maven Central
+
+# Triggered on git tag pushes matching v*. Builds the reactor with the
+# `release` profile, signs artifacts with GPG, and publishes to the
+# Sonatype Central Portal. Also creates a GitHub Release using the matching
+# releases/release-X.Y.Z.md as the release body.
+#
+# Required secrets (configure in repository Settings → Secrets):
+#   MAVEN_CENTRAL_USERNAME, MAVEN_CENTRAL_PASSWORD  — Sonatype Central token
+#   GPG_PRIVATE_KEY                                   — ASCII-armored key
+#   GPG_PASSPHRASE
+#
+# Audit reference: docs/CODEBASE-ANALYSIS-2026-06-10.md §1.4, §2.6.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v0.7.1)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write   # for creating the GitHub Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Import GPG key
+        run: |
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+          echo "default-cache-ttl 7200" > ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Determine version
+        id: ver
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release notes exist
+        run: |
+          NOTES_FILE="releases/release-${{ steps.ver.outputs.version }}.md"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "::error::Missing release notes file: $NOTES_FILE"
+            exit 1
+          fi
+          echo "Found notes: $NOTES_FILE"
+
+      - name: Deploy to Maven Central
+        run: ./mvnw -B -Prelease deploy -DskipTests
+        env:
+          MAVEN_OPTS: '-Xmx2g'
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          body_path: releases/release-${{ steps.ver.outputs.version }}.md
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -37,7 +37,7 @@ import org.springframework.core.env.Environment;
  * @see HandshakeSecurityAutoConfiguration for server-side auto-configuration
  */
 @AutoConfiguration
-@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAutoConfiguration")
+@AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
 @ConditionalOnBean(ToolRegistry.class)
 public class SecurityToolsAutoConfiguration {
 

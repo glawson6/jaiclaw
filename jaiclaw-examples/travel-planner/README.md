@@ -171,7 +171,7 @@ jaiclaw:
       - web-research
 ```
 
-See the [Skills Configuration](../../docs/OPERATIONS.md#skills-configuration) section in the Operations Guide for the full reference.
+See the [Skills Configuration](../../docs/user/OPERATIONS.md#skills-configuration) section in the Operations Guide for the full reference.
 
 ### Token Usage Logging
 

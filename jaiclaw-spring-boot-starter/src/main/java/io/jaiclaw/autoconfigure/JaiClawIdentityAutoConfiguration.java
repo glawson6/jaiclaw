@@ -32,7 +32,7 @@ import java.util.Map;
  * Activates when {@code jaiclaw-identity} is on the classpath.
  */
 @AutoConfiguration
-@AutoConfigureAfter(JaiClawAutoConfiguration.class)
+@AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "io.jaiclaw.identity.auth.AuthProfileStoreManager")
 @EnableConfigurationProperties(JaiClawIdentityAutoConfiguration.OAuthProperties.class)
 public class JaiClawIdentityAutoConfiguration {

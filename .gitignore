@@ -14,3 +14,5 @@ docs/PRIVATE-DOCS-INDEX.md
 /dependency-update-report.md
 security-report-*.md
 BUILD-MEMORY.md
+feature-parity-report.md
+**/feature-parity-report.md

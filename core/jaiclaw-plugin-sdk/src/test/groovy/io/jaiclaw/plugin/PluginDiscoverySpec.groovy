@@ -1,6 +1,6 @@
 package io.jaiclaw.plugin
 
-import io.jaiclaw.core.hook.HookName
+import io.jaiclaw.core.hook.event.AgentStartedEvent
 import io.jaiclaw.core.plugin.PluginDefinition
 import io.jaiclaw.core.plugin.PluginKind
 import io.jaiclaw.core.tool.ToolCallback
@@ -54,7 +54,9 @@ class PluginDiscoverySpec extends Specification {
         def record = discovery.initializePlugin(plugin, PluginOrigin.CLASSPATH)
 
         then:
-        record.hookNames().contains("BEFORE_AGENT_START")
+        // 0.8.0 hard-break: hookNames() now carries the typed event simple
+        // class name rather than the pre-0.8.0 HookName enum name.
+        record.hookNames().contains("AgentStartedEvent")
         pluginRegistry.hookCount() == 1
     }
 
@@ -152,7 +154,7 @@ class PluginDiscoverySpec extends Specification {
 
         @Override
         void register(PluginApi api) {
-            api.on(HookName.BEFORE_AGENT_START, { event, ctx -> null })
+            api.on(AgentStartedEvent.class, { event -> null })
         }
     }
 

@@ -1,7 +1,7 @@
 package io.jaiclaw.docstore.telegram;
 
 import io.jaiclaw.channel.ChannelMessage;
-import io.jaiclaw.core.hook.HookName;
+import io.jaiclaw.core.hook.event.MessageReceivedEvent;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.docstore.DocStoreService;
@@ -59,12 +59,23 @@ public class TelegramDocStorePlugin implements JaiClawPlugin {
         var toolProvider = new DocStoreToolProvider(docStoreService);
         toolProvider.tools().forEach(api::registerTool);
 
-        // Auto-index incoming files and URLs
+        // Auto-index incoming files and URLs.
+        //
+        // Pre-0.8.0 carried the inbound ChannelMessage as the raw event
+        // payload and this plugin pattern-matched it. The 0.8.0 typed event
+        // exposes only a flat content string + channel/account/peer; the
+        // attachment-based auto-indexing path (which needs the full
+        // ChannelMessage) will be re-wired once channel adapters fire
+        // MessageReceivedEvent with the richer payload (tracked under
+        // {@code MessageReceivedEvent} javadoc). For now this handler is a
+        // no-op when the framework doesn't yet fire MessageReceivedEvent.
         if (autoIndex) {
-            api.on(HookName.MESSAGE_RECEIVED, (event, ctx) -> {
-                if (event instanceof ChannelMessage message && "telegram".equals(message.channelId())) {
-                    handleIncomingMessage(message);
-                }
+            api.on(MessageReceivedEvent.class, event -> {
+                if (!"telegram".equals(event.channelId())) return null;
+                // TODO: re-wire ChannelMessage-based auto-indexing once
+                //  channel adapters fire MessageReceivedEvent (P3.3 follow-up).
+                log.debug("MessageReceivedEvent for telegram: peer={}, content-len={}",
+                        event.peerId(), event.content() != null ? event.content().length() : 0);
                 return null;
             });
         }

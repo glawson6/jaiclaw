@@ -17,7 +17,8 @@ on:
       - 'docs/**'
       - '*.md'
       - 'releases/**'
-      - 'jaiclaw-examples/**'
+      # Note: jaiclaw-examples/** is intentionally NOT ignored — example
+      # rot needs to break the build. (Per docs/CODEBASE-ANALYSIS-2026-06-10.md §2.6.)
 
 jobs:
   e2e:
