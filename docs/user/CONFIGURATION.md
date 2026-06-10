@@ -310,6 +310,34 @@ production.
 Full reference — including the rate-limit knobs and the six
 individual hardening flags — in [OPERATIONS.md § Security](OPERATIONS.md#security).
 
+## Gateway WebSocket
+
+The gateway registers a WebSocket handler at `/ws/session/{sessionKey}`
+when `spring-boot-starter-websocket` is on the classpath. Two knobs are
+exposed on `jaiclaw.gateway.websocket.*`:
+
+```yaml
+jaiclaw:
+  gateway:
+    websocket:
+      path: /ws/session/**                         # default — Spring path pattern
+      allowed-origin-patterns: "*"                 # default; CSV in YAML
+```
+
+For production, replace the `*` default with explicit origin patterns:
+
+```yaml
+jaiclaw:
+  gateway:
+    websocket:
+      allowed-origin-patterns: "https://app.example.com,https://admin.example.com"
+```
+
+Both properties are added in 0.8.0. The fix that prompted them is in
+[release-0.8.0.md](../../releases/release-0.8.0.md) (the
+documented handler was previously declared as a bean but not bound to
+any URL — silently 404'd).
+
 ## Environment-variable cheat sheet
 
 Spring Boot binds every `jaiclaw.*` property to a `JAICLAW_*` env

@@ -171,6 +171,16 @@ No other dependency moves in 0.8.0.
   now consolidates all per-pipeline errors into a single
   `IllegalStateException` (was throwing on the first one) and adds
   Levenshtein-≤ 2 "did you mean?" hints for typo'd refs.
+- **WebSocket handler silently 404'd** — `WebSocketSessionHandler` was
+  declared as a Spring bean in `JaiClawGatewayAutoConfiguration` but
+  no `WebSocketConfigurer` ever bound it to a URL pattern. The
+  documented `/ws/session/{sessionKey}` endpoint returned 404 at
+  runtime. Fixed by a new nested `JaiClawWebSocketConfiguration`
+  (`@EnableWebSocket` + `WebSocketConfigurer`). Two new properties
+  configure it: `jaiclaw.gateway.websocket.path` (default
+  `/ws/session/**`) and `jaiclaw.gateway.websocket.allowed-origin-patterns`
+  (default `*`; production deployments should set to explicit origins).
+  Caught by the 0.8.0 pre-release e2e run.
 
 ---
 

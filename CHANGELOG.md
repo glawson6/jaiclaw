@@ -127,6 +127,17 @@ hard-break release; see `docs/MIGRATION-0.8.md`).
   the five differentiators. `docs/ROAD-TO-1.0.md` — what's `@Stable`
   today, what's still `@Experimental`, and the empirical gates between
   0.8 → 0.9 → 1.0.
+- **WebSocket handler registration (e2e pre-release fix).**
+  `JaiClawGatewayAutoConfiguration` now registers
+  `WebSocketSessionHandler` against a configurable URL path via a new
+  nested `JaiClawWebSocketConfiguration` (`@EnableWebSocket` +
+  `WebSocketConfigurer`). Prior to 0.8.0 the handler was created as a
+  bean but never bound — `/ws/session/{sessionKey}` silently returned
+  404. Two new properties expose the path and origin policy:
+  `jaiclaw.gateway.websocket.path` (default `/ws/session/**`) and
+  `jaiclaw.gateway.websocket.allowed-origin-patterns` (default `*`,
+  production deployments should set to explicit origins).
+  `JaiClawWebSocketConfigurationSpec` locks the behaviour.
 
 ### Changed
 

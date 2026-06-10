@@ -148,6 +148,56 @@ public class JaiClawGatewayAutoConfiguration {
         return new io.jaiclaw.gateway.WebSocketSessionHandler(gatewayService);
     }
 
+    /**
+     * Registers {@link io.jaiclaw.gateway.WebSocketSessionHandler} at the
+     * configured path when {@code spring-boot-starter-websocket} is on the
+     * classpath. Without this, the handler bean would be created but no route
+     * would dispatch to it — the documented {@code /ws/session/{sessionKey}}
+     * endpoint would silently 404.
+     *
+     * <p>Configurable via:
+     * <ul>
+     *   <li>{@code jaiclaw.gateway.websocket.path} — handler URL pattern
+     *       (default {@code /ws/session/**}). Spring's path pattern syntax,
+     *       so {@code **} captures the {@code {sessionKey}} segment.</li>
+     *   <li>{@code jaiclaw.gateway.websocket.allowed-origin-patterns} — CSV
+     *       of origin patterns (default {@code *}). For production set to
+     *       the explicit deployment origin(s); the {@code *} default is for
+     *       dev only.</li>
+     * </ul>
+     *
+     * <p>Found in the 0.8.0 e2e pre-release validation; fix shipped in 0.8.0.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "org.springframework.web.socket.config.annotation.WebSocketConfigurer")
+    @org.springframework.web.socket.config.annotation.EnableWebSocket
+    public static class JaiClawWebSocketConfiguration
+            implements org.springframework.web.socket.config.annotation.WebSocketConfigurer {
+
+        private final io.jaiclaw.gateway.WebSocketSessionHandler handler;
+        private final String path;
+        private final String[] allowedOriginPatterns;
+
+        public JaiClawWebSocketConfiguration(
+                io.jaiclaw.gateway.WebSocketSessionHandler handler,
+                @org.springframework.beans.factory.annotation.Value(
+                        "${jaiclaw.gateway.websocket.path:/ws/session/**}") String path,
+                @org.springframework.beans.factory.annotation.Value(
+                        "${jaiclaw.gateway.websocket.allowed-origin-patterns:*}")
+                        String[] allowedOriginPatterns) {
+            this.handler = handler;
+            this.path = path;
+            this.allowedOriginPatterns = allowedOriginPatterns;
+        }
+
+        @Override
+        public void registerWebSocketHandlers(
+                org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry registry) {
+            registry.addHandler(handler, path)
+                    .setAllowedOriginPatterns(allowedOriginPatterns);
+        }
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public io.jaiclaw.gateway.mcp.McpServerRegistry mcpServerRegistry(
