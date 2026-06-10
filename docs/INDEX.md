@@ -31,6 +31,9 @@ reference for anyone running, configuring, or building on JaiClaw. The
 
 - [**OPERATIONS.md**](user/OPERATIONS.md) — running, deploying,
   profiles, security modes, environment variables (deep reference)
+- [**PRODUCTION-DEPLOYMENT.md**](user/PRODUCTION-DEPLOYMENT.md) — K8s
+  manifests, Helm values, secrets, Actuator/Micrometer observability,
+  health probes, security hardening, cloud-provider notes, runbook
 - [**EXAMPLES.md**](user/EXAMPLES.md) — full catalog of 40 example
   applications
 - [CLI-REFERENCE.md](user/CLI-REFERENCE.md) — `bin/jaiclaw` commands
@@ -104,6 +107,15 @@ all live at the repo root or here.
 - [How to load skills](faqs/how-to-load-skills.md)
 
 ---
+
+## Strategy & roadmap
+
+- [**POSITIONING.md**](POSITIONING.md) — what JaiClaw is, what it isn't,
+  and when to choose it over Spring AI / LangChain4j / Embabel-alone
+- [**ROAD-TO-1.0.md**](ROAD-TO-1.0.md) — what's `@Stable` today, what's
+  still `@Experimental`, gates between 0.8 → 0.9 → 1.0
+- [**MIGRATION-0.8.md**](MIGRATION-0.8.md) — 0.7.x → 0.8.0 upgrade guide
+  (hard-break release)
 
 ## Audit & remediation
 
