@@ -1,0 +1,40 @@
+server:
+  port: ${SERVER_PORT:8100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: pipelines,health
+
+jaiclaw:
+  # Disable auth so the e2e runner can hit the actuator + trigger endpoints
+  # without managing API keys. Real deployments should configure this properly.
+  security:
+    mode: none
+  # Mandated by CLAUDE.md: keep the system prompt token budget sane.
+  skills:
+    allow-bundled: []
+  pipeline:
+    enabled: true
+    http-trigger:
+      enabled: true
+      base-path: /api/pipelines
+    tracker:
+      enabled: true
+      max-per-pipeline: 20
+    # Pick up per-file pipelines bundled in the jar (under
+    # src/main/resources/jaiclaw/pipelines/), so the e2e example also
+    # demonstrates Phase F (per-file YAML loading).
+    locations:
+      patterns:
+        - "classpath*:jaiclaw/pipelines/*.yml"
+
+# AGENT-pipe-only knobs (only used when JAICLAW_E2E_WITH_AGENT=true and an agent is provisioned).
+spring:
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}

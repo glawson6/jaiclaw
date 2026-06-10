@@ -82,4 +82,73 @@ class TemplateResolverSpec extends Specification {
         expect:
         TemplateResolver.resolve("No placeholders here", outputs) == "No placeholders here"
     }
+
+    // --- context-aware overload (Phase B) ---
+
+    private static PipelineContext ctxWith(Map<String, String> metadata = Map.of(),
+                                           Map<String, PipelineContext.StageOutput> outputs = Map.of()) {
+        return new PipelineContext("p1", "exec-1", "tenant-x", "corr-1",
+                0, 2, null, null, outputs, metadata)
+    }
+
+    def "context overload resolves {{input}} from metadata"() {
+        given:
+        PipelineContext ctx = ctxWith([(PipelineContext.INPUT_METADATA_KEY): "the original payload"])
+
+        expect:
+        TemplateResolver.resolve("Topic: {{input}}", ctx) == "Topic: the original payload"
+    }
+
+    def "context overload resolves {{pipeline.*}} placeholders"() {
+        given:
+        PipelineContext ctx = ctxWith()
+
+        expect:
+        TemplateResolver.resolve("id={{pipeline.id}} tenant={{pipeline.tenantId}}", ctx) ==
+                "id=p1 tenant=tenant-x"
+    }
+
+    def "context overload still resolves stage outputs and metadata"() {
+        given:
+        Map<String, PipelineContext.StageOutput> outputs = Map.of(
+                "research", new PipelineContext.StageOutput("findings",
+                        Map.of("confidence", "0.95"), null))
+        PipelineContext ctx = ctxWith([:], outputs)
+
+        expect:
+        TemplateResolver.resolve(
+                "out={{stages.research.output}} conf={{stages.research.metadata.confidence}}", ctx) ==
+                "out=findings conf=0.95"
+    }
+
+    def "context overload leaves unresolved placeholders in place"() {
+        given:
+        PipelineContext ctx = ctxWith()
+
+        expect:
+        TemplateResolver.resolve("Look at {{stages.missing.output}}", ctx) ==
+                "Look at {{stages.missing.output}}"
+    }
+
+    def "stage names with hyphens are resolved"() {
+        given:
+        Map<String, PipelineContext.StageOutput> outputs = Map.of(
+                "classify-and-sentiment", new PipelineContext.StageOutput("intent: billing", Map.of(), null))
+        PipelineContext ctx = ctxWith([:], outputs)
+
+        expect:
+        TemplateResolver.resolve("X={{stages.classify-and-sentiment.output}}", outputs) ==
+                "X=intent: billing"
+        TemplateResolver.resolve("X={{stages.classify-and-sentiment.output}}", ctx) ==
+                "X=intent: billing"
+    }
+
+    def "context overload returns null/empty unchanged"() {
+        given:
+        PipelineContext ctx = ctxWith()
+
+        expect:
+        TemplateResolver.resolve((String) null, ctx) == null
+        TemplateResolver.resolve("", ctx) == ""
+    }
 }

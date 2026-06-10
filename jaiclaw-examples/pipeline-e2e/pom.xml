@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-examples</artifactId>
+        <version>0.7.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-example-pipeline-e2e</artifactId>
+    <name>JaiClaw :: Examples :: Pipeline E2E</name>
+    <description>Minimal Spring Boot app exercising the jaiclaw-pipeline module end-to-end (PROCESSOR stages, validator, /actuator/pipelines, HTTP trigger)</description>
+
+    <dependencies>
+        <!-- Pulls in jaiclaw-spring-boot-starter, jaiclaw-pipeline, jaiclaw-camel, camel-spring-boot-starter -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-pipeline</artifactId>
+            <type>pom</type>
+        </dependency>
+        <!-- PipelineTriggerController needs Spring Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- PipelineActuatorEndpoint needs Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- The pipeline auto-config references AuditLogger / HookRunner via ObjectProvider;
+             Spring needs the classes loadable even when no implementation is wired. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-audit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-plugin-sdk</artifactId>
+        </dependency>
+
+        <!-- Test scope -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-spring</artifactId>
+            <version>${spock.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <goals><goal>analyze</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

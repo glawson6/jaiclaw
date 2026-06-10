@@ -52,5 +52,12 @@
         <module>support-triage</module>
         <module>procurement-approval</module>
         <module>tax-advisor</module>
+        <module>pipeline-e2e</module>
+        <module>support-triage-pipeline</module>
+        <module>invoice-processor</module>
+        <module>aiops-incident-responder</module>
+        <module>competitive-intel-briefing</module>
+        <module>sales-enrichment-pipeline</module>
+        <module>contract-reviewer</module>
     </modules>
 </project>

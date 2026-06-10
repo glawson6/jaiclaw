@@ -188,4 +188,58 @@ class PipelineContextSpec extends Specification {
         ctx.executionId() != null
         !ctx.executionId().isBlank()
     }
+
+    def "availableVariables exposes pipeline.* keys"() {
+        given:
+        PipelineContext ctx = new PipelineContext(
+                "pipe-x", "exec-7", "tenant-q", "corr-z",
+                0, 2, null, null, Map.of(), Map.of())
+
+        when:
+        Map<String, String> vars = ctx.availableVariables()
+
+        then:
+        vars.get("pipeline.id") == "pipe-x"
+        vars.get("pipeline.executionId") == "exec-7"
+        vars.get("pipeline.tenantId") == "tenant-q"
+        vars.get("pipeline.correlationId") == "corr-z"
+    }
+
+    def "availableVariables exposes input from metadata"() {
+        given:
+        PipelineContext ctx = new PipelineContext(
+                "p", "e", null, null, 0, 1, null, null, Map.of(),
+                Map.of(PipelineContext.INPUT_METADATA_KEY, "the payload"))
+
+        when:
+        Map<String, String> vars = ctx.availableVariables()
+
+        then:
+        vars.get("input") == "the payload"
+    }
+
+    def "availableVariables exposes stage outputs and metadata"() {
+        given:
+        Map<String, PipelineContext.StageOutput> outputs = Map.of(
+                "research", new PipelineContext.StageOutput("findings",
+                        Map.of("confidence", "0.95"), null))
+        PipelineContext ctx = new PipelineContext(
+                "p", "e", null, null, 1, 2, null, null, outputs, Map.of())
+
+        when:
+        Map<String, String> vars = ctx.availableVariables()
+
+        then:
+        vars.get("stages.research.output") == "findings"
+        vars.get("stages.research.metadata.confidence") == "0.95"
+    }
+
+    def "availableVariables omits input when metadata key missing"() {
+        given:
+        PipelineContext ctx = new PipelineContext(
+                "p", "e", null, null, 0, 1, null, null, Map.of(), Map.of())
+
+        expect:
+        !ctx.availableVariables().containsKey("input")
+    }
 }

@@ -54,12 +54,38 @@
             <artifactId>jaiclaw-tasks</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Optional: enables ChannelRegistry-based channelId validation in PipelineValidator -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-channel-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: enables /actuator/pipelines endpoint -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: enables PipelineTriggerController -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Micrometer (optional) -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Required: jackson-yaml parses per-file pipeline YAML resources. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
 
         <!-- Spring Boot -->
@@ -88,11 +114,48 @@
             <version>${camel.version}</version>
             <optional>true</optional>
         </dependency>
+        <!-- Optional: only needed when a pipeline uses TriggerType.CRON.
+             PipelineRouteBuilder generates a quartz:// URI for cron expressions. -->
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-quartz-starter</artifactId>
+            <version>${camel.version}</version>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test: Spring Boot full test stack for the HTTP integration spec -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-spring-boot-starter</artifactId>
+            <version>${camel.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-spring</artifactId>
+            <version>${spock.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Test: Spock + Groovy -->

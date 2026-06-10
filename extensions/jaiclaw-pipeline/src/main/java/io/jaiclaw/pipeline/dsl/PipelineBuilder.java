@@ -111,6 +111,14 @@ public class PipelineBuilder {
     }
 
     /**
+     * Readability alias for {@link #stage(String)}. Lets multi-stage pipelines
+     * read top-to-bottom: {@code .trigger().http("/x").then("a")...then("b")}.
+     */
+    public StageBuilder then(String name) {
+        return stage(name);
+    }
+
+    /**
      * Start configuring the pipeline output.
      *
      * @return an output builder

@@ -301,4 +301,40 @@ class PipelineBuilderSpec extends Specification {
         defs[0].errorStrategy() == ErrorStrategy.RETRY_THEN_FAIL
         defs[0].maxRetries() == 5
     }
+
+    def "then() builds same definition as stage() chain"() {
+        given:
+        JaiClawPipeline thenStyle = new JaiClawPipeline() {
+            @Override
+            void define() {
+                pipeline("p")
+                        .trigger().http("/run")
+                        .then("research").agent("r1").systemPrompt("research it")
+                        .then("write").agent("r2").systemPrompt("use {{stages.research.output}}")
+                        .output().log()
+            }
+        }
+        JaiClawPipeline stageStyle = new JaiClawPipeline() {
+            @Override
+            void define() {
+                pipeline("p")
+                        .trigger().http("/run")
+                        .stage("research").agent("r1").systemPrompt("research it")
+                        .stage("write").agent("r2").systemPrompt("use {{stages.research.output}}")
+                        .output().log()
+            }
+        }
+
+        when:
+        PipelineDefinition viaThen = thenStyle.getDefinitions()[0]
+        PipelineDefinition viaStage = stageStyle.getDefinitions()[0]
+
+        then:
+        viaThen.stages().size() == 2
+        viaThen.stages()*.name() == viaStage.stages()*.name()
+        viaThen.stages()*.agentId() == viaStage.stages()*.agentId()
+        viaThen.stages()*.systemPrompt() == viaStage.stages()*.systemPrompt()
+        viaThen.trigger().type() == viaStage.trigger().type()
+        viaThen.output().type() == viaStage.output().type()
+    }
 }

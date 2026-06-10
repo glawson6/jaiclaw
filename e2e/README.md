@@ -11,6 +11,7 @@ Non-interactive end-to-end test suite for JaiClaw. Validates bootstrap, scaffold
 | 3 | Provider | Sends a chat message and verifies LLM responds | API key, running instance (or starts one) |
 | 4 | CLI | Tests `bin/jaiclaw` fast-path and JVM-path commands | `bin/jaiclaw`, Java 21+, CLI JAR built |
 | 5 | Docker CLI | Builds CLI Docker image, tests commands in container | Docker running, CLI module built |
+| 6 | Pipeline UX | Boots pipeline-e2e example, exercises validator + actuator + HTTP trigger + `{{input}}` templates | Port 8100 free, no API key needed (AGENT sub-test optional) |
 
 ## Running Locally (No Docker)
 
@@ -23,6 +24,9 @@ export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle
 
 # CLI only (no API key needed)
 E2E_SCENARIOS=4 ./e2e/run-e2e-tests.sh
+
+# Pipeline UX only (no API key needed)
+E2E_SCENARIOS=6 ./e2e/run-e2e-tests.sh
 
 # Bootstrap + provider + CLI
 E2E_SCENARIOS=1,3,4 \
@@ -75,7 +79,7 @@ docker run --rm \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `E2E_SCENARIOS` | `1,2,3,4` | Comma-separated scenario numbers or `all` |
+| `E2E_SCENARIOS` | `1,2,3,4,6` | Comma-separated scenario numbers or `all` (= `1,2,3,4,5,6`) |
 | `AI_PROVIDER` | `anthropic` | Provider: `anthropic`, `openai`, `gemini` |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key |
 | `ANTHROPIC_BASE_URL` | — | Optional base URL override |
@@ -85,6 +89,8 @@ docker run --rm \
 | `E2E_SYSTEM_PROMPT` | built-in | System prompt for scenarios 2 & 3 |
 | `E2E_TIMEOUT` | `120` | Server startup timeout (seconds) |
 | `E2E_KEEP_ARTIFACTS` | `false` | Keep temp directories on success |
+| `E2E_PIPELINE_PORT` | `8100` | Port for Scenario 6 (pipeline-e2e example) |
+| `JAICLAW_E2E_WITH_AGENT` | — | Set to `true` to enable Scenario 6's AGENT-stage sub-test (requires AI key) |
 | `JAICLAW_VERSION` | from pom.xml | Override version detection |
 | `PROJECT_ROOT` | auto-detected | Override project root path |
 
@@ -102,3 +108,6 @@ docker run --rm \
 | CLI JAR not found | `./mvnw package -pl :jaiclaw-cli -am -DskipTests` |
 | Docker not available | Start Docker Desktop or `dockerd` |
 | Docker build context too large | The `build.sh` script swaps `.dockerignore` automatically |
+| Pipeline port 8100 in use | `lsof -ti:8100 \| xargs kill` (or set `E2E_PIPELINE_PORT`) |
+| Scenario 6 fails on 6a | The validator must throw; check the `--spring.profiles.active=broken` log surfaces both `UNKNOWN_BEAN` and `UNKNOWN_STAGE_REF` |
+| Scenario 6 fails on 6c (byId) | Trigger is async via SEDA — runner already polls up to 5s. If still failing, raise `E2E_TIMEOUT`. |

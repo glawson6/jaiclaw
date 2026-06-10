@@ -154,6 +154,14 @@ public class StageBuilder {
     }
 
     /**
+     * Readability alias for {@link #stage(String)}. Lets the DSL read like
+     * {@code .stage("a").agent("x").then("b").agent("y")}.
+     */
+    public StageBuilder then(String stageName) {
+        return parent.stage(stageName);
+    }
+
+    /**
      * Start defining the output (delegates to parent).
      *
      * @return the output builder

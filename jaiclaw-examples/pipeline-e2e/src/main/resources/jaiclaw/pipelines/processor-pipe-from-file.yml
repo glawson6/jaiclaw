@@ -1,0 +1,21 @@
+# Per-file pipeline definition loaded by PipelineFileLoader via
+# `jaiclaw.pipeline.locations.patterns[]` in application.yml.
+#
+# Identical to the `processor-pipe` defined in E2ePipelines.java except for
+# the id — proves end-to-end that classpath-resource pipelines coexist with
+# code-defined and inline-YAML pipelines.
+id: processor-pipe-from-file
+name: E2E Processor Pipeline (from file)
+description: PROCESSOR-only pipeline loaded from a classpath YAML file
+trigger:
+  type: MANUAL
+stages:
+  - name: upper
+    type: PROCESSOR
+    bean: upperCase
+  - name: exclaim
+    type: PROCESSOR
+    bean: addExclaim
+output:
+  type: LOG
+  template: "upper={{stages.upper.output}} input-was={{input}}"

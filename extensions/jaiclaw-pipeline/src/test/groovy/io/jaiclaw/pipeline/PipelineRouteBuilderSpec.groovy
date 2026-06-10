@@ -62,7 +62,7 @@ class PipelineRouteBuilderSpec extends Specification {
 
     def "stageQueueUri uses configurable SEDA parameters"() {
         given:
-        PipelineProperties.PipelineDefaults defaults = new PipelineProperties.PipelineDefaults(200, 10, false)
+        PipelineProperties.PipelineDefaults defaults = new PipelineProperties.PipelineDefaults(200, 10, false, null)
         StageDefinition stage = new StageDefinition(
                 "s1", StageType.PROCESSOR, "p1", null, null, null, null, null, null
         )
@@ -106,6 +106,90 @@ class PipelineRouteBuilderSpec extends Specification {
 
         then:
         uri == "kafka:my-topic?brokers=kafka:9092"
+    }
+
+    def "gateway convergence route allows direct:pipeline-<id> for HTTP-trigger pipelines"() {
+        given:
+        DefaultCamelContext camelContext = new DefaultCamelContext()
+        ApplicationContext appCtx = Mock()
+        Function<String, String> identity = { input -> input } as Function
+        appCtx.getBean("noop") >> identity
+        BeanStageProcessor beanProcessor = new BeanStageProcessor(appCtx)
+
+        PipelineDefinition definition = new PipelineDefinition(
+                "http-pipe", null, null, List.of(), true,
+                new TriggerDefinition(TriggerType.HTTP, null, null, "/run"),
+                ErrorStrategy.STOP, 0, null,
+                [new StageDefinition("s1", StageType.PROCESSOR, "noop", null, null, null, null, null, null)],
+                new OutputDefinition(OutputType.CAMEL_URI, null, "mock:converged", null),
+                null
+        )
+
+        PipelineRouteBuilder routeBuilder = new PipelineRouteBuilder(
+                definition, PipelineProperties.PipelineDefaults.DEFAULT,
+                null, beanProcessor, null,
+                new PipelineAuditor(null, null), new PipelineHookFirer(null),
+                null, null, null
+        )
+        camelContext.addRoutes(routeBuilder)
+        camelContext.start()
+
+        MockEndpoint mock = camelContext.getEndpoint("mock:converged", MockEndpoint.class)
+        mock.expectedMessageCount(1)
+
+        when:
+        ProducerTemplate template = camelContext.createProducerTemplate()
+        template.sendBody("direct:pipeline-http-pipe", "via gateway")
+        mock.assertIsSatisfied(5000)
+
+        then:
+        mock.receivedExchanges[0].getIn().getBody(String.class) == "via gateway"
+
+        cleanup:
+        camelContext.stop()
+    }
+
+    def "trigger route captures original input into PipelineContext metadata"() {
+        given:
+        DefaultCamelContext camelContext = new DefaultCamelContext()
+        ApplicationContext appCtx = Mock()
+        // The processor echoes the {{input}} placeholder so we can confirm capture worked.
+        Function<String, String> captureContext = { input -> "ok" } as Function
+        appCtx.getBean("noop") >> captureContext
+        BeanStageProcessor beanProcessor = new BeanStageProcessor(appCtx)
+
+        // Output template references {{input}} — only works if the trigger captured it.
+        PipelineDefinition definition = new PipelineDefinition(
+                "input-pipe", "Input Capture", null, List.of(), true,
+                new TriggerDefinition(TriggerType.MANUAL, null, null, null),
+                ErrorStrategy.STOP, 0, null,
+                [new StageDefinition("s1", StageType.PROCESSOR, "noop", null, null, null, null, null, null)],
+                new OutputDefinition(OutputType.CAMEL_URI, null, "mock:input-out", "echo:{{input}}"),
+                null
+        )
+
+        PipelineRouteBuilder routeBuilder = new PipelineRouteBuilder(
+                definition, PipelineProperties.PipelineDefaults.DEFAULT,
+                null, beanProcessor, null,
+                new PipelineAuditor(null, null), new PipelineHookFirer(null),
+                null, null, null
+        )
+        camelContext.addRoutes(routeBuilder)
+        camelContext.start()
+
+        MockEndpoint mock = camelContext.getEndpoint("mock:input-out", MockEndpoint.class)
+        mock.expectedMessageCount(1)
+
+        when:
+        ProducerTemplate template = camelContext.createProducerTemplate()
+        template.sendBody("direct:pipeline-input-pipe", "the original payload")
+        mock.assertIsSatisfied(5000)
+
+        then:
+        mock.receivedExchanges[0].getIn().getBody(String.class) == "echo:the original payload"
+
+        cleanup:
+        camelContext.stop()
     }
 
     def "multi-stage pipeline advances context through stages"() {

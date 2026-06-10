@@ -23,10 +23,10 @@ public class AgentStageProcessor implements StageProcessor {
     public void process(Exchange exchange, StageDefinition stage, PipelineContext context) throws Exception {
         String input = exchange.getIn().getBody(String.class);
 
-        // Resolve system prompt template with stage output placeholders
+        // Resolve system prompt template (stage outputs + {{input}} + {{pipeline.*}})
         String prompt = stage.systemPrompt();
         if (prompt != null && !prompt.isEmpty()) {
-            prompt = TemplateResolver.resolve(prompt, context.stageOutputs());
+            prompt = TemplateResolver.resolve(prompt, context);
             // Prepend system prompt to the input
             input = prompt + "\n\n" + (input != null ? input : "");
         }

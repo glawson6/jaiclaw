@@ -113,6 +113,50 @@ public record PipelineContext(
     }
 
     /**
+     * Metadata key under which {@link PipelineRouteBuilder} stores the original
+     * trigger payload so {@code {{input}}} placeholders resolve through every
+     * stage hop. Truncated to 32 KB to bound memory usage.
+     */
+    public static final String INPUT_METADATA_KEY = "__input__";
+
+    /** Maximum number of trigger-payload bytes retained in metadata. */
+    public static final int MAX_INPUT_BYTES = 32 * 1024;
+
+    /**
+     * Return all variables resolvable from this context, keyed by the dotted
+     * placeholder name a template would use (e.g. {@code "pipeline.id"},
+     * {@code "stages.research.output"}, {@code "input"}).
+     *
+     * <p>Used by {@link TemplateResolver} to format the warn-on-miss message
+     * and by the validator's introspection paths.
+     */
+    public Map<String, String> availableVariables() {
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("pipeline.id", pipelineId == null ? "" : pipelineId);
+        result.put("pipeline.executionId", executionId == null ? "" : executionId);
+        result.put("pipeline.tenantId", tenantId == null ? "" : tenantId);
+        result.put("pipeline.correlationId", correlationId == null ? "" : correlationId);
+        String input = metadata == null ? null : metadata.get(INPUT_METADATA_KEY);
+        if (input != null) {
+            result.put("input", input);
+        }
+        if (stageOutputs != null) {
+            for (Map.Entry<String, StageOutput> entry : stageOutputs.entrySet()) {
+                String stage = entry.getKey();
+                StageOutput out = entry.getValue();
+                if (out == null) continue;
+                result.put("stages." + stage + ".output", out.output() == null ? "" : out.output());
+                if (out.metadata() != null) {
+                    for (Map.Entry<String, String> m : out.metadata().entrySet()) {
+                        result.put("stages." + stage + ".metadata." + m.getKey(), m.getValue() == null ? "" : m.getValue());
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Bridge factory: create a PipelineContext from an existing {@link PipelineEnvelope}.
      *
      * @param envelope the legacy pipeline envelope

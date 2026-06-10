@@ -4,11 +4,15 @@ import io.jaiclaw.camel.CamelMessageConverter;
 import io.jaiclaw.core.tenant.DefaultTenantContext;
 import io.jaiclaw.core.tenant.TenantContext;
 import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.pipeline.gateway.DefaultPipelineGateway;
+import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -42,7 +46,9 @@ public class PipelineRouteBuilder extends RouteBuilder {
     private final PipelineMetrics metrics;
     private final PipelineSecurityGuard securityGuard;
     private final PipelineTransportAuthenticator transportAuthenticator;
+    private final PipelineExecutionTracker tracker;
 
+    /** Legacy 10-arg constructor — kept for callers that don't supply a tracker. */
     public PipelineRouteBuilder(
             PipelineDefinition definition,
             PipelineProperties.PipelineDefaults defaults,
@@ -54,6 +60,22 @@ public class PipelineRouteBuilder extends RouteBuilder {
             PipelineMetrics metrics,
             PipelineSecurityGuard securityGuard,
             PipelineTransportAuthenticator transportAuthenticator) {
+        this(definition, defaults, agentProcessor, beanProcessor, camelProcessor,
+                auditor, hookFirer, metrics, securityGuard, transportAuthenticator, null);
+    }
+
+    public PipelineRouteBuilder(
+            PipelineDefinition definition,
+            PipelineProperties.PipelineDefaults defaults,
+            AgentStageProcessor agentProcessor,
+            BeanStageProcessor beanProcessor,
+            CamelStageProcessor camelProcessor,
+            PipelineAuditor auditor,
+            PipelineHookFirer hookFirer,
+            PipelineMetrics metrics,
+            PipelineSecurityGuard securityGuard,
+            PipelineTransportAuthenticator transportAuthenticator,
+            PipelineExecutionTracker tracker) {
         this.definition = definition;
         this.defaults = defaults != null ? defaults : PipelineProperties.PipelineDefaults.DEFAULT;
         this.agentProcessor = agentProcessor;
@@ -64,6 +86,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
         this.metrics = metrics;
         this.securityGuard = securityGuard;
         this.transportAuthenticator = transportAuthenticator;
+        this.tracker = tracker;
     }
 
     @Override
@@ -82,6 +105,10 @@ public class PipelineRouteBuilder extends RouteBuilder {
         // Build trigger route
         buildTriggerRoute(pipelineId, stages);
 
+        // Ensure direct:pipeline-<id> is always callable so the PipelineGateway
+        // works for HTTP/CRON/FILE pipelines too (not just MANUAL/CAMEL_URI).
+        buildGatewayConvergenceRoute(pipelineId);
+
         // Build per-stage routes
         for (int i = 0; i < stages.size(); i++) {
             buildStageRoute(pipelineId, stages, i);
@@ -97,9 +124,14 @@ public class PipelineRouteBuilder extends RouteBuilder {
     private void configureErrorHandling(String pipelineId) {
         switch (definition.errorStrategy()) {
             case DEAD_LETTER -> {
-                String dlq = definition.deadLetterUri() != null
-                        ? definition.deadLetterUri()
-                        : "log:io.jaiclaw.pipeline.deadletter." + pipelineId + "?level=ERROR";
+                String dlq;
+                if (definition.deadLetterUri() != null && !definition.deadLetterUri().isBlank()) {
+                    dlq = definition.deadLetterUri();
+                } else if (defaults.deadLetterUri() != null && !defaults.deadLetterUri().isBlank()) {
+                    dlq = defaults.deadLetterUri();
+                } else {
+                    dlq = "log:io.jaiclaw.pipeline.deadletter." + pipelineId + "?level=ERROR";
+                }
                 deadLetterChannel(dlq)
                         .maximumRedeliveries(definition.maxRetries())
                         .redeliveryDelay(1000)
@@ -118,6 +150,68 @@ public class PipelineRouteBuilder extends RouteBuilder {
         }
     }
 
+    /**
+     * For pipelines whose primary trigger URI isn't {@code direct:pipeline-<id>}
+     * (HTTP/CRON/FILE), also register a {@code direct:pipeline-<id>} endpoint
+     * that forwards into the same initialization logic. This is what
+     * {@link io.jaiclaw.pipeline.gateway.PipelineGateway} sends to.
+     */
+    private void buildGatewayConvergenceRoute(String pipelineId) {
+        String primaryUri = resolveTriggerUri(pipelineId);
+        String gatewayUri = "direct:pipeline-" + pipelineId;
+        if (primaryUri.equals(gatewayUri)) {
+            return;
+        }
+        // Route into the same per-stage flow as the primary trigger by initializing
+        // a fresh PipelineContext, identical to what buildTriggerRoute does.
+        from(gatewayUri)
+                .routeId("pipeline-" + pipelineId + "-gateway")
+                .process(exchange -> {
+                    // Same context-init as buildTriggerRoute. Kept inline (rather than
+                    // refactored) to avoid changing the primary trigger semantics.
+                    String triggerInput = exchange.getIn().getBody(String.class);
+                    Map<String, String> initialMetadata = Map.of();
+                    if (triggerInput != null) {
+                        String stored = triggerInput.length() > PipelineContext.MAX_INPUT_BYTES
+                                ? triggerInput.substring(0, PipelineContext.MAX_INPUT_BYTES) + "…[truncated]"
+                                : triggerInput;
+                        initialMetadata = Map.of(PipelineContext.INPUT_METADATA_KEY, stored);
+                    }
+                    String gatewayExecutionId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_GATEWAY_EXECUTION_ID, String.class);
+                    String gatewayTenantId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_TENANT_ID, String.class);
+                    String gatewayCorrelationId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_CORRELATION_ID, String.class);
+
+                    PipelineContext ctx = new PipelineContext(
+                            pipelineId,
+                            gatewayExecutionId != null ? gatewayExecutionId : UUID.randomUUID().toString(),
+                            gatewayTenantId,
+                            gatewayCorrelationId != null ? gatewayCorrelationId : exchange.getExchangeId(),
+                            0, definition.stages().size(),
+                            null, null, Map.of(), initialMetadata);
+                    TenantContext tenantCtx = TenantContextHolder.get();
+                    if (tenantCtx != null && ctx.tenantId() == null) {
+                        ctx = new PipelineContext(
+                                ctx.pipelineId(), ctx.executionId(), tenantCtx.getTenantId(),
+                                ctx.correlationId(), ctx.stageIndex(), ctx.totalStages(),
+                                ctx.replyChannelId(), ctx.replyPeerId(),
+                                ctx.stageOutputs(), ctx.metadata());
+                    }
+                    if (securityGuard != null) {
+                        securityGuard.validateExecution(definition, ctx);
+                    }
+                    exchange.getIn().setHeader(HEADER_PIPELINE_CONTEXT, ctx);
+                    exchange.getIn().setHeader(HEADER_PIPELINE_START, Instant.now());
+                    if (auditor != null) auditor.pipelineStarted(ctx);
+                    if (hookFirer != null) hookFirer.firePipelineStart(ctx);
+                    if (metrics != null) metrics.recordPipelineActive(pipelineId, 1);
+                    if (tracker != null) tracker.started(ctx);
+                })
+                .to(stageQueueUri(pipelineId, 0, definition.stages().get(0)));
+    }
+
     private void buildTriggerRoute(String pipelineId, List<StageDefinition> stages) {
         String triggerUri = resolveTriggerUri(pipelineId);
         String firstStageUri = stageQueueUri(pipelineId, 0, stages.get(0));
@@ -125,20 +219,40 @@ public class PipelineRouteBuilder extends RouteBuilder {
         from(triggerUri)
                 .routeId("pipeline-" + pipelineId + "-trigger")
                 .process(exchange -> {
-                    // Initialize PipelineContext
+                    // Capture the original trigger payload so {{input}} placeholders
+                    // resolve through every stage hop. Truncate to bound memory.
+                    String triggerInput = exchange.getIn().getBody(String.class);
+                    Map<String, String> initialMetadata = Map.of();
+                    if (triggerInput != null) {
+                        String stored = triggerInput.length() > PipelineContext.MAX_INPUT_BYTES
+                                ? triggerInput.substring(0, PipelineContext.MAX_INPUT_BYTES) + "…[truncated]"
+                                : triggerInput;
+                        initialMetadata = Map.of(PipelineContext.INPUT_METADATA_KEY, stored);
+                    }
+
+                    // Initialize PipelineContext — prefer gateway-supplied IDs when present
+                    // so the handle returned by PipelineGateway.trigger() matches the
+                    // executionId surfaced by the tracker and the actuator endpoint.
+                    String gatewayExecutionId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_GATEWAY_EXECUTION_ID, String.class);
+                    String gatewayTenantId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_TENANT_ID, String.class);
+                    String gatewayCorrelationId = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_CORRELATION_ID, String.class);
+
                     PipelineContext ctx = new PipelineContext(
                             pipelineId,
-                            UUID.randomUUID().toString(),
-                            null, // tenantId will be set from TenantContextHolder if available
-                            exchange.getExchangeId(),
+                            gatewayExecutionId != null ? gatewayExecutionId : UUID.randomUUID().toString(),
+                            gatewayTenantId,
+                            gatewayCorrelationId != null ? gatewayCorrelationId : exchange.getExchangeId(),
                             0, stages.size(),
                             null, null,
-                            Map.of(), Map.of()
+                            Map.of(), initialMetadata
                     );
 
-                    // Resolve tenant context
+                    // Resolve tenant context — only override if no gateway-supplied tenant was present.
                     TenantContext tenantCtx = TenantContextHolder.get();
-                    if (tenantCtx != null) {
+                    if (tenantCtx != null && ctx.tenantId() == null) {
                         ctx = new PipelineContext(
                                 ctx.pipelineId(), ctx.executionId(), tenantCtx.getTenantId(),
                                 ctx.correlationId(), ctx.stageIndex(), ctx.totalStages(),
@@ -159,6 +273,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
                     if (auditor != null) auditor.pipelineStarted(ctx);
                     if (hookFirer != null) hookFirer.firePipelineStart(ctx);
                     if (metrics != null) metrics.recordPipelineActive(pipelineId, 1);
+                    if (tracker != null) tracker.started(ctx);
                 })
                 .to(firstStageUri);
     }
@@ -201,6 +316,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
                     // Audit & hooks: stage start
                     if (auditor != null) auditor.stageStarted(ctx, stage);
                     if (hookFirer != null) hookFirer.fireStageStart(ctx, stage);
+                    if (tracker != null) tracker.stageStarted(ctx, stage.name());
 
                     Instant stageStart = Instant.now();
 
@@ -228,12 +344,14 @@ public class PipelineRouteBuilder extends RouteBuilder {
                         if (hookFirer != null) hookFirer.fireStageComplete(nextCtx, stage, output);
                         if (metrics != null) metrics.recordStageExecution(
                                 pipelineId, stage.name(), stage.type().name(), true, stageDuration);
+                        if (tracker != null) tracker.stageCompleted(nextCtx, stage.name(), stageDuration);
 
                     } catch (Exception e) {
                         Duration stageDuration = Duration.between(stageStart, Instant.now());
                         if (auditor != null) auditor.stageFailed(ctx, stage, e);
                         if (metrics != null) metrics.recordStageExecution(
                                 pipelineId, stage.name(), stage.type().name(), false, stageDuration);
+                        if (tracker != null) tracker.failed(ctx, e.getMessage(), stageDuration);
                         throw e;
                     } finally {
                         if (ctx.tenantId() != null) {
@@ -254,9 +372,9 @@ public class PipelineRouteBuilder extends RouteBuilder {
                     PipelineContext ctx = exchange.getIn().getHeader(HEADER_PIPELINE_CONTEXT, PipelineContext.class);
                     Instant pipelineStart = exchange.getIn().getHeader(HEADER_PIPELINE_START, Instant.class);
 
-                    // Resolve output template
+                    // Resolve output template (stage outputs + {{input}} + {{pipeline.*}})
                     if (output.template() != null && ctx != null) {
-                        String resolved = TemplateResolver.resolve(output.template(), ctx.stageOutputs());
+                        String resolved = TemplateResolver.resolve(output.template(), ctx);
                         exchange.getIn().setBody(resolved);
                     }
 
@@ -271,6 +389,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
                             metrics.recordPipelineExecution(pipelineId, ctx.tenantId(), true, totalDuration);
                             metrics.recordPipelineActive(pipelineId, -1);
                         }
+                        if (tracker != null) tracker.succeeded(ctx, totalDuration);
                     }
                 })
                 .choice()
@@ -308,11 +427,21 @@ public class PipelineRouteBuilder extends RouteBuilder {
         };
     }
 
-    private String resolveTriggerUri(String pipelineId) {
+    String resolveTriggerUri(String pipelineId) {
         TriggerDefinition trigger = definition.trigger();
         return switch (trigger.type()) {
             case FILE -> trigger.uri() != null ? trigger.uri() : "file://pipeline-" + pipelineId + "-input";
-            case CRON -> "timer:pipeline-" + pipelineId + "?period=" + trigger.expression();
+            case CRON -> {
+                String expr = trigger.expression();
+                if (expr == null || expr.isBlank()) {
+                    throw new IllegalStateException(
+                            "Pipeline '" + pipelineId + "' has trigger.type=CRON but no cron expression");
+                }
+                // Camel quartz cron expressions use a 6-7 field cron format; URL-encode
+                // so spaces and '?' characters survive the URI.
+                yield "quartz://jaiclaw-pipelines/" + pipelineId
+                        + "?cron=" + URLEncoder.encode(expr, StandardCharsets.UTF_8);
+            }
             case HTTP -> "direct:pipeline-" + pipelineId + "-http";
             case CAMEL_URI -> trigger.uri() != null ? trigger.uri() : "direct:pipeline-" + pipelineId;
             case MANUAL -> "direct:pipeline-" + pipelineId;

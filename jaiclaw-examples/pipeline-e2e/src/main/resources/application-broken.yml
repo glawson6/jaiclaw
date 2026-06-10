@@ -1,0 +1,31 @@
+# Activated by `--spring.profiles.active=broken`.
+# Defines a pipeline with intentional defects so the validator emits a
+# consolidated error message at startup. Used by run_scenario_6 (6a-Validator).
+#
+# Expected validator errors:
+#   - UNKNOWN_BEAN for the `notARealBean` reference
+#   - UNKNOWN_STAGE_REF for "resarch" with a "did you mean 'research'?" suggestion
+
+jaiclaw:
+  security:
+    mode: none
+  skills:
+    allow-bundled: []
+  pipeline:
+    enabled: true
+    pipelines:
+      - id: broken-pipe
+        name: Intentionally Broken Pipeline
+        enabled: true
+        trigger:
+          type: MANUAL
+        stages:
+          - name: research
+            type: PROCESSOR
+            bean: notARealBean
+          - name: write
+            type: PROCESSOR
+            bean: upperCase
+            systemPrompt: "Use {{stages.resarch.output}}"
+        output:
+          type: LOG

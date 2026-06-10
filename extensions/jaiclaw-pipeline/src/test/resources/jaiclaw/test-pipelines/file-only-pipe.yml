@@ -1,0 +1,10 @@
+id: file-only-pipe
+name: File-only Pipeline
+trigger:
+  type: MANUAL
+stages:
+  - name: s
+    type: PROCESSOR
+    bean: noop
+output:
+  type: LOG

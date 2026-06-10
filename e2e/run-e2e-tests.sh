@@ -8,10 +8,11 @@
 # Usage:
 #   E2E_SCENARIOS=4 ./e2e/run-e2e-tests.sh              # CLI only
 #   E2E_SCENARIOS=1,3,4 ./e2e/run-e2e-tests.sh          # bootstrap + provider + CLI
-#   E2E_SCENARIOS=all ./e2e/run-e2e-tests.sh             # all 5 scenarios
+#   E2E_SCENARIOS=6 ./e2e/run-e2e-tests.sh              # pipeline UX only
+#   E2E_SCENARIOS=all ./e2e/run-e2e-tests.sh             # all 6 scenarios
 #
 # Environment Variables:
-#   E2E_SCENARIOS       Comma-separated list (1,2,3,4,5) or "all" (default: 1,2,3,4)
+#   E2E_SCENARIOS       Comma-separated list (1,2,3,4,5,6) or "all" (default: 1,2,3,4,5,6)
 #   AI_PROVIDER         Provider name: anthropic, openai, gemini (default: anthropic)
 #   ANTHROPIC_API_KEY   API key for Anthropic
 #   ANTHROPIC_BASE_URL  Optional base URL override (e.g., MiniMax endpoint)
@@ -21,6 +22,8 @@
 #   E2E_SYSTEM_PROMPT   System prompt for scenarios 2 & 3
 #   E2E_TIMEOUT         Startup timeout in seconds (default: 120)
 #   E2E_KEEP_ARTIFACTS  Keep temp dirs on success (default: false)
+#   E2E_PIPELINE_PORT   Port for scenario 6 example app (default: 8100)
+#   JAICLAW_E2E_WITH_AGENT  Enable AGENT-stage sub-test in scenario 6 (requires AI key)
 #   JAICLAW_VERSION     Override version detection from pom.xml
 #   PROJECT_ROOT        Override project root auto-detection
 #
@@ -31,6 +34,7 @@ set -euo pipefail
 readonly E2E_DEFAULT_SYSTEM_PROMPT="You are a helpful assistant used for end-to-end testing. Follow instructions exactly. When asked to reply with a specific phrase, reply with only that phrase and nothing else."
 readonly E2E_BOOTSTRAP_PORT=8080
 readonly E2E_SCAFFOLD_PORT=8090
+readonly E2E_PIPELINE_PORT_DEFAULT=8100
 readonly FAST_PATH_TIMEOUT=5
 readonly JVM_PATH_TIMEOUT=120
 
@@ -82,7 +86,7 @@ cleanup() {
     done
 
     # Also kill any Java processes we started on e2e ports
-    for port in $E2E_BOOTSTRAP_PORT $E2E_SCAFFOLD_PORT; do
+    for port in $E2E_BOOTSTRAP_PORT $E2E_SCAFFOLD_PORT "${E2E_PIPELINE_PORT:-$E2E_PIPELINE_PORT_DEFAULT}"; do
         local pid
         pid=$(lsof -ti:"$port" 2>/dev/null || true)
         if [[ -n "$pid" ]]; then
@@ -727,6 +731,264 @@ run_scenario_5() {
     return 0
 }
 
+# ─── Scenario 6 — Pipeline UX Validation ──────────────────────────────────────
+
+# Poll an actuator /health endpoint instead of /api/health (the pipeline example
+# app exposes Spring Boot Actuator, not the gateway's REST surface).
+wait_for_actuator_health() {
+    local port="$1"
+    local timeout="${2:-60}"
+    local elapsed=0
+    while [[ $elapsed -lt $timeout ]]; do
+        if curl -sf "http://localhost:${port}/actuator/health" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    return 1
+}
+
+run_scenario_6() {
+    log_header "Scenario 6 — Pipeline UX Validation"
+
+    # Prerequisites
+    if ! command -v curl &>/dev/null; then
+        log_skip "Scenario 6: curl not available"
+        record_result "6-Pipeline" "SKIP" "curl missing"
+        return 0
+    fi
+
+    local pipeline_port="${E2E_PIPELINE_PORT:-$E2E_PIPELINE_PORT_DEFAULT}"
+    if lsof -ti:"$pipeline_port" >/dev/null 2>&1; then
+        log_fail "Port $pipeline_port already in use"
+        record_result "6-Pipeline" "FAIL" "Port $pipeline_port in use"
+        return 1
+    fi
+
+    # Build the example app (skip tests — the Spock smoke runs in `mvn test`)
+    log_info "Building jaiclaw-example-pipeline-e2e..."
+    (
+        cd "$PROJECT_ROOT"
+        ./mvnw package -pl :jaiclaw-example-pipeline-e2e -am -DskipTests -B -o
+    ) >/dev/null 2>&1 || (
+        cd "$PROJECT_ROOT"
+        ./mvnw package -pl :jaiclaw-example-pipeline-e2e -am -DskipTests -B
+    )
+    local jar
+    jar=$(find "$PROJECT_ROOT/jaiclaw-examples/pipeline-e2e/target" \
+        -maxdepth 1 -name "jaiclaw-example-pipeline-e2e-*.jar" \
+        ! -name "*-original*" -type f 2>/dev/null | head -1)
+    if [[ -z "$jar" ]]; then
+        log_fail "Pipeline example JAR not built"
+        record_result "6-Pipeline" "FAIL" "JAR missing"
+        return 1
+    fi
+    log_info "Pipeline jar: $jar"
+
+    # ── 6a — Validator startup-failure ─────────────────────────────────────
+    log_info "6a — Validator must reject misconfigured pipeline at startup..."
+    local validator_log
+    validator_log=$(mktemp)
+    local validator_exit=0
+    java -jar "$jar" --spring.profiles.active=broken --server.port=0 \
+        >"$validator_log" 2>&1 || validator_exit=$?
+
+    local validator_ok=true
+    if [[ $validator_exit -eq 0 ]]; then
+        log_fail "Validator should have failed startup but exit code was 0"
+        validator_ok=false
+    fi
+    if ! grep -q "Pipeline 'broken-pipe' failed validation" "$validator_log"; then
+        log_fail "Validator did not emit the consolidated error message"
+        validator_ok=false
+    fi
+    if ! grep -q "UNKNOWN_BEAN\|notARealBean" "$validator_log"; then
+        log_fail "Validator did not detect the missing bean"
+        validator_ok=false
+    fi
+    if ! grep -q "did you mean 'research'" "$validator_log"; then
+        log_fail "Validator did not emit a 'did you mean' suggestion"
+        validator_ok=false
+    fi
+    if [[ "$validator_ok" == "true" ]]; then
+        log_pass "6a — Validator failed startup with consolidated message + suggestion"
+        record_result "6a-Validator" "PASS" "consolidated message + 'did you mean'"
+    else
+        log_fail "6a — Validator step failed (log: $validator_log)"
+        record_result "6a-Validator" "FAIL" "see $validator_log"
+        DIRS_TO_CLEAN+=("$validator_log")
+        return 1
+    fi
+    rm -f "$validator_log"
+
+    # ── Start the happy-path app ───────────────────────────────────────────
+    log_info "Starting pipeline-e2e on port $pipeline_port..."
+    local app_log
+    app_log=$(mktemp)
+    java -jar "$jar" --server.port="$pipeline_port" >"$app_log" 2>&1 &
+    local app_pid=$!
+    PIDS_TO_KILL+=("$app_pid")
+
+    if ! wait_for_actuator_health "$pipeline_port" 60; then
+        log_fail "Pipeline-e2e app did not become healthy within 60s"
+        record_result "6-Pipeline" "FAIL" "app did not start (log: $app_log)"
+        kill "$app_pid" 2>/dev/null || true
+        return 1
+    fi
+    log_info "Pipeline app healthy on port $pipeline_port"
+
+    # ── 6b — HTTP trigger (202 + handle) and 404 path ──────────────────────
+    log_info "6b — HTTP trigger + 404 path..."
+    local trigger_body trigger_code execution_id
+    trigger_body=$(curl -sS -X POST \
+        "http://localhost:${pipeline_port}/api/pipelines/processor-pipe/trigger" \
+        -H 'Content-Type: text/plain' -d 'hello e2e' \
+        -w "\n%{http_code}" 2>/dev/null)
+    trigger_code=$(echo "$trigger_body" | tail -1)
+    local trigger_json
+    trigger_json=$(echo "$trigger_body" | sed '$d')
+
+    local trigger_ok=true
+    if [[ "$trigger_code" != "202" ]]; then
+        log_fail "Expected HTTP 202, got $trigger_code"
+        trigger_ok=false
+    fi
+    execution_id=$(echo "$trigger_json" | sed -n 's/.*"executionId":"\([^"]*\)".*/\1/p')
+    if [[ -z "$execution_id" ]]; then
+        log_fail "No executionId in trigger response: $trigger_json"
+        trigger_ok=false
+    fi
+
+    local notfound_code notfound_body
+    notfound_body=$(curl -sS -X POST \
+        "http://localhost:${pipeline_port}/api/pipelines/does-not-exist/trigger" \
+        -d 'x' -w "\n%{http_code}" 2>/dev/null)
+    notfound_code=$(echo "$notfound_body" | tail -1)
+    if [[ "$notfound_code" != "404" ]]; then
+        log_fail "Expected HTTP 404 for unknown pipeline, got $notfound_code"
+        trigger_ok=false
+    fi
+    if ! echo "$notfound_body" | sed '$d' | grep -q '"error"'; then
+        log_fail "404 response missing 'error' field"
+        trigger_ok=false
+    fi
+
+    if [[ "$trigger_ok" == "true" ]]; then
+        log_pass "6b — HTTP trigger returned 202 + handle, 404 path returned error body"
+        record_result "6b-HTTP-trigger" "PASS" "executionId=$execution_id"
+    else
+        log_fail "6b — HTTP trigger checks failed"
+        record_result "6b-HTTP-trigger" "FAIL" "see logs"
+    fi
+
+    # ── 6c — Actuator list + byId ─────────────────────────────────────────
+    log_info "6c — Actuator endpoints..."
+    local list_json
+    list_json=$(curl -sS "http://localhost:${pipeline_port}/actuator/pipelines" 2>/dev/null)
+    local actuator_ok=true
+    if ! echo "$list_json" | grep -q '"processor-pipe"'; then
+        log_fail "Actuator list missing processor-pipe: $list_json"
+        actuator_ok=false
+    fi
+
+    # Poll byId until the execution surfaces (SEDA is async).
+    local byid_json="" byid_attempt=0
+    while [[ $byid_attempt -lt 25 ]]; do
+        byid_json=$(curl -sS "http://localhost:${pipeline_port}/actuator/pipelines/processor-pipe" 2>/dev/null)
+        if echo "$byid_json" | grep -q "$execution_id"; then
+            break
+        fi
+        sleep 0.2
+        byid_attempt=$((byid_attempt + 1))
+    done
+    if ! echo "$byid_json" | grep -q "$execution_id"; then
+        log_fail "byId actuator never surfaced $execution_id: $byid_json"
+        actuator_ok=false
+    fi
+
+    if [[ "$actuator_ok" == "true" ]]; then
+        log_pass "6c — /actuator/pipelines and /actuator/pipelines/{id} both populated"
+        record_result "6c-Actuator" "PASS" "list + byId surfaced execution"
+    else
+        log_fail "6c — Actuator checks failed"
+        record_result "6c-Actuator" "FAIL" "see logs"
+    fi
+
+    # ── 6d — Template + tracker SUCCESS ────────────────────────────────────
+    log_info "6d — Execution detail shows SUCCESS + stage durations + {{input}} resolved..."
+    local detail_json
+    detail_json=$(curl -sS "http://localhost:${pipeline_port}/actuator/pipelines/processor-pipe/${execution_id}" 2>/dev/null)
+    local template_ok=true
+    if ! echo "$detail_json" | grep -q '"status":"SUCCESS"'; then
+        log_fail "Execution detail not SUCCESS: $detail_json"
+        template_ok=false
+    fi
+    if ! echo "$detail_json" | grep -q '"upper"' || ! echo "$detail_json" | grep -q '"exclaim"'; then
+        log_fail "stageDurationsMs missing one of upper/exclaim: $detail_json"
+        template_ok=false
+    fi
+    # Confirm {{input}} flowed through — the output template logs
+    # "upper=HELLO E2E input-was=hello e2e" via the LOG output.
+    if ! grep -q "input-was=hello e2e" "$app_log"; then
+        log_fail "Output template did not show resolved {{input}} in app log"
+        template_ok=false
+    fi
+
+    if [[ "$template_ok" == "true" ]]; then
+        log_pass "6d — Execution SUCCESS + stage durations + {{input}} resolved"
+        record_result "6d-Template" "PASS" "SUCCESS + input resolved"
+    else
+        log_fail "6d — Template/tracker checks failed (log: $app_log)"
+        record_result "6d-Template" "FAIL" "see $app_log"
+    fi
+
+    # ── Optional AGENT pipeline ────────────────────────────────────────────
+    if [[ "${JAICLAW_E2E_WITH_AGENT:-}" == "true" ]]; then
+        if detect_api_key >/dev/null 2>&1; then
+            log_info "6e — AGENT pipeline (JAICLAW_E2E_WITH_AGENT=true)..."
+            # Cleanly restart the app with the env var set so the AGENT pipeline registers.
+            kill "$app_pid" 2>/dev/null || true
+            wait "$app_pid" 2>/dev/null || true
+            local key_var
+            key_var=$(detect_api_key)
+            (
+                export JAICLAW_E2E_WITH_AGENT=true
+                export "${key_var}=${!key_var}"
+                java -jar "$jar" --server.port="$pipeline_port" >>"$app_log" 2>&1
+            ) &
+            app_pid=$!
+            PIDS_TO_KILL+=("$app_pid")
+            if ! wait_for_actuator_health "$pipeline_port" 60; then
+                log_warn "AGENT-mode app did not become healthy; skipping 6e"
+                record_result "6e-Agent" "SKIP" "agent app did not start"
+            else
+                local agent_code
+                agent_code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+                    "http://localhost:${pipeline_port}/api/pipelines/agent-pipe/trigger" \
+                    -H 'Content-Type: text/plain' -d 'how is the weather' 2>/dev/null)
+                if [[ "$agent_code" == "202" ]]; then
+                    log_pass "6e — AGENT trigger returned 202"
+                    record_result "6e-Agent" "PASS" "trigger accepted"
+                else
+                    log_fail "6e — AGENT trigger returned $agent_code"
+                    record_result "6e-Agent" "FAIL" "code=$agent_code"
+                fi
+            fi
+        else
+            log_skip "6e — JAICLAW_E2E_WITH_AGENT=true but no AI key detected"
+            record_result "6e-Agent" "SKIP" "no AI key"
+        fi
+    fi
+
+    # Cleanup
+    kill "$app_pid" 2>/dev/null || true
+    wait "$app_pid" 2>/dev/null || true
+    rm -f "$app_log"
+
+    return 0
+}
+
 # ─── Report ───────────────────────────────────────────────────────────────────
 
 print_report() {
@@ -795,9 +1057,9 @@ main() {
     log_info "JaiClaw version: $version"
 
     # Parse scenarios
-    local scenarios_str="${E2E_SCENARIOS:-1,2,3,4}"
+    local scenarios_str="${E2E_SCENARIOS:-1,2,3,4,6}"
     if [[ "$scenarios_str" == "all" ]]; then
-        scenarios_str="1,2,3,4,5"
+        scenarios_str="1,2,3,4,5,6"
     fi
 
     IFS=',' read -ra SCENARIOS <<< "$scenarios_str"
@@ -823,6 +1085,7 @@ main() {
             3) run_scenario_3 || true ;;
             4) run_scenario_4 || true ;;
             5) run_scenario_5 || true ;;
+            6) run_scenario_6 || true ;;
             *)
                 log_warn "Unknown scenario: $scenario"
                 record_result "?-Unknown($scenario)" "SKIP" "Unknown scenario"

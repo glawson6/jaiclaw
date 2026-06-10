@@ -1,0 +1,38 @@
+spring:
+  main:
+    web-application-type: none
+  shell:
+    interactive:
+      enabled: true
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+
+jaiclaw:
+  security:
+    mode: none
+  skills:
+    allow-bundled: []
+  identity:
+    name: Support Triage Agent
+    description: A Tier-1 support classifier and responder.
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Support Triage Agent
+        tools:
+          profile: minimal
+  pipeline:
+    enabled: true
+    tracker:
+      enabled: true
+      max-per-pipeline: 50
+
+logging:
+  level:
+    io.jaiclaw.pipeline.output.support-triage: DEBUG

@@ -1,0 +1,34 @@
+spring:
+  main:
+    web-application-type: none
+  shell:
+    interactive:
+      enabled: true
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+
+jaiclaw:
+  security:
+    mode: none
+  skills:
+    allow-bundled: []
+  identity:
+    name: Invoice Processor Agent
+    description: Classifies and extracts AP invoice data.
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: Invoice Processor Agent
+        tools:
+          profile: minimal
+  pipeline:
+    enabled: true
+    tracker:
+      enabled: true
+      max-per-pipeline: 50

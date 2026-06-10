@@ -1,68 +1,149 @@
 package io.jaiclaw.pipeline;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Resolves {@code {{stages.X.output}}} and {@code {{stages.X.metadata.key}}} placeholders
- * from {@link PipelineContext#stageOutputs()}.
+ * Resolves {@code {{stages.X.output}}}, {@code {{stages.X.metadata.key}}},
+ * {@code {{pipeline.*}}}, and {@code {{input}}} placeholders against a
+ * {@link PipelineContext}. Unresolved placeholders are left untouched and a
+ * single WARN is logged listing the variables that <em>were</em> available so
+ * authors can spot typos quickly.
  */
 public final class TemplateResolver {
 
+    private static final Logger log = LoggerFactory.getLogger(TemplateResolver.class);
+
+    // Stage names may contain hyphens (e.g. "classify-and-sentiment"), so the
+    // capture group accepts \w and '-'.
     private static final Pattern OUTPUT_PATTERN =
-            Pattern.compile("\\{\\{stages\\.(\\w+)\\.output}}");
+            Pattern.compile("\\{\\{stages\\.([\\w-]+)\\.output}}");
 
     private static final Pattern METADATA_PATTERN =
-            Pattern.compile("\\{\\{stages\\.(\\w+)\\.metadata\\.(\\w+)}}");
+            Pattern.compile("\\{\\{stages\\.([\\w-]+)\\.metadata\\.([\\w-]+)}}");
+
+    private static final Pattern PIPELINE_PATTERN =
+            Pattern.compile("\\{\\{pipeline\\.(\\w+)}}");
+
+    private static final Pattern INPUT_PATTERN =
+            Pattern.compile("\\{\\{input}}");
+
+    private static final Pattern ANY_REMAINING_PATTERN =
+            Pattern.compile("\\{\\{[^{}]+}}");
 
     private TemplateResolver() {}
 
     /**
-     * Resolve all placeholders in the template using stage outputs from the context.
-     * Unresolved placeholders are left as-is.
+     * Legacy 2-arg form. Resolves only stage placeholders, leaves anything else
+     * silently in place. Prefer {@link #resolve(String, PipelineContext)} which
+     * also handles {@code {{input}}} and {@code {{pipeline.*}}} and warns on
+     * unresolved placeholders.
      *
-     * @param template     the template string with placeholders
-     * @param stageOutputs the accumulated stage outputs
-     * @return the resolved template
+     * @deprecated use the context-aware overload — kept for source/binary
+     *             compatibility with callers outside this module.
      */
+    @Deprecated(forRemoval = false)
     public static String resolve(String template, Map<String, PipelineContext.StageOutput> stageOutputs) {
-        if (template == null || template.isEmpty() || stageOutputs == null || stageOutputs.isEmpty()) {
-            return template;
-        }
+        if (template == null || template.isEmpty()) return template;
+        if (stageOutputs == null || stageOutputs.isEmpty()) return template;
+
+        String result = resolveMetadata(template, stageOutputs);
+        result = resolveStageOutputs(result, stageOutputs);
+        return result;
+    }
+
+    /**
+     * Resolve every supported placeholder against {@code ctx}. Logs a WARN for
+     * any placeholder left unresolved (lists the available variable keys),
+     * then returns the partially-resolved string unchanged at those spots.
+     */
+    public static String resolve(String template, PipelineContext ctx) {
+        if (template == null || template.isEmpty() || ctx == null) return template;
 
         String result = template;
+        result = resolveMetadata(result, ctx.stageOutputs());
+        result = resolveStageOutputs(result, ctx.stageOutputs());
+        result = resolvePipelineVars(result, ctx);
+        result = resolveInput(result, ctx);
+        warnOnRemaining(result, template, ctx);
+        return result;
+    }
 
-        // Resolve {{stages.X.metadata.key}} first (more specific pattern)
-        Matcher metaMatcher = METADATA_PATTERN.matcher(result);
-        StringBuilder metaBuilder = new StringBuilder();
-        while (metaMatcher.find()) {
-            String stageName = metaMatcher.group(1);
-            String metaKey = metaMatcher.group(2);
-            PipelineContext.StageOutput output = stageOutputs.get(stageName);
-            if (output != null && output.metadata().containsKey(metaKey)) {
-                metaMatcher.appendReplacement(metaBuilder, Matcher.quoteReplacement(output.metadata().get(metaKey)));
+    private static String resolveMetadata(String template, Map<String, PipelineContext.StageOutput> outputs) {
+        if (outputs == null || outputs.isEmpty()) return template;
+        Matcher m = METADATA_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            PipelineContext.StageOutput out = outputs.get(m.group(1));
+            if (out != null && out.metadata().containsKey(m.group(2))) {
+                m.appendReplacement(sb, Matcher.quoteReplacement(out.metadata().get(m.group(2))));
             } else {
-                metaMatcher.appendReplacement(metaBuilder, Matcher.quoteReplacement(metaMatcher.group()));
+                m.appendReplacement(sb, Matcher.quoteReplacement(m.group()));
             }
         }
-        metaMatcher.appendTail(metaBuilder);
-        result = metaBuilder.toString();
+        m.appendTail(sb);
+        return sb.toString();
+    }
 
-        // Resolve {{stages.X.output}}
-        Matcher outputMatcher = OUTPUT_PATTERN.matcher(result);
-        StringBuilder outputBuilder = new StringBuilder();
-        while (outputMatcher.find()) {
-            String stageName = outputMatcher.group(1);
-            PipelineContext.StageOutput output = stageOutputs.get(stageName);
-            if (output != null) {
-                outputMatcher.appendReplacement(outputBuilder, Matcher.quoteReplacement(output.output()));
+    private static String resolveStageOutputs(String template, Map<String, PipelineContext.StageOutput> outputs) {
+        if (outputs == null || outputs.isEmpty()) return template;
+        Matcher m = OUTPUT_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            PipelineContext.StageOutput out = outputs.get(m.group(1));
+            if (out != null) {
+                m.appendReplacement(sb, Matcher.quoteReplacement(out.output()));
             } else {
-                outputMatcher.appendReplacement(outputBuilder, Matcher.quoteReplacement(outputMatcher.group()));
+                m.appendReplacement(sb, Matcher.quoteReplacement(m.group()));
             }
         }
-        outputMatcher.appendTail(outputBuilder);
+        m.appendTail(sb);
+        return sb.toString();
+    }
 
-        return outputBuilder.toString();
+    private static String resolvePipelineVars(String template, PipelineContext ctx) {
+        Matcher m = PIPELINE_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String key = m.group(1);
+            String value = switch (key) {
+                case "id" -> ctx.pipelineId();
+                case "executionId" -> ctx.executionId();
+                case "tenantId" -> ctx.tenantId();
+                case "correlationId" -> ctx.correlationId();
+                default -> null;
+            };
+            if (value != null) {
+                m.appendReplacement(sb, Matcher.quoteReplacement(value));
+            } else {
+                m.appendReplacement(sb, Matcher.quoteReplacement(m.group()));
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    private static String resolveInput(String template, PipelineContext ctx) {
+        if (!template.contains("{{input}}")) return template;
+        String input = ctx.metadata() == null ? null : ctx.metadata().get(PipelineContext.INPUT_METADATA_KEY);
+        if (input == null) return template;
+        return INPUT_PATTERN.matcher(template).replaceAll(Matcher.quoteReplacement(input));
+    }
+
+    private static void warnOnRemaining(String resolved, String original, PipelineContext ctx) {
+        Matcher m = ANY_REMAINING_PATTERN.matcher(resolved);
+        if (!m.find()) return;
+        TreeSet<String> unresolved = new TreeSet<>();
+        do {
+            unresolved.add(m.group());
+        } while (m.find());
+        log.warn("Unresolved placeholder(s) {} in pipeline '{}' (executionId={}). Available variables: {}",
+                unresolved, ctx.pipelineId(), ctx.executionId(),
+                new TreeSet<>(ctx.availableVariables().keySet()));
     }
 }
