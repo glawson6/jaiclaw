@@ -1,5 +1,7 @@
 package io.jaiclaw.core.tenant;
 
+import io.jaiclaw.core.api.Stable;
+
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
@@ -21,6 +23,7 @@ import java.util.function.Supplier;
  * CompletableFuture.supplyAsync(TenantContextPropagator.wrap(() -&gt; compute()));
  * </pre>
  */
+@Stable
 public final class TenantContextPropagator {
 
     private TenantContextPropagator() {}

@@ -2,20 +2,21 @@ package io.jaiclaw.channel.telegram;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
+import io.jaiclaw.channel.util.WebhookSignatureUtil;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Telegram Bot API channel adapter with two inbound modes:
@@ -34,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>Polling strategy is delegated to a {@link TelegramPollingStrategy} implementation,
  * selectable via {@code jaiclaw.channels.telegram.polling-strategy} (native | camel).
  */
-public class TelegramAdapter implements ChannelAdapter {
+public class TelegramAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -44,8 +45,6 @@ public class TelegramAdapter implements ChannelAdapter {
     private final WebhookDispatcher webhookDispatcher;
     private final TelegramHttpClient httpClient;
     private final TelegramPollingStrategy pollingStrategy;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ChannelMessageHandler handler;
 
     public TelegramAdapter(TelegramConfig config, WebhookDispatcher webhookDispatcher) {
         this(config, webhookDispatcher,
@@ -63,6 +62,7 @@ public class TelegramAdapter implements ChannelAdapter {
     public TelegramAdapter(TelegramConfig config, WebhookDispatcher webhookDispatcher,
                            TelegramHttpClient httpClient,
                            TelegramPollingStrategy pollingStrategy) {
+        super("telegram", "Telegram", PlatformLimits.TELEGRAM);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
         this.httpClient = httpClient;
@@ -70,25 +70,7 @@ public class TelegramAdapter implements ChannelAdapter {
     }
 
     @Override
-    public String channelId() {
-        return "telegram";
-    }
-
-    @Override
-    public String displayName() {
-        return "Telegram";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.TELEGRAM;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-        running.set(true);
-
+    protected void doStart() {
         if (config.usePolling()) {
             pollingStrategy.startPolling(config, this::processUpdate);
             log.info("Telegram adapter started in POLLING mode ({} strategy)",
@@ -101,7 +83,7 @@ public class TelegramAdapter implements ChannelAdapter {
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             // Send file attachments first
             if (message.hasAttachments()) {
@@ -189,20 +171,10 @@ public class TelegramAdapter implements ChannelAdapter {
     }
 
     @Override
-    public void stop() {
-        running.set(false);
+    protected void doStop() {
         if (config.usePolling()) {
             pollingStrategy.stopPolling();
         }
-        log.info("Telegram adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        if (config.usePolling()) {
-            return running.get() && pollingStrategy.isPolling();
-        }
-        return running.get();
     }
 
     // --- Update processing (shared by both polling and webhook) ---
@@ -241,13 +213,11 @@ public class TelegramAdapter implements ChannelAdapter {
         var channelMessage = ChannelMessage.inbound(
                 updateId, "telegram", config.accountId(), chatId, text, attachments, platformData);
 
-        if (handler != null) {
-            try {
-                handler.onMessage(channelMessage);
-            } catch (Exception e) {
-                log.error("Error processing Telegram message from user {}: {}",
-                        fromId, e.getMessage(), e);
-            }
+        try {
+            dispatchInbound(channelMessage);
+        } catch (Exception e) {
+            log.error("Error processing Telegram message from user {}: {}",
+                    fromId, e.getMessage(), e);
         }
     }
 
@@ -378,12 +348,11 @@ public class TelegramAdapter implements ChannelAdapter {
 
     private ResponseEntity<String> handleWebhook(String body, Map<String, String> headers) {
         try {
-            // Verify webhook secret token when verifyWebhook is enabled
+            // Verify webhook secret token when verifyWebhook is enabled.
+            // 0.8.0 P3.3: constant-time compare via the shared helper.
             if (config.verifyWebhook() && !config.webhookSecretToken().isBlank()) {
                 String provided = headers.get("x-telegram-bot-api-secret-token");
-                if (provided == null || !MessageDigest.isEqual(
-                        provided.getBytes(StandardCharsets.UTF_8),
-                        config.webhookSecretToken().getBytes(StandardCharsets.UTF_8))) {
+                if (!WebhookSignatureUtil.constantTimeEquals(provided, config.webhookSecretToken())) {
                     log.warn("Telegram webhook secret token verification failed");
                     return ResponseEntity.status(401).body("invalid secret token");
                 }

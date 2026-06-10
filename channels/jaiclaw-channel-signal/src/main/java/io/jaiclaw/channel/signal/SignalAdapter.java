@@ -2,7 +2,9 @@ package io.jaiclaw.channel.signal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.channel.process.CliProcessBridge;
 import io.jaiclaw.channel.process.CliProcessConfig;
@@ -12,7 +14,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Signal messaging channel adapter with two integration modes:
@@ -24,15 +25,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p><b>HTTP_CLIENT mode</b>: Polls an external signal-cli-rest-api sidecar
  * via HTTP for inbound messages and sends outbound via REST.
  */
-public class SignalAdapter implements ChannelAdapter {
+public class SignalAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(SignalAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final SignalConfig config;
     private final RestTemplate restTemplate;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ChannelMessageHandler handler;
 
     // EMBEDDED mode
     private CliProcessBridge processBridge;
@@ -45,47 +44,30 @@ public class SignalAdapter implements ChannelAdapter {
     }
 
     public SignalAdapter(SignalConfig config, RestTemplate restTemplate) {
+        super("signal", "Signal", PlatformLimits.SIGNAL);
         this.config = config;
         this.restTemplate = restTemplate;
     }
 
     // Visible for testing — allows injecting a mock bridge
     SignalAdapter(SignalConfig config, RestTemplate restTemplate, CliProcessBridge processBridge) {
+        super("signal", "Signal", PlatformLimits.SIGNAL);
         this.config = config;
         this.restTemplate = restTemplate;
         this.processBridge = processBridge;
     }
 
     @Override
-    public String channelId() {
-        return "signal";
-    }
-
-    @Override
-    public String displayName() {
-        return "Signal";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.SIGNAL;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-
+    protected void doStart() {
         if (config.mode() == SignalMode.EMBEDDED) {
             startEmbedded();
         } else {
             startHttpClient();
         }
-
-        running.set(true);
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             if (config.mode() == SignalMode.EMBEDDED) {
                 return sendViaJsonRpc(message);
@@ -99,22 +81,13 @@ public class SignalAdapter implements ChannelAdapter {
     }
 
     @Override
-    public void stop() {
-        running.set(false);
-
+    protected void doStop() {
         if (pollingThread != null) {
             pollingThread.interrupt();
         }
         if (processBridge != null) {
             processBridge.stop();
         }
-
-        log.info("Signal adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     // --- EMBEDDED mode ---
@@ -176,7 +149,7 @@ public class SignalAdapter implements ChannelAdapter {
         pollingThread = Thread.ofVirtual().name("signal-poller").start(() -> {
             log.info("Signal HTTP polling started (interval={}s, url={})",
                     config.pollIntervalSeconds(), config.apiUrl());
-            while (running.get() || !Thread.currentThread().isInterrupted()) {
+            while (isRunning() || !Thread.currentThread().isInterrupted()) {
                 try {
                     pollMessages();
                     Thread.sleep(config.pollIntervalSeconds() * 1000L);
@@ -285,8 +258,6 @@ public class SignalAdapter implements ChannelAdapter {
         var channelMessage = ChannelMessage.inbound(
                 messageId, "signal", config.phoneNumber(), sender, text, platformData);
 
-        if (handler != null) {
-            handler.onMessage(channelMessage);
-        }
+        dispatchInbound(channelMessage);
     }
 }

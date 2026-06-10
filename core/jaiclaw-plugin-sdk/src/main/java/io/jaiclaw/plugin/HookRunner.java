@@ -1,5 +1,6 @@
 package io.jaiclaw.plugin;
 
+import io.jaiclaw.core.api.Internal;
 import io.jaiclaw.core.hook.HookRegistration;
 import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.tenant.TenantContextPropagator;
@@ -25,6 +26,7 @@ import java.util.concurrent.Executors;
  *       in priority order, each receiving the previous handler's result.</li>
  * </ul>
  */
+@Internal
 public class HookRunner {
 
     private static final Logger log = LoggerFactory.getLogger(HookRunner.class);

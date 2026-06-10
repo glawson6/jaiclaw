@@ -1,5 +1,6 @@
 package io.jaiclaw.plugin;
 
+import io.jaiclaw.core.api.Internal;
 import io.jaiclaw.core.hook.HookHandler;
 import io.jaiclaw.core.hook.HookRegistration;
 import io.jaiclaw.core.hook.event.HookEvent;
@@ -18,6 +19,7 @@ import java.util.Set;
  * {@code Class<? extends HookEvent>}. See {@code docs/MIGRATION-0.8.md}
  * § P3.1.
  */
+@Internal
 public class PluginApiImpl implements PluginApi {
 
     private final String pluginId;

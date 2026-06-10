@@ -1,5 +1,6 @@
 package io.jaiclaw.plugin;
 
+import io.jaiclaw.core.api.Internal;
 import io.jaiclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import java.util.*;
  * </ol>
  * Results are merged (deduped by plugin ID) into the PluginRegistry.
  */
+@Internal
 public class PluginDiscovery {
 
     private static final Logger log = LoggerFactory.getLogger(PluginDiscovery.class);

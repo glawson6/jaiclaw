@@ -1,10 +1,15 @@
 package io.jaiclaw.core.tool;
 
+import io.jaiclaw.core.api.Stable;
+
 import java.util.Map;
 
 /**
  * Runtime context provided to a tool during execution.
+ *
+ * <p>0.8.0 P3.5: {@link Stable}.
  */
+@Stable
 public record ToolContext(
         String agentId,
         String sessionKey,

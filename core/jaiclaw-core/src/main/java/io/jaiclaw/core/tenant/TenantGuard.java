@@ -1,5 +1,7 @@
 package io.jaiclaw.core.tenant;
 
+import io.jaiclaw.core.api.Stable;
+
 /**
  * Central tenant resolution utility. All components that need tenant-awareness
  * should inject {@code TenantGuard} instead of directly calling {@link TenantContextHolder}.
@@ -21,7 +23,10 @@ package io.jaiclaw.core.tenant;
  *   <tr><td>Map key</td><td>No prefix</td><td>{tenantId}:</td></tr>
  *   <tr><td>JSON filter</td><td>No filter</td><td>Filter by tenantId</td></tr>
  * </table>
+ *
+ * <p>0.8.0 P3.5: {@link Stable}.
  */
+@Stable
 public class TenantGuard {
 
     private final TenantProperties props;

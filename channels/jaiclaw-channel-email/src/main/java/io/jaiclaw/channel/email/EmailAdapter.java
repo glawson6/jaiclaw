@@ -1,6 +1,8 @@
 package io.jaiclaw.channel.email;
 
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,50 +14,32 @@ import jakarta.mail.internet.MimeMultipart;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Email channel adapter supporting IMAP inbound and SMTP outbound.
  * Polls IMAP folders for new messages and dispatches them as ChannelMessages.
  * Supports file attachments via MIME multipart parsing.
+ *
+ * <p>0.8.0 P3.3: now extends {@link AbstractChannelAdapter}.
  */
-public class EmailAdapter implements ChannelAdapter {
+public class EmailAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(EmailAdapter.class);
 
     private final EmailConfig config;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ChannelMessageHandler handler;
     private Thread pollingThread;
 
     public EmailAdapter(EmailConfig config) {
+        super("email", "Email", PlatformLimits.EMAIL);
         this.config = config;
     }
 
     @Override
-    public String channelId() {
-        return "email";
-    }
-
-    @Override
-    public String displayName() {
-        return "Email";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.EMAIL;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-        running.set(true);
-
+    protected void doStart() {
         pollingThread = Thread.ofVirtual().name("email-poller").start(() -> {
             log.info("Email polling started (interval={}s, folders={})",
                     config.pollingInterval(), Arrays.toString(config.folders()));
-            while (running.get() && !Thread.currentThread().isInterrupted()) {
+            while (isRunning() && !Thread.currentThread().isInterrupted()) {
                 try {
                     pollForMessages();
                     Thread.sleep(config.pollingInterval() * 1000L);
@@ -79,7 +63,14 @@ public class EmailAdapter implements ChannelAdapter {
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected void doStop() {
+        if (pollingThread != null) {
+            pollingThread.interrupt();
+        }
+    }
+
+    @Override
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             Properties props = new Properties();
             props.put("mail.smtp.auth", "true");
@@ -107,20 +98,6 @@ public class EmailAdapter implements ChannelAdapter {
             log.error("Failed to send email to {}: {}", message.peerId(), e.getMessage());
             return new DeliveryResult.Failure("email_send_failed", e.getMessage(), true);
         }
-    }
-
-    @Override
-    public void stop() {
-        running.set(false);
-        if (pollingThread != null) {
-            pollingThread.interrupt();
-        }
-        log.info("Email adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     void pollForMessages() throws Exception {
@@ -170,9 +147,7 @@ public class EmailAdapter implements ChannelAdapter {
                 messageId, "email", config.username(), from,
                 body, attachments, platformData);
 
-        if (handler != null) {
-            handler.onMessage(channelMessage);
-        }
+        dispatchInbound(channelMessage);
     }
 
     String extractTextContent(Message message) throws Exception {

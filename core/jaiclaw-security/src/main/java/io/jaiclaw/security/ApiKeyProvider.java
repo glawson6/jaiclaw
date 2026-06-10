@@ -13,7 +13,13 @@ import java.security.SecureRandom;
  * auto-generates one and persists it to disk.
  * <p>
  * Key format: {@code jaiclaw_ak_} followed by 32 hex characters (43 chars total).
- * For backward compatibility, keys with the legacy {@code jclaw_ak_} prefix are also accepted.
+ *
+ * <p>0.8.0 P3.5: the pre-0.8.0 fallback accepting keys with the legacy
+ * {@code jclaw_ak_} prefix was removed as part of the naming
+ * consolidation. Operators upgrading from 0.7.x with a stored
+ * {@code jclaw_ak_...} key must regenerate (delete the key file and
+ * restart, or supply a new key via {@code jaiclaw.security.api-key}).
+ * See {@code docs/MIGRATION-0.8.md} § P3.5.
  */
 public class ApiKeyProvider {
 

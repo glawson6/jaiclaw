@@ -2,7 +2,9 @@ package io.jaiclaw.channel.discord;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
@@ -18,7 +20,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>Outbound: Always sends via Discord REST API channels/{id}/messages.
  */
-public class DiscordAdapter implements ChannelAdapter {
+public class DiscordAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -42,11 +43,9 @@ public class DiscordAdapter implements ChannelAdapter {
     private final DiscordConfig config;
     private final WebhookDispatcher webhookDispatcher;
     private final RestTemplate restTemplate;
-    private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<WebSocket> gatewayWs = new AtomicReference<>();
     private final AtomicReference<String> sessionId = new AtomicReference<>();
     private final AtomicReference<Integer> lastSequence = new AtomicReference<>(null);
-    private ChannelMessageHandler handler;
     private Thread gatewayReconnectThread;
     private ScheduledExecutorService heartbeatExecutor;
 
@@ -56,30 +55,14 @@ public class DiscordAdapter implements ChannelAdapter {
 
     public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher,
                           RestTemplate restTemplate) {
+        super("discord", "Discord", PlatformLimits.DISCORD);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
         this.restTemplate = restTemplate;
     }
 
     @Override
-    public String channelId() {
-        return "discord";
-    }
-
-    @Override
-    public String displayName() {
-        return "Discord";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.DISCORD;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-
+    protected void doStart() {
         if (config.useGateway()) {
             startGateway();
             log.info("Discord adapter started in GATEWAY mode (no public endpoint needed)");
@@ -87,12 +70,10 @@ public class DiscordAdapter implements ChannelAdapter {
             webhookDispatcher.register("discord", this::handleWebhook);
             log.info("Discord adapter started in WEBHOOK mode (Interactions)");
         }
-
-        running.set(true);
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             String url = DISCORD_API_BASE + "channels/" + message.peerId() + "/messages";
 
@@ -121,8 +102,7 @@ public class DiscordAdapter implements ChannelAdapter {
     }
 
     @Override
-    public void stop() {
-        running.set(false);
+    protected void doStop() {
         if (heartbeatExecutor != null) {
             heartbeatExecutor.shutdownNow();
         }
@@ -133,19 +113,13 @@ public class DiscordAdapter implements ChannelAdapter {
         if (gatewayReconnectThread != null) {
             gatewayReconnectThread.interrupt();
         }
-        log.info("Discord adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     // --- Gateway WebSocket mode ---
 
     private void startGateway() {
         gatewayReconnectThread = Thread.ofVirtual().name("discord-gateway").start(() -> {
-            while (running.get() || !Thread.currentThread().isInterrupted()) {
+            while (isRunning() || !Thread.currentThread().isInterrupted()) {
                 try {
                     connectGateway();
                 } catch (InterruptedException e) {
@@ -378,9 +352,7 @@ public class DiscordAdapter implements ChannelAdapter {
         var channelMessage = ChannelMessage.inbound(
                 messageId, "discord", guildId, channelIdValue, content, platformData);
 
-        if (handler != null) {
-            handler.onMessage(channelMessage);
-        }
+        dispatchInbound(channelMessage);
     }
 
     // --- Webhook mode (Interactions) ---
@@ -414,9 +386,7 @@ public class DiscordAdapter implements ChannelAdapter {
                     var channelMessage = ChannelMessage.inbound(
                             interactionId, "discord", guildId, channelIdValue, content, platformData);
 
-                    if (handler != null) {
-                        handler.onMessage(channelMessage);
-                    }
+                    dispatchInbound(channelMessage);
                 }
             }
 

@@ -38,6 +38,7 @@ import java.util.regex.Pattern;
  *                                values (length &lt; 16 or matches {@code [a-z]+})
  *                                at construction time (default: false)
  */
+@io.jaiclaw.core.api.Stable
 public record TenantProperties(
         TenantMode mode,
         String defaultTenantId,

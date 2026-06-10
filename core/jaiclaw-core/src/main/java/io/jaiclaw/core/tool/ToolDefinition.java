@@ -1,12 +1,17 @@
 package io.jaiclaw.core.tool;
 
+import io.jaiclaw.core.api.Stable;
+
 import java.util.Set;
 
 /**
  * Metadata describing a tool that can be provided to an LLM.
  * The {@code inputSchema} is a JSON Schema string describing the tool's parameters,
  * used by Spring AI to generate function-call payloads for the model.
+ *
+ * <p>0.8.0 P3.5: {@link Stable}.
  */
+@Stable
 public record ToolDefinition(
         String name,
         String description,

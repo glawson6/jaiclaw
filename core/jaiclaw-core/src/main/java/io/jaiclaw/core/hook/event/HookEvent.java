@@ -1,5 +1,7 @@
 package io.jaiclaw.core.hook.event;
 
+import io.jaiclaw.core.api.Experimental;
+
 import java.time.Instant;
 
 /**
@@ -27,6 +29,7 @@ import java.time.Instant;
  * {@link ToolCallStartedEvent}, the assistant message on
  * {@link AgentEndedEvent}, etc.).
  */
+@Experimental
 public sealed interface HookEvent
         permits AgentStartedEvent, AgentEndedEvent,
                 BeforeModelResolveEvent, BeforePromptBuildEvent,

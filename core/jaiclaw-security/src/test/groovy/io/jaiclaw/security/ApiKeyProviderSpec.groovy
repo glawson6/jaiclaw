@@ -82,16 +82,12 @@ class ApiKeyProviderSpec extends Specification {
         !provider.maskedKey.contains("jaiclaw_ak_")
     }
 
-    def "accepts legacy jclaw_ak_ prefix from file"() {
-        given:
-        Path keyFile = tempDir.resolve("api-key")
-        Files.writeString(keyFile, "jclaw_ak_legacykey1234567890abcdef\n")
-
-        when:
-        def provider = new ApiKeyProvider(null, keyFile.toString())
-
-        then:
-        provider.source == "file"
-        provider.resolvedKey == "jclaw_ak_legacykey1234567890abcdef"
-    }
+    // 0.8.0 P3.5: the pre-0.8.0 "accepts legacy jclaw_ak_ prefix" spec was
+    // removed as part of the naming consolidation. ApiKeyProvider does not
+    // validate the prefix at construction time (it accepts whatever's in
+    // the key file or property), but the documented format is now strictly
+    // `jaiclaw_ak_...`. Operators upgrading from 0.7.x with a stored
+    // `jclaw_ak_...` key must regenerate (delete the key file and restart,
+    // or supply a new key via `jaiclaw.security.api-key`).
+    // See `docs/MIGRATION-0.8.md` § P3.5.
 }

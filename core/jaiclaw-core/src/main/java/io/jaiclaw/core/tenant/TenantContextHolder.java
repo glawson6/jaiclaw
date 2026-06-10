@@ -1,5 +1,7 @@
 package io.jaiclaw.core.tenant;
 
+import io.jaiclaw.core.api.Stable;
+
 /**
  * Thread-local holder for the current {@link TenantContext}.
  * <p>
@@ -7,7 +9,10 @@ package io.jaiclaw.core.tenant;
  * cleared in a finally block after the request completes. Async tasks
  * (e.g., {@code @Async}) do NOT inherit the context — they must explicitly
  * receive and re-set it.
+ *
+ * <p>0.8.0 P3.5: {@link Stable}.
  */
+@Stable
 public final class TenantContextHolder {
 
     private static final ThreadLocal<TenantContext> CONTEXT = new ThreadLocal<>();

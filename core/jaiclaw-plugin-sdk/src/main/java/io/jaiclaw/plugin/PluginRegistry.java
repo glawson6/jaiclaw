@@ -1,5 +1,6 @@
 package io.jaiclaw.plugin;
 
+import io.jaiclaw.core.api.Internal;
 import io.jaiclaw.core.hook.HookRegistration;
 import io.jaiclaw.core.hook.event.HookEvent;
 
@@ -14,6 +15,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * {@link HookEvent} type parameter (was {@code <E, C>}); the lookup key is
  * the event class rather than the pre-0.8.0 {@code HookName} enum.
  */
+@Internal
 public class PluginRegistry {
 
     private final List<PluginRecord> plugins = new CopyOnWriteArrayList<>();

@@ -1,6 +1,8 @@
 package io.jaiclaw.channel.sms;
 
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,64 +10,59 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * SMS/MMS channel adapter using Twilio REST API.
  * Inbound: receives Twilio webhook POST requests parsed by the gateway.
  * Outbound: sends SMS via Twilio Messages API.
+ *
+ * <p>0.8.0 P3.3: now extends {@link AbstractChannelAdapter}, which final-
+ * implements the {@code running} flag, {@code start}/{@code stop}
+ * lifecycle, and outbound chunking against {@link PlatformLimits#SMS}
+ * (160 chars).
  */
-public class SmsAdapter implements ChannelAdapter {
+public class SmsAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(SmsAdapter.class);
     private static final String TWILIO_API_BASE = "https://api.twilio.com/2010-04-01/Accounts/";
 
     private final SmsConfig config;
     private final RestTemplate restTemplate;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ChannelMessageHandler handler;
 
     public SmsAdapter(SmsConfig config) {
         this(config, new RestTemplate());
     }
 
     public SmsAdapter(SmsConfig config, RestTemplate restTemplate) {
+        super("sms", "SMS", PlatformLimits.SMS);
         this.config = config;
         this.restTemplate = restTemplate;
     }
 
     @Override
-    public String channelId() {
-        return "sms";
-    }
-
-    @Override
-    public String displayName() {
-        return "SMS";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.SMS;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-        running.set(true);
+    protected void doStart() {
         log.info("SMS adapter started: from={}, webhook={}", config.fromNumber(), config.webhookPath());
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected void doStop() {
+        // No platform-side resources to release; the webhook dispatcher
+        // continues to own its registration.
+    }
+
+    @Override
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             String url = TWILIO_API_BASE + config.accountSid() + "/Messages.json";
             String body = "From=" + encode(config.fromNumber())
                     + "&To=" + encode(message.peerId())
                     + "&Body=" + encode(message.content());
 
-            // Twilio expects form-encoded POST with Basic auth
             var headers = new org.springframework.http.HttpHeaders();
             headers.setBasicAuth(config.accountSid(), config.authToken());
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED);
@@ -122,20 +119,7 @@ public class SmsAdapter implements ChannelAdapter {
                 messageSid, "sms", config.fromNumber(), from,
                 body, attachments, platformData);
 
-        if (handler != null) {
-            handler.onMessage(message);
-        }
-    }
-
-    @Override
-    public void stop() {
-        running.set(false);
-        log.info("SMS adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
+        dispatchInbound(message);
     }
 
     SmsConfig config() {

@@ -1,12 +1,13 @@
 package io.jaiclaw.channel.matrix;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -17,49 +18,32 @@ import java.util.concurrent.atomic.AtomicReference;
  * No external SDK — pure {@link java.net.http.HttpClient} implementation.
  *
  * <p>Sync loop runs on a virtual thread, polling the homeserver for new events
- * and dispatching them to the {@link ChannelMessageHandler}.
+ * and dispatching them to the inbound handler.
+ *
+ * <p>0.8.0 P3.3: now extends {@link AbstractChannelAdapter}.
  */
-public class MatrixAdapter implements ChannelAdapter {
+public class MatrixAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(MatrixAdapter.class);
 
     private final MatrixConfig config;
     private final MatrixApiClient apiClient;
-    private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<String> sincToken = new AtomicReference<>();
-    private ChannelMessageHandler handler;
     private Thread syncThread;
 
     public MatrixAdapter(MatrixConfig config, MatrixApiClient apiClient) {
+        super("matrix", "Matrix", PlatformLimits.MATRIX);
         this.config = config;
         this.apiClient = apiClient;
     }
 
     @Override
-    public String channelId() {
-        return "matrix";
-    }
-
-    @Override
-    public String displayName() {
-        return "Matrix";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.MATRIX;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-        running.set(true);
-
+    protected void doStart() {
         syncThread = Thread.ofVirtual().name("matrix-sync").start(() -> {
             log.info("Matrix sync loop started (homeserver={}, timeout={}ms)",
                     config.homeserverUrl(), config.syncTimeoutMs());
 
-            while (running.get() && !Thread.currentThread().isInterrupted()) {
+            while (isRunning() && !Thread.currentThread().isInterrupted()) {
                 try {
                     pollSync();
                 } catch (InterruptedException e) {
@@ -82,7 +66,14 @@ public class MatrixAdapter implements ChannelAdapter {
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected void doStop() {
+        if (syncThread != null) {
+            syncThread.interrupt();
+        }
+    }
+
+    @Override
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             // roomId is stored in accountId (session key convention)
             String roomId = message.accountId();
@@ -105,20 +96,6 @@ public class MatrixAdapter implements ChannelAdapter {
         }
     }
 
-    @Override
-    public void stop() {
-        running.set(false);
-        if (syncThread != null) {
-            syncThread.interrupt();
-        }
-        log.info("Matrix adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
-    }
-
     /**
      * Perform a single sync poll cycle. Visible for testing.
      */
@@ -139,9 +116,7 @@ public class MatrixAdapter implements ChannelAdapter {
                 log.debug("Dropping message from non-allowed Matrix sender {}", sender);
                 continue;
             }
-            if (handler != null) {
-                handler.onMessage(msg);
-            }
+            dispatchInbound(msg);
         }
     }
 

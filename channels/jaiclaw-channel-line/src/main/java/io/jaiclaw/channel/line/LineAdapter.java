@@ -2,7 +2,9 @@ package io.jaiclaw.channel.line;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,66 +19,59 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * LINE messaging channel adapter.
  *
  * <p>Uses the LINE Messaging API for outbound messages (push/reply) and
- * processes inbound webhook events from LINE's platform. The LINE Bot SDK
- * provides message types and event parsing.
+ * processes inbound webhook events from LINE's platform.
  *
  * <p>Inbound: webhook events are dispatched via {@link #processWebhookPayload(String, String)}.
  * Outbound: uses LINE Messaging API push endpoint via HTTP client.
+ *
+ * <p>0.8.0 P3.3: now extends {@link AbstractChannelAdapter}.
+ *
+ * <p>Note: LINE signs webhooks using Base64-encoded HMAC-SHA256, which
+ * differs from the hex format used by the shared
+ * {@link io.jaiclaw.channel.util.WebhookSignatureUtil}; the signature
+ * helper remains inline here.
  */
-public class LineAdapter implements ChannelAdapter {
+public class LineAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(LineAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String LINE_API_BASE = "https://api.line.me/v2/bot";
 
     private final LineConfig config;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ChannelMessageHandler handler;
     private HttpClient httpClient;
 
     public LineAdapter(LineConfig config) {
+        super("line", "LINE", PlatformLimits.LINE);
         this.config = config;
     }
 
     // Visible for testing
     LineAdapter(LineConfig config, HttpClient httpClient) {
+        super("line", "LINE", PlatformLimits.LINE);
         this.config = config;
         this.httpClient = httpClient;
     }
 
     @Override
-    public String channelId() {
-        return "line";
-    }
-
-    @Override
-    public String displayName() {
-        return "LINE";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.LINE;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
+    protected void doStart() {
         if (httpClient == null) {
             httpClient = HttpClient.newHttpClient();
         }
-        running.set(true);
         log.info("LINE adapter started");
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected void doStop() {
+        // No resources to release.
+    }
+
+    @Override
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             // Check if we have a replyToken to use reply API, otherwise use push API
             String replyToken = message.platformData() != null
@@ -92,17 +87,6 @@ public class LineAdapter implements ChannelAdapter {
             log.error("Failed to send LINE message to {}", message.peerId(), e);
             return new DeliveryResult.Failure("send_failed", e.getMessage(), true);
         }
-    }
-
-    @Override
-    public void stop() {
-        running.set(false);
-        log.info("LINE adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     /**
@@ -145,8 +129,8 @@ public class LineAdapter implements ChannelAdapter {
         }
 
         ChannelMessage channelMessage = LineMessageMapper.mapEvent(event);
-        if (channelMessage != null && handler != null) {
-            handler.onMessage(channelMessage);
+        if (channelMessage != null) {
+            dispatchInbound(channelMessage);
         }
     }
 

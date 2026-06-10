@@ -2,7 +2,9 @@ package io.jaiclaw.channel.teams;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
@@ -12,7 +14,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Microsoft Teams channel adapter using the Bot Framework REST API.
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * ({@code {serviceUrl}/v3/conversations/{conversationId}/activities/{replyToId}})
  * using an Azure AD OAuth 2.0 bearer token.
  */
-public class TeamsAdapter implements ChannelAdapter {
+public class TeamsAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(TeamsAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -34,9 +35,7 @@ public class TeamsAdapter implements ChannelAdapter {
     private final RestTemplate restTemplate;
     private final TeamsTokenManager tokenManager;
     private final TeamsJwtValidator jwtValidator;
-    private final AtomicBoolean running = new AtomicBoolean(false);
     private final Map<String, String> serviceUrlCache = new ConcurrentHashMap<>();
-    private ChannelMessageHandler handler;
 
     public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher) {
         this(config, webhookDispatcher, new RestTemplate());
@@ -44,6 +43,7 @@ public class TeamsAdapter implements ChannelAdapter {
 
     public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher,
                         RestTemplate restTemplate) {
+        super("teams", "Microsoft Teams", PlatformLimits.TEAMS);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
         this.restTemplate = restTemplate;
@@ -52,30 +52,18 @@ public class TeamsAdapter implements ChannelAdapter {
     }
 
     @Override
-    public String channelId() {
-        return "teams";
-    }
-
-    @Override
-    public String displayName() {
-        return "Microsoft Teams";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.TEAMS;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
+    protected void doStart() {
         webhookDispatcher.register("teams", this::handleWebhook);
-        running.set(true);
         log.info("Teams adapter started (webhook mode)");
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected void doStop() {
+        // No resources to release; webhook dispatcher continues to own its registration.
+    }
+
+    @Override
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             String conversationId = message.peerId();
             String serviceUrl = resolveServiceUrl(message);
@@ -129,17 +117,6 @@ public class TeamsAdapter implements ChannelAdapter {
             log.error("Failed to send Teams message to {}", message.peerId(), e);
             return new DeliveryResult.Failure("send_failed", e.getMessage(), true);
         }
-    }
-
-    @Override
-    public void stop() {
-        running.set(false);
-        log.info("Teams adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     // --- Webhook handling ---
@@ -249,9 +226,7 @@ public class TeamsAdapter implements ChannelAdapter {
                     activityId, "teams", tenantId, conversationId, text, attachments, platformData);
         }
 
-        if (handler != null) {
-            handler.onMessage(channelMessage);
-        }
+        dispatchInbound(channelMessage);
 
         return ResponseEntity.ok("");
     }

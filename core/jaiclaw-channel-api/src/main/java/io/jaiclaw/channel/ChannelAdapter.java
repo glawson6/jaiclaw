@@ -1,6 +1,7 @@
 package io.jaiclaw.channel;
 
 import io.jaiclaw.channel.chunking.PlatformLimits;
+import io.jaiclaw.core.api.Stable;
 
 /**
  * SPI for messaging platform adapters. Each adapter handles one channel
@@ -14,6 +15,7 @@ import io.jaiclaw.channel.chunking.PlatformLimits;
  *   <li>{@link #stop()} — called during shutdown</li>
  * </ol>
  */
+@Stable
 public interface ChannelAdapter {
 
     /** Unique channel identifier, e.g. "telegram", "slack", "discord". */

@@ -388,14 +388,15 @@ public class ProjectScanner {
     record SourceToolScanResult(int pluginToolCount, int customToolCount, int estimatedTokens) {}
 
     /**
-     * Navigates a config path, trying both "jaiclaw" and "jclaw" as the root key.
+     * Navigates a config path under the canonical {@code jaiclaw} root.
+     *
+     * <p>0.8.0 P3.5: the legacy {@code jclaw}-root fallback was removed
+     * as part of the naming consolidation. Projects that ship an
+     * {@code application.yml} with {@code jclaw:} as the root key must
+     * rename it to {@code jaiclaw:}.
      */
     private JsonNode navigateConfigPath(JsonNode root, String... subKeys) {
-        JsonNode result = navigatePath(root, prepend("jaiclaw", subKeys));
-        if (result == null) {
-            result = navigatePath(root, prepend("jclaw", subKeys));
-        }
-        return result;
+        return navigatePath(root, prepend("jaiclaw", subKeys));
     }
 
     private String[] prepend(String first, String... rest) {

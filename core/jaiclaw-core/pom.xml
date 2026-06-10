@@ -15,6 +15,18 @@
     <description>Core domain model, interfaces, and shared types — no Spring dependency</description>
 
     <dependencies>
+        <!--
+            JSpecify nullability annotations — public SPI surface.
+            Added in 0.8.0 P3.5 (audit §3.5). Optional at runtime: the
+            annotations carry CLASS retention only, so adopters don't
+            need to depend on jspecify themselves.
+        -->
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

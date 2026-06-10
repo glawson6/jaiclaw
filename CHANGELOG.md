@@ -14,8 +14,62 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 In progress in the `0.7.1-SNAPSHOT` line (heading to **0.8.0** —
 hard-break release; see `docs/MIGRATION-0.8.md`).
 
+### Added (0.8.0, additive — no migration required)
+
+- **API stability program.** Three new annotations under
+  `io.jaiclaw.core.api` — `@Stable`, `@Experimental`, `@Internal` —
+  classify every public top-level type by support promise. Headline
+  surfaces (`ToolCallback`, `ToolDefinition`, `TenantGuard`,
+  `ChannelAdapter`, `WebhookSignatureUtil`, the tenant context
+  primitives) carry `@Stable`. The Phase 3 additions (`HookEvent`,
+  `TypedToolCallback`, `SchemaBuilder`, `@ToolParameter`,
+  `AbstractChannelAdapter`, `PluginApi`, `JaiClawPlugin`) carry
+  `@Experimental`. Plugin SDK internals (`HookRunner`,
+  `PluginApiImpl`, `PluginRegistry`, `PluginDiscovery`) carry
+  `@Internal`. New `ApiStabilityMarkerSpec` (16 cases) locks the
+  policy at build time. See `docs/MIGRATION-0.8.md` § P3.5.
+- **JSpecify nullability.** The audit-flagged public packages
+  (`io.jaiclaw.core.api`, `io.jaiclaw.core.tool`,
+  `io.jaiclaw.core.tool.param`, `io.jaiclaw.core.tool.schema`,
+  `io.jaiclaw.core.hook.event`, `io.jaiclaw.core.tenant`) declare
+  `@NullMarked` package-info so IDE nullability inspections work
+  out-of-the-box for adopters.
+- **Typed tool parameters.** New types under
+  `io.jaiclaw.core.tool.schema` (`SchemaBuilder`, `FieldSpec`) and
+  `io.jaiclaw.core.tool.param` (`@ToolParameter`, `ParameterBinder`,
+  `SchemaInferrer`, `TypedToolCallback<P>`) let tool authors describe a
+  tool's parameters with an annotated Java record. The schema and the
+  binding both derive from the record, eliminating the
+  hand-written-JSON-Schema-block + `requireParam(...)` boilerplate
+  that the audit called out. Built-in `WebFetchTool` is migrated as
+  the canonical example. The legacy untyped `ToolCallback` SPI keeps
+  working unchanged. See `docs/MIGRATION-0.8.md` § P3.2.
+
 ### Breaking changes (0.8.0)
 
+- **Legacy naming dropped.** Three small naming-consolidation moves
+  as part of the audit-flagged JaiClaw / JClaw / jclaw cleanup:
+  - `ApiKeyProvider` no longer documents the legacy `jclaw_ak_`
+    prefix as accepted. Operators with stored `jclaw_ak_...` keys
+    should regenerate.
+  - `ProjectScanner` (jaiclaw-prompt-analyzer) no longer falls back
+    to `jclaw:` as a config root key. Use `jaiclaw:`.
+  - Three orphan `.iml` files removed from the working tree
+    (already in `.gitignore`).
+  See `docs/MIGRATION-0.8.md` § P3.5.
+- **`AbstractChannelAdapter` base class.** The 10 built-in channel
+  adapters (Telegram, Slack, Discord, Email, SMS, Signal, Teams,
+  Google Chat, LINE, Matrix) all extend a new common base in
+  `io.jaiclaw.channel.AbstractChannelAdapter`, which final-implements
+  lifecycle (`start`/`stop`/`isRunning`), identity
+  (`channelId`/`displayName`/`platformLimits`), and outbound chunking
+  against `PlatformLimits.maxTextLength()`. Subclasses now implement
+  three hooks: `doStart()`, `doStop()`, `doSend(ChannelMessage)`.
+  Inbound dispatch goes through `dispatchInbound(...)`. New
+  `io.jaiclaw.channel.util.WebhookSignatureUtil` consolidates HMAC
+  webhook signature verification (Slack/Telegram migrate to it; LINE
+  keeps Base64 locally). Custom channel adapters need a small migration
+  — see `docs/MIGRATION-0.8.md` § P3.3.
 - **Typed hook events.** The plugin SDK's hook API migrated from
   `HookName` enum + `HookHandler<E, C>` to a sealed `HookEvent`
   hierarchy (16 events under `io.jaiclaw.core.hook.event`) +

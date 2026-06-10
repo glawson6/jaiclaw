@@ -2,28 +2,22 @@ package io.jaiclaw.channel.slack;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jaiclaw.channel.*;
+import io.jaiclaw.channel.AbstractChannelAdapter;
+import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
+import io.jaiclaw.channel.util.WebhookSignatureUtil;
 import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -37,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>Outbound: Always posts via Slack chat.postMessage API.
  */
-public class SlackAdapter implements ChannelAdapter {
+public class SlackAdapter extends AbstractChannelAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(SlackAdapter.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -49,9 +43,7 @@ public class SlackAdapter implements ChannelAdapter {
     private final SlackConfig config;
     private final WebhookDispatcher webhookDispatcher;
     private final RestTemplate restTemplate;
-    private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<WebSocket> socketModeWs = new AtomicReference<>();
-    private ChannelMessageHandler handler;
     private Thread socketModeReconnectThread;
 
     public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher) {
@@ -60,30 +52,14 @@ public class SlackAdapter implements ChannelAdapter {
 
     public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher,
                         RestTemplate restTemplate) {
+        super("slack", "Slack", PlatformLimits.SLACK);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
         this.restTemplate = restTemplate;
     }
 
     @Override
-    public String channelId() {
-        return "slack";
-    }
-
-    @Override
-    public String displayName() {
-        return "Slack";
-    }
-
-    @Override
-    public PlatformLimits platformLimits() {
-        return PlatformLimits.SLACK;
-    }
-
-    @Override
-    public void start(ChannelMessageHandler handler) {
-        this.handler = handler;
-
+    protected void doStart() {
         if (config.useSocketMode()) {
             startSocketMode();
             log.info("Slack adapter started in SOCKET MODE (no public endpoint needed)");
@@ -91,12 +67,10 @@ public class SlackAdapter implements ChannelAdapter {
             webhookDispatcher.register("slack", this::handleWebhook);
             log.info("Slack adapter started in WEBHOOK mode (Events API)");
         }
-
-        running.set(true);
     }
 
     @Override
-    public DeliveryResult sendMessage(ChannelMessage message) {
+    protected DeliveryResult doSend(ChannelMessage message) {
         try {
             String url = SLACK_API_BASE + "chat.postMessage";
 
@@ -135,8 +109,7 @@ public class SlackAdapter implements ChannelAdapter {
     }
 
     @Override
-    public void stop() {
-        running.set(false);
+    protected void doStop() {
         WebSocket ws = socketModeWs.getAndSet(null);
         if (ws != null) {
             ws.sendClose(WebSocket.NORMAL_CLOSURE, "shutting down");
@@ -144,19 +117,13 @@ public class SlackAdapter implements ChannelAdapter {
         if (socketModeReconnectThread != null) {
             socketModeReconnectThread.interrupt();
         }
-        log.info("Slack adapter stopped");
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running.get();
     }
 
     // --- Socket Mode ---
 
     private void startSocketMode() {
         socketModeReconnectThread = Thread.ofVirtual().name("slack-socket-mode").start(() -> {
-            while (running.get() || !Thread.currentThread().isInterrupted()) {
+            while (isRunning() || !Thread.currentThread().isInterrupted()) {
                 try {
                     connectSocketMode();
                 } catch (InterruptedException e) {
@@ -326,9 +293,7 @@ public class SlackAdapter implements ChannelAdapter {
             var channelMessage = ChannelMessage.inbound(
                     eventId, "slack", teamId, channel, text, platformData);
 
-            if (handler != null) {
-                handler.onMessage(channelMessage);
-            }
+            dispatchInbound(channelMessage);
         }
     }
 
@@ -367,10 +332,10 @@ public class SlackAdapter implements ChannelAdapter {
 
     /**
      * Verify the Slack request signature using HMAC-SHA256.
-     * <p>
-     * Slack signs requests as: {@code v0=HMAC-SHA256(signingSecret, "v0:{timestamp}:{body}")}.
-     * The signature is sent in the {@code X-Slack-Signature} header.
-     * The timestamp is in {@code X-Slack-Request-Timestamp}.
+     *
+     * <p>0.8.0 P3.3: delegates to
+     * {@link WebhookSignatureUtil#verifySlackSignature(String, String, String, String, long)} —
+     * the per-adapter implementation (Slack, LINE, Telegram, etc.) is gone.
      *
      * @see <a href="https://api.slack.com/authentication/verifying-requests-from-slack">Slack docs</a>
      */
@@ -382,35 +347,7 @@ public class SlackAdapter implements ChannelAdapter {
             log.debug("Missing Slack signature headers");
             return false;
         }
-
-        // Reject requests older than 5 minutes to prevent replay attacks
-        try {
-            long timestamp = Long.parseLong(timestampStr);
-            long now = System.currentTimeMillis() / 1000;
-            if (Math.abs(now - timestamp) > MAX_TIMESTAMP_DRIFT_SECONDS) {
-                log.debug("Slack request timestamp too old: {} (now={})", timestamp, now);
-                return false;
-            }
-        } catch (NumberFormatException e) {
-            log.debug("Invalid Slack request timestamp: {}", timestampStr);
-            return false;
-        }
-
-        try {
-            String baseString = "v0:" + timestampStr + ":" + body;
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(
-                    config.signingSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hash = mac.doFinal(baseString.getBytes(StandardCharsets.UTF_8));
-            String computed = "v0=" + HexFormat.of().formatHex(hash);
-
-            // Constant-time comparison to prevent timing attacks
-            return MessageDigest.isEqual(
-                    computed.getBytes(StandardCharsets.UTF_8),
-                    signature.getBytes(StandardCharsets.UTF_8));
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            log.error("Failed to compute Slack signature", e);
-            return false;
-        }
+        return WebhookSignatureUtil.verifySlackSignature(
+                config.signingSecret(), timestampStr, body, signature, MAX_TIMESTAMP_DRIFT_SECONDS);
     }
 }
