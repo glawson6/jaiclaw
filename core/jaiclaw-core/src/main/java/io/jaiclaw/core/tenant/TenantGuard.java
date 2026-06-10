@@ -68,6 +68,13 @@ public class TenantGuard {
      * Returns tenantId for prefixing keys/paths.
      * In SINGLE mode, returns empty string (no prefix needed).
      * In MULTI mode, returns the current tenant's ID (throws if not set).
+     *
+     * <p><b>Legacy semantics.</b> This method is retained for backwards
+     * compatibility with on-disk file layouts: SINGLE-mode callers that
+     * conditionally prefix paths only when {@link #isMultiTenant()} is true
+     * rely on the empty-string return. New code that wants the
+     * "always prefix" invariant should use {@link #resolveStorageKey(String)}
+     * instead.
      */
     public String resolveTenantPrefix() {
         if (!props.isMultiTenant()) {
@@ -80,6 +87,61 @@ public class TenantGuard {
                     "Cannot resolve tenant prefix.");
         }
         return ctx.getTenantId();
+    }
+
+    /**
+     * Build a tenant-prefixed storage key in the form
+     * {@code "<tenantId>:<businessId>"}, uniformly in SINGLE and MULTI mode.
+     *
+     * <p>In SINGLE mode the tenantId is sourced from
+     * {@link TenantProperties#defaultTenantId()} (default {@code "default"};
+     * <b>operators must override this in production</b> — see the WARN
+     * logged at startup by {@code TenantGuard.afterPropertiesSet}). In MULTI
+     * mode it is the current thread's {@link TenantContext#getTenantId()};
+     * throws {@link IllegalStateException} if no context is set.
+     *
+     * <p>This is the preferred key-construction primitive for any in-memory
+     * store that holds business data. It guarantees the prefix-always
+     * invariant the {@code TenantIsolationGuardSpec} regression guard
+     * enforces.
+     *
+     * @param businessId the business-domain id to be prefixed (must not be null)
+     * @return the prefixed key, never null and never empty
+     */
+    public String resolveStorageKey(String businessId) {
+        if (businessId == null) {
+            throw new IllegalArgumentException("businessId must not be null");
+        }
+        TenantContext ctx = TenantContextHolder.get();
+        if (props.isMultiTenant()) {
+            if (ctx == null) {
+                throw new IllegalStateException(
+                        "Multi-tenant mode is active but no TenantContext is set. " +
+                        "Cannot resolve storage key.");
+            }
+            return ctx.getTenantId() + ":" + businessId;
+        }
+        return props.defaultTenantId() + ":" + businessId;
+    }
+
+    /**
+     * Strict variant of {@link #resolveStorageKey(String)} that only accepts a
+     * single argument. Returns the current effective tenant prefix
+     * ({@code defaultTenantId} in SINGLE, current tenant's id in MULTI) with
+     * no trailing colon. Use when the caller wants to build a tenant-scoped
+     * directory path or a {@code startsWith} filter.
+     */
+    public String resolveStoragePrefix() {
+        TenantContext ctx = TenantContextHolder.get();
+        if (props.isMultiTenant()) {
+            if (ctx == null) {
+                throw new IllegalStateException(
+                        "Multi-tenant mode is active but no TenantContext is set. " +
+                        "Cannot resolve storage prefix.");
+            }
+            return ctx.getTenantId();
+        }
+        return props.defaultTenantId();
     }
 
     /**

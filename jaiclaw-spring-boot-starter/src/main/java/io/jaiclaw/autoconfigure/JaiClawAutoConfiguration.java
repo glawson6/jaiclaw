@@ -175,7 +175,7 @@ public class JaiClawAutoConfiguration {
     @ConditionalOnMissingBean
     public TenantProperties tenantProperties(JaiClawProperties properties) {
         var cfg = properties.tenant();
-        return new TenantProperties(cfg.mode(), cfg.defaultTenantId());
+        return new TenantProperties(cfg.mode(), cfg.defaultTenantId(), cfg.strictDefaultTenantId());
     }
 
     @Bean
@@ -186,6 +186,20 @@ public class JaiClawAutoConfiguration {
             log.info("JaiClaw tenant mode: MULTI — strict isolation enabled");
         } else {
             log.info("JaiClaw tenant mode: SINGLE — shared data space");
+        }
+        // Security: the SINGLE-mode storage-key prefix is sourced from
+        // TenantProperties#defaultTenantId. If it's still the literal
+        // placeholder "default", an attacker who can influence tenant-id
+        // headers could probe predictable namespaces. Operators must
+        // override jaiclaw.tenant.default-tenant-id in production.
+        if (!guard.isMultiTenant() && tenantProperties.isUsingPlaceholderDefaultTenantId()) {
+            log.warn("jaiclaw.tenant.default-tenant-id is still the literal string 'default'. "
+                    + "In SINGLE mode this value is used as the storage-key prefix. Set this "
+                    + "property to a high-entropy value (e.g., a UUID) before exposing this app "
+                    + "to untrusted callers, otherwise an attacker who can influence tenant-id "
+                    + "headers may probe keys under the predictable 'default:' namespace. "
+                    + "Set jaiclaw.tenant.strict-default-tenant-id=true to make weak values "
+                    + "an outright startup failure.");
         }
         return guard;
     }

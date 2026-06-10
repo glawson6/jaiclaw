@@ -1,6 +1,8 @@
 package io.jaiclaw.voicecall.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.voicecall.manager.CallManager;
 import io.jaiclaw.voicecall.mcp.VoiceCallMcpToolProvider;
 import io.jaiclaw.voicecall.media.MediaStreamHandler;
@@ -56,16 +58,19 @@ public class VoiceCallAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public CallStore callStore() {
-        return new InMemoryCallStore();
+    public CallStore callStore(org.springframework.beans.factory.ObjectProvider<TenantGuard> tenantGuardProvider) {
+        return new InMemoryCallStore(tenantGuardProvider.getIfAvailable());
     }
 
     @Bean
     @ConditionalOnMissingBean
     public CallManager callManager(TelephonyProvider telephonyProvider,
                                    CallStore callStore,
-                                   VoiceCallProperties properties) {
-        return new CallManager(telephonyProvider, callStore, properties);
+                                   VoiceCallProperties properties,
+                                   org.springframework.beans.factory.ObjectProvider<TenantGuard> tenantGuardProvider) {
+        TenantGuard guard = tenantGuardProvider.getIfAvailable();
+        if (guard == null) guard = new TenantGuard(TenantProperties.DEFAULT);
+        return new CallManager(telephonyProvider, callStore, properties, guard);
     }
 
     @Bean

@@ -38,12 +38,22 @@ public class InMemoryCalendarProvider implements CalendarProvider {
         return tenantId.equals(eventTenantId) || eventTenantId == null;
     }
 
+    /**
+     * Storage key for the events map: {@code {tenantId}:{eventId}}. The
+     * {@code tenantId} comes from the event record itself (not the thread-
+     * local context) because calendar mutations explicitly pass tenantId
+     * through every API method.
+     */
+    private static String eventKey(String tenantId, String eventId) {
+        return (tenantId == null ? "default" : tenantId) + ":" + eventId;
+    }
+
     public void initialize() {
         log.info("Initializing in-memory calendar with sample events for next 2 months");
         Instant now = Instant.now();
         Instant twoMonthsLater = now.plus(60, ChronoUnit.DAYS);
         List<CalendarEvent> sampleEvents = createSampleEvents(now, twoMonthsLater);
-        sampleEvents.forEach(event -> events.put(event.id(), event));
+        sampleEvents.forEach(event -> events.put(eventKey(event.tenantId(), event.id()), event));
         log.info("Initialized {} sample events in calendar", sampleEvents.size());
     }
 
@@ -138,7 +148,7 @@ public class InMemoryCalendarProvider implements CalendarProvider {
                     .createdAt(now)
                     .updatedAt(now)
                     .build();
-            events.put(id, stored);
+            events.put(eventKey(stored.tenantId(), id), stored);
             log.info("Created event: {} - {}", id, stored.title());
             return stored;
         });
@@ -160,7 +170,7 @@ public class InMemoryCalendarProvider implements CalendarProvider {
 
     @Override
     public Mono<CalendarEvent> getEvent(String tenantId, String calendarId, String eventId) {
-        return Mono.justOrEmpty(events.get(eventId))
+        return Mono.justOrEmpty(events.get(eventKey(tenantId, eventId)))
                 .filter(event -> matchesTenant(tenantId, event.tenantId()));
     }
 
@@ -170,7 +180,7 @@ public class InMemoryCalendarProvider implements CalendarProvider {
                 .switchIfEmpty(Mono.error(new RuntimeException("Event not found: " + eventId)))
                 .flatMap(event -> Mono.fromCallable(() -> {
                     CalendarEvent updated = applyUpdates(event, updates);
-                    events.put(eventId, updated);
+                    events.put(eventKey(updated.tenantId(), eventId), updated);
                     log.info("Updated event: {} - {}", eventId, updated.title());
                     return updated;
                 }));
@@ -179,9 +189,10 @@ public class InMemoryCalendarProvider implements CalendarProvider {
     @Override
     public Mono<Void> deleteEvent(String tenantId, String calendarId, String eventId) {
         return Mono.fromRunnable(() -> {
-            CalendarEvent existing = events.get(eventId);
+            String key = eventKey(tenantId, eventId);
+            CalendarEvent existing = events.get(key);
             if (existing != null && matchesTenant(tenantId, existing.tenantId())) {
-                events.remove(eventId);
+                events.remove(key);
                 log.info("Deleted event: {} - {}", eventId, existing.title());
             }
         });

@@ -36,12 +36,14 @@ class InMemoryCallStoreSpec extends Specification {
         store.persist(completed)
 
         when:
+        // No tenant context set — store returns active records with full
+        // tenant-scoped keys ("default:c1" in SINGLE mode).
         def activeCalls = store.loadActiveCalls()
 
         then:
         activeCalls.size() == 1
-        activeCalls.containsKey("c1")
-        !activeCalls.containsKey("c2")
+        activeCalls.containsKey("default:c1")
+        !activeCalls.containsKey("default:c2")
     }
 
     def "getHistory returns calls sorted by start time descending"() {

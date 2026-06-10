@@ -4,6 +4,7 @@ import io.jaiclaw.voicecall.model.*
 import spock.lang.Specification
 import spock.lang.TempDir
 
+import java.nio.file.Files
 import java.nio.file.Path
 
 class JsonlCallStoreSpec extends Specification {
@@ -13,8 +14,8 @@ class JsonlCallStoreSpec extends Specification {
 
     def "persist and reload from disk"() {
         given:
-        def storePath = tempDir.resolve("calls.jsonl")
-        def store = new JsonlCallStore(storePath)
+        // baseDir contains per-tenant subdirectories; SINGLE-mode default-tenant is "default".
+        def store = new JsonlCallStore(tempDir)
 
         def call = new CallRecord("c1", "twilio", CallDirection.OUTBOUND,
                 "+1555", "+1666", CallMode.CONVERSATION)
@@ -28,7 +29,7 @@ class JsonlCallStoreSpec extends Specification {
         Thread.sleep(200)
 
         // Reload from disk
-        def store2 = new JsonlCallStore(storePath)
+        def store2 = new JsonlCallStore(tempDir)
         def history = store2.getHistory(10)
 
         then:
@@ -36,6 +37,8 @@ class JsonlCallStoreSpec extends Specification {
         history[0].callId == "c1"
         history[0].providerCallId == "CA123"
         history[0].transcript.size() == 1
+        // On-disk path is tenant-scoped under the default tenant.
+        Files.exists(tempDir.resolve("default").resolve("calls.jsonl"))
 
         cleanup:
         store2.shutdown()
@@ -43,8 +46,7 @@ class JsonlCallStoreSpec extends Specification {
 
     def "loadActiveCalls excludes terminal"() {
         given:
-        def storePath = tempDir.resolve("calls.jsonl")
-        def store = new JsonlCallStore(storePath)
+        def store = new JsonlCallStore(tempDir)
 
         def active = new CallRecord("c1", "twilio", CallDirection.OUTBOUND,
                 "+1555", "+1666", CallMode.CONVERSATION)
@@ -57,26 +59,46 @@ class JsonlCallStoreSpec extends Specification {
         when:
         store.persist(active)
         store.persist(done)
+        // No tenant context — store returns active records under tenant-scoped keys.
         def activeCalls = store.loadActiveCalls()
 
         then:
         activeCalls.size() == 1
-        activeCalls.containsKey("c1")
+        activeCalls.containsKey("default:c1")
 
         cleanup:
         store.shutdown()
     }
 
-    def "handles empty or missing file gracefully"() {
+    def "handles empty or missing directory gracefully"() {
         given:
-        def storePath = tempDir.resolve("nonexistent.jsonl")
+        def emptyDir = tempDir.resolve("nonexistent")
 
         when:
-        def store = new JsonlCallStore(storePath)
+        def store = new JsonlCallStore(emptyDir)
 
         then:
         store.getHistory(10).isEmpty()
         store.loadActiveCalls().isEmpty()
+
+        cleanup:
+        store.shutdown()
+    }
+
+    def "migrates a legacy calls.jsonl at the base directory into the default-tenant subdir"() {
+        given:
+        // Write a pre-tenancy calls.jsonl directly under baseDir.
+        Path legacyFile = tempDir.resolve("calls.jsonl")
+        Files.createDirectories(tempDir)
+        Files.writeString(legacyFile, '{"callId":"legacy-1","provider":"twilio","direction":"OUTBOUND","state":"COMPLETED","from":"+1","to":"+2","mode":"NOTIFY","startedAt":"2026-01-01T00:00:00Z","transcript":[],"processedEventIds":[],"metadata":{}}\n')
+
+        when:
+        def store = new JsonlCallStore(tempDir)
+
+        then:
+        !Files.exists(legacyFile)
+        Files.exists(tempDir.resolve("default").resolve("calls.jsonl"))
+        store.getHistory(10)*.callId == ["legacy-1"]
 
         cleanup:
         store.shutdown()

@@ -32,10 +32,11 @@ class CallEventProcessorSpec extends Specification {
 
         then:
         handled
-        activeCalls.containsKey("call-1")
-        activeCalls["call-1"].direction == CallDirection.INBOUND
-        activeCalls["call-1"].providerCallId == "CA123"
-        providerCallIdMap["CA123"] == "call-1"
+        // Keys are tenant-scoped now ("default:call-1" in SINGLE mode).
+        activeCalls.containsKey("default:call-1")
+        activeCalls["default:call-1"].direction == CallDirection.INBOUND
+        activeCalls["default:call-1"].providerCallId == "CA123"
+        providerCallIdMap["CA123"] == "default:call-1"
     }
 
     def "deduplicates events by dedupeKey"() {
@@ -89,9 +90,10 @@ class CallEventProcessorSpec extends Specification {
         def call = new CallRecord("call-1", "twilio", CallDirection.OUTBOUND,
                 "+1555", "+1666", CallMode.CONVERSATION)
         call.state = CallState.ACTIVE
+        call.tenantId = "default"
         call.providerCallId = "CA123"
-        activeCalls["call-1"] = call
-        providerCallIdMap["CA123"] = "call-1"
+        activeCalls["default:call-1"] = call
+        providerCallIdMap["CA123"] = "default:call-1"
 
         when:
         processor.processEvent(new NormalizedEvent.CallEnded(
@@ -102,7 +104,7 @@ class CallEventProcessorSpec extends Specification {
         call.state == CallState.HANGUP_USER
         call.endReason == EndReason.USER_HANGUP
         call.endedAt != null
-        !activeCalls.containsKey("call-1")
+        !activeCalls.containsKey("default:call-1")
         !providerCallIdMap.containsKey("CA123")
     }
 

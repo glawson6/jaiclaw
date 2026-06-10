@@ -14,6 +14,7 @@ public class CallRecord {
     private String callId;
     private String providerCallId;
     private String provider;
+    private String tenantId;   // tenant that originated/owns the call; set at registration time
     private CallDirection direction;
     private CallState state;
     private String from;
@@ -52,6 +53,9 @@ public class CallRecord {
 
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
+
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 
     public CallDirection getDirection() { return direction; }
     public void setDirection(CallDirection direction) { this.direction = direction; }
