@@ -7,7 +7,13 @@ import io.jaiclaw.kanban.loader.BoardFileLoader;
 import io.jaiclaw.kanban.model.BoardDefinition;
 import io.jaiclaw.kanban.persistence.BoardStore;
 import io.jaiclaw.kanban.persistence.YamlFileBoardStore;
+import io.jaiclaw.kanban.engine.AgentColumnProcessor;
+import io.jaiclaw.kanban.engine.ColumnProcessorManager;
+import io.jaiclaw.kanban.idempotency.EffectLedger;
+import io.jaiclaw.kanban.idempotency.IdempotencyKeyBuilder;
 import io.jaiclaw.kanban.mcp.KanbanMcpToolProvider;
+import io.jaiclaw.kanban.recovery.KanbanRecoveryManager;
+import io.jaiclaw.kanban.recovery.StaleRunningDetector;
 import io.jaiclaw.kanban.render.BoardAsciiRenderer;
 import io.jaiclaw.kanban.service.BoardSnapshotService;
 import io.jaiclaw.kanban.service.KanbanBoardService;
@@ -18,6 +24,7 @@ import io.jaiclaw.kanban.state.TransitionGraphStateEngine;
 import io.jaiclaw.kanban.tool.KanbanTools;
 import io.jaiclaw.kanban.validation.BoardValidator;
 import io.jaiclaw.plugin.HookRunner;
+import io.jaiclaw.tasks.TaskRecord;
 import io.jaiclaw.tasks.TaskStore;
 import io.jaiclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
@@ -39,6 +46,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Auto-configuration for the kanban extension. Disabled by default — the
@@ -70,6 +78,12 @@ public class KanbanAutoConfiguration {
         return new TenantGuard(TenantProperties.DEFAULT);
     }
 
+    /**
+     * Default {@link TaskStateEngine}. The Spring State Machine engine
+     * registers via {@link io.jaiclaw.kanban.statemachine.SpringStateMachineConfiguration}
+     * and takes precedence over this bean through
+     * {@code @ConditionalOnMissingBean}.
+     */
     @Bean
     @ConditionalOnMissingBean
     public TaskStateEngine taskStateEngine() {
@@ -174,6 +188,79 @@ public class KanbanAutoConfiguration {
     }
 
     public static class KanbanToolsRegistrar {}
+
+    // ── Phase 3: column processors + recovery + idempotency ────────
+
+    /**
+     * The effect ledger keeps recorded processor results so a crash-replay
+     * doesn't re-invoke the agent for work that already completed. Lives
+     * under {@code jaiclaw.kanban.boards-dir}/.. (one directory level up)
+     * so it sits alongside the boards directory without polluting it.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public EffectLedger effectLedger(KanbanProperties properties) {
+        Path boardsDir = Path.of(expandHome(properties.boardsDir()));
+        Path ledgerDir = boardsDir.getParent() != null
+                ? boardsDir.getParent().resolve("effects")
+                : boardsDir.resolveSibling("effects");
+        return new EffectLedger(ledgerDir);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public IdempotencyKeyBuilder idempotencyKeyBuilder(TransitionHistory history) {
+        return new IdempotencyKeyBuilder(history);
+    }
+
+    /**
+     * Wraps the app-provided agent-runner function (named bean
+     * {@code kanbanAgentRunner}) in {@link AgentColumnProcessor}. When no
+     * runner bean is present, the processor manager and recovery beans
+     * are not created — kanban remains a pure card/board library.
+     */
+    @Bean
+    @ConditionalOnBean(name = "kanbanAgentRunner")
+    @ConditionalOnProperty(prefix = "jaiclaw.kanban.processors",
+            name = "enabled", havingValue = "true", matchIfMissing = true)
+    public AgentColumnProcessor agentColumnProcessor(
+            @org.springframework.beans.factory.annotation.Qualifier("kanbanAgentRunner")
+            Function<TaskRecord, String> kanbanAgentRunner,
+            IdempotencyKeyBuilder keyBuilder,
+            EffectLedger ledger) {
+        return new AgentColumnProcessor(kanbanAgentRunner, keyBuilder, ledger);
+    }
+
+    @Bean
+    @ConditionalOnBean(AgentColumnProcessor.class)
+    public ColumnProcessorManager columnProcessorManager(
+            KanbanBoardService boardService,
+            TaskStore taskStore,
+            TaskTransitionService transitionService,
+            AgentColumnProcessor processor) {
+        return new ColumnProcessorManager(boardService, taskStore,
+                transitionService, processor);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "jaiclaw.kanban.recovery",
+            name = "enabled", havingValue = "true", matchIfMissing = true)
+    public KanbanRecoveryManager kanbanRecoveryManager(
+            KanbanBoardService boardService,
+            TaskStore taskStore,
+            TaskTransitionService transitionService,
+            KanbanProperties properties,
+            ApplicationEventPublisher publisher) {
+        return new KanbanRecoveryManager(boardService, taskStore,
+                transitionService, properties, publisher);
+    }
+
+    @Bean
+    @ConditionalOnBean(KanbanRecoveryManager.class)
+    public StaleRunningDetector staleRunningDetector(KanbanRecoveryManager manager,
+                                                     KanbanProperties properties) {
+        return new StaleRunningDetector(manager, properties);
+    }
 
     /**
      * Loads boards on startup from two sources, validates the merged list,

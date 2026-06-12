@@ -76,6 +76,9 @@
         <github-api.version>1.330</github-api.version>
         <okhttp.version>4.12.0</okhttp.version>
         <line-bot-sdk.version>9.15.0</line-bot-sdk.version>
+        <!-- Spring State Machine — kanban Phase 3 optional engine.
+             4.0.x targets Spring 6 / Boot 3.x. -->
+        <spring-statemachine.version>4.0.1</spring-statemachine.version>
 
         <!-- Plugins -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>

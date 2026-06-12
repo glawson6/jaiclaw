@@ -82,6 +82,15 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Phase 3: optional Spring State Machine engine. Activated by
+             jaiclaw.kanban.engine=spring-statemachine AND classpath presence. -->
+        <dependency>
+            <groupId>org.springframework.statemachine</groupId>
+            <artifactId>spring-statemachine-core</artifactId>
+            <version>${spring-statemachine.version}</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>

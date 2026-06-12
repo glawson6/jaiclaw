@@ -1,9 +1,9 @@
 # JaiClaw Kanban — Implementation Plan
 
-**Status:** In Progress — **Phases 1 & 2 (Core engine + Surfaces) complete; Phase 3 (Processing & SSM) next**
+**Status:** In Progress — **Phases 1–3 complete; Phase 4 (Hardening & docs) next**
 **Companion analysis:** [`KANBAN-TASK-PROCESSING-ANALYSIS.md`](./KANBAN-TASK-PROCESSING-ANALYSIS.md) — design rationale; this plan is the execution map.
 **Started:** 2026-06-12
-**Last updated:** 2026-06-12 — Phase 1 fully landed (all groups checked, 23/23 kanban specs + 24/24 tasks specs pass, install clean).
+**Last updated:** 2026-06-12 — Phase 3 closed (125/125 kanban specs + 24/24 tasks specs, install clean).
 
 ---
 
@@ -367,7 +367,7 @@ disable controllers via property or revert the surfaces commit; engine
 
 ## 8. Phase 3 — Processing & SSM
 
-**Resume here →** `[ ]` *Phase 3 not started* | last touched: *(none yet)*
+**Resume here →** all Phase 3 groups complete; jump to Phase 4 §9. | last touched: `KanbanEngineSwapE2ESpec.groovy` (Phase 3 closed — 125/125 kanban + 24/24 tasks specs green; install clean)
 
 ### 8.1 Scope
 
@@ -404,35 +404,33 @@ behind `@ConditionalOnClass`.
 ### 8.4 Task list
 
 **Column processors**
-- [ ] `ColumnProcessorManager` listens for `TaskStateChanged`; if `column.processor` set, submits via existing `TaskExecutor.submit(task, handler)`
-- [ ] Handler injects an app-provided `Function<TaskRecord,String> agentRunner` (cron pattern — kanban module never compiles against `AgentRuntime`)
-- [ ] `AgentColumnProcessor` renders prompt template with `{{name}}`, `{{description}}`, `{{attempt}}`, `{{idempotencyKey}}`
-- [ ] On handler success fire `column.processor.onSuccess`; on exception fire `column.processor.onFailure`
-- [ ] WIP-limit enforcement at engine guard (not at queue) — full column rejects `START`
+- [x] `ColumnProcessorManager` listens for `TaskStateChanged`; if `column.processor` set, runs the work on its own virtual-thread executor (**not** `TaskExecutor.submit` — that overwrites the state field; see §12 decision log)
+- [x] App-provided `Function<TaskRecord,String> kanbanAgentRunner` bean injected into `AgentColumnProcessor` (cron pattern — kanban module never compiles against `AgentRuntime`)
+- [x] `AgentColumnProcessor` renders prompt template with `{{name}}`, `{{description}}`, `{{attempt}}`, `{{idempotencyKey}}` per analysis §6.8
+- [x] On handler success fire `column.processor.onSuccess` event into the state engine; on exception fire `column.processor.onFailure`. `onSuccess`/`onFailure` are **transition event names**, not column ids — recorded in §12 decision log so future readers don't mis-configure boards
+- [x] WIP-limit enforcement at engine guard (already landed in Phase 1's `TransitionGraphStateEngine`; `SpringStateMachineEngine` mirrors it byte-for-byte)
 
 **Recovery**
-- [ ] `KanbanRecoveryManager` `SmartLifecycle` bean — runs after stores load; iterates RUNNING + QUEUED processor-column cards
-- [ ] Apply per-column `restartPolicy` (`fail` default | `requeue` | `manual`) per analysis §6.2 table
-- [ ] Record `TransitionRecord(event="RECOVERY", actor="system")` for each
-- [ ] Periodic stale-running detection: compare `startedAt` (or processor heartbeat in metadata) vs `jaiclaw.kanban.recovery.stale-running-timeout`; apply same policy
+- [x] `KanbanRecoveryManager` `SmartLifecycle` bean — runs after stores load; iterates RUNNING + QUEUED processor-column cards
+- [x] Apply per-column `restartPolicy` (`fail` default | `requeue` | `manual`) per analysis §6.2 table; `maxAttempts` cap with fall-through to `fail`
+- [x] FAIL fires `onFailure` with reason `"interrupted by restart"` (or `"stale-running timeout"`); REQUEUE bumps `kanban.attempts` and republishes a synthetic `TaskStateChanged(event="RECOVERY")` so the processor manager re-runs under the same idempotency key; MANUAL marks `kanban.interrupted=true`
+- [x] `StaleRunningDetector` `SmartLifecycle` runs a periodic sweep against `staleRunningTimeout` (parsed: `30m`/`2h`/`45s`/raw seconds)
 
 **Idempotency**
-- [ ] `IdempotencyKeyBuilder` produces `{boardId}:{taskId}:{state}:{entrySeq}` (entrySeq derived from `TransitionHistory` count of prior entries into this state)
-- [ ] `EffectLedger` `{key → persisted result}` stored alongside journal (Phase 4 journal — Phase 3 ledger lives in `JsonFileTaskStore` storage dir under `{boardId}/effects.jsonl`)
-- [ ] `AgentColumnProcessor` consults ledger before re-executing on retry: if recorded, fire `onSuccess` directly with stored result
-- [ ] `BoardValidator` rejects `restartPolicy: requeue` on `idempotent: false` columns
-- [ ] `maxAttempts` cap with fall-through to `fail` policy
+- [x] `IdempotencyKeyBuilder` produces `{boardId}:{taskId}:{state}:{entrySeq}` via `TransitionHistory.entrySeq`
+- [x] `EffectLedger` is an append-only jsonl at `{boards-dir}/../effects/effects.jsonl` — survives restart; idempotent re-records skip writing
+- [x] `AgentColumnProcessor.process` consults `EffectLedger.lookup(key)` before invoking the runner; recorded result is replayed directly (no second agent call)
+- [x] `BoardValidator` rejects `restartPolicy: requeue` on `idempotent: false` columns (Phase 1 carried this forward — `BoardValidatorSpec.requeue requires idempotent=true`)
 
 **Spring State Machine engine**
-- [ ] Pin `<spring-statemachine.version>` in root pom; verify compat against Boot 3.5.14 / Spring Framework 6.2
-- [ ] Implement `SpringStateMachineEngine` via runtime `StateMachineBuilder` from `BoardDefinition`
-- [ ] Stateless usage: rehydrate per transition with `DefaultStateMachineContext<>(task.state(), …)` via `resetStateMachineReactively`; pool machines per board id
-- [ ] Activate via `@ConditionalOnClass(name="org.springframework.statemachine.StateMachine")` + `jaiclaw.kanban.engine: spring-statemachine`
+- [x] Pinned `<spring-statemachine.version>4.0.1</spring-statemachine.version>` in root pom (targets Spring 6 / Boot 3.x; downloadable + buildable verified)
+- [x] `BoardStateMachineFactory` builds machines from `BoardDefinition` via `StateMachineBuilder`; caches per board id; exposes `invalidate(boardId)`
+- [x] `SpringStateMachineEngine` is stateless: SSM machine is built only to validate the graph structure (surfaces config errors early); per-event fire walks the transition list directly. No live per-task machine, no `StateMachinePersister`. Identical accept/reject semantics to the graph engine. See §12 decision log for the divergence from the plan's recipe.
+- [x] Activated by `@ConditionalOnClass(StateMachine.class)` + `jaiclaw.kanban.engine.name=spring-statemachine` via `SpringStateMachineConfiguration`. `@AutoConfigureBefore(KanbanAutoConfiguration.class)` so the default graph engine's `@ConditionalOnMissingBean` steps aside.
 
 **E2E**
-- [ ] Write `KanbanRecoveryE2ESpec` per §5.2 Phase 3 row
-- [ ] Write `KanbanIdempotencyE2ESpec` per §5.2 Phase 3 row
-- [ ] Add engine-swap scenario asserting graph and SSM produce equivalent transition outcomes
+- [x] `KanbanPhase3E2ESpec` per §5.2 Phase 3 row — `@SpringBootTest(NONE)` against fixture `e2e-processor-fail.yaml`. Subsumes `KanbanRecoveryE2ESpec` + `KanbanIdempotencyE2ESpec`: proves processor runs, EffectLedger replays the recorded result, FAIL restartPolicy routes a stuck card to `blocked`, default engine is `TransitionGraphStateEngine`. (4 tests)
+- [x] `KanbanEngineSwapE2ESpec` per §5.2 third bullet — `engine.name=spring-statemachine` swaps the bean, walks the same `backlog→drafting→review→done` chain. (1 test)
 
 ### 8.5 Verification
 
@@ -646,3 +644,44 @@ Append-only; records decisions, not commits.
   REST + SSE + ASCII + MCP + Actuator in a single spec. Test scope grew
   with `spring-boot-starter-web` + `spring-boot-starter-actuator`;
   production scope grew with optional `spring-webmvc`.
+- **2026-06-12** — Phase 3 in-flight calls.
+  (a) **Processor lifecycle vs `TaskExecutor`**: the plan called for using
+  `TaskExecutor.submit(card, handler)` from the column processor manager.
+  In practice, `TaskExecutor.executeTask` writes `task.withResult(...)`
+  after the handler returns, which overwrites the `state` field a
+  concurrent transition just advanced. Solution: the manager owns its
+  own virtual-thread `Executor` and writes the result in-place
+  (`persistResult`) without touching state, status, or version. Tests
+  pass a synchronous executor for deterministic ordering.
+  (b) **`onSuccess`/`onFailure` are event names, not column ids**.
+  Phase-3-aware board YAML uses the transition event name
+  (`SUBMIT`/`BLOCK`/`APPROVE`), not the destination column id
+  (`review`/`blocked`/`done`). Test fixtures that mixed these up silently
+  no-op'd. The plan + fixture YAML are now explicit.
+  (c) **REQUEUE re-publish path**: rather than introduce a self-loop
+  transition event, the recovery manager directly publishes a synthetic
+  `TaskStateChanged(event="RECOVERY", fromState=toState=current)`. The
+  `ColumnProcessorManager` re-enters under the same idempotency key, so
+  retry semantics are clean.
+  (d) **SSM engine stateless-ness**: the plan's recipe (per-transition
+  rehydrate via `DefaultStateMachineContext`, machine pool) is heavier
+  than needed for a flat kanban graph. The implementation builds the
+  SSM machine via `StateMachineBuilder` (which surfaces graph config
+  errors early) but walks the transition list directly when firing.
+  Same accept/reject semantics as the graph engine, no per-transition
+  reactive plumbing. The factory caches the built machine per board id.
+  (e) **SSM property name** — `jaiclaw.kanban.engine.name=spring-statemachine`,
+  not `jaiclaw.kanban.engine=spring-statemachine` as the plan abbreviated;
+  the underlying `KanbanProperties.Engine` is a sub-record so the dotted
+  path includes the field name.
+  (f) Phase 3 E2E consolidated to one `KanbanPhase3E2ESpec` plus
+  `KanbanEngineSwapE2ESpec`, rather than separate `KanbanRecoveryE2ESpec`
+  and `KanbanIdempotencyE2ESpec` as the plan listed. Per-policy outcomes
+  are already exhaustively covered by `KanbanRecoveryManagerSpec`
+  (6 specs) and idempotency replay by `AgentColumnProcessorSpec`; the
+  E2E spec proves the autoconfig wiring instead of re-running matrix
+  coverage.
+- **2026-06-12** — Phase 3 done. Final counts: 125/125 jaiclaw-kanban
+  specs + 24/24 jaiclaw-tasks specs, install gate clean. Production
+  scope grew with optional `spring-statemachine-core:4.0.1`. Resume
+  pointer moves to Phase 4 §9 (Hardening & docs).
