@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: kanban,health
+
+jaiclaw:
+  # Disable auth so the e2e skill can hit endpoints without an API key.
+  security:
+    mode: none
+  # Mandated by CLAUDE.md examples rule — empty whitelist keeps prompt
+  # tokens minimal even though this example doesn't drive an LLM agent.
+  skills:
+    allow-bundled: []
+  tasks:
+    enabled: false
+  kanban:
+    enabled: true
+    # Use a temp directory so successive demo runs don't accumulate state.
+    # The directory is auto-created by KanbanAutoConfiguration on boot.
+    boards-dir: ${java.io.tmpdir}/kanban-demo/boards
+    # Pick up the bundled YAML fixture from the classpath in addition to
+    # whatever ships in boards-dir.
+    locations:
+      patterns:
+        - "classpath:jaiclaw/kanban/boards/demo.yaml"
+    # Slow heartbeats so the e2e skill doesn't see noise in captures.
+    sse:
+      heartbeat-seconds: 5
+    # Recovery + processors are enabled so the demo also showcases Phase 3.
+    recovery:
+      enabled: true
+    processors:
+      enabled: true

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-examples</artifactId>
+        <version>0.8.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-example-kanban-demo</artifactId>
+    <name>JaiClaw :: Examples :: Kanban Demo</name>
+    <description>Minimal Spring Boot app exercising jaiclaw-kanban end-to-end (REST + SSE + Actuator + column processor + idempotency)</description>
+
+    <dependencies>
+        <!-- Pulls in jaiclaw-tasks + jaiclaw-kanban + jaiclaw-ascii-render.
+             The kanban autoconfig is self-contained; it does not require
+             the central jaiclaw-spring-boot-starter agent stack. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-kanban</artifactId>
+            <type>pom</type>
+        </dependency>
+        <!-- KanbanAutoConfiguration optionally consults HookRunner via
+             ObjectProvider; classpath presence keeps the bean visible to
+             the autoconfig even though no plugin is wired. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-plugin-sdk</artifactId>
+        </dependency>
+        <!-- KanbanBoardController + KanbanEventController need Spring Web. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- KanbanActuatorEndpoint needs Spring Boot Actuator. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Test scope -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-spring</artifactId>
+            <version>${spock.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- jaiclaw-maven-plugin's `analyze` goal is required by the
+                 examples rule in CLAUDE.md when an example drives the
+                 system prompt. This demo's `jaiclaw.skills.allow-bundled`
+                 is empty and the example doesn't drive an LLM, so the
+                 token-budget check is a no-op — omitting the plugin
+                 keeps the example buildable on a clean clone (the plugin
+                 transitively requires `jaiclaw-project-scaffolder` and
+                 `jaiclaw-prompt-analyzer`). Future contributors who add
+                 LLM-driving behaviour to this demo should restore the
+                 plugin and ensure both prerequisites are installed. -->
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

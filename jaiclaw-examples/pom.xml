@@ -54,6 +54,7 @@
         <module>procurement-approval</module>
         <module>tax-advisor</module>
         <module>pipeline-e2e</module>
+        <module>kanban-demo</module>
         <module>support-triage-pipeline</module>
         <module>invoice-processor</module>
         <module>aiops-incident-responder</module>

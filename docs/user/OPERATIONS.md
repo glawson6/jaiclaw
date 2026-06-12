@@ -1238,6 +1238,104 @@ When Micrometer is on the classpath, the following metrics are recorded:
 
 ---
 
+## Kanban Configuration
+
+JaiClaw's `jaiclaw-kanban` extension provides user-defined-state kanban boards over the async task runtime, with REST + SSE + ASCII + MCP surfaces and an optional column-processor that drives an LLM agent on card entry. Plan: `docs/dev/KANBAN-IMPLEMENTATION-PLAN.md`. Analysis: `docs/dev/KANBAN-TASK-PROCESSING-ANALYSIS.md`.
+
+**Starter dependency:**
+
+```xml
+<dependency>
+    <groupId>io.jaiclaw</groupId>
+    <artifactId>jaiclaw-starter-kanban</artifactId>
+    <type>pom</type>
+</dependency>
+```
+
+The whole module is opt-in:
+
+```yaml
+jaiclaw:
+  kanban:
+    enabled: true                  # master switch (default false)
+    boards-dir: ~/.jaiclaw/kanban/boards
+```
+
+### Board Sources
+
+Two ways to ship boards:
+
+1. **YAML files in `boards-dir`** — REST writes via `POST /api/kanban/boards` land here as `{boardId}.yaml`. Hand-edits survive restart; subsequent REST writes overwrite. This is the durable record.
+2. **Classpath patterns** for boards bundled inside JARs:
+   ```yaml
+   jaiclaw:
+     kanban:
+       locations:
+         patterns:
+           - "classpath:jaiclaw/kanban/boards/*.yaml"
+   ```
+
+Boards from `boards-dir` win over classpath boards on id conflict.
+
+### REST + SSE Surface
+
+When Spring Web is on the classpath:
+
+| Endpoint | Notes |
+|---|---|
+| `GET    /api/kanban/boards` | List boards visible to the current tenant |
+| `GET    /api/kanban/boards/{id}` | Full `BoardDefinition` |
+| `GET    /api/kanban/boards/{id}/snapshot` | `BoardSnapshot` JSON |
+| `GET    /api/kanban/boards/{id}/ascii?width=N&style=full\|compact` | text/plain rendering |
+| `GET    /api/kanban/boards/{id}/history?limit=N` | Recent `TransitionRecord`s |
+| `POST   /api/kanban/boards` | Create board (405 if `boards.writable=false`) |
+| `DELETE /api/kanban/boards/{id}` | Remove board (405 if `boards.writable=false`) |
+| `POST   /api/kanban/boards/{id}/tasks` | Create card |
+| `GET    /api/kanban/tasks/{id}` | `CardView` with allowed events |
+| `POST   /api/kanban/tasks/{id}/transition` | Fire event — 200 + record, 409 + reason on rejection |
+| `POST   /api/kanban/tasks/{id}/claim` | Set assignee |
+| `GET    /api/kanban/boards/{id}/events` | text/event-stream — `snapshot` on connect, `state-changed` per transition |
+
+### State Engine
+
+Default: lightweight transition-graph engine. Optional Spring State Machine engine when both classpath presence (`spring-statemachine-core:4.0.1`) and property are set:
+
+```yaml
+jaiclaw:
+  kanban:
+    engine:
+      name: spring-statemachine   # default: graph
+```
+
+### Column Processors (Phase 3)
+
+A board column may declare a processor that fires when a card lands on it. The wiring app provides a `Function<TaskRecord, String>` bean named `kanbanAgentRunner`:
+
+```java
+@Bean(name = "kanbanAgentRunner")
+public Function<TaskRecord, String> kanbanAgentRunner(MyAgent agent) {
+    return card -> agent.draftReply(card.name(), card.description());
+}
+```
+
+Restart policies (`fail` / `requeue` / `manual`) and an idempotency `EffectLedger` are described in the analysis §6.2 / §6.8.
+
+### Persistence Backends
+
+Boards: YAML files by default; switch to H2 with `jaiclaw.kanban.boards.type=h2`.
+
+Tasks (via `jaiclaw-tasks`): JSON by default; H2 / Postgres / Redis available via `jaiclaw.tasks.storage.type=h2|jdbc|redis` plus per-tenant routing through `TenantRoutingTaskStore`. The shared `TaskStoreContractSpec` pins SPI semantics across every backend — adding a new backend means extending the spec and providing a `createStore()`.
+
+### Actuator
+
+`/actuator/kanban` lists boards + recent transitions per board. Mirrors `PipelineActuatorEndpoint`.
+
+### Demo App
+
+`jaiclaw-examples/kanban-demo` is a runnable Spring Boot app demonstrating every surface end-to-end. The `.claude/skills/kanban-e2e` skill drives it out-of-process. See `jaiclaw-examples/kanban-demo/README.md` for the curl + SSE + ASCII walkthrough.
+
+---
+
 ## Token Usage Logging
 
 JaiClaw logs token usage after every LLM call. Two loggers provide different levels of detail:

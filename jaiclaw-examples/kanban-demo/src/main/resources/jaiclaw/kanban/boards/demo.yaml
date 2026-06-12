@@ -1,0 +1,37 @@
+id: demo
+name: Kanban Demo Board
+initialState: backlog
+columns:
+  - state: backlog
+    name: Backlog
+    phase: QUEUED
+  - state: drafting
+    name: Drafting
+    phase: RUNNING
+    wipLimit: 2
+    processor:
+      type: agent
+      promptTemplate: "Draft content for: {{name}}\n\n{{description}}"
+      onSuccess: SUBMIT
+      onFailure: BLOCK
+      idempotent: true
+      restartPolicy: requeue
+      maxAttempts: 3
+  - state: review
+    name: In Review
+    phase: RUNNING
+  - state: blocked
+    name: Blocked
+    phase: BLOCKED
+  - state: done
+    name: Done
+    phase: SUCCEEDED
+    terminal: true
+    terminalKind: SUCCESS
+transitions:
+  - { from: backlog,  to: drafting, event: START }
+  - { from: drafting, to: review,   event: SUBMIT }
+  - { from: drafting, to: blocked,  event: BLOCK }
+  - { from: review,   to: done,     event: APPROVE }
+  - { from: review,   to: drafting, event: REJECT }
+  - { from: blocked,  to: drafting, event: UNBLOCK }
