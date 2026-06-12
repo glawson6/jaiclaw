@@ -529,6 +529,17 @@
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-kanban</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-kanban</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
 
             <!-- Third-party libraries -->
             <dependency>

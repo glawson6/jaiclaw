@@ -1,0 +1,29 @@
+id: e2e-content-review
+name: E2E Content Review Board
+initialState: backlog
+columns:
+  - state: backlog
+    name: Backlog
+    phase: QUEUED
+  - state: drafting
+    name: Drafting
+    phase: RUNNING
+    wipLimit: 2
+  - state: review
+    name: In Review
+    phase: RUNNING
+  - state: blocked
+    name: Blocked
+    phase: BLOCKED
+  - state: done
+    name: Done
+    phase: SUCCEEDED
+    terminal: true
+    terminalKind: SUCCESS
+transitions:
+  - { from: backlog,  to: drafting, event: START }
+  - { from: drafting, to: review,   event: SUBMIT }
+  - { from: drafting, to: blocked,  event: BLOCK }
+  - { from: review,   to: done,     event: APPROVE }
+  - { from: review,   to: drafting, event: REJECT }
+  - { from: blocked,  to: drafting, event: UNBLOCK }

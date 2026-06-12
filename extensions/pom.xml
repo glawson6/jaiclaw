@@ -49,5 +49,6 @@
         <module>jaiclaw-tasks</module>
         <module>jaiclaw-video-generation</module>
         <module>jaiclaw-pipeline</module>
+        <module>jaiclaw-kanban</module>
     </modules>
 </project>

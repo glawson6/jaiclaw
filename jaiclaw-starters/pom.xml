@@ -44,6 +44,7 @@
         <module>jaiclaw-starter-wiki</module>
         <module>jaiclaw-starter-tasks</module>
         <module>jaiclaw-starter-pipeline</module>
+        <module>jaiclaw-starter-kanban</module>
         <module>jaiclaw-starter-secrets</module>
     </modules>
 </project>

@@ -90,5 +90,11 @@ class TaskExecutorSpec extends Specification {
 
         cleanup:
         completeLatch.countDown()
+        // Wait for the virtual thread to finish flushing before @TempDir teardown,
+        // otherwise an in-flight save races against directory deletion.
+        for (int i = 0; i < 50; i++) {
+            if (store.findById("t3").get().status() == TaskStatus.SUCCEEDED) break
+            Thread.sleep(20)
+        }
     }
 }
