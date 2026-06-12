@@ -276,7 +276,7 @@ revert the `jaiclaw-tasks` commit; `jaiclaw-kanban` is opt-in via
 
 ## 7. Phase 2 — Surfaces
 
-**Resume here →** `[ ]` *Decide analysis §9 Q1 before opening REST controller* (board-definition CRUD persistence) | last touched: *(Phase 2 not started)*
+**Resume here →** `[ ]` *Create `KanbanBoardController` REST endpoints* (REST + SSE group) | last touched: `BoardAsciiRendererSpec.groovy` (renderer group landed)
 
 ### 7.1 Scope
 
@@ -309,23 +309,31 @@ endpoint. Zero changes outside the kanban module.
 ### 7.4 Task list
 
 **Decision before code**
-- [ ] **Decide analysis §9 Q1** — does `POST /api/kanban/boards` persist definitions to a writable `BoardStore`, register in-memory only, or return 405 (YAML-only)? Cards stay dynamic regardless — this question is about *board definitions*. Record resolution in §10 and update §11 status.
+- [x] **Analysis §9 Q1 resolved 2026-06-12** — YAML-as-BoardStore. `POST /api/kanban/boards` registers in-memory AND writes `{boards-dir}/{boardId}.yaml` atomically (tmp + ATOMIC_MOVE). `DELETE /api/kanban/boards/{id}` unregisters + removes the file. Writes gated by `jaiclaw.kanban.boards.writable` (default true). Cards stay dynamic regardless of this flag.
+
+**Board persistence (Phase 2 prerequisite)**
+- [x] Create `BoardStore` SPI in `io.jaiclaw.kanban.persistence` — `save/delete/findById/findAll/count`; YAML files are the durable record
+- [x] `YamlFileBoardStore` impl: atomic per-file writes (tmp + ATOMIC_MOVE), reads on bootstrap, writes through on `save/delete`; malformed files skipped
+- [x] `KanbanBoardService` accepts an optional `BoardStore` + `writable` flag — `register/remove` dual-write or throw `BoardWriteException`; `cache/cacheAll` is the bootstrap-only path that bypasses the store
+- [x] Add `jaiclaw.kanban.boards.writable` flag to `KanbanProperties.Boards` (default true), with a legacy 9-arg constructor so Phase 1 callers keep compiling
+- [x] `KanbanAutoConfiguration` wires `YamlFileBoardStore`, threads `boards.writable` into the service, bootstrap merges classpath/file boards (from `locations.patterns`) with store-loaded boards (store wins on id conflict)
+- [x] Spock specs: `YamlFileBoardStoreSpec` (6 — write/roundtrip/delete/order/atomic/malformed-skip); `KanbanBoardServiceSpec` (6 — memory-only, persistent roundtrip, write-rejection in both directions, cache vs register, isWritable)
 
 **REST + SSE**
 - [ ] Create `KanbanBoardController` with all read endpoints (boards list, definition, snapshot, history, task detail)
-- [ ] Add write endpoints per §9 Q1 resolution (always: `POST /tasks`, `POST /tasks/{id}/transition`, `POST /tasks/{id}/claim`; conditionally `POST /boards`)
+- [ ] Add write endpoints: `POST /tasks`, `POST /tasks/{id}/transition`, `POST /tasks/{id}/claim`, `POST /boards`, `DELETE /boards/{id}` (latter two return 405 when `writable=false`)
 - [ ] Implement `409 + reason` on rejected transitions (guard, WIP, unknown event, version conflict)
 - [ ] Resolve tenant from `X-Tenant-Id` / `TenantContext`; configurable base path `jaiclaw.kanban.http.base-path` (default `/api/kanban`)
 - [ ] Create `KanbanEventController` with SSE emitter pool per `(tenantId, boardId)`; first event on connect is full `BoardSnapshot`; heartbeat per `jaiclaw.kanban.sse.heartbeat-seconds`; max-connections per `jaiclaw.kanban.sse.max-connections`
 - [ ] Wrap SSE fan-out in `TenantContextPropagator` (analysis §3.5 multi-tenancy rule)
 - [ ] Guard SSE bits with `@ConditionalOnClass(SseEmitter.class)` + `@ConditionalOnWebApplication`
-- [ ] Spock specs: controller MockMvc per endpoint; SSE emitter lifecycle unit spec; 409 paths
+- [ ] Spock specs: controller MockMvc per endpoint; SSE emitter lifecycle unit spec; 409 paths; 405 paths when `writable=false`
 
 **ASCII renderer**
-- [ ] `BoardAsciiRenderer.render(BoardSnapshot, AsciiBoardOptions)` over `Canvas` + `Rectangle` + `Label`; full style + compact (`Table`) variants
-- [ ] `text/plain` endpoint `GET …/ascii?width=N&style=full|compact`
-- [ ] Commit golden snapshots under `src/test/resources/boards/golden/`
-- [ ] Spock spec: snapshot golden compare; differing widths and styles
+- [x] `BoardAsciiRenderer.render(BoardSnapshot, AsciiBoardOptions)` — FULL style draws outer frame + per-column boxed cards directly on `jaiclaw-ascii-render`'s `Canvas`; COMPACT style emits a state/id/name table. Long names + descriptions wrap+truncate with `…`. Empty columns show the configured `emptyMarker`.
+- [ ] `text/plain` endpoint `GET …/ascii?width=N&style=full|compact` — lands with the REST controller group
+- [x] Commit golden snapshots under `src/test/resources/boards/golden/` (`demo-board-full.txt`, `demo-board-compact.txt`)
+- [x] Spock spec `BoardAsciiRendererSpec` — golden compare for FULL + COMPACT; empty-marker; title-bar clamping; empty-board safety (5 specs)
 
 **MCP + agent tools**
 - [ ] `KanbanMcpToolProvider` with `getTools()` + `execute(toolName, args, TenantContext)` — forwards tenant per analysis §3.5
@@ -552,7 +560,7 @@ Linked to analysis §9 unless added during execution.
 
 | # | Question | Status |
 |---|---|---|
-| Q1 | Board definition CRUD over REST — persist, in-memory only, or 405? | **Open** — must resolve before Phase 2 controller merges; see Phase 2 task list |
+| Q1 | Board definition CRUD over REST — persist, in-memory only, or 405? | **Resolved 2026-06-12: YAML-as-BoardStore.** `POST /api/kanban/boards` registers in memory AND writes `{boards-dir}/{boardId}.yaml` atomically (tmp + ATOMIC_MOVE, same pattern as `JsonFileTaskStore`). `DELETE /api/kanban/boards/{id}` unregisters + removes the file. Writes are gated by `jaiclaw.kanban.boards.writable` (default true) — false returns 405 from write endpoints for ops-locked deployments. YAML wins as the durable record; REST is the source of truth at write time. Hand-edits to YAML survive across restart (boot reads YAML); subsequent REST writes overwrite. Phase 4 H2 `BoardStore` swaps in behind the same SPI without API break. |
 | Q2 | Card ↔ flow relationship — reuse `TaskRecord.flowId` for `boardId` or use a dedicated field? | **Resolved 2026-06-12: dedicated `boardId` field added in Phase 1** (Option A from analysis §4) |
 | Q3 | Retention — archive terminal cards to `done/` shard after N days, or rely on history bound only? | **Open** — revisit in Phase 4 alongside the journal |
 | Q4 | Embabel processor target — should a column's processor target an Embabel `@Agent` action? | **Open** — the `Function` indirection permits it without design change; consider a Phase 3 example |
@@ -579,3 +587,11 @@ Append-only; records decisions, not commits.
   — bringing up a Spring context just to exercise wiring without any
   surfaces gives no extra coverage. Phase 2 will pick up the real
   Spring-context E2E when the REST/SSE surfaces land.
+- **2026-06-12** — Q1 resolved: YAML-as-BoardStore. `POST /api/kanban/boards`
+  registers in memory and writes `{boards-dir}/{boardId}.yaml` atomically;
+  `DELETE` unregisters and removes the file. Gated by
+  `jaiclaw.kanban.boards.writable` (default true). Chosen over a separate
+  JSON store because YAML files give ops `cat`/`git`/`diff` workflows
+  identical to today, with a single source of truth (the directory).
+  Hand-edits survive boot; subsequent REST writes overwrite. Phase 4 H2
+  store swaps in behind the same `BoardStore` SPI without API break.

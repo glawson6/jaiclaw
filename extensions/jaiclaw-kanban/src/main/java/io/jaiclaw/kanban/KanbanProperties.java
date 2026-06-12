@@ -8,9 +8,9 @@ import java.util.List;
  * Configuration surface for the kanban extension. Mirrors analysis §7.
  *
  * <p>Several sub-records reserve fields that Phase 3 / Phase 4 populate
- * (recovery, processors, journal); Phase 1 only honours
- * {@link #enabled()}, {@link #boardsDir()}, {@link Locations#patterns()},
- * and {@link History#maxPerBoard()}.
+ * (recovery, processors, journal); Phase 1 honours {@link #enabled()},
+ * {@link #boardsDir()}, {@link Locations#patterns()},
+ * {@link History#maxPerBoard()}; Phase 2 adds {@link Boards#writable()}.
  */
 @ConfigurationProperties(prefix = "jaiclaw.kanban")
 public record KanbanProperties(
@@ -22,7 +22,8 @@ public record KanbanProperties(
         Sse sse,
         History history,
         Recovery recovery,
-        Processors processors
+        Processors processors,
+        Boards boards
 ) {
     public KanbanProperties {
         if (boardsDir == null || boardsDir.isBlank()) {
@@ -35,6 +36,17 @@ public record KanbanProperties(
         if (history == null) history = new History(200, false);
         if (recovery == null) recovery = new Recovery(true, "fail", 3, "30m");
         if (processors == null) processors = new Processors(true, 5);
+        if (boards == null) boards = new Boards(true);
+    }
+
+    /**
+     * Legacy 9-arg constructor — Phase 1 callers (tests, embeddings)
+     * keep compiling unchanged with default board-writability ({@code true}).
+     */
+    public KanbanProperties(boolean enabled, String boardsDir, Engine engine,
+                            Locations locations, Http http, Sse sse, History history,
+                            Recovery recovery, Processors processors) {
+        this(enabled, boardsDir, engine, locations, http, sse, history, recovery, processors, null);
     }
 
     public record Engine(String name) {
@@ -83,5 +95,16 @@ public record KanbanProperties(
         public Processors {
             if (maxConcurrent <= 0) maxConcurrent = 5;
         }
+    }
+
+    /**
+     * Board-level controls.
+     *
+     * @param writable when {@code false}, {@code POST /api/kanban/boards}
+     *                 and {@code DELETE /api/kanban/boards/{id}} return
+     *                 {@code 405 Method Not Allowed} — useful for prod
+     *                 deployments where boards ship via git/CI/Helm only.
+     */
+    public record Boards(boolean writable) {
     }
 }

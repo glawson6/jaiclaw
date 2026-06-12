@@ -5,6 +5,8 @@ import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.kanban.events.KanbanHookFirer;
 import io.jaiclaw.kanban.loader.BoardFileLoader;
 import io.jaiclaw.kanban.model.BoardDefinition;
+import io.jaiclaw.kanban.persistence.BoardStore;
+import io.jaiclaw.kanban.persistence.YamlFileBoardStore;
 import io.jaiclaw.kanban.service.KanbanBoardService;
 import io.jaiclaw.kanban.service.TaskTransitionService;
 import io.jaiclaw.kanban.service.TransitionHistory;
@@ -26,7 +28,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ResourceLoader;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Auto-configuration for the kanban extension. Disabled by default — the
@@ -34,10 +40,13 @@ import java.util.List;
  * implementation plan's Definition-of-Done.
  *
  * <p>Wires up the graph state engine, board service, transition service,
- * history, mapped hook firer, and the board file loader. Phase 2 layers
- * REST/SSE/MCP/Actuator on top in separate {@code @Configuration} classes;
- * Phase 3 adds the column processor manager + recovery; Phase 4 promotes
- * the kanban event to a first-class {@code HookEvent} subtype.
+ * history, mapped hook firer, the YAML-backed {@link BoardStore}
+ * (analysis §9 Q1 resolution), and the legacy
+ * {@link BoardFileLoader} for {@code locations.patterns}-driven loads
+ * (classpath, additional file globs). Phase 2 layers REST/SSE/MCP/Actuator
+ * on top in separate {@code @Configuration} classes; Phase 3 adds the
+ * column processor manager + recovery; Phase 4 promotes the kanban event
+ * to a first-class {@code HookEvent} subtype.
  */
 @AutoConfiguration
 @AutoConfigureAfter(name = "io.jaiclaw.tasks.TasksAutoConfiguration")
@@ -72,8 +81,17 @@ public class KanbanAutoConfiguration {
     }
 
     @Bean
-    public KanbanBoardService kanbanBoardService(TenantGuard tenantGuard) {
-        return new KanbanBoardService(tenantGuard);
+    @ConditionalOnMissingBean
+    public BoardStore boardStore(KanbanProperties properties) {
+        return new YamlFileBoardStore(Path.of(expandHome(properties.boardsDir())));
+    }
+
+    @Bean
+    public KanbanBoardService kanbanBoardService(
+            TenantGuard tenantGuard,
+            BoardStore boardStore,
+            KanbanProperties properties) {
+        return new KanbanBoardService(tenantGuard, boardStore, properties.boards().writable());
     }
 
     @Bean
@@ -100,39 +118,67 @@ public class KanbanAutoConfiguration {
     }
 
     /**
-     * Loads board YAML on startup, validates everything, then registers with
-     * the board service. Failing fast at boot is much friendlier than
-     * letting a misconfigured board explode mid-transition.
+     * Loads boards on startup from two sources, validates the merged list,
+     * and caches everything in {@link KanbanBoardService} without echoing
+     * disk-loaded boards back to disk.
+     *
+     * <ol>
+     *   <li>Boards persisted in the {@link BoardStore} (the YAML files in
+     *       {@code jaiclaw.kanban.boards-dir} — these are the durable
+     *       record, written by REST when {@code boards.writable=true}).</li>
+     *   <li>Boards loaded through the legacy
+     *       {@code jaiclaw.kanban.locations.patterns} (classpath:* / file:
+     *       globs — useful for shipping boards inside JARs or pointing at
+     *       an alternate directory).</li>
+     * </ol>
+     *
+     * <p>On id conflict, the store wins (a YAML in {@code boards-dir} is
+     * the authoritative copy that REST can mutate; classpath boards are
+     * fallback defaults).
      */
     @Bean
     public KanbanBootstrapRunner kanbanBootstrapRunner(
             KanbanProperties properties,
+            BoardStore boardStore,
             BoardFileLoader loader,
             BoardValidator validator,
             KanbanBoardService boardService) {
-        return new KanbanBootstrapRunner(properties, loader, validator, boardService);
+        return new KanbanBootstrapRunner(properties, boardStore, loader, validator, boardService);
     }
 
-    /**
-     * One-shot startup bean. Implemented inline to keep the wiring visible —
-     * boards loaded, validated, registered, logged.
-     */
     public static class KanbanBootstrapRunner {
 
         public KanbanBootstrapRunner(
                 KanbanProperties properties,
+                BoardStore boardStore,
                 BoardFileLoader loader,
                 BoardValidator validator,
                 KanbanBoardService boardService) {
-            List<String> patterns = properties.locations().patterns();
-            List<BoardDefinition> defs = loader.loadAll(patterns);
-            if (defs.isEmpty()) {
-                log.info("Kanban: no boards loaded from patterns {}", patterns);
+            // Order matters for conflict resolution: locations first (overridable),
+            // then boardStore (authoritative).
+            Map<String, BoardDefinition> merged = new LinkedHashMap<>();
+            for (BoardDefinition d : loader.loadAll(properties.locations().patterns())) {
+                merged.put(d.id(), d);
+            }
+            for (BoardDefinition d : boardStore.findAll()) {
+                merged.put(d.id(), d);
+            }
+            List<BoardDefinition> all = new ArrayList<>(merged.values());
+            if (all.isEmpty()) {
+                log.info("Kanban: no boards loaded (store dir={}, patterns={})",
+                        properties.boardsDir(), properties.locations().patterns());
                 return;
             }
-            validator.validateOrThrow(defs);
-            boardService.registerAll(defs);
-            log.info("Kanban: registered {} boards", defs.size());
+            validator.validateOrThrow(all);
+            boardService.cacheAll(all);
+            log.info("Kanban: cached {} boards (store dir={}, patterns={})",
+                    all.size(), properties.boardsDir(), properties.locations().patterns());
         }
+    }
+
+    private static String expandHome(String path) {
+        if (path == null) return null;
+        if (path.startsWith("~/")) return System.getProperty("user.home") + path.substring(1);
+        return path;
     }
 }
