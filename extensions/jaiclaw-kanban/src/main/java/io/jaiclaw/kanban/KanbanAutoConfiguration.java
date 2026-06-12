@@ -120,8 +120,10 @@ public class KanbanAutoConfiguration {
     }
 
     @Bean
-    public KanbanHookFirer kanbanHookFirer(ObjectProvider<HookRunner> hookRunner) {
-        return new KanbanHookFirer(hookRunner.getIfAvailable());
+    public KanbanHookFirer kanbanHookFirer(ObjectProvider<HookRunner> hookRunner,
+                                            KanbanProperties properties) {
+        return new KanbanHookFirer(hookRunner.getIfAvailable(),
+                properties.hooks().legacyMapped());
     }
 
     @Bean

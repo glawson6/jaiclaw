@@ -24,7 +24,8 @@ public record KanbanProperties(
         History history,
         Recovery recovery,
         Processors processors,
-        Boards boards
+        Boards boards,
+        Hooks hooks
 ) {
     @ConstructorBinding
     public KanbanProperties {
@@ -39,16 +40,28 @@ public record KanbanProperties(
         if (recovery == null) recovery = new Recovery(true, "fail", 3, "30m");
         if (processors == null) processors = new Processors(true, 5);
         if (boards == null) boards = new Boards(true);
+        if (hooks == null) hooks = new Hooks(true);
     }
 
     /**
      * Legacy 9-arg constructor — Phase 1 callers (tests, embeddings)
-     * keep compiling unchanged with default board-writability ({@code true}).
+     * keep compiling unchanged with default board-writability ({@code true})
+     * and default legacy-mapped hook emission ({@code true}).
      */
     public KanbanProperties(boolean enabled, String boardsDir, Engine engine,
                             Locations locations, Http http, Sse sse, History history,
                             Recovery recovery, Processors processors) {
-        this(enabled, boardsDir, engine, locations, http, sse, history, recovery, processors, null);
+        this(enabled, boardsDir, engine, locations, http, sse, history, recovery, processors, null, null);
+    }
+
+    /**
+     * Phase-2 10-arg constructor — kept for backward compatibility with
+     * pre-Phase-4 callers that pass the {@link Boards} sub-record explicitly.
+     */
+    public KanbanProperties(boolean enabled, String boardsDir, Engine engine,
+                            Locations locations, Http http, Sse sse, History history,
+                            Recovery recovery, Processors processors, Boards boards) {
+        this(enabled, boardsDir, engine, locations, http, sse, history, recovery, processors, boards, null);
     }
 
     public record Engine(String name) {
@@ -108,5 +121,19 @@ public record KanbanProperties(
      *                 deployments where boards ship via git/CI/Helm only.
      */
     public record Boards(boolean writable) {
+    }
+
+    /**
+     * Hook firer controls.
+     *
+     * @param legacyMapped when {@code true} (the 0.8 default),
+     *                     {@code KanbanHookFirer} emits the deprecated
+     *                     {@code ToolCallStartedEvent} / {@code ToolCallEndedEvent}
+     *                     pair alongside the first-class
+     *                     {@code TaskStateChangedEvent} so pre-Phase-4
+     *                     plugins keep capturing kanban activity. Will flip
+     *                     to {@code false} in 0.9, then be removed.
+     */
+    public record Hooks(boolean legacyMapped) {
     }
 }

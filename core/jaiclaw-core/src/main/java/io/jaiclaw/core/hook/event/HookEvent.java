@@ -37,7 +37,8 @@ public sealed interface HookEvent
                 ToolCallStartedEvent, ToolCallEndedEvent,
                 MessageReceivedEvent, MessageSendingEvent, MessageSentEvent,
                 SessionStartedEvent, SessionEndedEvent, BeforeResetEvent,
-                BeforeCompactionEvent, AfterCompactionEvent {
+                BeforeCompactionEvent, AfterCompactionEvent,
+                TaskStateChangedEvent {
 
     /** The agent id firing this event (e.g. {@code "default"}). Never null. */
     String agentId();
