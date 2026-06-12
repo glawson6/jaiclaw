@@ -127,17 +127,44 @@ public class KanbanRecoveryManager implements SmartLifecycle {
     private int sweep(java.util.function.Predicate<TaskRecord> selector, String reason) {
         Map<String, ColumnPolicy> processorColumns = collectProcessorColumns();
         if (processorColumns.isEmpty()) return 0;
-        int examined = 0;
-        for (TaskRecord card : taskStore.findAll()) {
-            if (card.boardId() == null || card.state() == null) continue;
-            if (card.status() != TaskStatus.RUNNING && card.status() != TaskStatus.QUEUED) continue;
+        int[] examined = {0};
+        sweepEachStore((card) -> {
+            if (card.boardId() == null || card.state() == null) return;
+            if (card.status() != TaskStatus.RUNNING && card.status() != TaskStatus.QUEUED) return;
             ColumnPolicy policy = processorColumns.get(card.boardId() + ":" + card.state());
-            if (policy == null) continue;
-            if (!selector.test(card)) continue;
-            examined++;
+            if (policy == null) return;
+            if (!selector.test(card)) return;
+            examined[0]++;
             applyPolicy(card, policy, reason);
+        });
+        return examined[0];
+    }
+
+    /**
+     * Apply {@code consumer} to every card across every backend visible
+     * to this recovery manager. Plan §9 / analysis §6.7: when
+     * {@code taskStore} is a
+     * {@link io.jaiclaw.tasks.persistence.TenantRoutingTaskStore}, the
+     * sweep must iterate {@code (tenantId, store)} pairs with the tenant
+     * context set on each pass — otherwise only the default store's
+     * cards are visible (no tenant context at boot ⇒ router falls
+     * through to default).
+     */
+    private void sweepEachStore(java.util.function.Consumer<TaskRecord> consumer) {
+        if (taskStore instanceof io.jaiclaw.tasks.persistence.TenantRoutingTaskStore router) {
+            // Iterate explicit tenant backends first, then the default.
+            for (var entry : router.tenantStores().entrySet()) {
+                String tenantId = entry.getKey();
+                io.jaiclaw.tasks.persistence.TenantRoutingTaskStore.withTenant(tenantId,
+                        () -> entry.getValue().findAll().forEach(consumer));
+            }
+            // Default store under no tenant context — equivalent to SINGLE-mode.
+            router.defaultStore().findAll().forEach(consumer);
+            return;
         }
-        return examined;
+        // Plain (non-routed) store: single pass under whatever context the
+        // caller already set up.
+        taskStore.findAll().forEach(consumer);
     }
 
     private void applyPolicy(TaskRecord card, ColumnPolicy policy, String reason) {

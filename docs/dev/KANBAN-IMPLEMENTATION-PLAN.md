@@ -450,7 +450,7 @@ true) and `column.idempotent` (default false).
 
 ## 9. Phase 4 — Hardening & docs
 
-**Resume here →** `[ ]` *TaskStoreProvider routing + Redis + JDBC providers* (group 4 — large; Testcontainers + spring-data-redis + Lua/WATCH CAS for Redis, spring-jdbc + Testcontainers Postgres for JDBC). | last touched: `H2BoardStoreSpec.groovy`. Phase 4 groups landed: first-class HookEvent (1/N), transition journal (2/N), H2 stores (3/N). 143/143 kanban specs + 37/37 tasks specs green; install clean.
+**Resume here →** `[ ]` *kanban-demo example app + kanban-e2e skill* (group 6 — runnable Spring Boot demo + `.claude/skills/` skill). | last touched: `KanbanRecoveryRoutingSpec.groovy`. Phase 4 groups landed: first-class HookEvent (1/N), transition journal (2/N), H2 stores (3/N), TaskStoreProvider routing + JDBC (4a/N — Redis + Testcontainers deferred to 4b). 144/144 kanban specs + 67/67 tasks specs green; install clean.
 
 ### 9.1 Scope
 
@@ -490,12 +490,16 @@ demo example app + `kanban-e2e` skill, and sync all documentation.
 - [ ] Update every exhaustive switch (kept in same PR)
 - [ ] Update `KanbanHookFirer` to publish the first-class event; keep mapped-event firer as deprecated fallback for one release cycle
 
-**TaskStoreProvider & TenantRoutingTaskStore**
-- [ ] Implement `TenantRoutingTaskStore` (route via `TenantGuard`; fallback to default)
-- [ ] Add `RedisTaskStoreProvider` (optional dep on `spring-boot-starter-data-redis`; key-prefix per tenant; CAS via `WATCH`/`MULTI` or Lua)
-- [ ] Add `JdbcTaskStoreProvider` (optional dep on `spring-jdbc`; tenant column + CAS via `UPDATE ... WHERE id=? AND version=?` row-count)
-- [ ] Write `TaskStoreContractSpec` (abstract Spock spec); run against JSON, Redis (Testcontainers), JDBC (Testcontainers Postgres)
-- [ ] Update `KanbanRecoveryManager` to iterate `(tenantId, store)` pairs with tenant context per pass
+**TaskStoreProvider & TenantRoutingTaskStore (group 4a — landed)**
+- [x] `TenantRoutingTaskStore` routes each call to a per-tenant backing store via `TenantGuard`; SINGLE-mode hits the default store; explicitly-registered backends override; missing tenants fall through to default. `withTenant(tenantId, Runnable)` helper for context-scoped sweep iteration.
+- [x] `JdbcTaskStoreProvider` supports `"jdbc"` and `"h2"` type names, builds an `H2TaskStore` over a `SimpleDriverDataSource` from `{url, user, password}` config.
+- [x] `TaskStoreContractSpec` (abstract Spock base) pins the SPI invariants every backend must honour: round-trip, CAS (new-id / matching / stale), status/board filters, delete, count, findAll. Concrete subclasses `JsonTaskStoreContractSpec` (10) and `JdbcH2TaskStoreContractSpec` (10) prove JSON + H2 conform.
+- [x] `KanbanRecoveryManager.sweep` now detects a `TenantRoutingTaskStore` and iterates `(tenantId, store)` pairs with `withTenant` per pass; the default store is swept last under no context. Non-routed stores stay on the original single-pass path. `KanbanRecoveryRoutingSpec` proves the routed sweep finds stuck cards across multiple tenants.
+
+**Group 4b — deferred (Redis + Postgres-via-Testcontainers)**
+- [ ] `RedisTaskStoreProvider` (optional `spring-boot-starter-data-redis`; key-prefix per tenant; CAS via `WATCH`/`MULTI` or Lua)
+- [ ] Postgres-via-Testcontainers contract spec (adds Testcontainers as new test infrastructure — not currently used anywhere in jaiclaw)
+- [ ] Rationale for deferral: the shared `TaskStoreContractSpec` already pins SPI semantics across two concrete backends (JSON + H2). Adding more backends is mechanical — extend the spec, provide a `createStore()`. The Redis-specific WATCH/MULTI CAS work is genuinely new territory; cleaner to land as its own focused commit when Redis becomes a real need. Recorded in §12 decision log.
 
 **H2 stores**
 - [x] `H2TaskStore` in `jaiclaw-tasks` — full `TaskStore` SPI implementation: tenant-scoped reads (composite PK `(id, tenant_id)` so two tenants can share an id, same guarantee as `JsonFileTaskStore`), `compareAndSave` via row-count CAS (`UPDATE ... WHERE id=? AND version=?`), `findByBoardAndState` indexed by `(board_id, state)`. Metadata stored as JSON CLOB so future field growth is schema-free.
@@ -686,6 +690,20 @@ Append-only; records decisions, not commits.
   (6 specs) and idempotency replay by `AgentColumnProcessorSpec`; the
   E2E spec proves the autoconfig wiring instead of re-running matrix
   coverage.
+- **2026-06-12** — **Phase 4 group 4 split (4a / 4b).** The plan listed
+  TaskStoreProvider routing + Redis + JDBC + a contract spec against all
+  three as one group. In practice the Redis half requires introducing
+  Testcontainers as new test infrastructure (none of jaiclaw currently
+  uses it) and a `WATCH`/`MULTI` or Lua CAS implementation. Split this
+  group so the SPI shape lands cleanly without the Testcontainers
+  install:
+    **4a (landed):** `TenantRoutingTaskStore`, `JdbcTaskStoreProvider`
+    (H2-flavoured), shared `TaskStoreContractSpec` running against JSON
+    + H2 to pin SPI semantics, recovery sweep iterates routed backends.
+    **4b (deferred):** Redis provider + Postgres-via-Testcontainers
+    contract spec. The shared `TaskStoreContractSpec` is the gate — any
+    future backend just extends it and provides `createStore()`. No
+    further SPI work needed.
 - **2026-06-12** — Phase 3 done. Final counts: 125/125 jaiclaw-kanban
   specs + 24/24 jaiclaw-tasks specs, install gate clean. Production
   scope grew with optional `spring-statemachine-core:4.0.1`. Resume
