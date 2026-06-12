@@ -450,7 +450,7 @@ true) and `column.idempotent` (default false).
 
 ## 9. Phase 4 — Hardening & docs
 
-**Resume here →** `[ ]` *Phase 4 not started* | last touched: *(none yet)*
+**Resume here →** `[ ]` *H2 stores* (group 3 — `H2TaskStore` + `H2BoardStore` + lease columns) | last touched: `TransitionJournalSpec.groovy`. Phase 4 groups landed: first-class HookEvent (1/N), transition journal (2/N). 138/138 kanban specs + 24/24 tasks specs green; install clean.
 
 ### 9.1 Scope
 
@@ -503,8 +503,9 @@ demo example app + `kanban-e2e` skill, and sync all documentation.
 - [ ] Activate behind `@ConditionalOnClass(H2.class)` + `jaiclaw.tasks.storage.type: h2`
 
 **Transition journal**
-- [ ] `jaiclaw.kanban.history.journal=true` enables append-only `{boards-dir}/../journal/{boardId}.jsonl`
-- [ ] On startup, `TransitionHistory` deque becomes a cache over the journal tail
+- [x] `jaiclaw.kanban.history.journal=true` enables `TransitionJournal` — one append-only JSONL per board at `{boards-dir}/../journal/{boardId}.jsonl`. Subscribes to `TaskStateChanged` so journal-append is the same code path as SSE fan-out and the processor manager
+- [x] `SmartLifecycle.start()` reads each board's tail (capped at `history.max-per-board`), sorts by timestamp, and replays into `TransitionHistory` — the bounded deque survives a restart. Malformed JSONL lines are skipped; missing journal dir is a no-op. Idempotent: second `start()` is a no-op
+- [x] `TransitionJournalSpec` (9 tests): append, event listener happy + null-board ignored, replay ordering + cap, malformed-line skip, idempotent start, missing dirs
 
 **Dashboard UI**
 - [ ] Track as single checkbox here; link to the separate repo/app once created — out of this repo's scope

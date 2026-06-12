@@ -119,6 +119,25 @@ public class KanbanAutoConfiguration {
         return new TransitionHistory(properties.history().maxPerBoard());
     }
 
+    /**
+     * Append-only per-board JSONL log of accepted transitions. Activated by
+     * {@code jaiclaw.kanban.history.journal=true} per plan §9. Lives one
+     * directory level up from {@code jaiclaw.kanban.boards-dir} so it sits
+     * alongside the boards directory without polluting it.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "jaiclaw.kanban.history",
+            name = "journal", havingValue = "true")
+    public io.jaiclaw.kanban.journal.TransitionJournal transitionJournal(
+            KanbanProperties properties, TransitionHistory history) {
+        Path boardsDir = Path.of(expandHome(properties.boardsDir()));
+        Path journalDir = boardsDir.getParent() != null
+                ? boardsDir.getParent().resolve("journal")
+                : boardsDir.resolveSibling("journal");
+        return new io.jaiclaw.kanban.journal.TransitionJournal(journalDir, history,
+                properties.history().maxPerBoard());
+    }
+
     @Bean
     public KanbanHookFirer kanbanHookFirer(ObjectProvider<HookRunner> hookRunner,
                                             KanbanProperties properties) {
