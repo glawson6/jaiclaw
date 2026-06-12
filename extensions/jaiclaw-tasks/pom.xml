@@ -67,6 +67,30 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Phase 4b: optional Redis-backed TaskStore. Activated by
+             jaiclaw.tasks.storage.type=redis AND classpath presence. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Jedis explicitly (spring-data-redis defaults to Lettuce; the
+             RedisTaskStoreProvider builds a JedisConnectionFactory for the
+             provider's standalone-config use case). -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Phase 4b: optional Postgres support via the same H2TaskStore
+             class (SQL is portable). Schema lives at schema-postgres.sql. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Test: Spock + Groovy -->
         <dependency>
             <groupId>org.apache.groovy</groupId>
@@ -82,6 +106,27 @@
         <!-- Optional spring-jdbc + h2 production deps above are also visible
              on the test classpath, so H2TaskStoreSpec uses them directly
              via SimpleDriverDataSource — no separate test-scope entries. -->
+
+        <!-- Phase 4b: Testcontainers for the Postgres + Redis contract specs.
+             First Testcontainers use in the jaiclaw repo (decision log §12). -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.20.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>1.20.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.redis</groupId>
+            <artifactId>testcontainers-redis</artifactId>
+            <version>2.2.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
