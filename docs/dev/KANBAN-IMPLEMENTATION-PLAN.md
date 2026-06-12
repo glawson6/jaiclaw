@@ -276,7 +276,7 @@ revert the `jaiclaw-tasks` commit; `jaiclaw-kanban` is opt-in via
 
 ## 7. Phase 2 — Surfaces
 
-**Resume here →** `[ ]` *Create `KanbanBoardController` REST endpoints* (REST + SSE group) | last touched: `BoardAsciiRendererSpec.groovy` (renderer group landed)
+**Resume here →** `[ ]` *Create `KanbanEventController` SSE endpoint* (REST + SSE group, SSE half) | last touched: `KanbanBoardControllerSpec.groovy` (REST half landed, 56/56 specs green)
 
 ### 7.1 Scope
 
@@ -320,18 +320,20 @@ endpoint. Zero changes outside the kanban module.
 - [x] Spock specs: `YamlFileBoardStoreSpec` (6 — write/roundtrip/delete/order/atomic/malformed-skip); `KanbanBoardServiceSpec` (6 — memory-only, persistent roundtrip, write-rejection in both directions, cache vs register, isWritable)
 
 **REST + SSE**
-- [ ] Create `KanbanBoardController` with all read endpoints (boards list, definition, snapshot, history, task detail)
-- [ ] Add write endpoints: `POST /tasks`, `POST /tasks/{id}/transition`, `POST /tasks/{id}/claim`, `POST /boards`, `DELETE /boards/{id}` (latter two return 405 when `writable=false`)
-- [ ] Implement `409 + reason` on rejected transitions (guard, WIP, unknown event, version conflict)
-- [ ] Resolve tenant from `X-Tenant-Id` / `TenantContext`; configurable base path `jaiclaw.kanban.http.base-path` (default `/api/kanban`)
-- [ ] Create `KanbanEventController` with SSE emitter pool per `(tenantId, boardId)`; first event on connect is full `BoardSnapshot`; heartbeat per `jaiclaw.kanban.sse.heartbeat-seconds`; max-connections per `jaiclaw.kanban.sse.max-connections`
+- [x] Create `KanbanBoardController` with all read endpoints (boards list, get, snapshot, history, task detail, ASCII rendering)
+- [x] Add write endpoints: `POST /boards/{id}/tasks`, `POST /tasks/{id}/transition`, `POST /tasks/{id}/claim`, `POST /boards`, `DELETE /boards/{id}` (latter two return 405 when `writable=false`)
+- [x] Implement `409 + reason` on rejected transitions (guard, WIP, unknown event, version conflict)
+- [x] Configurable base path `jaiclaw.kanban.http.base-path` (default `/api/kanban`); tenant resolution from `TenantContext` via existing `TenantGuard` injection (no per-controller header parsing — Spring Security delegated)
+- [x] `BoardSnapshotService` builds `BoardSnapshot` for the controller, SSE on-connect, ASCII renderer, and the upcoming actuator endpoint
+- [x] `KanbanWebConfiguration` separate auto-config: `@ConditionalOnClass(RestController)` + `@ConditionalOnProperty(jaiclaw.kanban.http.enabled, default true)`
+- [ ] Create `KanbanEventController` with SSE emitter pool per `(tenantId, boardId)`; first event on connect is full `BoardSnapshot`; heartbeat per `jaiclaw.kanban.sse.heartbeat-seconds`; max-connections per `jaiclaw.kanban.sse.max-connections` — next group
 - [ ] Wrap SSE fan-out in `TenantContextPropagator` (analysis §3.5 multi-tenancy rule)
 - [ ] Guard SSE bits with `@ConditionalOnClass(SseEmitter.class)` + `@ConditionalOnWebApplication`
-- [ ] Spock specs: controller MockMvc per endpoint; SSE emitter lifecycle unit spec; 409 paths; 405 paths when `writable=false`
+- [x] Spock specs: `KanbanBoardControllerSpec` (13, full RANDOM_PORT integration through Tomcat — every endpoint with happy + edge paths); `KanbanBoardControllerReadOnlySpec` (3, asserts 405 on board writes when `writable=false` and that card endpoints still work)
 
 **ASCII renderer**
 - [x] `BoardAsciiRenderer.render(BoardSnapshot, AsciiBoardOptions)` — FULL style draws outer frame + per-column boxed cards directly on `jaiclaw-ascii-render`'s `Canvas`; COMPACT style emits a state/id/name table. Long names + descriptions wrap+truncate with `…`. Empty columns show the configured `emptyMarker`.
-- [ ] `text/plain` endpoint `GET …/ascii?width=N&style=full|compact` — lands with the REST controller group
+- [x] `text/plain` endpoint `GET /api/kanban/boards/{id}/ascii?width=N&style=full|compact` (landed with the REST controller group)
 - [x] Commit golden snapshots under `src/test/resources/boards/golden/` (`demo-board-full.txt`, `demo-board-compact.txt`)
 - [x] Spock spec `BoardAsciiRendererSpec` — golden compare for FULL + COMPACT; empty-marker; title-bar clamping; empty-board safety (5 specs)
 
@@ -595,3 +597,27 @@ Append-only; records decisions, not commits.
   identical to today, with a single source of truth (the directory).
   Hand-edits survive boot; subsequent REST writes overwrite. Phase 4 H2
   store swaps in behind the same `BoardStore` SPI without API break.
+- **2026-06-12** — Repo-wide gitignore bug surfaced during REST controller
+  work: root `.gitignore` matches `META-INF/`, which silently excludes every
+  module's `src/main/resources/META-INF/spring/AutoConfiguration.imports`.
+  Existing module tests work because Maven copies the file into
+  `target/classes` from the working copy, but a fresh `git clone` build of
+  any auto-configured module would be missing autoconfig discovery. The
+  kanban commit force-adds its imports file via `git add -f`. Broader fix
+  (audit + force-add every module's imports file, or scope the
+  `META-INF/` rule to `target/`) is **out of scope** for the kanban work
+  but should be raised as a separate cleanup.
+- **2026-06-12** — Phase 2 REST controller in-flight calls. (a) Test
+  isolation: each `KanbanBoardControllerSpec` test wipes
+  `BoardStore`/`TaskStore`/`TransitionHistory` in `setup()`, so specs run
+  independently regardless of order. Cheaper than `@DirtiesContext` per
+  method (which would rebuild the Tomcat context every test). (b)
+  Multiple `@SpringBootApplication` test apps in the same package cause
+  bean-definition collisions because `@SpringBootApplication` component-scans
+  the package — move each test app's class into its own sub-package
+  (`web/writable/`, `web/readonly/`). (c) `KanbanProperties` has two
+  constructors (canonical 10-arg + legacy 9-arg delegating) so Spring's
+  binder needs `@ConstructorBinding` on the canonical one to pick. (d)
+  `spring-boot-starter-web` is now a test-scope dep so the controller spec
+  can boot a real RANDOM_PORT Tomcat. Production stays on optional
+  `spring-web` only.

@@ -1,6 +1,7 @@
 package io.jaiclaw.kanban;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.util.List;
 
@@ -25,6 +26,7 @@ public record KanbanProperties(
         Processors processors,
         Boards boards
 ) {
+    @ConstructorBinding
     public KanbanProperties {
         if (boardsDir == null || boardsDir.isBlank()) {
             boardsDir = System.getProperty("user.home") + "/.jaiclaw/kanban/boards";

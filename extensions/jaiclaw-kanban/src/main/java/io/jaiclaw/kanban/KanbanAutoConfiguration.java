@@ -7,6 +7,8 @@ import io.jaiclaw.kanban.loader.BoardFileLoader;
 import io.jaiclaw.kanban.model.BoardDefinition;
 import io.jaiclaw.kanban.persistence.BoardStore;
 import io.jaiclaw.kanban.persistence.YamlFileBoardStore;
+import io.jaiclaw.kanban.render.BoardAsciiRenderer;
+import io.jaiclaw.kanban.service.BoardSnapshotService;
 import io.jaiclaw.kanban.service.KanbanBoardService;
 import io.jaiclaw.kanban.service.TaskTransitionService;
 import io.jaiclaw.kanban.service.TransitionHistory;
@@ -115,6 +117,19 @@ public class KanbanAutoConfiguration {
             TenantGuard tenantGuard) {
         return new TaskTransitionService(taskStore, boardService, engine, history,
                 publisher, hookFirer, tenantGuard);
+    }
+
+    @Bean
+    public BoardSnapshotService boardSnapshotService(
+            KanbanBoardService boardService,
+            TaskStore taskStore,
+            TaskStateEngine engine) {
+        return new BoardSnapshotService(boardService, taskStore, engine);
+    }
+
+    @Bean
+    public BoardAsciiRenderer boardAsciiRenderer() {
+        return new BoardAsciiRenderer();
     }
 
     /**
