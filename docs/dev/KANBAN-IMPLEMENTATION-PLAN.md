@@ -450,7 +450,7 @@ true) and `column.idempotent` (default false).
 
 ## 9. Phase 4 — Hardening & docs
 
-**Resume here →** `[ ]` *H2 stores* (group 3 — `H2TaskStore` + `H2BoardStore` + lease columns) | last touched: `TransitionJournalSpec.groovy`. Phase 4 groups landed: first-class HookEvent (1/N), transition journal (2/N). 138/138 kanban specs + 24/24 tasks specs green; install clean.
+**Resume here →** `[ ]` *TaskStoreProvider routing + Redis + JDBC providers* (group 4 — large; Testcontainers + spring-data-redis + Lua/WATCH CAS for Redis, spring-jdbc + Testcontainers Postgres for JDBC). | last touched: `H2BoardStoreSpec.groovy`. Phase 4 groups landed: first-class HookEvent (1/N), transition journal (2/N), H2 stores (3/N). 143/143 kanban specs + 37/37 tasks specs green; install clean.
 
 ### 9.1 Scope
 
@@ -498,9 +498,13 @@ demo example app + `kanban-e2e` skill, and sync all documentation.
 - [ ] Update `KanbanRecoveryManager` to iterate `(tenantId, store)` pairs with tenant context per pass
 
 **H2 stores**
-- [ ] `H2TaskStore` + `H2BoardStore` (cron-manager precedent) with transactional WIP checks
-- [ ] Add `claimedBy`/`leaseUntil` columns for lease-based multi-instance recovery; renewal as heartbeat from §6.2
-- [ ] Activate behind `@ConditionalOnClass(H2.class)` + `jaiclaw.tasks.storage.type: h2`
+- [x] `H2TaskStore` in `jaiclaw-tasks` — full `TaskStore` SPI implementation: tenant-scoped reads (composite PK `(id, tenant_id)` so two tenants can share an id, same guarantee as `JsonFileTaskStore`), `compareAndSave` via row-count CAS (`UPDATE ... WHERE id=? AND version=?`), `findByBoardAndState` indexed by `(board_id, state)`. Metadata stored as JSON CLOB so future field growth is schema-free.
+- [x] `H2BoardStore` in `jaiclaw-kanban` — `BoardStore` SPI implementation. Whole `BoardDefinition` lives as a JSON CLOB in `definition_json`, so columns/transitions/processor definitions evolve without DDL. Tenant scoping stays on `BoardDefinition.tenantIds()` (Phase 1 convention).
+- [x] Lease columns (`claimed_by`/`lease_until`) on the task table for multi-instance recovery (analysis §6.5). New `H2TaskStore` methods: `claim`, `renewLease`, `releaseLease`, `findExpiredLeases`. Claim succeeds when nobody holds it, when the existing lease has expired, or when the caller already holds it. Phase 3's `KanbanRecoveryManager` will wire this into the sweep loop in a follow-up.
+- [x] Activated behind `@ConditionalOnClass({JdbcTemplate.class, H2.Driver.class})` + `jaiclaw.tasks.storage.type=h2` / `jaiclaw.kanban.boards.type=h2`. Two separate auto-configs (`H2TaskPersistenceAutoConfiguration` in tasks, `H2BoardPersistenceAutoConfiguration` in kanban) so each can be enabled independently. `@AutoConfigureBefore` the default JSON / YAML config so the H2 bean wins the `@ConditionalOnMissingBean` race.
+- [x] Schemas ship as `schema.sql` (tasks: `jaiclaw_tasks`) and `schema-kanban.sql` (kanban: `jaiclaw_kanban_boards`) — separate filenames so Spring Boot's SQL init loads both without collision.
+- [x] Production deps: `spring-boot-starter-jdbc` + `h2` added as optional on both modules (BOM-managed versions).
+- [x] Specs: `H2TaskStoreSpec` (13 — full round-trip, CAS success/conflict, status/board filters, delete, MULTI-tenant isolation, full lease lifecycle, expired-lease enumeration); `H2BoardStoreSpec` (5 — round-trip, MERGE replaces row, findAll ordering, delete, missing-id empty).
 
 **Transition journal**
 - [x] `jaiclaw.kanban.history.journal=true` enables `TransitionJournal` — one append-only JSONL per board at `{boards-dir}/../journal/{boardId}.jsonl`. Subscribes to `TaskStateChanged` so journal-append is the same code path as SSE fan-out and the processor manager

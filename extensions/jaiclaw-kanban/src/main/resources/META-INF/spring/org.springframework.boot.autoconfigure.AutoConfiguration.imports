@@ -2,3 +2,4 @@ io.jaiclaw.kanban.KanbanAutoConfiguration
 io.jaiclaw.kanban.web.KanbanWebConfiguration
 io.jaiclaw.kanban.actuator.KanbanActuatorConfiguration
 io.jaiclaw.kanban.statemachine.SpringStateMachineConfiguration
+io.jaiclaw.kanban.persistence.h2.H2BoardPersistenceAutoConfiguration

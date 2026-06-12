@@ -91,6 +91,19 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Phase 4: optional H2-backed BoardStore. Mirrors jaiclaw-tasks'
+             H2TaskStore wiring. Activated by jaiclaw.kanban.boards.type=h2. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>

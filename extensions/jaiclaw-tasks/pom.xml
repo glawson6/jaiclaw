@@ -52,6 +52,21 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Phase 4: optional H2-backed TaskStore. Activated by
+             jaiclaw.tasks.storage.type=h2 AND classpath presence.
+             starter-jdbc rather than bare spring-jdbc so the version
+             is picked up from the Spring Boot BOM transitively. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Test: Spock + Groovy -->
         <dependency>
             <groupId>org.apache.groovy</groupId>
@@ -63,6 +78,10 @@
             <artifactId>spock-core</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Optional spring-jdbc + h2 production deps above are also visible
+             on the test classpath, so H2TaskStoreSpec uses them directly
+             via SimpleDriverDataSource — no separate test-scope entries. -->
     </dependencies>
 
     <build>

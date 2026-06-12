@@ -1,0 +1,2 @@
+io.jaiclaw.tasks.TasksAutoConfiguration
+io.jaiclaw.tasks.persistence.h2.H2TaskPersistenceAutoConfiguration
