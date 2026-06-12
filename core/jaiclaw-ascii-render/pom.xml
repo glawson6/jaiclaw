@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-core-modules</artifactId>
+        <version>0.8.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-ascii-render</artifactId>
+    <name>JaiClaw :: ASCII Render</name>
+    <description>
+        Pure-Java ASCII art rendering library — fluent Canvas + element
+        primitives (Rectangle, Line, Text, Plot, ...) usable from any
+        code. Ported and repackaged from the Apache 2.0 reference at
+        github.com/indvd00m/java-ascii-render.
+    </description>
+
+    <dependencies>
+        <!-- SLF4J for runtime log lines (e.g. unknown style fallbacks). -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Jackson powers AsciiSceneFactory.fromJson / renderJson.
+             Map-based factory methods do not require Jackson at runtime, but
+             pulling it in unconditionally keeps the API simple and matches
+             every downstream consumer's existing classpath. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Test (Spock + Groovy). -->
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

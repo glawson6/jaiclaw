@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "jaiclaw-ascii-render",
+  "description": "Local marketplace exposing the JaiClaw ASCII renderer as a Claude Code plugin/skill.",
+  "owner": {
+    "name": "TapTech",
+    "email": "gregory.lawson@taptech.net"
+  },
+  "plugins": [
+    {
+      "name": "ascii-rendering",
+      "description": "Render polished ASCII art — boxed messages, two-box-and-arrow diagrams, scatter plots, tables — via JBang + the JaiClaw ASCII renderer.",
+      "version": "0.1.0",
+      "author": {
+        "name": "TapTech",
+        "email": "gregory.lawson@taptech.net"
+      },
+      "source": "./plugins/ascii-rendering",
+      "category": "rendering"
+    }
+  ]
+}

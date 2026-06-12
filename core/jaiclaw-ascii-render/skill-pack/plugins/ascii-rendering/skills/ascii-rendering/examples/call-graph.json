@@ -1,0 +1,12 @@
+{
+  "width": 60,
+  "height": 7,
+  "elements": [
+    {"type": "rectangle", "params": {"x": 0,  "y": 1, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  source",      "x": 1,  "y": 3}},
+    {"type": "rectangle", "params": {"x": 42, "y": 1, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  destination", "x": 43, "y": 3}},
+    {"type": "line",      "params": {"x1": 18, "y1": 3, "x2": 42, "y2": 3, "pen": "─"}},
+    {"type": "label",     "params": {"text": "transfer", "x": 26, "y": 2}}
+  ]
+}

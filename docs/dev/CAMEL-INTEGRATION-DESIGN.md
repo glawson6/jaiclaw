@@ -20,15 +20,15 @@ Apache Camel provides 390+ pre-built connectors and a mature routing DSL. Rather
 JaiClaw remains the orchestrator. Camel implements the `ChannelAdapter` SPI and acts as a transport layer. Existing channel adapters are unchanged.
 
 ```
-                    ┌─────────────────────────────────────────┐
-                    │              JaiClaw Gateway             │
-                    │                                         │
-  Telegram ────────►│  TelegramAdapter ──┐                    │
-  Slack ───────────►│  SlackAdapter ─────┤                    │
-  S3 (via Camel) ──►│  CamelChannelAdapter ──► GatewayService │
-  Kafka (via Camel)►│  CamelChannelAdapter ──┘     │          │
-                    │                         AgentRuntime    │
-                    └─────────────────────────────────────────┘
+                    ┌────────────────────────────────────────────┐
+                    │               JaiClaw Gateway              │
+                    │                                            │
+  Telegram ────────►│  TelegramAdapter ──┐                       │
+  Slack ───────────►│  SlackAdapter ─────┤                       │
+  S3 (via Camel) ──►│  CamelChannelAdapter ─► GatewayService     │
+  Kafka (via Camel)►│  CamelChannelAdapter ─┘     │              │
+                    │                         AgentRuntime       │
+                    └────────────────────────────────────────────┘
 ```
 
 ---
@@ -591,40 +591,38 @@ A concrete multi-agent pipeline: S3 file drop → extraction agent → Kafka →
 ### Pipeline Diagram
 
 ```
-┌─────────────┐    ┌──────────────────┐    ┌───────────────────┐
-│  S3 Bucket  │───►│  Camel Route     │───►│ CamelChannelAdapter│
-│  (docs-in)  │    │  from("aws2-s3") │    │ "camel-extract"    │
-└─────────────┘    └──────────────────┘    └────────┬──────────┘
-                                                    │ handler.onMessage()
-                                                    ▼
-                                           ┌────────────────┐
-                                           │ GatewayService  │
-                                           │ → AgentRuntime  │
-                                           │ (extraction     │
-                                           │  agent)         │
-                                           └────────┬───────┘
-                                                    │ deliverResponse()
-                                                    ▼
-                                           ┌────────────────────┐
-                                           │ CamelChannelAdapter │
-                                           │ .sendMessage()      │
-                                           │ outbound: kafka:    │
-                                           │  extracted-docs     │
-                                           └────────┬───────────┘
-                                                    │
-                                                    ▼
-┌──────────────────┐    ┌───────────────────┐    ┌──────────────┐
-│  Kafka Topic     │───►│ CamelChannelAdapter│───►│ GatewayService│
-│ extracted-docs   │    │ "camel-analyze"    │    │ → AgentRuntime│
-└──────────────────┘    └───────────────────┘    │ (analysis    │
-                                                 │  agent)      │
-                                                 └──────┬──────┘
-                                                        │
-                                                        ▼
-                                                 ┌──────────────┐
-                                                 │ Slack Channel │
-                                                 │ #analysis    │
-                                                 └──────────────┘
+┌─────────────┐    ┌──────────────────┐    ┌──────────────────────┐
+│  S3 Bucket  │───►│  Camel Route     │───►│ CamelChannelAdapter  │
+│  (docs-in)  │    │  from("aws2-s3") │    │ "camel-extract"      │
+└─────────────┘    └──────────────────┘    └──────────┬───────────┘
+                                                      │ handler.onMessage()
+                                                      ▼
+                                           ┌──────────────────────┐
+                                           │ GatewayService       │
+                                           │ → AgentRuntime       │
+                                           │ (extraction agent)   │
+                                           └──────────┬───────────┘
+                                                      │ deliverResponse()
+                                                      ▼
+                                           ┌──────────────────────┐
+                                           │ CamelChannelAdapter  │
+                                           │ .sendMessage()       │
+                                           │ outbound: kafka:     │
+                                           │  extracted-docs      │
+                                           └──────────┬───────────┘
+                                                      │
+                                                      ▼
+┌──────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│  Kafka Topic     │───►│ CamelChannelAdapter  │───►│ GatewayService       │
+│ extracted-docs   │    │ "camel-analyze"      │    │ → AgentRuntime       │
+└──────────────────┘    └──────────────────────┘    │ (analysis agent)     │
+                                                    └──────────┬───────────┘
+                                                               │
+                                                               ▼
+                                                    ┌──────────────────────┐
+                                                    │ Slack Channel        │
+                                                    │ #analysis            │
+                                                    └──────────────────────┘
 ```
 
 ### Configuration

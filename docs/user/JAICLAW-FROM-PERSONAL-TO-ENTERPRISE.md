@@ -19,13 +19,13 @@ Most AI agent tools force a choice: a lightweight personal tool that can't scale
 │                                                                              │
 │  1 user           5-50 users       50-500 users        Unlimited             │
 │  0 channels       1 channel        3-7 channels        All 7 channels        │
-│  No auth          API key          JWT roles            JWT multi-tenancy     │
+│  No auth          API key          JWT roles           JWT multi-tenancy     │
 │  In-memory        In-memory        Redis sessions       Redis + PostgreSQL   │
 │  No audit         Minimal          Full audit trail     SOC 2 / HIPAA        │
 │  ReAct loop       ReAct loop       ReAct + cron         GOAP multi-agent     │
 │  1 LLM provider   1-2 providers    2-3 providers        Any of 11 providers  │
 │                                                                              │
-│  Modules: 4-5     Modules: 8-12    Modules: 18-25      Modules: 30-65       │
+│  Modules: 4-5     Modules: 8-12    Modules: 18-25      Modules: 30-65        │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -23,7 +23,7 @@ All integration tests use `MockOAuthServer`, a reusable Groovy helper that wraps
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Test Spec (Spock)                         │
+│                    Test Spec (Spock)                        │
 │  1. Configure MockOAuthServer endpoints                     │
 │  2. Build OAuthProviderConfig pointing at mock              │
 │  3. Exercise flow (AuthorizationCodeFlow / DeviceCodeFlow)  │

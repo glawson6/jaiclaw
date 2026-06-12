@@ -1,0 +1,9 @@
+{
+  "name": "ascii-rendering",
+  "description": "Render polished ASCII art — boxed messages, two-box-and-arrow diagrams, scatter plots, tables — from a small JSON description. Backed by the JaiClaw ASCII renderer via JBang.",
+  "version": "0.1.0",
+  "author": {
+    "name": "TapTech",
+    "email": "gregory.lawson@taptech.net"
+  }
+}

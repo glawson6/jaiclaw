@@ -1,0 +1,29 @@
+JaiClaw :: ASCII Render
+Copyright 2026 The JaiClaw authors.
+
+This module is licensed under the Apache License, Version 2.0
+(http://www.apache.org/licenses/LICENSE-2.0).
+
+------------------------------------------------------------------------
+
+This module is a derivative work of java-ascii-render
+(https://github.com/indvd00m/java-ascii-render), copyright (c) indvd00m
+<gotoindvdum at gmail dot com>, also licensed under the Apache License,
+Version 2.0.
+
+The original library targets Java 1.6 and uses package
+com.indvd00m.ascii.render.* . This derivative work has been:
+
+  - Repackaged under io.jaiclaw.asciirender.*
+  - Modernized for Java 21 (records for value types; for-each and
+    stream idioms in place of indexed loops; cleaner generic types)
+  - Trimmed: the AWT-backed PseudoText element and the
+    Render.setPseudoCanvas(boolean) flag are not included
+  - Extended: an McpToolProvider implementation lets the renderer be
+    reached over JaiClaw's MCP server endpoint when jaiclaw-gateway is
+    on the classpath
+
+The underlying rendering algorithms (Bresenham line/circle, axis
+normalization, word-wrap-with-truncation in Text, table cell layout)
+are unchanged in spirit from the upstream library; original author
+credit goes to indvd00m.

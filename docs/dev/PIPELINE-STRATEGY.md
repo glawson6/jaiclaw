@@ -192,27 +192,25 @@ stages:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          jaiclaw-pipeline module                            │
 │                                                                             │
-│  ┌─────────────────────┐    ┌──────────────────┐    ┌───────────────────┐  │
-│  │ PipelineDefinition  │    │ PipelineRegistry │    │ PipelineContext   │  │
-│  │ Loader (YAML)       │───▶│ (in-memory +     │    │ (runtime state)   │  │
-│  │                     │    │  tenant-scoped)  │    │                   │  │
-│  └─────────────────────┘    └────────┬─────────┘    └───────────────────┘  │
-│                                      │                         ▲            │
-│                                      ▼                         │            │
-│  ┌──────────────────────────────────────────────────────────┐  │            │
-│  │              PipelineRouteBuilder                        │  │            │
-│  │  Reads PipelineDefinition → builds CamelContext routes   │──┘            │
-│  │  from(trigger) → stage1 → stage2 → ... → output         │               │
-│  └────────────┬──────────────┬──────────────┬───────────────┘               │
-│               │              │              │                               │
-│               ▼              ▼              ▼                               │
-│  ┌────────────────┐ ┌───────────────┐ ┌──────────────┐ ┌────────────────┐  │
-│  │AgentStage      │ │BeanStage      │ │CamelStage    │ │BatchStage      │  │
-│  │Processor       │ │Processor      │ │Processor     │ │Processor       │  │
-│  │                │ │               │ │              │ │(optional dep)  │  │
-│  │Wraps           │ │Invokes Spring │ │Routes to     │ │Spring Batch    │  │
-│  │AgentProcessor  │ │bean by name   │ │Camel URI     │ │chunk step      │  │
-│  └────────────────┘ └───────────────┘ └──────────────┘ └────────────────┘  │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  │
+│  │ PipelineDefinition  │  │ PipelineRegistry    │  │ PipelineContext     │  │
+│  │ Loader (YAML)       │  │ (in-memory +        │  │ (runtime state)     │  │
+│  │                     │  │  tenant-scoped)     │  │                     │  │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                          PipelineRouteBuilder                         │  │
+│  │         Reads PipelineDefinition → builds CamelContext routes         │  │
+│  │             from(trigger) → stage1 → stage2 → ... → output            │  │
+│  └──────┬──────────────────┬──────────────────┬──────────────────┬───────┘  │
+│         ▼                  ▼                  ▼                  ▼          │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐  │
+│  │AgentStage    │   │BeanStage     │   │CamelStage    │   │BatchStage    │  │
+│  │Processor     │   │Processor     │   │Processor     │   │Processor     │  │
+│  │              │   │              │   │              │   │(optional dep)│  │
+│  │Wraps         │   │Invokes Spring│   │Routes to     │   │Spring Batch  │  │
+│  │AgentProcessor│   │bean by name  │   │Camel URI     │   │chunk step    │  │
+│  └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘  │
 │                                                                             │
 │  Dependencies: jaiclaw-camel, jaiclaw-tasks (optional), jaiclaw-config      │
 │  Optional: spring-batch-core (only if batch-chunk stages are used)          │
@@ -426,10 +424,10 @@ Instance A (Coordinator)              Instance B (Worker)
 │ stage-0 (local)         │          │ Listens on Kafka topic  │
 │   │                     │          │   │                     │
 │   ▼                     │          │   ▼                     │
-│ Kafka Producer ─────────┼────────▶│ AgentStageProcessor     │
+│ Kafka Producer ─────────┼─────────▶│ AgentStageProcessor     │
 │ (serialize context)     │  Kafka   │   │                     │
 │                         │          │   ▼                     │
-│ Kafka Consumer ◀────────┼──────── │ Kafka Producer          │
+│ Kafka Consumer ◀────────┼───────── │ Kafka Producer          │
 │   │                     │  Kafka   │ (serialize result)      │
 │   ▼                     │          └─────────────────────────┘
 │ stage-2 (local)         │

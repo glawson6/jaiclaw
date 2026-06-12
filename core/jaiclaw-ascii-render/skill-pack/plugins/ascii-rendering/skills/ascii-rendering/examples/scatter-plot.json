@@ -1,0 +1,17 @@
+{
+  "width": 50,
+  "height": 14,
+  "elements": [
+    {"type": "rectangle"},
+    {"type": "label",
+     "params": {"text": " latency vs load ", "x": 16, "y": 0}},
+    {"type": "plot",
+     "params": {
+       "x": 2, "y": 2, "width": 46, "height": 10,
+       "points": [
+         [0,1.0], [1,1.4], [2,2.7], [3,3.6], [4,4.1],
+         [5,4.4], [6,4.7], [7,4.9], [8,5.0], [9,5.1], [10,5.0]
+       ]
+     }}
+  ]
+}

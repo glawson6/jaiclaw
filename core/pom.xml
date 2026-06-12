@@ -18,6 +18,7 @@
         <module>jaiclaw-core</module>
         <module>jaiclaw-channel-api</module>
         <module>jaiclaw-config</module>
+        <module>jaiclaw-ascii-render</module>
         <module>jaiclaw-tools</module>
         <module>jaiclaw-agent</module>
         <module>jaiclaw-skills</module>

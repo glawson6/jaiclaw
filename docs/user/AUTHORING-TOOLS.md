@@ -284,15 +284,35 @@ patterns:
 Per [CONTRIBUTING.md](../../CONTRIBUTING.md): if your tool reads/writes
 shared state, the storage layer must be tenant-scoped.
 
+## Default rendering tools (`ascii_render`, `ascii_box`)
+
+Two tools in the **Rendering** section ship as defaults alongside the
+file/shell/web pair so every agent can emit diagrams without bringing
+in a library:
+
+| Tool | Use |
+|---|---|
+| `ascii_box` | Quick text-in-a-box (single / double / bold / rounded borders, optional title) |
+| `ascii_render` | Declarative scene — rectangles, lines, labels, text blocks, dots, circles, ellipses, tables, scatter plots |
+
+Both delegate to `AsciiSceneFactory` in the pure-Java
+`jaiclaw-ascii-render` library, so the same JSON description is
+renderable from non-agent code (web app, batch script, custom tool)
+via `AsciiSceneFactory.renderJson(jsonString)`.
+
+See [features/RENDERING.md](features/RENDERING.md) for the JSON
+schema, the full element catalogue, and developer-facing usage.
+
 ## Built-in tools to learn from
 
-The framework ships ~38 built-in tools — read a few to internalize the
+The framework ships ~40 built-in tools — read a few to internalize the
 conventions:
 
 | Tool | Lives at | Why read it |
 |---|---|---|
 | `ShellExecTool` | `core/jaiclaw-tools/src/main/java/io/jaiclaw/tools/builtin/` | Real tool with policy guard, timeout, sandboxing |
 | `WebFetchTool` | same | HTTP client + SSRF guard pattern |
+| `AsciiRenderTool` | same | Thin adapter that delegates the work to a library facade — clean separation between tool wiring and engine |
 | `FileEditTool` | `core/jaiclaw-tools/src/main/java/io/jaiclaw/tools/code/` | Workspace-boundary enforcement |
 | Calendar `CreateEventTool` | `extensions/jaiclaw-calendar/...` | Tenant-aware service delegation |
 | `FaqTool` | `jaiclaw-examples/helpdesk-bot/...` | Minimal example of value-shape returns |

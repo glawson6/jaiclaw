@@ -1,0 +1,9 @@
+{
+  "width": 40,
+  "height": 5,
+  "elements": [
+    {"type": "rectangle"},
+    {"type": "label",
+     "params": {"text": "Hello, JaiClaw", "x": 12, "y": 2}}
+  ]
+}

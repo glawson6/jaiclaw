@@ -7,22 +7,22 @@ This document covers how JaiClaw implements agentic workflows — autonomous AI 
 ```
                           ┌──────────────────────────────────────────┐
                           │              AgentRuntime                │
-                          │                                         │
-  User Input ────────────►│  1. BEFORE_AGENT_START hook             │
-                          │  2. Session lookup / create             │
-                          │  3. Context compaction (if needed)      │
-                          │  4. Build message history               │
-                          │  5. Load workspace memory               │
-                          │  6. BEFORE_PROMPT_BUILD hook (modifying)│
-                          │  7. LLM_INPUT hook                      │
-                          │  8. ┌──────────────────────────┐        │
-                          │     │   Tool Loop (see below)  │        │
-                          │     └──────────────────────────┘        │
-                          │  9. LLM_OUTPUT hook                     │
-                          │ 10. Record in session                   │
-                          │ 11. AGENT_END hook                      │
-                          │                                         │
-  Response ◄──────────────│                                         │
+                          │                                          │
+  User Input ────────────►│  1. BEFORE_AGENT_START hook              │
+                          │  2. Session lookup / create              │
+                          │  3. Context compaction (if needed)       │
+                          │  4. Build message history                │
+                          │  5. Load workspace memory                │
+                          │  6. BEFORE_PROMPT_BUILD hook (modifying) │
+                          │  7. LLM_INPUT hook                       │
+                          │  8. ┌──────────────────────────┐         │
+                          │     │   Tool Loop (see below)  │         │
+                          │     └──────────────────────────┘         │
+                          │  9. LLM_OUTPUT hook                      │
+                          │ 10. Record in session                    │
+                          │ 11. AGENT_END hook                       │
+                          │                                          │
+  Response ◄──────────────│                                          │
                           └──────────────────────────────────────────┘
 ```
 
@@ -58,23 +58,23 @@ Uses JaiClaw's `ExplicitToolLoop`, which calls `ChatModel` directly and manages 
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                    ExplicitToolLoop                       │
-│                                                          │
-│  for each iteration (1..maxIterations):                  │
-│    1. Call LLM with messages + tool definitions          │
-│    2. If response has no tool calls → return final text  │
-│    3. For each tool call in response:                    │
-│       a. Fire BEFORE_TOOL_CALL hook                      │
-│       b. If approval required:                           │
+│                                                           │
+│  for each iteration (1..maxIterations):                   │
+│    1. Call LLM with messages + tool definitions           │
+│    2. If response has no tool calls → return final text   │
+│    3. For each tool call in response:                     │
+│       a. Fire BEFORE_TOOL_CALL hook                       │
+│       b. If approval required:                            │
 │          └─ ToolApprovalHandler.requestApproval()         │
-│             ├─ Approved  → proceed                       │
+│             ├─ Approved  → proceed                        │
 │             ├─ Denied    → return denial as tool result   │
 │             └─ Modified  → use modified parameters        │
-│       c. Execute tool                                    │
-│       d. Fire AFTER_TOOL_CALL hook                       │
-│    4. Append tool results to messages                    │
-│    5. Continue loop                                      │
-│                                                          │
-│  Returns: LoopResult(finalText, history, iterationsUsed) │
+│       c. Execute tool                                     │
+│       d. Fire AFTER_TOOL_CALL hook                        │
+│    4. Append tool results to messages                     │
+│    5. Continue loop                                       │
+│                                                           │
+│  Returns: LoopResult(finalText, history, iterationsUsed)  │
 └───────────────────────────────────────────────────────────┘
 ```
 

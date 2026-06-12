@@ -28,7 +28,9 @@ public final class BuiltinTools {
                 new ShellExecTool(execPolicyConfig),
                 new WebFetchTool(ssrfProtection),
                 new WebSearchTool(),
-                new ClaudeCliTool()
+                new ClaudeCliTool(),
+                new AsciiRenderTool(),
+                new AsciiBoxTool()
         );
     }
 

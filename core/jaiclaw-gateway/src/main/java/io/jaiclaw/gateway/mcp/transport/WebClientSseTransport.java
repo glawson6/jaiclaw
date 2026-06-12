@@ -87,6 +87,7 @@ public class WebClientSseTransport implements SseHttpTransport {
                     log.debug("SSE connection established, status: {}", response.statusCode());
                     return response.bodyToFlux(DataBuffer.class);
                 })
+            .publishOn(Schedulers.boundedElastic()) // Ensure processing on WebClient's event loop
                 .subscribe(
                         dataBuffer -> {
                             try {

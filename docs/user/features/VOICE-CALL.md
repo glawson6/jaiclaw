@@ -90,26 +90,26 @@ This is where Twilio sends call status events and speech recognition results.
 ## Architecture
 
 ```
-┌─────────────┐     webhook POST     ┌──────────────────┐
-│   Twilio    │ ──────────────────── │ WebhookController │
-│  (cloud)    │                      └────────┬─────────┘
-│             │     WebSocket (media)          │
-│             │ ──────────────────── ┌─────────┴──────────┐
-└─────────────┘                      │ MediaStreamHandler  │
-                                     └─────────┬──────────┘
-                                               │
-                                     ┌─────────┴──────────┐
-                                     │    CallManager      │
-                                     │  (state machine,    │
-                                     │   event processor)  │
-                                     └─────────┬──────────┘
-                                               │
-                              ┌────────────────┼────────────────┐
-                              │                │                │
-                    ┌─────────┴───┐  ┌────────┴────────┐  ┌───┴──────────┐
-                    │  CallStore  │  │ TelephonyProvider│  │ MCP Tools    │
-                    │ (JSONL/mem) │  │   (Twilio SPI)   │  │ (5 tools)    │
-                    └─────────────┘  └─────────────────┘  └──────────────┘
+┌─────────────┐     webhook POST      ┌────────────────────┐
+│   Twilio    │ ────────────────────► │ WebhookController  │
+│  (cloud)    │                       └──────────┬─────────┘
+│             │   WebSocket (media)              │
+│             │ ────────────────────► ┌──────────┴─────────┐
+└─────────────┘                       │ MediaStreamHandler │
+                                      └──────────┬─────────┘
+                                                 │
+                                      ┌──────────┴─────────┐
+                                      │    CallManager     │
+                                      │  (state machine,   │
+                                      │   event processor) │
+                                      └──────────┬─────────┘
+                                                 │
+                              ┌──────────────────┼──────────────────┐
+                              │                  │                  │
+                      ┌───────┴───────┐  ┌───────┴──────────┐  ┌────┴─────────┐
+                      │   CallStore   │  │ TelephonyProvider│  │   MCP Tools  │
+                      │  (JSONL/mem)  │  │   (Twilio SPI)   │  │   (5 tools)  │
+                      └───────────────┘  └──────────────────┘  └──────────────┘
 ```
 
 ### Key components

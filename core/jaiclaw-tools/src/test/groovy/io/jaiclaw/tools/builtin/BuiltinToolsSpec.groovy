@@ -24,9 +24,9 @@ class BuiltinToolsSpec extends Specification {
 
     // --- BuiltinTools factory ---
 
-    def "BuiltinTools.all() returns 6 tools"() {
+    def "BuiltinTools.all() returns 8 tools"() {
         expect:
-        BuiltinTools.all().size() == 6
+        BuiltinTools.all().size() == 8
     }
 
     def "BuiltinTools.registerAll populates registry"() {
@@ -37,13 +37,15 @@ class BuiltinToolsSpec extends Specification {
         BuiltinTools.registerAll(registry)
 
         then:
-        registry.size() == 6
+        registry.size() == 8
         registry.contains("file_read")
         registry.contains("file_write")
         registry.contains("shell_exec")
         registry.contains("web_fetch")
         registry.contains("web_search")
         registry.contains("claude_cli")
+        registry.contains("ascii_render")
+        registry.contains("ascii_box")
     }
 
     // --- FileReadTool ---
