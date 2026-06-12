@@ -1,6 +1,6 @@
 # JaiClaw Kanban — Implementation Plan
 
-**Status:** In Progress — **Phase 1 (Core engine) complete; Phase 2 (Surfaces) next**
+**Status:** In Progress — **Phases 1 & 2 (Core engine + Surfaces) complete; Phase 3 (Processing & SSM) next**
 **Companion analysis:** [`KANBAN-TASK-PROCESSING-ANALYSIS.md`](./KANBAN-TASK-PROCESSING-ANALYSIS.md) — design rationale; this plan is the execution map.
 **Started:** 2026-06-12
 **Last updated:** 2026-06-12 — Phase 1 fully landed (all groups checked, 23/23 kanban specs + 24/24 tasks specs pass, install clean).
@@ -276,7 +276,7 @@ revert the `jaiclaw-tasks` commit; `jaiclaw-kanban` is opt-in via
 
 ## 7. Phase 2 — Surfaces
 
-**Resume here →** `[ ]` *Implement `KanbanMcpToolProvider` + 5 agent tools* (MCP + agent tools group) | last touched: `KanbanEventControllerSpec.groovy` (SSE half landed, 65/65 specs green)
+**Resume here →** all Phase 2 groups complete; jump to Phase 3 §8. | last touched: `KanbanSurfacesE2ESpec.groovy` (E2E landed; 90/90 kanban specs + 24/24 tasks specs green; install clean)
 
 ### 7.1 Scope
 
@@ -338,16 +338,17 @@ endpoint. Zero changes outside the kanban module.
 - [x] Spock spec `BoardAsciiRendererSpec` — golden compare for FULL + COMPACT; empty-marker; title-bar clamping; empty-board safety (5 specs)
 
 **MCP + agent tools**
-- [ ] `KanbanMcpToolProvider` with `getTools()` + `execute(toolName, args, TenantContext)` — forwards tenant per analysis §3.5
-- [ ] Implement agent tools `task_move`, `task_claim`, `board_show`, `board_ascii`, `board_list` — constructors take `Function<TaskRecord,String>` agent-runner so Phase 3 plugs in without changing signatures
-- [ ] Register tools through `ToolRegistry` from `KanbanAutoConfiguration`
-- [ ] Spock specs: `tools/list` shape; `tools/call` for each, including dynamic card creation via `task_move` flow
+- [x] `KanbanMcpToolProvider` (server name `kanban`) with `getTools()` + `execute(toolName, args, TenantContext)` for `board_list`, `board_show`, `board_ascii`, `task_move`, `task_claim` — same five operations the agent tools expose, returns JSON-encoded results
+- [x] Implement agent tools `task_move`, `task_claim`, `board_show`, `board_ascii`, `board_list` via `AbstractBuiltinTool`. **Decision:** these five tools do not need the `Function<TaskRecord,String>` agent-runner indirection — they are pure read/write operations on kanban state, not agent-invoking tools. The Phase 1 forward-decision was anticipating a future agent-backed tool; that tool doesn't appear in this list and will be added with the right signature in Phase 3 if needed. Recorded in §12.
+- [x] Register tools through `ToolRegistry` from `KanbanAutoConfiguration` via `KanbanTools.registerAll`; gated on `@ConditionalOnBean(ToolRegistry.class)` so non-tool embeddings stay clean
+- [x] Spock specs: `KanbanToolsSpec` (10, one per tool covering success/error/edge cases + factory shape); `KanbanMcpToolProviderSpec` (10, server identity, tools/list shape, every tool execution path including rejection mapping and unknown-tool)
 
 **Actuator**
-- [ ] `KanbanActuatorEndpoint` mirroring `PipelineActuatorEndpoint`'s read operations (boards, recent history per board, configured engine)
+- [x] `KanbanActuatorEndpoint` at `@Endpoint(id="kanban")` mirroring `PipelineActuatorEndpoint` — list() returns engine info + board summaries, byId() returns definition + recent transitions. Separate `KanbanActuatorConfiguration` auto-config gated on `@ConditionalOnClass(Endpoint)` + `jaiclaw.kanban.actuator.enabled` (default true)
+- [x] `KanbanActuatorEndpointSpec` (3): list shape, byId with recorded transitions, byId unknown returns error map
 
 **E2E**
-- [ ] Write `KanbanSurfacesE2ESpec` per §5.2 Phase 2 row — includes the dynamic-card scenario
+- [x] `KanbanSurfacesE2ESpec` per §5.2 Phase 2 row (2 specs): boot with classpath-loaded fixture board (`e2e-content-review.yaml`); then the big integration: SSE-open → snapshot event → `POST /tasks` dynamic card → CREATE event over SSE → REST transition → START event over SSE → ASCII rendering → MCP `tools/list` returns five tools → MCP `tools/call task_move` advances the card → SUBMIT event over SSE → `/actuator/kanban` + `/actuator/kanban/{id}` show the board and recent transitions. MCP invoked via the provider SPI bean (the gateway's HTTP MCP hosting is out of scope for a kanban-extension spec).
 
 ### 7.5 Verification
 
@@ -621,3 +622,27 @@ Append-only; records decisions, not commits.
   `spring-boot-starter-web` is now a test-scope dep so the controller spec
   can boot a real RANDOM_PORT Tomcat. Production stays on optional
   `spring-web` only.
+- **2026-06-12** — Phase 2 SSE notes. Dropped `produces = text/event-stream`
+  from the SSE route so 404 error responses can be JSON (Spring
+  content-negotiation otherwise returns 406 on 404). `spring-webmvc`
+  added as an optional production dep — `SseEmitter` lives there, not in
+  `spring-web`. Per-event fan-out runs on the publisher thread, which
+  already carries the right `TenantContext` from the transition service;
+  only the heartbeat scheduler needs `TenantContextPropagator` wrapping.
+- **2026-06-12** — Phase 2 agent-tool decision. The Phase 1 forward-call
+  said agent tools should accept the `Function<TaskRecord,String>`
+  agent-runner indirection so Phase 3 could plug processors in without
+  refactoring. Looking at the five named tools (`task_move`,
+  `task_claim`, `board_show`, `board_ascii`, `board_list`), none of them
+  *invoke* the agent — they are CRUD/read operations on kanban state.
+  The runner indirection is for the Phase 3 `ColumnProcessorManager`,
+  which is a separate bean, not one of these tools. Resolved by
+  **not** adding the indirection here; if Phase 3 introduces a
+  literally-agent-backed tool (e.g. `ask_agent_about_card`) it'll be
+  added then with the right signature from the start.
+- **2026-06-12** — Phase 2 done. Final counts: 90/90 jaiclaw-kanban specs +
+  24/24 jaiclaw-tasks specs, install gate clean. `KanbanSurfacesE2ESpec`
+  boots the full auto-config stack against the §5.1 fixture and drives
+  REST + SSE + ASCII + MCP + Actuator in a single spec. Test scope grew
+  with `spring-boot-starter-web` + `spring-boot-starter-actuator`;
+  production scope grew with optional `spring-webmvc`.

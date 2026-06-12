@@ -27,4 +27,5 @@ public final class ToolCatalog {
     public static final String SECTION_MEDIA = "Media";
     public static final String SECTION_TASKS = "Tasks";
     public static final String SECTION_RENDERING = "Rendering";
+    public static final String SECTION_KANBAN = "Kanban";
 }
