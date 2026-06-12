@@ -276,7 +276,7 @@ revert the `jaiclaw-tasks` commit; `jaiclaw-kanban` is opt-in via
 
 ## 7. Phase 2 — Surfaces
 
-**Resume here →** `[ ]` *Create `KanbanEventController` SSE endpoint* (REST + SSE group, SSE half) | last touched: `KanbanBoardControllerSpec.groovy` (REST half landed, 56/56 specs green)
+**Resume here →** `[ ]` *Implement `KanbanMcpToolProvider` + 5 agent tools* (MCP + agent tools group) | last touched: `KanbanEventControllerSpec.groovy` (SSE half landed, 65/65 specs green)
 
 ### 7.1 Scope
 
@@ -326,10 +326,10 @@ endpoint. Zero changes outside the kanban module.
 - [x] Configurable base path `jaiclaw.kanban.http.base-path` (default `/api/kanban`); tenant resolution from `TenantContext` via existing `TenantGuard` injection (no per-controller header parsing — Spring Security delegated)
 - [x] `BoardSnapshotService` builds `BoardSnapshot` for the controller, SSE on-connect, ASCII renderer, and the upcoming actuator endpoint
 - [x] `KanbanWebConfiguration` separate auto-config: `@ConditionalOnClass(RestController)` + `@ConditionalOnProperty(jaiclaw.kanban.http.enabled, default true)`
-- [ ] Create `KanbanEventController` with SSE emitter pool per `(tenantId, boardId)`; first event on connect is full `BoardSnapshot`; heartbeat per `jaiclaw.kanban.sse.heartbeat-seconds`; max-connections per `jaiclaw.kanban.sse.max-connections` — next group
-- [ ] Wrap SSE fan-out in `TenantContextPropagator` (analysis §3.5 multi-tenancy rule)
-- [ ] Guard SSE bits with `@ConditionalOnClass(SseEmitter.class)` + `@ConditionalOnWebApplication`
-- [x] Spock specs: `KanbanBoardControllerSpec` (13, full RANDOM_PORT integration through Tomcat — every endpoint with happy + edge paths); `KanbanBoardControllerReadOnlySpec` (3, asserts 405 on board writes when `writable=false` and that card endpoints still work)
+- [x] Create `KanbanEventController` (`GET /boards/{id}/events`, text/event-stream) + `KanbanEventBroadcaster` SmartLifecycle bean — emitter pool per `(tenantId, boardId)`; first event on connect is full `BoardSnapshot` named `snapshot`; subsequent `state-changed` events fan out per `TaskStateChanged`; heartbeat per `jaiclaw.kanban.sse.heartbeat-seconds`; max-connections per `jaiclaw.kanban.sse.max-connections` returns 429
+- [x] `TenantContextPropagator` wraps the heartbeat scheduler task; per-event fan-out runs on the publisher thread, which already carries the right tenant context (analysis §3.5)
+- [x] Gated on `jaiclaw.kanban.sse.enabled` (default true) via the existing `KanbanWebConfiguration` (which already requires `RestController` on the classpath); spring-webmvc added as an optional dep for `SseEmitter`
+- [x] Spock specs: `KanbanBoardControllerSpec` (13, full RANDOM_PORT integration through Tomcat — every endpoint with happy + edge paths); `KanbanBoardControllerReadOnlySpec` (3, asserts 405 on board writes when `writable=false` and that card endpoints still work); `KanbanEventBroadcasterSpec` (6, unit-level fan-out/dedup/max-cap/deregister/stop); `KanbanEventControllerSpec` (3, full Tomcat RANDOM_PORT — opens raw SSE via java.net.http, asserts snapshot-on-connect, state-changed delivered post-transition, heartbeat keeps stream alive)
 
 **ASCII renderer**
 - [x] `BoardAsciiRenderer.render(BoardSnapshot, AsciiBoardOptions)` — FULL style draws outer frame + per-column boxed cards directly on `jaiclaw-ascii-render`'s `Canvas`; COMPACT style emits a state/id/name table. Long names + descriptions wrap+truncate with `…`. Empty columns show the configured `emptyMarker`.

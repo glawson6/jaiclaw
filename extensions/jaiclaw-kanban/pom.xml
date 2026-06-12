@@ -75,6 +75,12 @@
             <artifactId>spring-web</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Required by KanbanEventController for SseEmitter (lives in spring-webmvc, not spring-web) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Logging -->
         <dependency>

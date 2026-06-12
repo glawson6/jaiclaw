@@ -1,5 +1,7 @@
 package io.jaiclaw.kanban.web;
 
+import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.kanban.KanbanProperties;
 import io.jaiclaw.kanban.render.BoardAsciiRenderer;
 import io.jaiclaw.kanban.service.BoardSnapshotService;
 import io.jaiclaw.kanban.service.KanbanBoardService;
@@ -43,5 +45,24 @@ public class KanbanWebConfiguration {
         return new KanbanBoardController(
                 boardService, snapshotService, transitionService,
                 history, taskStore, validator, renderer);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "jaiclaw.kanban.sse", name = "enabled",
+            havingValue = "true", matchIfMissing = true)
+    @ConditionalOnBean(BoardSnapshotService.class)
+    public KanbanEventBroadcaster kanbanEventBroadcaster(
+            BoardSnapshotService snapshotService,
+            TenantGuard tenantGuard,
+            KanbanProperties properties) {
+        return new KanbanEventBroadcaster(snapshotService, tenantGuard, properties.sse());
+    }
+
+    @Bean
+    @ConditionalOnBean(KanbanEventBroadcaster.class)
+    public KanbanEventController kanbanEventController(
+            KanbanEventBroadcaster broadcaster,
+            KanbanBoardService boardService) {
+        return new KanbanEventController(broadcaster, boardService);
     }
 }
