@@ -14,6 +14,10 @@ description. Two surfaces ship on top of it:
 - **Library factory** — `AsciiSceneFactory` takes a `Map<String, Object>`
   or a JSON string and returns ASCII text. Callable from any code (web
   app, batch script, custom tool, MCP server, scratch `main`).
+- **Claude Desktop MCP server** — a single JBang script at
+  `core/jaiclaw-ascii-render/skill-pack/.../scripts/AsciiRenderMcpServer.java`
+  exposes both tools to Claude Desktop over stdio. See
+  [Using JaiClaw Tools from Claude Desktop](../CLAUDE-DESKTOP-MCP.md).
 
 The library has no Spring dependency. Its only runtime deps are SLF4J
 and `jackson-databind` (for `fromJson` / `renderJson`).
