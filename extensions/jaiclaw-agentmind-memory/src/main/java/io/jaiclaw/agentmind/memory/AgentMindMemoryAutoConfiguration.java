@@ -6,6 +6,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.core.agent.AgentMindMemoryProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.memory.hook.MemoryPromptInjector;
+import io.jaiclaw.agentmind.memory.mcp.MemoryMcpToolProvider;
+import io.jaiclaw.agentmind.memory.mcp.TenantMemoryMcpToolProvider;
 import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
 import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
@@ -123,6 +125,12 @@ public class AgentMindMemoryAutoConfiguration {
         return new MemoryPromptInjector(memoryProvider, tenantGuard.getIfAvailable(), props);
     }
 
+    @Bean
+    @ConditionalOnMissingBean
+    public MemoryMcpToolProvider memoryMcpToolProvider(AgentMindMemoryProvider memoryProvider) {
+        return new MemoryMcpToolProvider(memoryProvider);
+    }
+
     /**
      * Debug read endpoints at {@code GET /api/agentmind/memory/agent/{agentId}}
      * and {@code .../peer/{agentId}/{peerId}}. Off by default; flip
@@ -156,6 +164,14 @@ public class AgentMindMemoryAutoConfiguration {
                                                               AgentMindMemoryProperties props) {
             return new TenantMemoryController(memoryProvider, tenantGuard.getIfAvailable(),
                     overflowPolicy, props);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public TenantMemoryMcpToolProvider tenantMemoryMcpToolProvider(AgentMindMemoryProvider memoryProvider,
+                                                                       MemoryOverflowPolicy overflowPolicy,
+                                                                       AgentMindMemoryProperties props) {
+            return new TenantMemoryMcpToolProvider(memoryProvider, overflowPolicy, props);
         }
     }
 }
