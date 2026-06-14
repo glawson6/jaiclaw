@@ -50,5 +50,6 @@
         <module>jaiclaw-video-generation</module>
         <module>jaiclaw-pipeline</module>
         <module>jaiclaw-kanban</module>
+        <module>jaiclaw-hermes-soul</module>
     </modules>
 </project>
