@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.core.agent.AgentMindMemoryProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.agentmind.memory.hook.MemoryPromptInjector;
 import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
 import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
@@ -110,5 +111,13 @@ public class AgentMindMemoryAutoConfiguration {
                                            AgentMindMemoryProperties props) {
         return new MemoryAgentTool(memoryProvider, tenantGuard.getIfAvailable(),
                 overflowPolicy, props);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public MemoryPromptInjector memoryPromptInjector(AgentMindMemoryProvider memoryProvider,
+                                                     ObjectProvider<TenantGuard> tenantGuard,
+                                                     AgentMindMemoryProperties props) {
+        return new MemoryPromptInjector(memoryProvider, tenantGuard.getIfAvailable(), props);
     }
 }
