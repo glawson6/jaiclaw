@@ -8,12 +8,14 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.memory.hook.MemoryPromptInjector;
 import io.jaiclaw.agentmind.memory.mcp.MemoryMcpToolProvider;
 import io.jaiclaw.agentmind.memory.mcp.TenantMemoryMcpToolProvider;
+import io.jaiclaw.agentmind.memory.metrics.InstrumentedMemoryProvider;
 import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
 import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
 import io.jaiclaw.agentmind.memory.tool.MemoryAgentTool;
 import io.jaiclaw.agentmind.memory.web.MemoryDebugController;
 import io.jaiclaw.agentmind.memory.web.TenantMemoryController;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -88,12 +90,23 @@ public class AgentMindMemoryAutoConfiguration {
         return m;
     }
 
+    /**
+     * Bare {@link AgentMindMemoryProvider} backed by the file store. When a
+     * {@link MeterRegistry} is on the classpath the {@link InstrumentedMemoryProvider}
+     * decorator wraps it so writes / overflows / conflicts publish to
+     * Micrometer (plan §6 task 2.12). Without Micrometer the bare provider
+     * is returned with no overhead.
+     */
     @Bean
     @ConditionalOnMissingBean
     public AgentMindMemoryProvider agentmindMemoryProvider(AgentMindMemoryProperties props,
                                                       ObjectMapper mapper,
-                                                      ObjectProvider<TenantGuard> tenantGuard) {
-        return new BoundedBlobMemoryStore(Path.of(props.rootDir()), tenantGuard.getIfAvailable(), mapper);
+                                                      ObjectProvider<TenantGuard> tenantGuard,
+                                                      ObjectProvider<MeterRegistry> meterRegistry) {
+        AgentMindMemoryProvider bare = new BoundedBlobMemoryStore(
+                Path.of(props.rootDir()), tenantGuard.getIfAvailable(), mapper);
+        MeterRegistry registry = meterRegistry.getIfAvailable();
+        return registry != null ? new InstrumentedMemoryProvider(bare, registry) : bare;
     }
 
     /**
