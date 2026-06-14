@@ -25,6 +25,13 @@
             <artifactId>jaiclaw-tools</artifactId>
         </dependency>
 
+        <!-- Required at compile time for the JaiClawPlugin SPI used by
+             SoulPromptInjector to register against BeforePromptBuildEvent. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-plugin-sdk</artifactId>
+        </dependency>
+
         <!-- Optional jaiclaw-identity for user-key resolution. Falls back to a
              deterministic hash when the bean is absent. -->
         <dependency>
