@@ -5,6 +5,8 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.hermes.soul.hook.SoulPromptInjector;
 import io.jaiclaw.hermes.soul.store.HermesStoreProvider;
 import io.jaiclaw.hermes.soul.tool.SoulAgentTool;
+import io.jaiclaw.hermes.soul.mcp.SoulMcpToolProvider;
+import io.jaiclaw.hermes.soul.mcp.TenantSoulMcpToolProvider;
 import io.jaiclaw.hermes.soul.web.SoulDebugController;
 import io.jaiclaw.hermes.soul.web.TenantSoulController;
 import io.jaiclaw.hermes.soul.store.JsonHermesStoreProvider;
@@ -84,6 +86,12 @@ public class HermesSoulAutoConfiguration {
         return new SoulAgentTool(soulProvider, tenantGuard.getIfAvailable());
     }
 
+    @Bean
+    @ConditionalOnMissingBean
+    public SoulMcpToolProvider soulMcpToolProvider(SoulProvider soulProvider) {
+        return new SoulMcpToolProvider(soulProvider);
+    }
+
     /**
      * Debug read endpoint at {@code GET /api/hermes/soul/agent/{agentId}}.
      * Off by default; flip {@code jaiclaw.hermes.soul.rest.enabled=true}
@@ -114,6 +122,12 @@ public class HermesSoulAutoConfiguration {
                                                          ObjectProvider<TenantGuard> tenantGuard,
                                                          HermesSoulProperties props) {
             return new TenantSoulController(soulProvider, tenantGuard.getIfAvailable(), props);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public TenantSoulMcpToolProvider tenantSoulMcpToolProvider(SoulProvider soulProvider) {
+            return new TenantSoulMcpToolProvider(soulProvider);
         }
     }
 }
