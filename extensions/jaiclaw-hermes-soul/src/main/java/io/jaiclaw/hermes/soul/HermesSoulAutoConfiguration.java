@@ -7,8 +7,12 @@ import io.jaiclaw.hermes.soul.store.HermesStoreProvider;
 import io.jaiclaw.hermes.soul.tool.SoulAgentTool;
 import io.jaiclaw.hermes.soul.mcp.SoulMcpToolProvider;
 import io.jaiclaw.hermes.soul.mcp.TenantSoulMcpToolProvider;
+import io.jaiclaw.hermes.soul.metrics.InstrumentedSoulProvider;
 import io.jaiclaw.hermes.soul.web.SoulDebugController;
 import io.jaiclaw.hermes.soul.web.TenantSoulController;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import io.jaiclaw.hermes.soul.store.JsonHermesStoreProvider;
 import io.jaiclaw.hermes.soul.user.HermesUserKeyResolver;
 import io.jaiclaw.hermes.soul.user.IdentityLinkUserKeyResolver;
@@ -65,10 +69,20 @@ public class HermesSoulAutoConfiguration {
         return new JsonHermesStoreProvider(Path.of(props.rootDir()), tenantGuard.getIfAvailable());
     }
 
+    /**
+     * Bare {@link SoulProvider} pulled out of the store provider. If a
+     * {@link MeterRegistry} is on the classpath, the
+     * {@link MetricsConfig#soulProvider} bean wraps this with an
+     * {@link InstrumentedSoulProvider} that publishes Micrometer counters
+     * (task 1.11). Otherwise this bare provider is used directly.
+     */
     @Bean
     @ConditionalOnMissingBean
-    public SoulProvider soulProvider(HermesStoreProvider storeProvider) {
-        return storeProvider.soulStore();
+    public SoulProvider soulProvider(HermesStoreProvider storeProvider,
+                                     ObjectProvider<MeterRegistry> meterRegistry) {
+        SoulProvider bare = storeProvider.soulStore();
+        MeterRegistry registry = meterRegistry.getIfAvailable();
+        return registry != null ? new InstrumentedSoulProvider(bare, registry) : bare;
     }
 
     @Bean
