@@ -582,6 +582,11 @@
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-agentmind-tendencies</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

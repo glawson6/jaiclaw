@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-extensions</artifactId>
+        <version>0.8.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-agentmind-tendencies</artifactId>
+    <name>JaiClaw :: AgentMind :: Tendencies</name>
+    <description>AgentMind-style per-user learned representation derived from observed transcript patterns. Cadence-gated dialectic LLM pass; user-message injection via MessageReceivedEvent. Opt-in via jaiclaw.agentmind.tendencies.enabled.</description>
+
+    <dependencies>
+        <!-- Core JaiClaw -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-core</artifactId>
+        </dependency>
+
+        <!-- Required at compile time for the JaiClawPlugin SPI used by
+             the user-message injector and dialectic trigger. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-plugin-sdk</artifactId>
+        </dependency>
+
+        <!-- Optional. Tendencies can run standalone; the soul module is
+             only consulted for AgentMindUserKeyResolver. When absent,
+             this module falls back to a deterministic hash internally. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-agentmind-soul</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional jaiclaw-identity for user-key resolution. Falls
+             back to a deterministic hash when the resolver bean is absent. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-identity</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Caffeine for the rendered-block cache + the per-user
+             cadence-gate state. -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- JSON serialisation of the Tendencies record on disk. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- Spring Boot autoconfig — all gated by @ConditionalOnProperty. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: Actuator counters + custom endpoint. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: REST + MCP read surfaces. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: Spring AI ChatModel for LocalLlmTendenciesProvider. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: H2 + JDBC for JdbcTendenciesStoreProvider. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test stack -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-spring</artifactId>
+            <version>${spock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

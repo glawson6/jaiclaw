@@ -52,5 +52,6 @@
         <module>jaiclaw-kanban</module>
         <module>jaiclaw-agentmind-soul</module>
         <module>jaiclaw-agentmind-memory</module>
+        <module>jaiclaw-agentmind-tendencies</module>
     </modules>
 </project>
