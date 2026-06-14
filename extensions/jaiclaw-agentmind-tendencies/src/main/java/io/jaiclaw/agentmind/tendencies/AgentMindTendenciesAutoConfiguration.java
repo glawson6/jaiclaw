@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
 import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor;
+import io.jaiclaw.agentmind.tendencies.hook.TendenciesUserMessageInjector;
 import io.jaiclaw.agentmind.tendencies.learning.DeterministicTendenciesProvider;
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
@@ -121,5 +122,13 @@ public class AgentMindTendenciesAutoConfiguration {
     @ConditionalOnMissingBean
     public StripedDialecticExecutor stripedDialecticExecutor(AgentMindTendenciesProperties props) {
         return new StripedDialecticExecutor(props.executor().queueDepth());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesUserMessageInjector tendenciesUserMessageInjector(
+            TendenciesStoreProvider store,
+            ObjectProvider<TenantGuard> tenantGuard) {
+        return new TendenciesUserMessageInjector(store, tenantGuard.getIfAvailable());
     }
 }
