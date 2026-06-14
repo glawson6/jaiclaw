@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.core.agent.AgentMindMemoryProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
+import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -86,5 +88,16 @@ public class AgentMindMemoryAutoConfiguration {
                                                       ObjectMapper mapper,
                                                       ObjectProvider<TenantGuard> tenantGuard) {
         return new BoundedBlobMemoryStore(Path.of(props.rootDir()), tenantGuard.getIfAvailable(), mapper);
+    }
+
+    /**
+     * Default overflow policy is {@link FailFastOverflowPolicy} — the agent
+     * tool surfaces the exception as a tool-error result and the LLM is
+     * forced to consolidate in-turn. Plan §6 task 2.4.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public MemoryOverflowPolicy memoryOverflowPolicy() {
+        return new FailFastOverflowPolicy();
     }
 }
