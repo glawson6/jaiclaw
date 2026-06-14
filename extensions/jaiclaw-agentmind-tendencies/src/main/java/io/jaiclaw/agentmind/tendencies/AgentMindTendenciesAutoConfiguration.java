@@ -3,6 +3,8 @@ package io.jaiclaw.agentmind.tendencies;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.jaiclaw.agentmind.tendencies.learning.DeterministicTendenciesProvider;
+import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
 import io.jaiclaw.core.agent.TendenciesStoreProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
@@ -87,5 +89,20 @@ public class AgentMindTendenciesAutoConfiguration {
             ObjectProvider<TenantGuard> tenantGuard) {
         return new JsonTendenciesStoreProvider(
                 Path.of(props.rootDir()), tenantGuard.getIfAvailable(), mapper);
+    }
+
+    /**
+     * Default learning provider — {@link DeterministicTendenciesProvider}.
+     * Wired only when the {@code provider} property is unset, set to
+     * {@code "deterministic"}, or absent. The LLM-driven provider
+     * ({@code local-llm}) is opt-in via property + classpath presence of
+     * Spring AI's {@code ChatModel} — landing in a follow-up sub-task.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "jaiclaw.agentmind.tendencies", name = "provider",
+            havingValue = "deterministic", matchIfMissing = true)
+    public TendenciesLearningProvider deterministicLearningProvider() {
+        return new DeterministicTendenciesProvider();
     }
 }
