@@ -4,6 +4,7 @@ import io.jaiclaw.core.agent.SoulProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.hermes.soul.hook.SoulPromptInjector;
 import io.jaiclaw.hermes.soul.store.HermesStoreProvider;
+import io.jaiclaw.hermes.soul.tool.SoulAgentTool;
 import io.jaiclaw.hermes.soul.store.JsonHermesStoreProvider;
 import io.jaiclaw.hermes.soul.user.HermesUserKeyResolver;
 import io.jaiclaw.hermes.soul.user.IdentityLinkUserKeyResolver;
@@ -72,5 +73,12 @@ public class HermesSoulAutoConfiguration {
                                                  ObjectProvider<TenantGuard> tenantGuard,
                                                  HermesSoulProperties props) {
         return new SoulPromptInjector(soulProvider, tenantGuard.getIfAvailable(), props);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SoulAgentTool soulAgentTool(SoulProvider soulProvider,
+                                       ObjectProvider<TenantGuard> tenantGuard) {
+        return new SoulAgentTool(soulProvider, tenantGuard.getIfAvailable());
     }
 }
