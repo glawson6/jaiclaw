@@ -731,8 +731,13 @@ file's `§11` mirrors this list and resolves them inline as phases land.
   `jaiclaw.agentmind.memory.budgets.{tenant-chars,agent-chars,peer-chars}`.
 - **Tendencies deterministic vocabulary.** Should
   `DeterministicTendenciesProvider` ship a default trait vocabulary (e.g.,
-  `prefers_concise`, `tech_leaning`) or be schema-free? **Open** — resolve in
-  Phase 3.
+  `prefers_concise`, `tech_leaning`) or be schema-free? **Resolved
+  2026-06-14:** constrained vocabulary with 6 starter traits
+  (`prefers_brevity`, `prefers_detail`, `tech_leaning`,
+  `prefers_bullets`, `prefers_examples`, `question_rate`). Constrained
+  because schema-free regex extraction would produce noisy traits; the
+  LLM provider (deferred follow-up) will surface richer maps when ops
+  opt in.
 - **Persona overlays.** Ship hermes' 14 personas verbatim, or just the SPI?
   **Open** — resolve in Phase 4.
 - **Cross-agent Soul sharing.** One tenant, multiple agents: does each agent

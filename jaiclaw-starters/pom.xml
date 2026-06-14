@@ -48,5 +48,6 @@
         <module>jaiclaw-starter-secrets</module>
         <module>jaiclaw-starter-agentmind-soul</module>
         <module>jaiclaw-starter-agentmind-memory</module>
+        <module>jaiclaw-starter-agentmind-tendencies</module>
     </modules>
 </project>

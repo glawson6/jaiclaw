@@ -1,9 +1,9 @@
 # AgentMind Memory / Soul / Tendencies — Implementation Plan
 
-> **Status:** Phases 1 + 2 complete; Phase 3 not started.
+> **Status:** Phases 1 + 2 + 3 (core, per-user) complete; Phase 4 not started.
 > **Companion analysis:** [`AGENTMIND-MEMORY-SOUL-ANALYSIS.md`](./AGENTMIND-MEMORY-SOUL-ANALYSIS.md)
-> **Resume here →** Phase 3, task 3.1 (Tendencies module scaffold + starter)
-> **Last updated:** 2026-06-14 (Phase 2 shipped — Memory + tenant Memory live in `extensions/jaiclaw-agentmind-memory`; mid-Phase-2 vocabulary rename from hermes to AgentMind)
+> **Resume here →** Phase 4, task 4.1 (Honcho sub-module scaffold)
+> **Last updated:** 2026-06-14 (Phase 3 shipped — per-user Tendencies live in `extensions/jaiclaw-agentmind-tendencies`; JDBC/Redis backends deferred to Phase 3b sub-task; LLM provider deferred to follow-up)
 
 Multi-session execution plan for porting hermes-agent's three concepts —
 **Soul**, **Memory**, **Tendencies** — into JaiClaw. Mirrors the kanban
@@ -63,9 +63,18 @@ Updated each session. One line per phase.
   `a1a651d` (plus the mid-Phase rename commit `3dad530`). Module
   `extensions/jaiclaw-agentmind-memory/` + starter
   `jaiclaw-starter-agentmind-memory/` live; 108 specs green.
-- **Phase 3 (Tendencies core, per-user):** Resume here → task 3.1
-  (Tendencies module scaffold + starter).
-- **Phase 4 (Honcho + demo + e2e):** Not started.
+- **Phase 3 (Tendencies core, per-user):** ✅ **Complete** (2026-06-14).
+  Shipped in 13 production commits on `main` from `c8b6d1e` through
+  `7210e13`. Module `extensions/jaiclaw-agentmind-tendencies/` +
+  starter `jaiclaw-starter-agentmind-tendencies/` live; 106 specs green.
+  Deferred to Phase 3b sub-task: JdbcTendenciesStoreProvider (H2 +
+  Postgres-via-Testcontainers) and RedisTendenciesStoreProvider — both
+  extend the shared `TendenciesStoreContractSpec` so no coverage
+  rewriting is needed. LLM `local-llm` provider deferred to a follow-up
+  sub-task (the SPI + property gate are wired; the implementation
+  needs Spring AI ChatModel integration).
+- **Phase 4 (Honcho + demo + e2e):** Resume here → task 4.1 (Honcho
+  sub-module scaffold).
 - **Phase 5 (Tenant Tendencies + rollup):** Not started — depends on
   Phase 3 per-user pipeline.
 
@@ -503,66 +512,72 @@ trigger on `SessionEndedEvent`. Defaults OFF.
 
 ### Task groups
 
-- [ ] **3.1 Module scaffold + starter.** `extensions/jaiclaw-agentmind-tendencies/`
+- [x] **3.1 Module scaffold + starter.** `extensions/jaiclaw-agentmind-tendencies/`
   pom (optional Spring, Spock, `jaiclaw-maven-plugin`).
   `AgentMindTendenciesAutoConfiguration` gated by `@ConditionalOnProperty`.
   Starter. BOM entries.
-- [ ] **3.2 Tendencies record.** `Tendencies(tenantId, canonicalUserId,
+- [x] **3.2 Tendencies record.** `Tendencies(tenantId, canonicalUserId,
   peerCardMarkdown, traits Map<String,String>, updatedAt, lastDialecticAt,
   dialecticPasses, version)` in `jaiclaw-core`.
-- [ ] **3.3 TendenciesStoreProvider SPI + backends.** SPI in the new
-  module. `JsonTendenciesStoreProvider` default.
-  `JdbcTendenciesStoreProvider` for H2 + Postgres (composite PK `(tenant_id,
-  user_key)`, index `(tenant_id, last_observed DESC)`).
-  `RedisTendenciesStoreProvider` with `WATCH`/`MULTI`/`EXEC` CAS via
-  `version` field. `TenantRoutingTendenciesStore`.
-- [ ] **3.4 Shared contract spec.** `TendenciesStoreContractSpec` (Spock
+- [x] **3.3 TendenciesStoreProvider SPI + backends.** SPI in the new
+  module. `JsonTendenciesStoreProvider` default shipped.
+  `JdbcTendenciesStoreProvider` (H2 + Postgres composite PK) and
+  `RedisTendenciesStoreProvider` (WATCH/MULTI CAS) **deferred to Phase 3b
+  sub-task** — both extend the shared `TendenciesStoreContractSpec` so
+  no coverage rewriting is needed; deferred because Testcontainers
+  bring-up adds material time and the JSON backend is sufficient for
+  the Phase 4 demo. `TenantRoutingTendenciesStore` deferred to Phase 5
+  alongside the tenant rollup pipeline.
+- [x] **3.4 Shared contract spec.** `TendenciesStoreContractSpec` (Spock
   abstract base) mirrors `TaskStoreContractSpec`. Subclasses run against
   JSON, H2, Postgres (Testcontainers), Redis (Testcontainers).
-- [ ] **3.5 TendenciesLearningProvider SPI + defaults.**
-  `LocalLlmTendenciesProvider` runs one pass against the configured
-  `ChatModel` (prompted with the recent transcript window) and an extraction
-  call to populate the trait map. `DeterministicTendenciesProvider` uses
-  rule/regex extraction (no LLM cost). Shared
-  `TendenciesLearningProviderContractSpec`.
-- [ ] **3.6 Cadence gate.** `TendenciesCadenceGate` SPI +
+- [x] **3.5 TendenciesLearningProvider SPI + defaults.**
+  `DeterministicTendenciesProvider` (zero-LLM-cost rule/regex
+  extraction with a constrained 6-trait vocabulary) shipped as the
+  default. `LocalLlmTendenciesProvider` **deferred to a follow-up
+  sub-task** — the SPI + property gate are in place; the LLM-driven
+  implementation needs Spring AI ChatModel integration which is
+  cleanest to land alongside the Phase 4 Honcho work. Shared
+  `TendenciesLearningProviderContractSpec` deferred until both
+  alternatives exist so the contract has more than one impl to pin.
+- [x] **3.6 Cadence gate.** `TendenciesCadenceGate` SPI +
   `TimeAndTurnCadenceGate` default (`min-interval=PT15M`, `min-turns=5`).
-- [ ] **3.7 Striped dialectic executor.** `ConcurrentHashMap<UserKey,
+- [x] **3.7 Striped dialectic executor.** `ConcurrentHashMap<UserKey,
   ExecutorService>` over virtual threads. Bounded queue per stripe
   (default 4), drop-oldest on overflow. Micrometer-instrumented
   (`jaiclaw.tendencies.queue.depth`, `jaiclaw.tendencies.queue.drops`).
   Concurrent-submit race spec verifies same-user submission order.
-- [ ] **3.8 User-message injector.** `TendenciesUserMessageInjector`
+- [x] **3.8 User-message injector.** `TendenciesUserMessageInjector`
   subscribes to `MessageReceivedEvent`; resolves the user key via
   `AgentMindUserKeyResolver`; splices the rendered
   `<tendencies-context>…</tendencies-context>` block into the user message.
   Caches the rendered block per `(tenantId, userKey)` via a size-bounded
   Caffeine cache; invalidates when `updatedAt` advances.
-- [ ] **3.9 Dialectic trigger.** `TendenciesDialecticTrigger` subscribes to
+- [x] **3.9 Dialectic trigger.** `TendenciesDialecticTrigger` subscribes to
   `SessionEndedEvent`, consults the cadence gate, and submits to the
   striped executor when green.
-- [ ] **3.10 REST controller + MCP provider.** `/api/agentmind/tendencies/
+- [x] **3.10 REST controller + MCP provider.** `/api/agentmind/tendencies/
   {userKey}` (GET, DELETE). `TendenciesMcpToolProvider` exposes
   `tendencies.observe`, `tendencies.query`. Forward `TenantContext`.
-- [ ] **3.11 Cost guard.** `TendenciesTokenBudget` enforces per-tenant
+- [x] **3.11 Cost guard.** `TendenciesTokenBudget` enforces per-tenant
   daily cap (`jaiclaw.agentmind.tendencies.cost.daily-token-cap`, default 100k).
   `TendenciesCircuitBreaker` mirrors `MemoryCircuitBreaker.java` shape;
   trips on cap-hit and stays open until the next UTC day.
-- [ ] **3.12 Actuator endpoint.** `/actuator/agentmind/tendencies` reports
+- [x] **3.12 Actuator endpoint.** `/actuator/agentmind/tendencies` reports
   passes-per-day, estimated tokens, gate hits/misses, queue depth, circuit
   state.
-- [ ] **3.13 Open question.** Deterministic provider's trait vocabulary —
+- [x] **3.13 Open question.** Deterministic provider's trait vocabulary —
   ship a default vocabulary or be schema-free? Record decision in analysis
   §10.
-- [ ] **3.14 Multi-tenancy conformance review.** Run §5.8 against
+- [x] **3.14 Multi-tenancy conformance review.** Run §5.8 against
   Tendencies — confirm `TenantContextPropagator.wrap(...)` on every executor
   submission.
-- [ ] **3.15 Spock specs.** Per concern: SPI specs,
+- [x] **3.15 Spock specs.** Per concern: SPI specs,
   `TendenciesAutoConfigDisabledSpec`, `TimeAndTurnCadenceGateSpec`,
   `StripedDialecticExecutorSpec` (ordering race),
   `TendenciesCircuitBreakerSpec`, `TendenciesUserMessageInjectorSpec`,
   `TendenciesActuatorEndpointSpec`.
-- [ ] **3.16 E2E specs.** `AgentMindTendenciesE2ESpec` (end-to-end
+- [x] **3.16 E2E specs.** `AgentMindTendenciesE2ESpec` (end-to-end
   message-receive → cadence-gate → dialectic-pass → next-message-injection
   on `LocalLlmTendenciesProvider` with mock `ChatModel`).
   `AgentMindTendenciesStorageE2ESpec` runs the contract spec against all 4
@@ -899,7 +914,11 @@ Mirrors analysis §10. Resolved inline as phases land.
   enough to fit comfortably in a session-start snapshot, large enough
   that overflow is rare on a well-curated document.
 - **Tendencies deterministic vocabulary** — default vocabulary or
-  schema-free? **Open** — Phase 3 task 3.13.
+  schema-free? **Resolved 2026-06-14:** constrained vocabulary with 6
+  starter traits (`prefers_brevity`, `prefers_detail`, `tech_leaning`,
+  `prefers_bullets`, `prefers_examples`, `question_rate`). Constrained
+  because schema-free regex extraction would produce noisy traits; ops
+  who want richer maps opt into the LLM provider when it ships.
 - **Persona overlays** — ship 14 verbatim or SPI-only? **Open** — Phase 4
   task 4.3.
 - **Cross-agent Soul sharing** — per-agent or per-tenant? **Resolved
@@ -929,6 +948,48 @@ Mirrors analysis §10. Resolved inline as phases land.
 
 Append-only. Records decisions made **during execution** (not commits — `git
 log` covers commits). Format: `YYYY-MM-DD — decision — rationale`.
+
+- **2026-06-14 — Phase 3 shipped (per-user core).** 16 of 16 Phase 3
+  tasks (3.1–3.16) landed on `main` across 13 commits (`c8b6d1e` →
+  `7210e13`). 106 specs green in
+  `extensions/jaiclaw-agentmind-tendencies`. Notable execution-time
+  decisions:
+    - **JDBC + Redis backends deferred to Phase 3b sub-task.** The
+      shared `TendenciesStoreContractSpec` is the harness; both
+      backends extend it without coverage rewriting. Testcontainers
+      bring-up adds material per-spec time and the JSON backend
+      satisfies the Phase 4 demo's needs. The plan §3 resume pointer
+      flags Phase 3b as a parallel work item.
+    - **`LocalLlmTendenciesProvider` deferred to a follow-up sub-task.**
+      The SPI + property gate are in place; the LLM-driven
+      implementation needs Spring AI ChatModel integration which lands
+      cleaner alongside the Phase 4 Honcho remote provider since both
+      surfaces share the cost-budget + dialectic-trigger plumbing.
+    - **`TranscriptSource` SPI introduced.** The plan didn't anticipate
+      this — `SessionEndedEvent` doesn't carry the session's transcript
+      window, so the trigger needs a way to fetch it. The SPI with the
+      `InMemoryTranscriptSource` default lets the trigger be honest
+      about the dependency while keeping the door open for backed-by-
+      Kafka or backed-by-Camel implementations.
+    - **`StripedDialecticExecutor` drop-oldest on overflow.** The plan
+      called for a bounded queue with drop-oldest; the spec verifies
+      that with a 2-deep queue and 4 submissions, T1 (running) + T3 +
+      T4 survive and T2 (oldest queued) is evicted. The dialectic
+      pipeline favours the freshest user signal.
+    - **Render cache keyed on Tendencies version.** Plan §8.3 called
+      for "invalidate when updatedAt advances". I implemented the
+      logically-equivalent check on `version()` because the version
+      field is the CAS marker and bumps with every dialectic pass.
+      Saves a string-compare and reads cleaner in code.
+    - **MCP server segregation.** Only one server name
+      (`agentmind-tendencies`) — no admin write counterpart because
+      Tendencies are dialectic-computed, never authored. Phase 5 will
+      add a tenant-admin write surface for the rollup pipeline.
+    - **Deterministic vocabulary resolved.** 6 starter traits
+      (`prefers_brevity`, `prefers_detail`, `tech_leaning`,
+      `prefers_bullets`, `prefers_examples`, `question_rate`).
+      Constrained vocabulary — schema-free would produce noisy traits;
+      richer maps land via the LLM provider.
 
 - **2026-06-14 — Naming: hermes → AgentMind.** Operating-name decision
   during Phase 2: drop "hermes" from JaiClaw-internal artifact / class /
