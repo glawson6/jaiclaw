@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
 import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
+import io.jaiclaw.agentmind.tendencies.actuator.TendenciesActuatorEndpoint;
 import io.jaiclaw.agentmind.tendencies.cost.TendenciesTokenBudget;
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor;
 import io.jaiclaw.agentmind.tendencies.hook.TendenciesDialecticTrigger;
@@ -168,6 +169,15 @@ public class AgentMindTendenciesAutoConfiguration {
     @ConditionalOnMissingBean
     public TendenciesMcpToolProvider tendenciesMcpToolProvider(TendenciesStoreProvider store) {
         return new TendenciesMcpToolProvider(store);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesActuatorEndpoint tendenciesActuatorEndpoint(
+            TendenciesCadenceGate cadenceGate,
+            StripedDialecticExecutor executor,
+            TendenciesTokenBudget tokenBudget) {
+        return new TendenciesActuatorEndpoint(cadenceGate, executor, tokenBudget);
     }
 
     /**
