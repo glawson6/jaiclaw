@@ -50,6 +50,7 @@
         <module>jaiclaw-video-generation</module>
         <module>jaiclaw-pipeline</module>
         <module>jaiclaw-kanban</module>
-        <module>jaiclaw-hermes-soul</module>
+        <module>jaiclaw-agentmind-soul</module>
+        <module>jaiclaw-agentmind-memory</module>
     </modules>
 </project>

@@ -46,6 +46,6 @@
         <module>jaiclaw-starter-pipeline</module>
         <module>jaiclaw-starter-kanban</module>
         <module>jaiclaw-starter-secrets</module>
-        <module>jaiclaw-starter-hermes-soul</module>
+        <module>jaiclaw-starter-agentmind-soul</module>
     </modules>
 </project>

@@ -1,7 +1,7 @@
 package io.jaiclaw.core.agent;
 
 /**
- * Thrown by {@link HermesMemoryProvider#saveMemory} when a write is rejected
+ * Thrown by {@link AgentMindMemoryProvider#saveMemory} when a write is rejected
  * because the incoming document's {@code version()} is not strictly greater
  * than the stored version. Optimistic CAS — losing writers must reload,
  * consolidate, and retry.

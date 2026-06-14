@@ -10,7 +10,7 @@ import spock.lang.Specification
  * Verifies that {@link SessionManager} fires {@link SessionStartedEvent} and
  * {@link SessionEndedEvent} through the injected {@link AgentHookDispatcher}.
  *
- * <p>Plan §5 task 1.1 — the per-user hermes work depends on these events
+ * <p>Plan §5 task 1.1 — the per-user persistent-state work depends on these events
  * being live in 0.8.x. Specs catch regressions if a future refactor of
  * SessionManager forgets to dispatch.
  */

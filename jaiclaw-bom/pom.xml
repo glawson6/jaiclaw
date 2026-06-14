@@ -562,14 +562,19 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-hermes-soul</artifactId>
+                <artifactId>jaiclaw-agentmind-soul</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-hermes-soul</artifactId>
+                <artifactId>jaiclaw-starter-agentmind-soul</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-agentmind-memory</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

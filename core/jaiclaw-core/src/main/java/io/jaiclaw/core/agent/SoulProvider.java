@@ -11,7 +11,7 @@ import java.util.Optional;
  * <p>Implementations MUST handle both {@link SoulScope#TENANT} and
  * {@link SoulScope#AGENT} or explicitly document the unsupported set —
  * scope dispatch lives inside the provider (no parallel {@code TenantSoulProvider}
- * SPI). See hermes analysis §6.
+ * SPI). See AgentMind analysis §6.
  *
  * <p>Writes follow optimistic CAS via {@link Soul#version()}. Implementations
  * MUST reject writes whose version is not strictly greater than the stored

@@ -3,7 +3,7 @@ package io.jaiclaw.core.model;
 /**
  * Scope discriminator for {@link MemoryDocument} records.
  *
- * <p>Hermes' {@code MEMORY.md} (agent-scope) and {@code USER.md}
+ * <p>AgentMind' {@code MEMORY.md} (agent-scope) and {@code USER.md}
  * (peer-scope) carry over verbatim; JaiClaw adds {@link #TENANT} for
  * org-wide institutional knowledge that every agent and user inherits.
  *
