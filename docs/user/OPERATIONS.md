@@ -1336,6 +1336,70 @@ Tasks (via `jaiclaw-tasks`): JSON by default; H2 / Postgres / Redis available vi
 
 ---
 
+## AgentMind Configuration
+
+JaiClaw's AgentMind family (port of `NousResearch/hermes-agent`'s three concepts — Soul, Memory, Tendencies — into the JaiClaw runtime) ships as four independent extensions. Each is **off by default**. Plan: `docs/dev/AGENTMIND-MEMORY-SOUL-PLAN.md`. Analysis: `docs/dev/AGENTMIND-MEMORY-SOUL-ANALYSIS.md`.
+
+```yaml
+jaiclaw:
+  agentmind:
+    # ---------- Soul ----------
+    # Markdown overlay layered into the system prompt at BeforePromptBuildEvent.
+    # Per-agent + optional per-tenant scope with additive layering (tenant first,
+    # agent second). 5 curated persona overlays + personality agent tool.
+    soul:
+      enabled: false                              # pillar-level toggle
+      root-dir: ${HOME}/.jaiclaw/agentmind/soul   # disk root; per-tenant subdir in MULTI mode
+      rest:
+        enabled: false                            # GET /api/agentmind/soul/agent/{agentId}
+      tenant:
+        enabled: false                            # operator-only tenant Soul REST + MCP
+        write-roles: [ADMIN, OPERATOR]
+      personas:
+        enabled: false                            # personality agent tool + .md overlays
+        dir: ${HOME}/.jaiclaw/agentmind/personas
+
+    # ---------- Memory ----------
+    # Per-user / per-agent / per-tenant blob Memory. Char-budgeted; compaction
+    # job rewrites when blob exceeds budget. Agent + operator write paths.
+    memory:
+      enabled: false
+      root-dir: ${HOME}/.jaiclaw/agentmind/memory
+      tenant:
+        enabled: false                            # tenant-shared institutional knowledge
+        agent-write-enabled: false                # default: operator-only writes
+      budgets:
+        tenant-chars: 4096
+        agent-chars: 2048
+        peer-chars: 2048
+
+    # ---------- Tendencies ----------
+    # Per-user observed style learned across turns. Spliced into the user
+    # message as <tendencies-context>…</tendencies-context>.
+    tendencies:
+      enabled: false
+      root-dir: ${HOME}/.jaiclaw/agentmind/tendencies
+      provider: deterministic                     # deterministic | local-llm | honcho
+      learning-cadence: PT1H                      # gate to avoid per-turn LLM calls
+
+      # Sub-module: jaiclaw-tendencies-honcho — opt-in remote provider.
+      # Adds the dependency, then set provider=honcho here; you must also
+      # provide a HonchoClient @Bean that points at your Honcho endpoint.
+      # See jaiclaw-tendencies-honcho/README.md.
+```
+
+**Off-by-default invariant.** All AgentMind beans gate on their pillar-level toggle. With everything `false`, the auto-configs make zero contributions to the application context. Verify by checking that the `agentmind-soul-enabled` / `agentmind-memory-enabled` / `agentmind-tendencies-enabled` marker beans are absent.
+
+**Persona overlays.** Five curated personas (`concise`, `technical`, `mentor`, `socratic`, `pirate`) ship inside `jaiclaw-agentmind-soul`'s classpath. Wire a copy step (see `jaiclaw-examples/agentmind-demo/src/main/java/io/jaiclaw/examples/agentmind/PersonaSeeder.java` for the pattern) to seed them into the configured `personas.dir` at startup. The `personality` agent tool exposes `set / clear / list` actions; persona switches are per-session and held in-process — they do not survive restarts.
+
+**HookEvent permits.** Soul, Memory, and Tendencies mutations are first-class permits on the `HookEvent` sealed hierarchy (alongside kanban's `TaskStateChangedEvent`). Plugins can subscribe via `api.on(SoulUpdatedEvent.class, handler)` / `api.on(MemoryUpdatedEvent.class, handler)` / `api.on(TendenciesUpdatedEvent.class, handler)`. Emission at the SPI write boundary is shipped in a follow-up release; the permits are present so plugin authors can register handlers ahead of the wiring.
+
+**Multi-tenancy.** All three pillars dispatch on `TenantGuard#isMultiTenant()` for path/key prefixing. SINGLE-mode collapses to `default` tenant. MULTI-mode requires a resolved `TenantContext` before reads/writes.
+
+**Demo.** `jaiclaw-examples/agentmind-demo` exercises all four surfaces end-to-end. See its README for the configuration template + curl walkthrough.
+
+---
+
 ## Token Usage Logging
 
 JaiClaw logs token usage after every LLM call. Two loggers provide different levels of detail:
