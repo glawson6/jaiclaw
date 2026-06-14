@@ -5,6 +5,8 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.hermes.soul.hook.SoulPromptInjector;
 import io.jaiclaw.hermes.soul.store.HermesStoreProvider;
 import io.jaiclaw.hermes.soul.tool.SoulAgentTool;
+import io.jaiclaw.hermes.soul.web.SoulDebugController;
+import io.jaiclaw.hermes.soul.web.TenantSoulController;
 import io.jaiclaw.hermes.soul.store.JsonHermesStoreProvider;
 import io.jaiclaw.hermes.soul.user.HermesUserKeyResolver;
 import io.jaiclaw.hermes.soul.user.IdentityLinkUserKeyResolver;
@@ -80,5 +82,38 @@ public class HermesSoulAutoConfiguration {
     public SoulAgentTool soulAgentTool(SoulProvider soulProvider,
                                        ObjectProvider<TenantGuard> tenantGuard) {
         return new SoulAgentTool(soulProvider, tenantGuard.getIfAvailable());
+    }
+
+    /**
+     * Debug read endpoint at {@code GET /api/hermes/soul/agent/{agentId}}.
+     * Off by default; flip {@code jaiclaw.hermes.soul.rest.enabled=true}
+     * to enable. Intended for ops only.
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.hermes.soul.rest", name = "enabled", havingValue = "true")
+    public static class SoulDebugRestConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public SoulDebugController soulDebugController(SoulProvider soulProvider,
+                                                       ObjectProvider<TenantGuard> tenantGuard) {
+            return new SoulDebugController(soulProvider, tenantGuard.getIfAvailable());
+        }
+    }
+
+    /**
+     * Operator-only tenant Soul write surface. Off by default; flip
+     * {@code jaiclaw.hermes.soul.tenant.enabled=true} to enable. Role-guarded
+     * by {@code jaiclaw.hermes.soul.tenant.write.roles}.
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.hermes.soul.tenant", name = "enabled", havingValue = "true")
+    public static class TenantSoulRestConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public TenantSoulController tenantSoulController(SoulProvider soulProvider,
+                                                         ObjectProvider<TenantGuard> tenantGuard,
+                                                         HermesSoulProperties props) {
+            return new TenantSoulController(soulProvider, tenantGuard.getIfAvailable(), props);
+        }
     }
 }
