@@ -32,9 +32,18 @@
             <artifactId>jaiclaw-plugin-sdk</artifactId>
         </dependency>
 
-        <!-- Reuses the AgentMindUserKeyResolver from the soul module to keep
-             user-key derivation consistent across pillars. Optional so
-             memory can be enabled without soul. -->
+        <!-- Optional. Memory can run standalone; the soul module is only
+             consulted if a deployment also enables it. The per-user key
+             resolver lives inside the soul module today — when
+             AgentMindUserKeyResolver is on the classpath the memory
+             module uses it; otherwise the memory module falls back to
+             a deterministic hash internally.
+
+             MarkdownSectionEditor is duplicated below into this module
+             (io.jaiclaw.agentmind.memory.markdown) rather than depending
+             on the soul module for compile-time access. A third Phase 3
+             copy (Tendencies) is the trigger to lift it to a shared
+             location — likely jaiclaw-tools. -->
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-agentmind-soul</artifactId>

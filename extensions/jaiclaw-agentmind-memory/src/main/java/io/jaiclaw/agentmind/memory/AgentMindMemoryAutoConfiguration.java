@@ -8,6 +8,7 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
 import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
+import io.jaiclaw.agentmind.memory.tool.MemoryAgentTool;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -99,5 +100,15 @@ public class AgentMindMemoryAutoConfiguration {
     @ConditionalOnMissingBean
     public MemoryOverflowPolicy memoryOverflowPolicy() {
         return new FailFastOverflowPolicy();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public MemoryAgentTool memoryAgentTool(AgentMindMemoryProvider memoryProvider,
+                                           ObjectProvider<TenantGuard> tenantGuard,
+                                           MemoryOverflowPolicy overflowPolicy,
+                                           AgentMindMemoryProperties props) {
+        return new MemoryAgentTool(memoryProvider, tenantGuard.getIfAvailable(),
+                overflowPolicy, props);
     }
 }
