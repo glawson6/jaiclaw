@@ -576,6 +576,11 @@
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-tendencies-honcho</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Third-party libraries -->
             <dependency>

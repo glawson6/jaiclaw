@@ -53,5 +53,6 @@
         <module>jaiclaw-agentmind-soul</module>
         <module>jaiclaw-agentmind-memory</module>
         <module>jaiclaw-agentmind-tendencies</module>
+        <module>jaiclaw-tendencies-honcho</module>
     </modules>
 </project>
