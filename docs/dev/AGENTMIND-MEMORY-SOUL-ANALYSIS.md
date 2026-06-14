@@ -739,7 +739,21 @@ file's `§11` mirrors this list and resolves them inline as phases land.
   LLM provider (deferred follow-up) will surface richer maps when ops
   opt in.
 - **Persona overlays.** Ship hermes' 14 personas verbatim, or just the SPI?
-  **Open** — resolve in Phase 4.
+  **Resolved 2026-06-14:** ship a curated set of 5 (concise, technical,
+  mentor, socratic, pirate) inside `jaiclaw-agentmind-soul`'s
+  classpath; consumers drop additional `.md` files into the configured
+  dir. Five is enough to demonstrate voice/style/boundary axes without
+  importing hermes' full taxonomy verbatim.
+- **First-class HookEvent permits for AgentMind mutations.** Should
+  Soul/Memory/Tendencies writes surface as typed events on the
+  `HookEvent` hierarchy, or stay as module-internal log lines?
+  **Resolved 2026-06-14:** typed events. Added `SoulUpdatedEvent`,
+  `MemoryUpdatedEvent`, `TendenciesUpdatedEvent` permits alongside
+  kanban's `TaskStateChangedEvent`. Wiring at the SPI write boundary
+  (InstrumentedSoulProvider decorator, BoundedBlobMemoryStore,
+  TendenciesLearningProvider) is a follow-up shipped with the
+  dashboard work; the permits are in place so plugins can register
+  handlers against the types without waiting for the emitters.
 - **Cross-agent Soul sharing.** One tenant, multiple agents: does each agent
   get its own Soul, or does the tenant share one? Current schema is
   per-agent; per-tenant could be a `jaiclaw.agentmind.soul.scope` property.

@@ -14,7 +14,7 @@ import java.time.Instant
  */
 class HookEventTypesSpec extends Specification {
 
-    def "HookEvent is sealed with all 17 expected permits"() {
+    def "HookEvent is sealed with all 20 expected permits"() {
         when:
         Set<String> permitted = HookEvent.class.getPermittedSubclasses()
                 .collect { it.simpleName } as Set
@@ -29,6 +29,8 @@ class HookEventTypesSpec extends Specification {
                 "SessionStartedEvent", "SessionEndedEvent", "BeforeResetEvent",
                 "BeforeCompactionEvent", "AfterCompactionEvent",
                 "TaskStateChangedEvent",
+                // Phase 4 task 4.7 — AgentMind first-class events
+                "SoulUpdatedEvent", "MemoryUpdatedEvent", "TendenciesUpdatedEvent",
         ] as Set
     }
 
@@ -109,5 +111,60 @@ class HookEventTypesSpec extends Specification {
                 { -> BeforeCompactionEvent.of("a", "s", 1000, 500) },
                 { -> AfterCompactionEvent.of("a", "s", 1000, 400) },
         ]
+    }
+
+    def "SoulUpdatedEvent.ofAgent populates contract fields"() {
+        when:
+        SoulUpdatedEvent event = SoulUpdatedEvent.ofAgent("tenant-a", "bot", 3L, "operator")
+
+        then:
+        event.agentId() == "bot"
+        event.sessionKey() == null
+        event.scope() == io.jaiclaw.core.model.SoulScope.AGENT
+        event.tenantId() == "tenant-a"
+        event.version() == 3L
+        event.actor() == "operator"
+        event.timestamp() != null
+        event instanceof HookEvent
+    }
+
+    def "SoulUpdatedEvent.ofTenant uses agentId='*'"() {
+        when:
+        SoulUpdatedEvent event = SoulUpdatedEvent.ofTenant("tenant-a", 1L, "operator")
+
+        then:
+        event.agentId() == "*"
+        event.scope() == io.jaiclaw.core.model.SoulScope.TENANT
+    }
+
+    def "MemoryUpdatedEvent.ofPeer carries the session + canonical user"() {
+        when:
+        MemoryUpdatedEvent event = MemoryUpdatedEvent.ofPeer(
+                "tenant-a", "bot", "user-1", "bot:slack:acct:u", 5L, "agent")
+
+        then:
+        event.agentId() == "bot"
+        event.sessionKey() == "bot:slack:acct:u"
+        event.scope() == "PEER"
+        event.tenantId() == "tenant-a"
+        event.canonicalUserId() == "user-1"
+        event.version() == 5L
+        event.actor() == "agent"
+        event instanceof HookEvent
+    }
+
+    def "TendenciesUpdatedEvent.of populates provider + version"() {
+        when:
+        TendenciesUpdatedEvent event = TendenciesUpdatedEvent.of(
+                "tenant-a", "user-1", "bot", "bot:slack:acct:u", 2L, "deterministic")
+
+        then:
+        event.agentId() == "bot"
+        event.sessionKey() == "bot:slack:acct:u"
+        event.tenantId() == "tenant-a"
+        event.canonicalUserId() == "user-1"
+        event.version() == 2L
+        event.provider() == "deterministic"
+        event instanceof HookEvent
     }
 }
