@@ -10,6 +10,8 @@ import io.jaiclaw.agentmind.memory.overflow.FailFastOverflowPolicy;
 import io.jaiclaw.agentmind.memory.overflow.MemoryOverflowPolicy;
 import io.jaiclaw.agentmind.memory.store.BoundedBlobMemoryStore;
 import io.jaiclaw.agentmind.memory.tool.MemoryAgentTool;
+import io.jaiclaw.agentmind.memory.web.MemoryDebugController;
+import io.jaiclaw.agentmind.memory.web.TenantMemoryController;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -119,5 +121,41 @@ public class AgentMindMemoryAutoConfiguration {
                                                      ObjectProvider<TenantGuard> tenantGuard,
                                                      AgentMindMemoryProperties props) {
         return new MemoryPromptInjector(memoryProvider, tenantGuard.getIfAvailable(), props);
+    }
+
+    /**
+     * Debug read endpoints at {@code GET /api/agentmind/memory/agent/{agentId}}
+     * and {@code .../peer/{agentId}/{peerId}}. Off by default; flip
+     * {@code jaiclaw.agentmind.memory.rest.enabled=true} to enable. Intended
+     * for ops only.
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.agentmind.memory.rest", name = "enabled", havingValue = "true")
+    public static class MemoryDebugRestConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public MemoryDebugController memoryDebugController(AgentMindMemoryProvider memoryProvider,
+                                                            ObjectProvider<TenantGuard> tenantGuard) {
+            return new MemoryDebugController(memoryProvider, tenantGuard.getIfAvailable());
+        }
+    }
+
+    /**
+     * Operator-only tenant Memory write surface. Off by default; flip
+     * {@code jaiclaw.agentmind.memory.tenant.enabled=true} to enable.
+     * Role-guarded by {@code jaiclaw.agentmind.memory.tenant.write.roles}.
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.agentmind.memory.tenant", name = "enabled", havingValue = "true")
+    public static class TenantMemoryRestConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public TenantMemoryController tenantMemoryController(AgentMindMemoryProvider memoryProvider,
+                                                              ObjectProvider<TenantGuard> tenantGuard,
+                                                              MemoryOverflowPolicy overflowPolicy,
+                                                              AgentMindMemoryProperties props) {
+            return new TenantMemoryController(memoryProvider, tenantGuard.getIfAvailable(),
+                    overflowPolicy, props);
+        }
     }
 }
