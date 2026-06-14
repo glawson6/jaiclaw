@@ -3,6 +3,8 @@ package io.jaiclaw.agentmind.soul;
 import io.jaiclaw.core.agent.SoulProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.soul.hook.SoulPromptInjector;
+import io.jaiclaw.agentmind.soul.personas.PersonaOverlayManager;
+import io.jaiclaw.agentmind.soul.personas.PersonalityAgentTool;
 import io.jaiclaw.agentmind.soul.store.AgentMindStoreProvider;
 import io.jaiclaw.agentmind.soul.tool.SoulAgentTool;
 import io.jaiclaw.agentmind.soul.mcp.SoulMcpToolProvider;
@@ -153,8 +155,9 @@ public class AgentMindSoulAutoConfiguration {
     @ConditionalOnMissingBean
     public SoulPromptInjector soulPromptInjector(SoulProvider soulProvider,
                                                  ObjectProvider<TenantGuard> tenantGuard,
-                                                 AgentMindSoulProperties props) {
-        return new SoulPromptInjector(soulProvider, tenantGuard.getIfAvailable(), props);
+                                                 AgentMindSoulProperties props,
+                                                 ObjectProvider<PersonaOverlayManager> personaManager) {
+        return new SoulPromptInjector(soulProvider, tenantGuard.getIfAvailable(), props, personaManager.getIfAvailable());
     }
 
     @Bean
@@ -206,6 +209,32 @@ public class AgentMindSoulAutoConfiguration {
         @ConditionalOnMissingBean
         public TenantSoulMcpToolProvider tenantSoulMcpToolProvider(SoulProvider soulProvider) {
             return new TenantSoulMcpToolProvider(soulProvider);
+        }
+    }
+
+    /**
+     * Persona overlays. Off by default; flip
+     * {@code jaiclaw.agentmind.soul.personas.enabled=true} to activate.
+     * Loads {@code .md} files from {@code jaiclaw.agentmind.soul.personas.dir}
+     * and exposes a {@code personality} agent tool with
+     * {@code set / clear / list} actions. Active persona is per-session,
+     * stored in-process — switches do not persist across restarts (plan task 4.3).
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.agentmind.soul.personas", name = "enabled", havingValue = "true")
+    public static class PersonasConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public PersonaOverlayManager personaOverlayManager(AgentMindSoulProperties props) {
+            PersonaOverlayManager mgr = new PersonaOverlayManager(Path.of(props.personas().dir()));
+            mgr.reload();
+            return mgr;
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public PersonalityAgentTool personalityAgentTool(PersonaOverlayManager manager) {
+            return new PersonalityAgentTool(manager);
         }
     }
 }

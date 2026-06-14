@@ -22,7 +22,8 @@ class TenantSoulControllerSpec extends Specification {
     AgentMindSoulProperties props = new AgentMindSoulProperties(
             true, null,
             new AgentMindSoulProperties.Rest(false),
-            new AgentMindSoulProperties.Tenant(true, List.of("ADMIN", "OPERATOR")))
+            new AgentMindSoulProperties.Tenant(true, List.of("ADMIN", "OPERATOR")),
+            new AgentMindSoulProperties.Personas(false, null))
 
     TenantSoulController controller = new TenantSoulController(provider, tenantGuard, props)
 

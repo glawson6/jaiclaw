@@ -8,6 +8,7 @@ import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.soul.AgentMindSoulProperties;
+import io.jaiclaw.agentmind.soul.personas.PersonaOverlayManager;
 import io.jaiclaw.plugin.JaiClawPlugin;
 import io.jaiclaw.plugin.PluginApi;
 import org.slf4j.Logger;
@@ -40,12 +41,20 @@ public class SoulPromptInjector implements JaiClawPlugin {
     private final SoulProvider soulProvider;
     private final TenantGuard tenantGuard;
     private final AgentMindSoulProperties props;
+    private final PersonaOverlayManager personaManager;
 
     public SoulPromptInjector(SoulProvider soulProvider, TenantGuard tenantGuard,
                               AgentMindSoulProperties props) {
+        this(soulProvider, tenantGuard, props, null);
+    }
+
+    public SoulPromptInjector(SoulProvider soulProvider, TenantGuard tenantGuard,
+                              AgentMindSoulProperties props,
+                              PersonaOverlayManager personaManager) {
         this.soulProvider = soulProvider;
         this.tenantGuard = tenantGuard;
         this.props = props;
+        this.personaManager = personaManager;
     }
 
     @Override
@@ -67,22 +76,25 @@ public class SoulPromptInjector implements JaiClawPlugin {
 
     BeforePromptBuildEvent rewrite(BeforePromptBuildEvent event) {
         String tenantId = resolveTenantId();
-        String injected = injectSoulSections(event.systemPrompt(), tenantId, event.agentId());
+        String injected = injectSoulSections(event.systemPrompt(), tenantId,
+                event.agentId(), event.sessionKey());
         if (injected.equals(event.systemPrompt())) {
             return null; // unchanged — let the runner short-circuit
         }
         return event.withSystemPrompt(injected);
     }
 
-    String injectSoulSections(String originalPrompt, String tenantId, String agentId) {
+    String injectSoulSections(String originalPrompt, String tenantId, String agentId,
+                              String sessionKey) {
         if (tenantId == null || tenantId.isBlank() || agentId == null || agentId.isBlank()) {
             // No tenant or agent context — cannot key the Soul lookup safely.
             return originalPrompt;
         }
         String tenantMarkdown = props.tenant().enabled() ? loadMarkdown(tenantId, SoulScope.TENANT, null) : "";
         String agentMarkdown = loadMarkdown(tenantId, SoulScope.AGENT, agentId);
+        String personaMarkdown = loadPersonaMarkdown(sessionKey);
 
-        if (tenantMarkdown.isBlank() && agentMarkdown.isBlank()) {
+        if (tenantMarkdown.isBlank() && agentMarkdown.isBlank() && personaMarkdown.isBlank()) {
             return originalPrompt;
         }
 
@@ -96,6 +108,9 @@ public class SoulPromptInjector implements JaiClawPlugin {
         if (!agentMarkdown.isBlank()) {
             out.append(agentMarkdown.stripTrailing()).append("\n\n");
         }
+        if (!personaMarkdown.isBlank()) {
+            out.append(personaMarkdown.stripTrailing()).append("\n\n");
+        }
         out.append(originalPrompt.substring(insertAt));
         return out.toString();
     }
@@ -107,6 +122,16 @@ public class SoulPromptInjector implements JaiClawPlugin {
         } catch (Exception e) {
             log.warn("Failed to load Soul (scope={}, tenant={}, agent={}): {}",
                     scope, tenantId, agentId, e.getMessage());
+            return "";
+        }
+    }
+
+    private String loadPersonaMarkdown(String sessionKey) {
+        if (personaManager == null || sessionKey == null) return "";
+        try {
+            return personaManager.activeMarkdown(sessionKey).orElse("");
+        } catch (Exception e) {
+            log.warn("Failed to load persona for session={}: {}", sessionKey, e.getMessage());
             return "";
         }
     }

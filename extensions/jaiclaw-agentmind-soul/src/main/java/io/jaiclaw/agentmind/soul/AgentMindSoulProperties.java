@@ -22,7 +22,8 @@ public record AgentMindSoulProperties(
         boolean enabled,
         String rootDir,
         Rest rest,
-        Tenant tenant
+        Tenant tenant,
+        Personas personas
 ) {
     @ConstructorBinding
     public AgentMindSoulProperties {
@@ -31,11 +32,19 @@ public record AgentMindSoulProperties(
         }
         if (rest == null) rest = new Rest(false);
         if (tenant == null) tenant = new Tenant(false, List.of("ADMIN", "OPERATOR"));
+        if (personas == null) personas = new Personas(false, null);
     }
 
     public AgentMindSoulProperties() {
-        this(false, null, null, null);
+        this(false, null, null, null, null);
     }
+
+    /**
+     * Persona overlay configuration (plan §8 task 4.3). Personas are
+     * markdown files that layer on top of the agent Soul for a session
+     * via the {@code personality} agent tool. Defaults OFF.
+     */
+    public record Personas(boolean enabled, String dir) {}
 
     /**
      * Debug read endpoint at {@code GET /api/agentmind/soul}. Defaults OFF;

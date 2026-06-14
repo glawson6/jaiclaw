@@ -25,12 +25,14 @@ class SoulPromptInjectorSpec extends Specification {
 
     AgentMindSoulProperties propsWithTenant() {
         new AgentMindSoulProperties(true, null, new AgentMindSoulProperties.Rest(false),
-                new AgentMindSoulProperties.Tenant(true, List.of("ADMIN", "OPERATOR")))
+                new AgentMindSoulProperties.Tenant(true, List.of("ADMIN", "OPERATOR")),
+                new AgentMindSoulProperties.Personas(false, null))
     }
 
     AgentMindSoulProperties propsTenantDisabled() {
         new AgentMindSoulProperties(true, null, new AgentMindSoulProperties.Rest(false),
-                new AgentMindSoulProperties.Tenant(false, List.of("ADMIN", "OPERATOR")))
+                new AgentMindSoulProperties.Tenant(false, List.of("ADMIN", "OPERATOR")),
+                new AgentMindSoulProperties.Personas(false, null))
     }
 
     String identityHeader() {
