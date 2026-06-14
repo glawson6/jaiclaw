@@ -1,0 +1,68 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+jaiclaw:
+  # Empty allow-bundled keeps the system prompt small. The default `["*"]`
+  # loads ~62 bundled skills (~26K tokens) per LLM call. The agentmind demo
+  # exercises Soul/Memory/Tendencies — the system prompt should stay small
+  # so the AgentMind overlays are visible in logs and goldens.
+  skills:
+    allow-bundled: []
+  security:
+    mode: none
+  identity:
+    name: AgentMind Demo
+    description: End-to-end demo of Soul + Memory + Tendencies + Personas
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: AgentMind Demo Agent
+        tools:
+          profile: full
+
+  # ---- AgentMind: Soul ------------------------------------------------------
+  agentmind:
+    soul:
+      enabled: true
+      # Per-tenant Soul disabled for the localhost demo; agent Soul is enough
+      # to show layering. Flip `tenant.enabled` + author a tenant Soul to see
+      # the additive layering.
+      tenant:
+        enabled: false
+      personas:
+        enabled: true
+        # Ships 5 curated personas: concise, technical, mentor, socratic, pirate.
+        # See src/main/resources/personas/.
+        dir: ${user.home}/.jaiclaw/agentmind-demo/personas
+
+    # ---- AgentMind: Memory ----------------------------------------------------
+    memory:
+      enabled: true
+      # Per-tenant Memory left OFF for the demo — exercise the agent-write
+      # path on per-user Memory first.
+      tenant:
+        enabled: false
+
+    # ---- AgentMind: Tendencies ------------------------------------------------
+    tendencies:
+      enabled: true
+      # `deterministic` is the heuristic in-process learner (no external
+      # service). Swap to `local-llm` for an LLM-backed learner, or add the
+      # jaiclaw-tendencies-honcho sub-module and set `provider: honcho`.
+      provider: deterministic
+
+spring:
+  ai:
+    model:
+      chat: anthropic
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+
+logging:
+  level:
+    io.jaiclaw.agentmind: INFO

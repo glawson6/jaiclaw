@@ -61,5 +61,6 @@
         <module>competitive-intel-briefing</module>
         <module>sales-enrichment-pipeline</module>
         <module>contract-reviewer</module>
+        <module>agentmind-demo</module>
     </modules>
 </project>
