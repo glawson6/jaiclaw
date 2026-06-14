@@ -724,8 +724,11 @@ invalidation event — see §9 risk 11).
 Each marked **Open** or **Resolved: <decision> (date)**. The companion plan
 file's `§11` mirrors this list and resolves them inline as phases land.
 
-- **Memory char-budget defaults.** Match agentmind (2,200 / 1,375) or rethink
-  for Java context windows? **Open** — resolve in Phase 2.
+- **Memory char-budget defaults.** Match upstream hermes (2,200 / 1,375)
+  or rethink for Java context windows? **Resolved 2026-06-14:** match
+  upstream for AGENT (2,200) and PEER (1,375); add TENANT (4,096) for
+  shared institutional knowledge. All three configurable via
+  `jaiclaw.agentmind.memory.budgets.{tenant-chars,agent-chars,peer-chars}`.
 - **Tendencies deterministic vocabulary.** Should
   `DeterministicTendenciesProvider` ship a default trait vocabulary (e.g.,
   `prefers_concise`, `tech_leaning`) or be schema-free? **Open** — resolve in
@@ -753,8 +756,11 @@ file's `§11` mirrors this list and resolves them inline as phases land.
   auth integration lights up the guard automatically.
 - **Tenant Memory char-budget default.** 4,096 chars (per the plan's
   proposal) is double per-user Memory. Is that the right ratio? Should the
-  default scale by deployment size, or stay fixed? **Open** — resolve in
-  Phase 2.
+  default scale by deployment size, or stay fixed? **Resolved 2026-06-14:**
+  fixed at 4,096 chars by default. Override via
+  `jaiclaw.agentmind.memory.budgets.tenant-chars` for deployments that
+  need larger (org knowledge corpora) or smaller (token-constrained
+  contexts) tenant Memory.
 
 ---
 

@@ -1,9 +1,9 @@
 # AgentMind Memory / Soul / Tendencies — Implementation Plan
 
-> **Status:** Phase 1 complete; Phase 2 not started.
+> **Status:** Phases 1 + 2 complete; Phase 3 not started.
 > **Companion analysis:** [`AGENTMIND-MEMORY-SOUL-ANALYSIS.md`](./AGENTMIND-MEMORY-SOUL-ANALYSIS.md)
-> **Resume here →** Phase 2, task 2.1 (MemoryDocument record)
-> **Last updated:** 2026-06-14 (Phase 1 shipped — Soul + tenant Soul live in `extensions/jaiclaw-agentmind-soul`)
+> **Resume here →** Phase 3, task 3.1 (Tendencies module scaffold + starter)
+> **Last updated:** 2026-06-14 (Phase 2 shipped — Memory + tenant Memory live in `extensions/jaiclaw-agentmind-memory`; mid-Phase-2 vocabulary rename from hermes to AgentMind)
 
 Multi-session execution plan for porting hermes-agent's three concepts —
 **Soul**, **Memory**, **Tendencies** — into JaiClaw. Mirrors the kanban
@@ -58,9 +58,13 @@ Updated each session. One line per phase.
   Shipped in 12 commits on `main` from `2428d57` through `ee5de27`. Module
   `extensions/jaiclaw-agentmind-soul/` + starter `jaiclaw-starter-agentmind-soul/`
   live; 107 specs green.
-- **Phase 2 (Memory port + tenant Memory):** Resume here → task 2.1
-  (MemoryDocument record in jaiclaw-core).
-- **Phase 3 (Tendencies core, per-user):** Not started.
+- **Phase 2 (Memory port + tenant Memory):** ✅ **Complete** (2026-06-14).
+  Shipped in 9 production commits on `main` from `063e14e` through
+  `a1a651d` (plus the mid-Phase rename commit `3dad530`). Module
+  `extensions/jaiclaw-agentmind-memory/` + starter
+  `jaiclaw-starter-agentmind-memory/` live; 108 specs green.
+- **Phase 3 (Tendencies core, per-user):** Resume here → task 3.1
+  (Tendencies module scaffold + starter).
 - **Phase 4 (Honcho + demo + e2e):** Not started.
 - **Phase 5 (Tenant Tendencies + rollup):** Not started — depends on
   Phase 3 per-user pipeline.
@@ -355,16 +359,16 @@ of pillar opt-in.
 
 ### Task groups
 
-- [ ] **2.1 MemoryDocument record.** `MemoryDocument(scope, tenantId,
+- [x] **2.1 MemoryDocument record.** `MemoryDocument(scope, tenantId,
   agentId, peerId, content, charBudget, updatedAt, version)` record in
   `jaiclaw-core` (zero Spring dep). Enum `MemoryScope { TENANT, AGENT,
   PEER }`. `agentId` nullable when `scope == TENANT`; `peerId` nullable
   when `scope ∈ {TENANT, AGENT}`. Record-level invariants documented in
   Javadoc.
-- [ ] **2.2 AgentMindMemoryProvider.** Extend existing `MemoryProvider` SPI in
+- [x] **2.2 AgentMindMemoryProvider.** Extend existing `MemoryProvider` SPI in
   `jaiclaw-memory`. `@ConditionalOnProperty` gate. Register with higher
   precedence than `WorkspaceMemoryProvider` when enabled.
-- [ ] **2.3 BoundedBlobMemoryStore.** JSON-file backend, scope-aware
+- [x] **2.3 BoundedBlobMemoryStore.** JSON-file backend, scope-aware
   dispatch: TENANT-scope at `${root}/{tenantId}/TENANT.md`; AGENT-scope at
   `${root}/{tenantId}/agents/{agentId}/MEMORY.md`; PEER-scope at
   `${root}/{tenantId}/users/{userKey}/USER.md`. Reuses
@@ -372,13 +376,13 @@ of pillar opt-in.
   `UnsupportedOperationException` stub for `MemoryStore` is filled here.
   TENANT scope writes only enabled when
   `jaiclaw.agentmind.memory.tenant.enabled=true`.
-- [ ] **2.4 MemoryOverflowPolicy SPI.** Default `FailFastOverflowPolicy`
+- [x] **2.4 MemoryOverflowPolicy SPI.** Default `FailFastOverflowPolicy`
   raises `MemoryOverflowException` when an `add` or `replace` would push
   the document past `charBudget`.
-- [ ] **2.5 `memory` agent tool.** Mirror `MemorySaveTool.java` shape with
+- [x] **2.5 `memory` agent tool.** Mirror `MemorySaveTool.java` shape with
   add/replace/remove; on overflow, surface the exception as a tool-error
   result (not a runtime crash) so the LLM gets a structured prompt back.
-- [ ] **2.6 Session-start snapshot capture.** `MemorySessionListener`
+- [x] **2.6 Session-start snapshot capture.** `MemorySessionListener`
   subscribes to `SessionStartedEvent`, reads TENANT (if enabled), AGENT,
   and PEER documents once each, caches all three into a session attribute
   `agentmind.memory.snapshot`. Prompt injector emits them in TENANT → AGENT →
@@ -389,42 +393,45 @@ of pillar opt-in.
   about to compact, prompt it with a `memory replace` recommendation in the
   compaction system prompt. Off by default
   (`jaiclaw.agentmind.memory.compaction-hint.enabled=false`).
-- [ ] **2.8 REST debug controller.** `MemoryDebugController` exposes
+  **Deferred** — Phase 2 shipped without this. It is optional and lives
+  outside the prefix-cache invariant. Will revisit during Phase 4 demo
+  setup if the compaction hint adds observable value to the dashboard.
+- [x] **2.8 REST debug controller.** `MemoryDebugController` exposes
   read-only endpoint at `/api/agentmind/memory`, gated by
   `jaiclaw.agentmind.memory.rest.enabled=false` default.
-- [ ] **2.9 MCP provider.** `MemoryMcpToolProvider` exposes `memory.recall`,
+- [x] **2.9 MCP provider.** `MemoryMcpToolProvider` exposes `memory.recall`,
   `memory.save`, `memory.search` (search delegates to existing
   `MemorySearchManager`).
-- [ ] **2.10 Open question.** Resolve char-budget defaults. Match agentmind
+- [x] **2.10 Open question.** Resolve char-budget defaults. Match agentmind
   (2,200 / 1,375)? Or rescale for Java context windows? Record decision in
   analysis §10.
-- [ ] **2.11 Multi-tenancy conformance review.** Run analysis §5.8 against
+- [x] **2.11 Multi-tenancy conformance review.** Run analysis §5.8 against
   Memory. Verify per-tenant + per-user paths, no cross-leakage, SINGLE-mode
   collapse.
-- [ ] **2.12 Actuator counters.** Register `jaiclaw.memory.writes` (counter
+- [x] **2.12 Actuator counters.** Register `jaiclaw.memory.writes` (counter
   tagged with action), `jaiclaw.memory.overflows` (counter), and
   `jaiclaw.memory.size.bytes` (gauge).
-- [ ] **2.13 Spock specs.** `AgentMindMemoryProviderSpec`,
+- [x] **2.13 Spock specs.** `AgentMindMemoryProviderSpec`,
   `BoundedBlobMemoryStoreSpec`, `MemoryOverflowPolicySpec`,
   `MemoryAgentToolSpec` (overflow contract), `MemorySessionListenerSpec`
   (single-shot read), `MemoryMcpToolProviderSpec`,
   `AgentMindMemoryAutoConfigDisabledSpec`.
-- [ ] **2.14 E2E spec.** `AgentMindMemoryE2ESpec` per §4.
-- [ ] **2.15 TENANT scope in `BoundedBlobMemoryStore`.** Per task 2.3
+- [x] **2.14 E2E spec.** `AgentMindMemoryE2ESpec` per §4.
+- [x] **2.15 TENANT scope in `BoundedBlobMemoryStore`.** Per task 2.3
   this is implemented as part of the store, but it gets its own checkbox
   so the agent-write gate (2.16) and operator path (2.17) have a clear
   prerequisite. Extends `AgentMindScopeFallThroughSpec` (created in Phase 1)
   with Memory cases: tenant-only, agent-only, peer-only, two-of-three,
   all-three. Adds `AgentMindMemoryThreeScopeIsolationSpec` verifying
   cross-tenant + cross-user reads return empty across all three scopes.
-- [ ] **2.16 Agent-write gate for tenant Memory.** The `memory` agent
+- [x] **2.16 Agent-write gate for tenant Memory.** The `memory` agent
   tool (built in 2.5) rejects `scope=TENANT` with an authorization-style
   tool error when `jaiclaw.agentmind.memory.tenant.agent-write-enabled=false`
   (default). When `=true`, writes succeed and increment a Micrometer
   counter `jaiclaw.agentmind.memory.tenant.writes` tagged with `agentId` and
   `action`. Spec: `AgentMindTenantMemoryAgentWriteGateSpec` covers both
   states.
-- [ ] **2.17 Operator tenant Memory write path.**
+- [x] **2.17 Operator tenant Memory write path.**
   `TenantMemoryController` exposes `GET /api/agentmind/memory/tenant`,
   `PUT /api/agentmind/memory/tenant`, `DELETE /api/agentmind/memory/tenant`,
   role-guarded by `jaiclaw.agentmind.memory.tenant.write.roles` (default
@@ -883,8 +890,14 @@ write-wins semantics on `compareAndSave`).
 
 Mirrors analysis §10. Resolved inline as phases land.
 
-- **Memory char-budget defaults** — match agentmind (2,200 / 1,375) or rescale?
-  **Open** — Phase 2 task 2.10.
+- **Memory char-budget defaults** — match upstream hermes (2,200 / 1,375)
+  or rescale? **Resolved 2026-06-14:** match upstream for AGENT (2,200)
+  and PEER (1,375); add TENANT (4,096) — shared institutional knowledge
+  needs more room. All three configurable via
+  `jaiclaw.agentmind.memory.budgets.{tenant-chars,agent-chars,peer-chars}`.
+  The defaults preserve the prefix-cache calculus upstream made: small
+  enough to fit comfortably in a session-start snapshot, large enough
+  that overflow is rare on a well-curated document.
 - **Tendencies deterministic vocabulary** — default vocabulary or
   schema-free? **Open** — Phase 3 task 3.13.
 - **Persona overlays** — ship 14 verbatim or SPI-only? **Open** — Phase 4
@@ -903,7 +916,10 @@ Mirrors analysis §10. Resolved inline as phases land.
   surfaces roles on the request lights up the guard automatically — no
   Spring Security dependency required.
 - **Tenant Memory char-budget default** — 4,096 vs scaling vs fixed?
-  **Open** — Phase 2 task 2.10 (resolved alongside per-user budgets).
+  **Resolved 2026-06-14:** fixed at 4,096 chars. The override path is
+  `jaiclaw.agentmind.memory.budgets.tenant-chars` for deployments that
+  need more (large org knowledge corpora) or less (token-constrained
+  contexts).
 - **Tenant Tendencies rollup vocabulary** — ship a default trait
   taxonomy or be schema-free? **Open** — Phase 5 task 5.12.
 
@@ -913,6 +929,64 @@ Mirrors analysis §10. Resolved inline as phases land.
 
 Append-only. Records decisions made **during execution** (not commits — `git
 log` covers commits). Format: `YYYY-MM-DD — decision — rationale`.
+
+- **2026-06-14 — Naming: hermes → AgentMind.** Operating-name decision
+  during Phase 2: drop "hermes" from JaiClaw-internal artifact / class /
+  property names. Upstream references to the source project (the
+  `NousResearch/hermes-agent` Python repo this work ports from) stay as
+  proper nouns. Net effect:
+    - Java packages: `io.jaiclaw.hermes.*` → `io.jaiclaw.agentmind.*`
+    - Module artifacts: `jaiclaw-{hermes,agentmind}-{soul,memory}`
+    - Property prefixes: `jaiclaw.{hermes,agentmind}.*`
+    - Class names: `Hermes*` → `AgentMind*`
+    - Docs: `HERMES-MEMORY-SOUL-{ANALYSIS,PLAN}.md` →
+      `AGENTMIND-MEMORY-SOUL-*.md`
+    Rationale: "hermes" is the upstream's name, not ours; downstream
+    consumers shouldn't read "hermes" in artifact names that ship from
+    JaiClaw. The rename landed as a single commit (`3dad530`) so the
+    pre/post-rename history is obvious in `git log`.
+
+- **2026-06-14 — Phase 2 shipped.** 17 of 18 Phase 2 tasks (2.1–2.17,
+  excluding the deferred 2.7) landed on `main` across 9 production
+  commits + 1 rename commit (`063e14e` → `a1a651d`). 108 specs green in
+  `extensions/jaiclaw-agentmind-memory`. Notable execution-time decisions:
+    - **Memory ships in its own extension module, not inside
+      `core/jaiclaw-memory`.** The original plan called for Memory to
+      live inside `core/jaiclaw-memory/`; in practice that would have
+      pulled new SPI + autoconfig + Spring + jakarta.servlet deps into a
+      *core* module, and inverted the dependency direction (an
+      extension's infrastructure depending on a core module's new
+      package). Shipping as `extensions/jaiclaw-agentmind-memory/`
+      mirrors the Soul module precedent, keeps core small, and lets
+      Memory share the kanban-style optional-deps autoconfig pattern.
+    - **Mid-Phase vocabulary rename hermes → AgentMind.** Single
+      sed/git-mv commit `3dad530` renamed 46 files (module artifacts,
+      Java packages, property prefixes, class names, doc filenames).
+      Upstream-project references (`hermes-agent`, `hermes' MEMORY.md`)
+      preserved as external proper nouns. See "Naming" decision below.
+    - **MarkdownSectionEditor duplicated, not shared.** Both Memory and
+      Soul agent tools need section-by-heading editing. Rather than make
+      the Memory module depend on Soul, the editor (120 lines, no state)
+      is duplicated by value; the class-level Javadoc names Phase 3
+      Tendencies as the third-copy trigger to extract to a shared
+      module. Keeps Memory deployable standalone.
+    - **Char-budget defaults.** AGENT=2,200, PEER=1,375 (upstream hermes
+      values), TENANT=4,096 (new — institutional knowledge needs room).
+      All three configurable via
+      `jaiclaw.agentmind.memory.budgets.{tenant,agent,peer}-chars`.
+    - **Optional task 2.7 (BeforeCompactionEvent subscriber) deferred.**
+      Compaction-time `memory replace` hint is optional and lives
+      outside the prefix-cache invariant; deferred to Phase 4 demo
+      setup. Recorded with explicit `[ ] Deferred` checkbox in §7 so
+      future sessions see it.
+    - **MemoryAgentTool agent-write gate for TENANT scope.** Default
+      `agent-write-enabled=false` reflects the institutional-poisoning
+      risk (analysis §9 risk 7). Operator REST + MCP are the
+      canonical authoring surface; the agent path is a narrow
+      opt-in for harvested-onboarding scenarios.
+    - **MCP server segregation.** Memory read (`agentmind-memory`) and
+      tenant admin write (`agentmind-memory-tenant-admin`) live on
+      separate server names mirroring the Soul module's pattern.
 
 - **2026-06-14 — Phase 1 shipped.** All 18 Phase 1 tasks (1.1–1.18) landed
   on `main` across 12 commits (`2428d57` → `ee5de27`). 107 specs green in

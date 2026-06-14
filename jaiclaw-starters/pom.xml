@@ -47,5 +47,6 @@
         <module>jaiclaw-starter-kanban</module>
         <module>jaiclaw-starter-secrets</module>
         <module>jaiclaw-starter-agentmind-soul</module>
+        <module>jaiclaw-starter-agentmind-memory</module>
     </modules>
 </project>
