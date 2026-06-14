@@ -1,6 +1,7 @@
 package io.jaiclaw.agentmind.tendencies.hook
 
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate
+import io.jaiclaw.agentmind.tendencies.cost.TendenciesTokenBudget
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider
 import io.jaiclaw.agentmind.tendencies.transcript.TranscriptSource
@@ -26,8 +27,9 @@ class TendenciesDialecticTriggerSpec extends Specification {
         requireTenantIfMulti() >> null
     }
 
+    TendenciesTokenBudget budget = new TendenciesTokenBudget(1_000_000)
     TendenciesDialecticTrigger trigger = new TendenciesDialecticTrigger(
-            transcript, gate, executor, store, learning, singleTenant)
+            transcript, gate, executor, store, learning, budget, singleTenant)
 
     SessionEndedEvent eventFor(String channel, String peer) {
         SessionEndedEvent.of("agent", "agent:" + channel + ":a:" + peer, "closed")
@@ -114,6 +116,26 @@ class TendenciesDialecticTriggerSpec extends Specification {
         1 * learning.learn({ Tendencies t ->
             t.version() == 0L && t.peerCardMarkdown() == ""
         }, _) >> Optional.empty()
+    }
+
+    // ---------- budget exhaustion ----------
+
+    def "exhausted token budget short-circuits before submit"() {
+        given:
+        TendenciesTokenBudget tinyBudget = new TendenciesTokenBudget(100L) // smaller than per-pass estimate
+        TendenciesDialecticTrigger limitedTrigger = new TendenciesDialecticTrigger(
+                transcript, gate, executor, store, learning, tinyBudget, singleTenant)
+        SessionEndedEvent event = eventFor("slack", "U99")
+        transcript.recentMessages(event.sessionKey()) >> List.of("a", "b", "c", "d", "e")
+        gate.shouldRun(_, _, _) >> true
+
+        when:
+        limitedTrigger.onSessionEnded(event)
+        awaitExecutor()
+
+        then:
+        0 * store.findTendencies(_, _, _)
+        0 * learning.learn(_, _)
     }
 
     // ---------- error tolerance ----------

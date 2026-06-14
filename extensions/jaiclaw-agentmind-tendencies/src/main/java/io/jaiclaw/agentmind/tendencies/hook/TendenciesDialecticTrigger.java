@@ -1,6 +1,7 @@
 package io.jaiclaw.agentmind.tendencies.hook;
 
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
+import io.jaiclaw.agentmind.tendencies.cost.TendenciesTokenBudget;
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor;
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.transcript.TranscriptSource;
@@ -43,11 +44,20 @@ public class TendenciesDialecticTrigger implements JaiClawPlugin {
 
     private static final int PRIORITY = 500;
 
+    /**
+     * Rough heuristic for estimating dialectic-pass token cost. The
+     * deterministic provider spends 0; the LLM provider's actual usage
+     * is rounded to this estimate for budget bookkeeping. Overridable
+     * per-pass via the learning provider's metadata in a follow-up.
+     */
+    private static final long ESTIMATED_TOKENS_PER_PASS = 1500L;
+
     private final TranscriptSource transcriptSource;
     private final TendenciesCadenceGate cadenceGate;
     private final StripedDialecticExecutor executor;
     private final TendenciesStoreProvider store;
     private final TendenciesLearningProvider learningProvider;
+    private final TendenciesTokenBudget tokenBudget;
     private final TenantGuard tenantGuard;
 
     public TendenciesDialecticTrigger(TranscriptSource transcriptSource,
@@ -55,12 +65,14 @@ public class TendenciesDialecticTrigger implements JaiClawPlugin {
                                       StripedDialecticExecutor executor,
                                       TendenciesStoreProvider store,
                                       TendenciesLearningProvider learningProvider,
+                                      TendenciesTokenBudget tokenBudget,
                                       TenantGuard tenantGuard) {
         this.transcriptSource = transcriptSource;
         this.cadenceGate = cadenceGate;
         this.executor = executor;
         this.store = store;
         this.learningProvider = learningProvider;
+        this.tokenBudget = tokenBudget;
         this.tenantGuard = tenantGuard;
     }
 
@@ -95,6 +107,10 @@ public class TendenciesDialecticTrigger implements JaiClawPlugin {
         if (!cadenceGate.shouldRun(tenantId, userKey, transcript.size())) {
             return;
         }
+        if (tokenBudget != null && !tokenBudget.canSpend(tenantId, ESTIMATED_TOKENS_PER_PASS)) {
+            log.warn("Tendencies token budget exceeded for tenant={} — skipping dialectic", tenantId);
+            return;
+        }
 
         executor.submit(tenantId, userKey, () -> runDialectic(tenantId, userKey, transcript));
     }
@@ -110,6 +126,9 @@ public class TendenciesDialecticTrigger implements JaiClawPlugin {
             }
             store.saveTendencies(updated.get());
             cadenceGate.recordRun(tenantId, userKey);
+            if (tokenBudget != null) {
+                tokenBudget.recordSpend(tenantId, ESTIMATED_TOKENS_PER_PASS);
+            }
             log.debug("Dialectic pass complete for {}:{} — version now {}", tenantId, userKey,
                     updated.get().version());
         } catch (RuntimeException e) {

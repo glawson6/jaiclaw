@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
 import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
+import io.jaiclaw.agentmind.tendencies.cost.TendenciesTokenBudget;
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor;
 import io.jaiclaw.agentmind.tendencies.hook.TendenciesDialecticTrigger;
 import io.jaiclaw.agentmind.tendencies.hook.TendenciesUserMessageInjector;
+import io.jaiclaw.agentmind.tendencies.mcp.TendenciesMcpToolProvider;
+import io.jaiclaw.agentmind.tendencies.web.TendenciesDebugController;
 import io.jaiclaw.agentmind.tendencies.learning.DeterministicTendenciesProvider;
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
@@ -143,14 +146,43 @@ public class AgentMindTendenciesAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public TendenciesTokenBudget tendenciesTokenBudget(AgentMindTendenciesProperties props) {
+        return new TendenciesTokenBudget(props.cost().dailyTokenCap());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public TendenciesDialecticTrigger tendenciesDialecticTrigger(
             TranscriptSource transcriptSource,
             TendenciesCadenceGate cadenceGate,
             StripedDialecticExecutor executor,
             TendenciesStoreProvider store,
             TendenciesLearningProvider learningProvider,
+            TendenciesTokenBudget tokenBudget,
             ObjectProvider<TenantGuard> tenantGuard) {
         return new TendenciesDialecticTrigger(transcriptSource, cadenceGate, executor,
-                store, learningProvider, tenantGuard.getIfAvailable());
+                store, learningProvider, tokenBudget, tenantGuard.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesMcpToolProvider tendenciesMcpToolProvider(TendenciesStoreProvider store) {
+        return new TendenciesMcpToolProvider(store);
+    }
+
+    /**
+     * Debug read endpoint at {@code GET /api/agentmind/tendencies/user/{userKey}}.
+     * Off by default; flip {@code jaiclaw.agentmind.tendencies.rest.enabled=true}
+     * to enable. Intended for ops only.
+     */
+    @Configuration
+    @ConditionalOnProperty(prefix = "jaiclaw.agentmind.tendencies.rest", name = "enabled", havingValue = "true")
+    public static class TendenciesDebugRestConfig {
+        @Bean
+        @ConditionalOnMissingBean
+        public TendenciesDebugController tendenciesDebugController(TendenciesStoreProvider store,
+                                                                    ObjectProvider<TenantGuard> tenantGuard) {
+            return new TendenciesDebugController(store, tenantGuard.getIfAvailable());
+        }
     }
 }
