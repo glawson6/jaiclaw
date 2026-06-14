@@ -1,10 +1,21 @@
 package io.jaiclaw.hermes.soul;
 
+import io.jaiclaw.core.agent.SoulProvider;
+import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.hermes.soul.store.HermesStoreProvider;
+import io.jaiclaw.hermes.soul.store.JsonHermesStoreProvider;
+import io.jaiclaw.hermes.soul.user.HermesUserKeyResolver;
+import io.jaiclaw.hermes.soul.user.IdentityLinkUserKeyResolver;
+import io.jaiclaw.identity.IdentityResolver;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.nio.file.Path;
 
 /**
  * Pillar-level autoconfig for the hermes Soul extension. Defaults OFF —
@@ -30,7 +41,27 @@ public class HermesSoulAutoConfiguration {
     public String hermesSoulModuleMarker() {
         // Sentinel bean. Specs assert its presence/absence to verify the
         // @ConditionalOnProperty gate. Replaced by concrete beans
-        // (FileSoulProvider, SoulPromptInjector, etc.) as later tasks land.
+        // (SoulPromptInjector, agent tool, REST controllers, MCP providers,
+        // actuator counters) as later tasks land.
         return "hermes-soul-enabled";
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public HermesUserKeyResolver hermesUserKeyResolver(ObjectProvider<IdentityResolver> identityResolver) {
+        return new IdentityLinkUserKeyResolver(identityResolver.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public HermesStoreProvider hermesStoreProvider(HermesSoulProperties props,
+                                                   ObjectProvider<TenantGuard> tenantGuard) {
+        return new JsonHermesStoreProvider(Path.of(props.rootDir()), tenantGuard.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SoulProvider soulProvider(HermesStoreProvider storeProvider) {
+        return storeProvider.soulStore();
     }
 }
