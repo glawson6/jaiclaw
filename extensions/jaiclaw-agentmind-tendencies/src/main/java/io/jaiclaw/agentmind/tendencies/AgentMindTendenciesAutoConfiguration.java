@@ -3,6 +3,8 @@ package io.jaiclaw.agentmind.tendencies;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
+import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
 import io.jaiclaw.agentmind.tendencies.learning.DeterministicTendenciesProvider;
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
@@ -104,5 +106,13 @@ public class AgentMindTendenciesAutoConfiguration {
             havingValue = "deterministic", matchIfMissing = true)
     public TendenciesLearningProvider deterministicLearningProvider() {
         return new DeterministicTendenciesProvider();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesCadenceGate tendenciesCadenceGate(AgentMindTendenciesProperties props) {
+        return new TimeAndTurnCadenceGate(
+                props.cadence().minInterval(),
+                props.cadence().minTurns());
     }
 }
