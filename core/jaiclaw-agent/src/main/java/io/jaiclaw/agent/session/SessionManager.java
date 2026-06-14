@@ -1,5 +1,8 @@
 package io.jaiclaw.agent.session;
 
+import io.jaiclaw.core.agent.AgentHookDispatcher;
+import io.jaiclaw.core.hook.event.SessionEndedEvent;
+import io.jaiclaw.core.hook.event.SessionStartedEvent;
 import io.jaiclaw.core.model.Message;
 import io.jaiclaw.core.model.Session;
 import io.jaiclaw.core.model.SessionState;
@@ -14,6 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * In-memory session manager. Manages session lifecycle for the agent runtime.
  * Sessions are scoped to the current tenant via {@link TenantContextHolder}.
  * In MULTI mode, session keys are internally prefixed with tenantId for defense-in-depth.
+ *
+ * <p>Fires {@link SessionStartedEvent} when a session is first created and
+ * {@link SessionEndedEvent} when a session is closed or reset, provided an
+ * {@link AgentHookDispatcher} is injected. Hooks fail-safe — if the dispatcher
+ * throws, session lifecycle continues. (Wired in plan §5 task 1.1.)
  */
 public class SessionManager {
 
@@ -21,6 +29,7 @@ public class SessionManager {
 
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private TenantGuard tenantGuard;
+    private AgentHookDispatcher hooks;
 
     public SessionManager() {}
 
@@ -28,8 +37,17 @@ public class SessionManager {
         this.tenantGuard = tenantGuard;
     }
 
+    public SessionManager(TenantGuard tenantGuard, AgentHookDispatcher hooks) {
+        this.tenantGuard = tenantGuard;
+        this.hooks = hooks;
+    }
+
     public void setTenantGuard(TenantGuard tenantGuard) {
         this.tenantGuard = tenantGuard;
+    }
+
+    public void setHookDispatcher(AgentHookDispatcher hooks) {
+        this.hooks = hooks;
     }
 
     private String scopedKey(String sessionKey) {
@@ -44,10 +62,16 @@ public class SessionManager {
 
     public Session getOrCreate(String sessionKey, String agentId) {
         String key = scopedKey(sessionKey);
-        return sessions.computeIfAbsent(key, k -> {
+        boolean[] created = new boolean[]{false};
+        Session session = sessions.computeIfAbsent(key, k -> {
+            created[0] = true;
             String tenantId = resolveTenantId();
             return Session.create(UUID.randomUUID().toString(), k, agentId, tenantId);
         });
+        if (created[0]) {
+            fireVoid(SessionStartedEvent.of(agentId, key));
+        }
+        return session;
     }
 
     public void appendMessage(String sessionKey, Message message) {
@@ -81,7 +105,11 @@ public class SessionManager {
     }
 
     public Session close(String sessionKey) {
-        return transitionState(sessionKey, SessionState.CLOSED);
+        Session session = transitionState(sessionKey, SessionState.CLOSED);
+        if (session != null) {
+            fireVoid(SessionEndedEvent.of(session.agentId(), scopedKey(sessionKey), "closed"));
+        }
+        return session;
     }
 
     public void replaceMessages(String sessionKey, java.util.List<Message> newMessages) {
@@ -92,7 +120,10 @@ public class SessionManager {
 
     public void reset(String sessionKey) {
         String key = scopedKey(sessionKey);
-        sessions.remove(key);
+        Session removed = sessions.remove(key);
+        if (removed != null) {
+            fireVoid(SessionEndedEvent.of(removed.agentId(), key, "reset"));
+        }
     }
 
     /**
@@ -129,5 +160,15 @@ public class SessionManager {
 
     private String resolveTenantId() {
         return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
+    }
+
+    private void fireVoid(io.jaiclaw.core.hook.event.HookEvent event) {
+        if (hooks != null) {
+            try {
+                hooks.fireVoid(event);
+            } catch (Exception e) {
+                log.warn("Session hook {} failed: {}", event.getClass().getSimpleName(), e.getMessage());
+            }
+        }
     }
 }

@@ -9,6 +9,9 @@ import io.jaiclaw.channel.*;
 import io.jaiclaw.channel.chunking.MessageChunker;
 import io.jaiclaw.config.TenantAgentConfig;
 import io.jaiclaw.config.TenantAgentConfigService;
+import io.jaiclaw.core.agent.AgentHookDispatcher;
+import io.jaiclaw.core.hook.event.HookEvent;
+import io.jaiclaw.core.hook.event.MessageReceivedEvent;
 import io.jaiclaw.core.model.AgentIdentity;
 import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.tenant.TenantContext;
@@ -50,6 +53,7 @@ public class GatewayService implements ChannelMessageHandler {
     private final TenantAgentConfigService tenantAgentConfigService;
     private final TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
     private final ThreadOwnershipTracker ownershipTracker;
+    private AgentHookDispatcher hooks;
 
     public static Builder builder() { return new Builder(); }
 
@@ -128,6 +132,14 @@ public class GatewayService implements ChannelMessageHandler {
     }
 
     /**
+     * Wires the {@link AgentHookDispatcher} after construction so {@link MessageReceivedEvent}
+     * can be fired on each inbound message. Optional — null dispatcher means no events fire.
+     */
+    public void setHookDispatcher(AgentHookDispatcher hooks) {
+        this.hooks = hooks;
+    }
+
+    /**
      * Handle an inbound message from any channel adapter.
      * Routes to the agent runtime and delivers the response back through the originating channel.
      */
@@ -135,6 +147,8 @@ public class GatewayService implements ChannelMessageHandler {
     public void onMessage(ChannelMessage message) {
         String sessionKey = message.sessionKey(defaultAgentId);
         log.info("Inbound message on {}: sessionKey={}", message.channelId(), sessionKey);
+
+        fireMessageReceived(message, sessionKey, defaultAgentId);
 
         // Resolve tenant from channel metadata
         Optional<TenantContext> tenant = resolveTenantFromChannel(message);
@@ -253,6 +267,17 @@ public class GatewayService implements ChannelMessageHandler {
                 "channelId", message.channelId(),
                 "accountId", message.accountId() != null ? message.accountId() : ""
         ));
+    }
+
+    private void fireMessageReceived(ChannelMessage message, String sessionKey, String agentId) {
+        if (hooks == null) return;
+        try {
+            hooks.fireVoid(MessageReceivedEvent.of(
+                    agentId, sessionKey, message.channelId(),
+                    message.accountId(), message.peerId(), message.content()));
+        } catch (Exception e) {
+            log.warn("MessageReceivedEvent hook failed: {}", e.getMessage());
+        }
     }
 
     private void deliverResponse(ChannelMessage inbound, AssistantMessage response) {
