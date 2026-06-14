@@ -6,10 +6,13 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
 import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
 import io.jaiclaw.agentmind.tendencies.executor.StripedDialecticExecutor;
+import io.jaiclaw.agentmind.tendencies.hook.TendenciesDialecticTrigger;
 import io.jaiclaw.agentmind.tendencies.hook.TendenciesUserMessageInjector;
 import io.jaiclaw.agentmind.tendencies.learning.DeterministicTendenciesProvider;
 import io.jaiclaw.agentmind.tendencies.learning.TendenciesLearningProvider;
 import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
+import io.jaiclaw.agentmind.tendencies.transcript.InMemoryTranscriptSource;
+import io.jaiclaw.agentmind.tendencies.transcript.TranscriptSource;
 import io.jaiclaw.core.agent.TendenciesStoreProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.springframework.beans.factory.ObjectProvider;
@@ -130,5 +133,24 @@ public class AgentMindTendenciesAutoConfiguration {
             TendenciesStoreProvider store,
             ObjectProvider<TenantGuard> tenantGuard) {
         return new TendenciesUserMessageInjector(store, tenantGuard.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TranscriptSource transcriptSource() {
+        return new InMemoryTranscriptSource();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesDialecticTrigger tendenciesDialecticTrigger(
+            TranscriptSource transcriptSource,
+            TendenciesCadenceGate cadenceGate,
+            StripedDialecticExecutor executor,
+            TendenciesStoreProvider store,
+            TendenciesLearningProvider learningProvider,
+            ObjectProvider<TenantGuard> tenantGuard) {
+        return new TendenciesDialecticTrigger(transcriptSource, cadenceGate, executor,
+                store, learningProvider, tenantGuard.getIfAvailable());
     }
 }
