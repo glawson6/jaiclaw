@@ -3,12 +3,18 @@ package io.jaiclaw.agentmind.tendencies;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.jaiclaw.agentmind.tendencies.store.JsonTendenciesStoreProvider;
+import io.jaiclaw.core.agent.TendenciesStoreProvider;
+import io.jaiclaw.core.tenant.TenantGuard;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.nio.file.Path;
 
 /**
  * Pillar-level autoconfig for the AgentMind Tendencies extension. Defaults
@@ -71,5 +77,15 @@ public class AgentMindTendenciesAutoConfiguration {
         m.registerModule(new JavaTimeModule());
         m.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         return m;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public TendenciesStoreProvider tendenciesStoreProvider(
+            AgentMindTendenciesProperties props,
+            ObjectMapper mapper,
+            ObjectProvider<TenantGuard> tenantGuard) {
+        return new JsonTendenciesStoreProvider(
+                Path.of(props.rootDir()), tenantGuard.getIfAvailable(), mapper);
     }
 }
