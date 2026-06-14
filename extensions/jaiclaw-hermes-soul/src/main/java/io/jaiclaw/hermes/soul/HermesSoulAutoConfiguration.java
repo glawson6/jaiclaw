@@ -31,15 +31,79 @@ import java.nio.file.Path;
  * Pillar-level autoconfig for the hermes Soul extension. Defaults OFF —
  * no beans are created until {@code jaiclaw.hermes.soul.enabled=true}.
  *
- * <p>Multi-tenancy conformance: the {@code FileSoulProvider} default impl
- * uses per-tenant subdirectory paths via {@code TenantGuard.resolveTenantPrefix()};
- * the {@code TenantSoulController} and {@code TenantSoulMcpToolProvider} both
- * forward {@code TenantContext} per repo rule. Cross-tenant + cross-user
- * read isolation is asserted by {@code HermesStoreIsolationSpec} in the
- * test suite.
+ * <h2>Multi-tenancy conformance review (plan §5 task 1.10)</h2>
  *
- * <p>Plan §5 task 1.2 — autoconfig scaffold. Tenant-scope sub-config gated
- * separately by {@code jaiclaw.hermes.soul.tenant.enabled=true}.
+ * Per analysis §5.8 checklist. Reviewed 2026-06-14 against the CLAUDE.md
+ * conformance template:
+ *
+ * <table>
+ *   <caption>Soul module conformance findings</caption>
+ *   <tr><th>Check</th><th>Status</th><th>Evidence</th></tr>
+ *   <tr>
+ *     <td>Persistence isolation — path/PK/key includes tenantId</td>
+ *     <td>PASS</td>
+ *     <td>{@code FileSoulProvider#pathFor} dispatches on
+ *         {@code TenantGuard#isMultiTenant()} to prefix
+ *         {@code ${root}/{tenantId}/...}; SINGLE-mode collapses to
+ *         {@code ${root}/...}. {@code FileSoulProviderSpec} covers both
+ *         layouts plus cross-tenant read isolation.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Per-user isolation</td>
+ *     <td>N/A for Soul</td>
+ *     <td>Soul keys on {@code (tenantId, agentId)} for AGENT scope and
+ *         {@code (tenantId)} for TENANT scope. Per-user dimension lands
+ *         with Memory + Tendencies in Phase 2 and Phase 3.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Async hops wrapped via {@code TenantContextPropagator}</td>
+ *     <td>N/A</td>
+ *     <td>All writes are synchronous via the {@code soul} tool, REST
+ *         controller, or MCP provider — the
+ *         {@code SoulPromptInjector} hook runs synchronously inside the
+ *         agent runtime's modifying-hook dispatch.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code TenantGuard} injection (not {@code TenantContextHolder}
+ *         directly)</td>
+ *     <td>PASS</td>
+ *     <td>{@code FileSoulProvider}, {@code SoulPromptInjector},
+ *         {@code SoulAgentTool}, {@code SoulDebugController}, and
+ *         {@code TenantSoulController} all inject {@code TenantGuard} via
+ *         their constructors. No direct {@code TenantContextHolder}
+ *         access in the module.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>SINGLE-mode behaviour</td>
+ *     <td>PASS</td>
+ *     <td>{@code tenantId} resolves to {@code "default"} when
+ *         {@code TenantGuard} is null or single-mode. File paths skip the
+ *         tenant prefix subdirectory, matching the
+ *         {@code JsonFileTaskStore} precedent.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>MCP tools forward {@code TenantContext}</td>
+ *     <td>PASS</td>
+ *     <td>Both {@code SoulMcpToolProvider#execute} and
+ *         {@code TenantSoulMcpToolProvider#execute} extract
+ *         {@code tenant.getTenantId()} on every call and pass it through
+ *         to the store layer. No fallback to ambient
+ *         {@code TenantContextHolder}.</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Tenant-scope opt-in independent of pillar opt-in</td>
+ *     <td>PASS</td>
+ *     <td>{@code TenantSoulRestConfig} is a nested {@code @Configuration}
+ *         gated by {@code jaiclaw.hermes.soul.tenant.enabled=true} on top
+ *         of the pillar gate; {@code SoulAutoConfigDisabledSpec} verifies
+ *         that enabling the pillar alone leaves
+ *         {@code tenant.enabled=false} and creates no tenant beans.</td>
+ *   </tr>
+ * </table>
+ *
+ * <p>Tenant-scope sub-config gated separately by
+ * {@code jaiclaw.hermes.soul.tenant.enabled=true}. Plan §5 task 1.2 —
+ * autoconfig scaffold; task 1.10 — this conformance block.
  */
 @AutoConfiguration
 @Configuration
