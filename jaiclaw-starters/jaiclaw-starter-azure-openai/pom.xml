@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-starters</artifactId>
-        <version>0.9.0</version>
+        <version>0.9.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-starter-azure-openai</artifactId>

@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-apps</artifactId>
-        <version>0.9.0</version>
+        <version>0.9.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-cron-manager-app</artifactId>
