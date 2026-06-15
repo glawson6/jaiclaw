@@ -5,6 +5,8 @@ import io.jaiclaw.core.tenant.DefaultTenantContext;
 import io.jaiclaw.core.tenant.TenantContext;
 import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.pipeline.gateway.DefaultPipelineGateway;
+import io.jaiclaw.pipeline.gateway.PipelineExecutionResult;
+import io.jaiclaw.pipeline.gateway.PipelineSyncCoordinator;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
@@ -47,6 +49,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
     private final PipelineSecurityGuard securityGuard;
     private final PipelineTransportAuthenticator transportAuthenticator;
     private final PipelineExecutionTracker tracker;
+    private final PipelineSyncCoordinator syncCoordinator;
 
     /** Legacy 10-arg constructor — kept for callers that don't supply a tracker. */
     public PipelineRouteBuilder(
@@ -61,7 +64,24 @@ public class PipelineRouteBuilder extends RouteBuilder {
             PipelineSecurityGuard securityGuard,
             PipelineTransportAuthenticator transportAuthenticator) {
         this(definition, defaults, agentProcessor, beanProcessor, camelProcessor,
-                auditor, hookFirer, metrics, securityGuard, transportAuthenticator, null);
+                auditor, hookFirer, metrics, securityGuard, transportAuthenticator, null, null);
+    }
+
+    /** 11-arg constructor — kept for callers that don't supply a sync coordinator. */
+    public PipelineRouteBuilder(
+            PipelineDefinition definition,
+            PipelineProperties.PipelineDefaults defaults,
+            AgentStageProcessor agentProcessor,
+            BeanStageProcessor beanProcessor,
+            CamelStageProcessor camelProcessor,
+            PipelineAuditor auditor,
+            PipelineHookFirer hookFirer,
+            PipelineMetrics metrics,
+            PipelineSecurityGuard securityGuard,
+            PipelineTransportAuthenticator transportAuthenticator,
+            PipelineExecutionTracker tracker) {
+        this(definition, defaults, agentProcessor, beanProcessor, camelProcessor,
+                auditor, hookFirer, metrics, securityGuard, transportAuthenticator, tracker, null);
     }
 
     public PipelineRouteBuilder(
@@ -75,7 +95,8 @@ public class PipelineRouteBuilder extends RouteBuilder {
             PipelineMetrics metrics,
             PipelineSecurityGuard securityGuard,
             PipelineTransportAuthenticator transportAuthenticator,
-            PipelineExecutionTracker tracker) {
+            PipelineExecutionTracker tracker,
+            PipelineSyncCoordinator syncCoordinator) {
         this.definition = definition;
         this.defaults = defaults != null ? defaults : PipelineProperties.PipelineDefaults.DEFAULT;
         this.agentProcessor = agentProcessor;
@@ -87,6 +108,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
         this.securityGuard = securityGuard;
         this.transportAuthenticator = transportAuthenticator;
         this.tracker = tracker;
+        this.syncCoordinator = syncCoordinator;
     }
 
     @Override
@@ -98,6 +120,11 @@ public class PipelineRouteBuilder extends RouteBuilder {
         }
 
         String pipelineId = definition.id();
+
+        // onException must be declared before route definitions / errorHandler.
+        // Completes any pending sync future with status=FAILED when a stage
+        // throws or a pre-stage check (transport-auth, security-guard) fails.
+        configureSyncFailureHandler();
 
         // Configure error handling based on error strategy
         configureErrorHandling(pipelineId);
@@ -119,6 +146,41 @@ public class PipelineRouteBuilder extends RouteBuilder {
 
         log.info("Pipeline '{}' routes configured: {} stages, trigger={}, output={}",
                 pipelineId, stages.size(), definition.trigger().type(), definition.output().type());
+    }
+
+    /**
+     * If a sync execution fails anywhere in the route, complete its registered
+     * future with a FAILED-status {@link PipelineExecutionResult}. Lets the
+     * configured {@code errorHandler} / DLQ still apply by returning
+     * {@code continued(false)}.
+     */
+    private void configureSyncFailureHandler() {
+        if (syncCoordinator == null) return;
+        onException(Exception.class)
+                .process(exchange -> {
+                    Boolean syncRequested = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_SYNC_REQUESTED, Boolean.class);
+                    if (!Boolean.TRUE.equals(syncRequested)) return;
+                    PipelineContext ctx = exchange.getIn().getHeader(
+                            HEADER_PIPELINE_CONTEXT, PipelineContext.class);
+                    if (ctx == null) return;
+                    Throwable cause = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Throwable.class);
+                    String reason = cause != null && cause.getMessage() != null
+                            ? cause.getMessage()
+                            : (cause != null ? cause.getClass().getSimpleName() : "unknown failure");
+                    Instant startedAt = exchange.getIn().getHeader(HEADER_PIPELINE_START, Instant.class);
+                    Instant now = Instant.now();
+                    Duration totalDuration = startedAt != null
+                            ? Duration.between(startedAt, now)
+                            : Duration.ZERO;
+                    PipelineExecutionResult result = PipelineExecutionResult.failure(
+                            ctx, reason,
+                            startedAt != null ? startedAt : now,
+                            now,
+                            totalDuration);
+                    syncCoordinator.complete(ctx.executionId(), result);
+                })
+                .continued(false);
     }
 
     private void configureErrorHandling(String pipelineId) {
@@ -380,8 +442,9 @@ public class PipelineRouteBuilder extends RouteBuilder {
 
                     // Record pipeline completion
                     if (ctx != null) {
+                        Instant now = Instant.now();
                         Duration totalDuration = pipelineStart != null
-                                ? Duration.between(pipelineStart, Instant.now())
+                                ? Duration.between(pipelineStart, now)
                                 : Duration.ZERO;
                         if (auditor != null) auditor.pipelineCompleted(ctx, totalDuration);
                         if (hookFirer != null) hookFirer.firePipelineEnd(ctx);
@@ -390,6 +453,21 @@ public class PipelineRouteBuilder extends RouteBuilder {
                             metrics.recordPipelineActive(pipelineId, -1);
                         }
                         if (tracker != null) tracker.succeeded(ctx, totalDuration);
+
+                        // Complete the registered sync future *before* dispatching to
+                        // the external output sink (CHANNEL/CAMEL_URI/LOG). Sync callers
+                        // get the result without waiting on external delivery; the side
+                        // effect still fires below via .choice().
+                        Boolean syncRequested = exchange.getIn().getHeader(
+                                DefaultPipelineGateway.HEADER_SYNC_REQUESTED, Boolean.class);
+                        if (Boolean.TRUE.equals(syncRequested) && syncCoordinator != null) {
+                            PipelineExecutionResult result = PipelineExecutionResult.success(
+                                    ctx,
+                                    pipelineStart != null ? pipelineStart : now,
+                                    now,
+                                    totalDuration);
+                            syncCoordinator.complete(ctx.executionId(), result);
+                        }
                     }
                 })
                 .choice()

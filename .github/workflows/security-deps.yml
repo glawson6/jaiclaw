@@ -42,15 +42,38 @@ jobs:
         env:
           MAVEN_OPTS: '-Xmx2g'
 
+      # Cache the dependency-check data directory (NVD CVE feed + CPE caches)
+      # between runs. NVD downloads are slow and rate-limited; a cache hit
+      # cuts the job runtime substantially and avoids 403s from NVD when
+      # many concurrent jobs share a single API key.
+      - name: Cache Dependency-Check data
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.dc-data
+          key: dc-data-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            dc-data-${{ runner.os }}-
+
       - name: Run OWASP dependency-check
         run: |
           ./mvnw -B \
             org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=7.0 \
             -DsuppressionFiles=.security/dependency-check-suppressions.xml \
-            -Dformat=ALL
+            -Dformat=ALL \
+            -DossIndex.user="$OSS_USERNAME" \
+            -DossIndex.token="$OSS_API_TOKEN" \
+            -DdataDirectory="${{ github.workspace }}/.dc-data"
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          # OSS Index credentials. Sonatype enforces API tokens since
+          # Sep 2025 and is migrating to Guide tokens through end of 2026
+          # — if either secret is missing the analyzer auto-disables, and
+          # the pom's warn-only-on-remote-errors setting keeps the build
+          # green through token churn. NVD is the authoritative source
+          # either way.
+          OSS_USERNAME: ${{ secrets.OSS_USERNAME }}
+          OSS_API_TOKEN: ${{ secrets.OSS_API_TOKEN }}
 
       - name: Upload dependency-check reports
         if: always()

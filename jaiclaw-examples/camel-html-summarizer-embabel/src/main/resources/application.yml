@@ -30,10 +30,7 @@ jaiclaw:
   skills:
     allow-bundled: []
   camel:
-    channels:
-      - channel-id: embabel-html-summarizer
-        display-name: "Embabel HTML File Summarizer"
-        stateless: true
+    channels: []
 
 # =============================================================================
 # Embabel LLM Model Configuration

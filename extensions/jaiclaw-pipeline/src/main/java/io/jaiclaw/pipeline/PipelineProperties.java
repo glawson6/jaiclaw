@@ -3,6 +3,7 @@ package io.jaiclaw.pipeline;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -21,6 +22,7 @@ import java.util.List;
  * @param tracker     execution-tracker settings (recent history visible via Actuator)
  * @param httpTrigger HTTP trigger endpoint settings
  * @param locations   per-file pipeline location patterns (classpath / filesystem)
+ * @param sync        synchronous-result coordinator settings
  */
 @ConfigurationProperties(prefix = "jaiclaw.pipeline")
 public record PipelineProperties(
@@ -30,7 +32,8 @@ public record PipelineProperties(
         PipelineSecurityProperties security,
         TrackerProperties tracker,
         HttpTriggerProperties httpTrigger,
-        LocationProperties locations
+        LocationProperties locations,
+        SyncProperties sync
 ) {
     /**
      * Default SEDA queue configuration for inter-stage transport.
@@ -110,8 +113,52 @@ public record PipelineProperties(
         }
     }
 
+    /**
+     * Synchronous-result coordinator settings. Controls the
+     * {@code PipelineSyncCoordinator} that backs
+     * {@code PipelineGateway#triggerAsync(...)} /
+     * {@code PipelineGateway#triggerAndAwait(...)}.
+     *
+     * @param maxPending          maximum number of in-flight synchronous executions
+     *                            tracked at once. New {@code triggerAsync} calls beyond
+     *                            this cap return an already-failed future. Default: 1024.
+     * @param orphanTtl           duration after which a pending future is reaped by the
+     *                            sweep with {@code PipelineOrphanException}. Bounds the
+     *                            leak when the route never completes (JVM crash,
+     *                            route-builder bug). Default: 10 minutes.
+     * @param sweepInterval       how often the sweep runs. Default: 60 seconds.
+     * @param completionPoolSize  worker threads used by the coordinator to publish
+     *                            completion results to waiters. Decouples user
+     *                            {@code .thenApply} continuations from the Camel
+     *                            thread. Default: 2.
+     */
+    public record SyncProperties(
+            int maxPending,
+            Duration orphanTtl,
+            Duration sweepInterval,
+            int completionPoolSize
+    ) {
+        public static final SyncProperties DEFAULT = new SyncProperties(
+                1024,
+                Duration.ofMinutes(10),
+                Duration.ofSeconds(60),
+                2
+        );
+
+        public SyncProperties {
+            if (maxPending <= 0) maxPending = 1024;
+            if (orphanTtl == null || orphanTtl.isZero() || orphanTtl.isNegative()) {
+                orphanTtl = Duration.ofMinutes(10);
+            }
+            if (sweepInterval == null || sweepInterval.isZero() || sweepInterval.isNegative()) {
+                sweepInterval = Duration.ofSeconds(60);
+            }
+            if (completionPoolSize <= 0) completionPoolSize = 2;
+        }
+    }
+
     public static final PipelineProperties DEFAULT =
-            new PipelineProperties(false, null, null, null, null, null, null);
+            new PipelineProperties(false, null, null, null, null, null, null, null);
 
     public PipelineProperties {
         if (pipelines == null) pipelines = List.of();
@@ -121,5 +168,6 @@ public record PipelineProperties(
         if (tracker == null) tracker = TrackerProperties.DEFAULT;
         if (httpTrigger == null) httpTrigger = HttpTriggerProperties.DEFAULT;
         if (locations == null) locations = LocationProperties.EMPTY;
+        if (sync == null) sync = SyncProperties.DEFAULT;
     }
 }

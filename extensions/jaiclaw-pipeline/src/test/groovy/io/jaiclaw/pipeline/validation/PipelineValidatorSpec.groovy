@@ -162,7 +162,7 @@ class PipelineValidatorSpec extends Specification {
         ctx.containsBean(_ as String) >> true
         ctx.getType(_ as String) >> Function
         PipelineProperties.PipelineDefaults defaults = new PipelineProperties.PipelineDefaults(100, 5, true, "log:dlq")
-        PipelineProperties props = new PipelineProperties(true, null, defaults, null, null, null, null)
+        PipelineProperties props = new PipelineProperties(true, null, defaults, null, null, null, null, null)
         registry.register(pipeline("p", [processorStage("s1", "beanA")], null, ErrorStrategy.DEAD_LETTER, null))
 
         when:

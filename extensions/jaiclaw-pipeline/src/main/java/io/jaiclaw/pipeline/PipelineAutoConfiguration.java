@@ -7,6 +7,7 @@ import io.jaiclaw.channel.ChannelRegistry;
 import io.jaiclaw.pipeline.dsl.JaiClawPipeline;
 import io.jaiclaw.pipeline.gateway.DefaultPipelineGateway;
 import io.jaiclaw.pipeline.gateway.PipelineGateway;
+import io.jaiclaw.pipeline.gateway.PipelineSyncCoordinator;
 import io.jaiclaw.pipeline.loader.PipelineFileLoader;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
 import io.jaiclaw.pipeline.validation.PipelineValidator;
@@ -173,11 +174,19 @@ public class PipelineAutoConfiguration {
         return new PipelineExecutionTracker(properties.tracker().maxPerPipeline());
     }
 
+    @Bean(destroyMethod = "shutdown")
+    public PipelineSyncCoordinator pipelineSyncCoordinator(PipelineProperties properties) {
+        return new PipelineSyncCoordinator(properties.sync());
+    }
+
     @Bean
     @ConditionalOnBean(CamelContext.class)
-    public PipelineGateway pipelineGateway(CamelContext camelContext, PipelineRegistry registry) {
+    public PipelineGateway pipelineGateway(
+            CamelContext camelContext,
+            PipelineRegistry registry,
+            PipelineSyncCoordinator syncCoordinator) {
         ProducerTemplate template = camelContext.createProducerTemplate();
-        return new DefaultPipelineGateway(template, registry);
+        return new DefaultPipelineGateway(template, registry, syncCoordinator);
     }
 
     @Bean
@@ -235,7 +244,8 @@ public class PipelineAutoConfiguration {
             ObjectProvider<PipelineMetrics> metricsProvider,
             PipelineSecurityGuard securityGuard,
             PipelineTransportAuthenticator transportAuthenticator,
-            ObjectProvider<PipelineExecutionTracker> trackerProvider) {
+            ObjectProvider<PipelineExecutionTracker> trackerProvider,
+            ObjectProvider<PipelineSyncCoordinator> syncCoordinatorProvider) {
 
         return args -> {
             int count = 0;
@@ -256,7 +266,8 @@ public class PipelineAutoConfiguration {
                         metricsProvider.getIfAvailable(),
                         securityGuard,
                         transportAuthenticator,
-                        trackerProvider.getIfAvailable());
+                        trackerProvider.getIfAvailable(),
+                        syncCoordinatorProvider.getIfAvailable());
 
                 camelContext.addRoutes(routeBuilder);
                 count++;

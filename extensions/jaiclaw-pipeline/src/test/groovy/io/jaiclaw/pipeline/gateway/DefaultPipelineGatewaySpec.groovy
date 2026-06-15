@@ -3,6 +3,7 @@ package io.jaiclaw.pipeline.gateway
 import io.jaiclaw.pipeline.OutputDefinition
 import io.jaiclaw.pipeline.OutputType
 import io.jaiclaw.pipeline.PipelineDefinition
+import io.jaiclaw.pipeline.PipelineProperties
 import io.jaiclaw.pipeline.PipelineRegistry
 import io.jaiclaw.pipeline.StageDefinition
 import io.jaiclaw.pipeline.StageType
@@ -12,6 +13,12 @@ import org.apache.camel.ProducerTemplate
 import org.apache.camel.impl.DefaultCamelContext
 import org.apache.camel.support.DefaultExchange
 import spock.lang.Specification
+
+import java.time.Duration
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class DefaultPipelineGatewaySpec extends Specification {
 
@@ -105,5 +112,127 @@ class DefaultPipelineGatewaySpec extends Specification {
         IllegalArgumentException ex = thrown()
         ex.message.contains("disabled")
         0 * producer._
+    }
+
+    // --- triggerAsync ---
+
+    def "triggerAsync without coordinator returns a failed future"() {
+        given:
+        registry.register(pipe("p1"))
+
+        when:
+        CompletableFuture<PipelineExecutionResult> f = gateway.triggerAsync("p1", "body")
+
+        then:
+        f.isCompletedExceptionally()
+        0 * producer._
+    }
+
+    def "triggerAsync registers a future, sets HEADER_SYNC_REQUESTED, and submits"() {
+        given:
+        registry.register(pipe("p1"))
+        PipelineSyncCoordinator coordinator = new PipelineSyncCoordinator(
+                PipelineProperties.SyncProperties.DEFAULT)
+        DefaultPipelineGateway syncGateway = new DefaultPipelineGateway(producer, registry, coordinator)
+        Processor capturedProcessor = null
+
+        when:
+        CompletableFuture<PipelineExecutionResult> f = syncGateway.triggerAsync("p1", "hi")
+
+        then:
+        1 * producer.asyncSend("direct:pipeline-p1", _ as Processor) >> { String uri, Processor p ->
+            capturedProcessor = p
+            null
+        }
+        f != null
+        !f.isDone()
+        coordinator.pendingCount() == 1
+
+        when:
+        Exchange ex = runProcessor(capturedProcessor)
+
+        then:
+        ex.getIn().getHeader(DefaultPipelineGateway.HEADER_SYNC_REQUESTED) == Boolean.TRUE
+        ex.getIn().getHeader(DefaultPipelineGateway.HEADER_GATEWAY_EXECUTION_ID) != null
+
+        cleanup:
+        coordinator.shutdown()
+    }
+
+    def "triggerAsync on unknown pipeline returns a failed future and does not submit"() {
+        given:
+        PipelineSyncCoordinator coordinator = new PipelineSyncCoordinator(
+                PipelineProperties.SyncProperties.DEFAULT)
+        DefaultPipelineGateway syncGateway = new DefaultPipelineGateway(producer, registry, coordinator)
+
+        when:
+        CompletableFuture<PipelineExecutionResult> f = syncGateway.triggerAsync("missing", "body")
+
+        then:
+        f.isCompletedExceptionally()
+        coordinator.pendingCount() == 0
+        0 * producer._
+
+        when:
+        f.get(1, TimeUnit.SECONDS)
+
+        then:
+        ExecutionException ex = thrown()
+        ex.cause instanceof IllegalArgumentException
+
+        cleanup:
+        coordinator.shutdown()
+    }
+
+    def "triggerAsync at coordinator capacity does not submit"() {
+        given:
+        registry.register(pipe("p1"))
+        PipelineSyncCoordinator coordinator = new PipelineSyncCoordinator(
+                new PipelineProperties.SyncProperties(1, Duration.ofMinutes(5), Duration.ofMinutes(1), 2))
+        DefaultPipelineGateway syncGateway = new DefaultPipelineGateway(producer, registry, coordinator)
+
+        when: "first triggerAsync fills the slot"
+        syncGateway.triggerAsync("p1", "first")
+
+        then:
+        1 * producer.asyncSend("direct:pipeline-p1", _ as Processor)
+        coordinator.pendingCount() == 1
+
+        when: "second is rejected and not submitted"
+        CompletableFuture<PipelineExecutionResult> f = syncGateway.triggerAsync("p1", "second")
+
+        then:
+        f.isCompletedExceptionally()
+        coordinator.pendingCount() == 1
+        0 * producer.asyncSend(_, _)
+
+        when:
+        f.get(1, TimeUnit.SECONDS)
+
+        then:
+        ExecutionException ex = thrown()
+        ex.cause instanceof PipelineCapacityException
+
+        cleanup:
+        coordinator.shutdown()
+    }
+
+    def "triggerAndAwait throws TimeoutException when pipeline does not finish"() {
+        given:
+        registry.register(pipe("p1"))
+        PipelineSyncCoordinator coordinator = new PipelineSyncCoordinator(
+                PipelineProperties.SyncProperties.DEFAULT)
+        DefaultPipelineGateway syncGateway = new DefaultPipelineGateway(producer, registry, coordinator)
+
+        when:
+        syncGateway.triggerAndAwait("p1", "body", Duration.ofMillis(100))
+
+        then:
+        1 * producer.asyncSend("direct:pipeline-p1", _ as Processor)
+        thrown(TimeoutException)
+        coordinator.pendingCount() == 1 // future stays for the route / sweep to clean up
+
+        cleanup:
+        coordinator.shutdown()
     }
 }

@@ -35,8 +35,12 @@ import java.util.List;
  * and the {@code BeanPostProcessor} cannot reach them. This class uses
  * {@code SmartInitializingSingleton} + reflection to wrap those internal instances
  * after all singletons are initialized.
+ *
+ * <p><b>Bean naming:</b> Named {@code embabelMiniMaxThinkingFilter} to avoid collision
+ * with the framework-level {@code miniMaxThinkingFilter} bean registered by
+ * {@code MiniMaxThinkingFilterAutoConfiguration}.
  */
-@Configuration
+@Configuration("embabelMiniMaxThinkingFilter")
 public class MiniMaxThinkingFilter implements SmartInitializingSingleton {
 
     private static final Logger log = LoggerFactory.getLogger(MiniMaxThinkingFilter.class);
