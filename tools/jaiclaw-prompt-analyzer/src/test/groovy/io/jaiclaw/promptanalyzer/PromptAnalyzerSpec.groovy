@@ -280,7 +280,7 @@ jaiclaw:
         report.toolProfile() == "minimal"
     }
 
-    def "profile coding includes 5 tools"() {
+    def "profile coding includes 7 tools"() {
         given:
         Path project = createProject("""
 jaiclaw:
@@ -298,7 +298,10 @@ jaiclaw:
         AnalysisReport report = scanner.analyze(project)
 
         then:
-        report.builtinToolCount() == 5
+        // CODING profile: shell_exec, web_fetch, web_search, file_read,
+        // file_write, ascii_box, ascii_render (AsciiBoxTool + AsciiRenderTool
+        // added in the ascii-render rollout).
+        report.builtinToolCount() == 7
         report.builtinToolsTokens() > 0
         report.toolProfile() == "coding"
     }
