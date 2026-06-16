@@ -37,6 +37,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ResourceLoader;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -222,14 +223,25 @@ public class JaiClawAgentAutoConfiguration {
             log.info("No system-prompt configured for agent '{}'", properties.agent().defaultAgent());
         }
 
-        // Resolve tool policy — first try the bound config, then fall back to Environment
+        // Resolve tool policy — first try the bound config, then fall back
+        // to Environment. We read profile, allow, AND deny from env (not
+        // just profile) because Spring's record-binding for the agents map
+        // partially-succeeds and silently drops list properties — see
+        // docs/issues/tool-allow-deny-env-fallback.md (fixed in 0.9.1).
         io.jaiclaw.config.AgentProperties.ToolPolicyConfig toolPolicy = agentConfig.tools();
         String toolPolicyPrefix = "jaiclaw.agent.agents." + properties.agent().defaultAgent() + ".tools";
         String envProfile = env.getProperty(toolPolicyPrefix + ".profile");
-        if (envProfile != null && !envProfile.equals(toolPolicy.profile())) {
+        List<String> envAllow = readStringList(env, toolPolicyPrefix + ".allow");
+        List<String> envDeny  = readStringList(env, toolPolicyPrefix + ".deny");
+        boolean profileDiffers = envProfile != null && !envProfile.equals(toolPolicy.profile());
+        if (profileDiffers || !envAllow.isEmpty() || !envDeny.isEmpty()) {
             toolPolicy = new io.jaiclaw.config.AgentProperties.ToolPolicyConfig(
-                    envProfile, toolPolicy.allow(), toolPolicy.deny());
-            log.info("Tool policy resolved from Environment (record binding fallback) — profile: {}", envProfile);
+                    envProfile != null ? envProfile : toolPolicy.profile(),
+                    envAllow.isEmpty() ? toolPolicy.allow() : envAllow,
+                    envDeny.isEmpty()  ? toolPolicy.deny()  : envDeny);
+            log.info("Tool policy resolved from Environment (record binding fallback) — "
+                            + "profile: {}, allow: {}, deny: {}",
+                    toolPolicy.profile(), toolPolicy.allow(), toolPolicy.deny());
         }
         log.info("Tool policy — profile: {}, allow: {}, deny: {}",
                 toolPolicy.profile(), toolPolicy.allow(), toolPolicy.deny());
@@ -346,34 +358,81 @@ public class JaiClawAgentAutoConfiguration {
     }
 
     /**
-     * Resolve tools policy config from Environment as a fallback when Spring Boot's record binding
-     * silently drops the {@code jaiclaw.agent.agents.<name>.tools} fields.
+     * Resolve tools policy config from Environment as a fallback when Spring
+     * Boot's record binding silently drops the
+     * {@code jaiclaw.agent.agents.<name>.tools} fields.
+     *
+     * <p>Reads {@code profile}, {@code allow}, and {@code deny} from the
+     * environment so YAML-declared allow/deny lists survive a partial
+     * record-binding failure. Pre-0.9.1 this method only read
+     * {@code profile} and hard-coded the lists to empty — see
+     * {@code docs/issues/tool-allow-deny-env-fallback.md}.
      */
     private io.jaiclaw.config.AgentProperties.ToolPolicyConfig resolveToolsFromEnvironment(
             JaiClawProperties properties,
             org.springframework.core.env.Environment env) {
         String prefix = "jaiclaw.agent.agents." + properties.agent().defaultAgent() + ".tools";
         String envProfile = env.getProperty(prefix + ".profile");
+        List<String> envAllow = readStringList(env, prefix + ".allow");
+        List<String> envDeny  = readStringList(env, prefix + ".deny");
 
-        if (envProfile == null) {
-            return null;
+        if (envProfile == null && envAllow.isEmpty() && envDeny.isEmpty()) {
+            return null; // nothing in the env — no override to apply
         }
 
-        // Check if record binding already got the right value
         Map<String, io.jaiclaw.config.AgentProperties.AgentConfig> agents = properties.agent().agents();
         io.jaiclaw.config.AgentProperties.AgentConfig agentConfig = agents != null
                 ? agents.get(properties.agent().defaultAgent()) : null;
-        if (agentConfig != null && agentConfig.tools() != null
-                && envProfile.equals(agentConfig.tools().profile())) {
-            return null; // Record binding worked correctly — no override needed
+
+        // If record binding already got the profile right AND the env doesn't
+        // try to override allow/deny, we can let the bound config stand.
+        if (envProfile != null
+                && agentConfig != null && agentConfig.tools() != null
+                && envProfile.equals(agentConfig.tools().profile())
+                && envAllow.isEmpty() && envDeny.isEmpty()) {
+            return null;
         }
+
+        String effectiveProfile = envProfile != null
+                ? envProfile
+                : (agentConfig != null && agentConfig.tools() != null
+                        ? agentConfig.tools().profile()
+                        : "coding");
+        List<String> effectiveAllow = !envAllow.isEmpty()
+                ? envAllow
+                : (agentConfig != null && agentConfig.tools() != null
+                        ? agentConfig.tools().allow()
+                        : List.of());
+        List<String> effectiveDeny = !envDeny.isEmpty()
+                ? envDeny
+                : (agentConfig != null && agentConfig.tools() != null
+                        ? agentConfig.tools().deny()
+                        : List.of());
 
         io.jaiclaw.config.AgentProperties.ToolPolicyConfig config =
                 new io.jaiclaw.config.AgentProperties.ToolPolicyConfig(
-                        envProfile, List.of(), List.of());
+                        effectiveProfile, effectiveAllow, effectiveDeny);
 
-        log.info("Tools config resolved from Environment (record binding fallback) — profile: {}",
-                envProfile);
+        log.info("Tools config resolved from Environment (record binding fallback) — "
+                        + "profile: {}, allow: {}, deny: {}",
+                config.profile(), config.allow(), config.deny());
         return config;
+    }
+
+    /**
+     * Read a YAML list property from {@link org.springframework.core.env.Environment}.
+     * Spring exposes list values as indexed properties at runtime —
+     * {@code prefix[0]}, {@code prefix[1]}, … — so this walks those slots
+     * until the first {@code null} value, accumulating into a list. Returns
+     * an empty list when no slots are populated.
+     */
+    private static List<String> readStringList(org.springframework.core.env.Environment env, String prefix) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; ; i++) {
+            String value = env.getProperty(prefix + "[" + i + "]");
+            if (value == null) break;
+            result.add(value);
+        }
+        return result;
     }
 }

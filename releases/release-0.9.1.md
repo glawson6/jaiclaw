@@ -2,14 +2,17 @@
 
 **Release Date:** TBD
 
-> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Two
+> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Three
 > framework-level improvements ship together: **Spring bean auto-discovery
 > for `ToolCallback`** (drop the manual `toolRegistry.registerAll(...)`
-> boilerplate) and **vision-attachment auto-injection** (image and PDF
-> attachments now reach the LLM as native Spring AI `Media` content blocks).
+> boilerplate), **vision-attachment auto-injection** (image and PDF
+> attachments now reach the LLM as native Spring AI `Media` content blocks),
+> and a **fix for per-agent `tools.allow` / `tools.deny` being silently
+> dropped** under partial record-binding (functional + security fix).
 >
-> Both are opt-out-by-default, but one of them (the `AttachmentRouter` SPI
-> change) is a source-level break — see Breaking Changes below.
+> The first two are opt-out-by-default, the third is purely a bug fix that
+> makes existing YAML work as written. One of them (the `AttachmentRouter`
+> SPI change) is a source-level break — see Breaking Changes below.
 
 ---
 
@@ -43,6 +46,19 @@
   extractor surfacing a one-line summary) or signal that they've fully
   handled an attachment. The minimal port for an existing implementation
   is two lines (change the return type and `return RouterResult.none();`).
+
+- **`tools.allow` / `tools.deny` honored under record-binding fallback**
+  — when Spring's `@ConfigurationProperties` binding for the
+  `jaiclaw.agent.agents.*` map only partially succeeds (a real-world
+  case observed on `jaiclaw-event-agent`), the auto-config now reads
+  the indexed `tools.allow[N]` and `tools.deny[N]` list properties from
+  `Environment` instead of hard-coding empty lists. This is both a
+  functional fix (operator-declared allow/deny now applies) and a
+  security fix (public Telegram bots no longer get unintended access
+  to `shell_exec`, `claude_cli`, `file_*`, etc.). See
+  `docs/issues/tool-allow-deny-env-fallback.md` for the original
+  diagnosis. No migration required — YAML that was already legal now
+  works as written.
 
 ---
 
@@ -154,12 +170,27 @@ at 4.1.135.Final, Tomcat at 10.1.55.
 - **Image attachments no longer dropped at the gateway** — see
   `docs/issues/attachment-injection-gap.md` for the original diagnosis.
 
+- **Per-agent `tools.allow` / `tools.deny` no longer silently dropped**
+  under Spring's record-binding fallback — see
+  `docs/issues/tool-allow-deny-env-fallback.md`.
+
 ---
 
 ## Security Fixes
 
-None in 0.9.1. The dependency CVE remediation pass from 0.9.0 still
-applies.
+- **Tool allow/deny lists now honored under record-binding fallback** —
+  previously, when Spring's `@ConfigurationProperties` partially failed
+  to bind the `jaiclaw.agent.agents.*` map, the
+  `JaiClawAgentAutoConfiguration` fallback hard-coded
+  `allow=[]` / `deny=[]`, exposing the full tool surface (including
+  `shell_exec`, `claude_cli`, `file_read`, `file_write`) to a chat agent
+  whose YAML intended a narrower allow-list. 0.9.1 reads both lists
+  from `Environment` so the operator-declared policy is enforced. Apps
+  whose YAML already declared `tools.allow:` or `tools.deny:` should
+  re-verify their resolved tool set after the upgrade — see the
+  `Tool policy — profile: X, allow: [...], deny: [...]` startup log.
+
+The dependency CVE remediation pass from 0.9.0 still applies.
 
 ---
 
