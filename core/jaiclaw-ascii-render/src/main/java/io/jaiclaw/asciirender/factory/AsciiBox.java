@@ -45,6 +45,9 @@ public final class AsciiBox {
     /**
      * Render {@code content} inside a box.
      *
+     * <p>Convenience overload — no inner padding. Equivalent to
+     * {@link #render(String, int, int, Style, String)} with {@code padding == 0}.
+     *
      * @param content non-null text; embedded newlines honoured, long
      *                lines wrap at word boundaries
      * @param width   maximum inner content width; clamped to
@@ -57,35 +60,59 @@ public final class AsciiBox {
      * @return trimmed ASCII output
      */
     public static String render(String content, int width, Style style, String title) {
+        return render(content, width, 0, style, title);
+    }
+
+    /**
+     * Render {@code content} inside a box with inner padding.
+     *
+     * @param content non-null text; embedded newlines honoured, long
+     *                lines wrap at word boundaries
+     * @param width   maximum inner content width; clamped to
+     *                {@code [MIN_WIDTH, MAX_WIDTH]}; values {@code <= 0}
+     *                fall back to {@link #DEFAULT_WIDTH}
+     * @param padding blank-column/row margin inside the box, between
+     *                the border and the content; clamped to
+     *                {@code [0, 16]}; values {@code < 0} treated as 0.
+     *                The box widens by {@code 2 * padding} columns and
+     *                its height grows by {@code 2 * padding} rows.
+     * @param style   border style; {@code null} treated as
+     *                {@link Style#SINGLE}
+     * @param title   optional title; rendered on the top edge as
+     *                {@code "[ title ]"}; ignored if {@code null} or blank
+     * @return trimmed ASCII output
+     */
+    public static String render(String content, int width, int padding, Style style, String title) {
         if (content == null) {
             throw new IllegalArgumentException("content must not be null");
         }
         int clampedWidth = clampWidth(width);
+        int clampedPadding = clampPadding(padding);
         Style effectiveStyle = style == null ? Style.SINGLE : style;
 
         List<String> lines = wordWrap(content, clampedWidth);
         int innerWidth = computeInnerWidth(lines, clampedWidth, title);
-        int totalWidth = innerWidth + 2;
-        int totalHeight = lines.size() + 2;
+        int totalWidth = innerWidth + 2 + (2 * clampedPadding);
+        int totalHeight = lines.size() + 2 + (2 * clampedPadding);
 
         ICanvas canvas = new Render().render(
                 Render.builder()
                         .width(totalWidth)
                         .height(totalHeight)
                         .layer(new Region(0, 0, totalWidth, totalHeight))
-                        .element(new BorderedBox(effectiveStyle, lines, innerWidth, title))
+                        .element(new BorderedBox(effectiveStyle, lines, innerWidth, clampedPadding, title))
                         .build());
         return canvas.trim().getText();
     }
 
-    /** Convenience: single-border style, no title. */
+    /** Convenience: single-border style, no title, no padding. */
     public static String render(String content, int width) {
-        return render(content, width, Style.SINGLE, null);
+        return render(content, width, 0, Style.SINGLE, null);
     }
 
-    /** Convenience: default width, single-border style, no title. */
+    /** Convenience: default width, single-border style, no title, no padding. */
     public static String render(String content) {
-        return render(content, DEFAULT_WIDTH, Style.SINGLE, null);
+        return render(content, DEFAULT_WIDTH, 0, Style.SINGLE, null);
     }
 
     // ── word wrap + sizing ───────────────────────────────────────────
@@ -143,6 +170,15 @@ public final class AsciiBox {
             return MAX_WIDTH;
         }
         return width;
+    }
+
+    /** Maximum inner padding accepted by {@link #render(String, int, int, Style, String)}. */
+    public static final int MAX_PADDING = 16;
+
+    private static int clampPadding(int padding) {
+        if (padding < 0) return 0;
+        if (padding > MAX_PADDING) return MAX_PADDING;
+        return padding;
     }
 
     private static int computeInnerWidth(List<String> lines, int defaultWidth, String title) {
@@ -230,19 +266,21 @@ public final class AsciiBox {
         private final Style style;
         private final List<String> lines;
         private final int innerWidth;
+        private final int padding;
         private final String title;
 
-        BorderedBox(Style style, List<String> lines, int innerWidth, String title) {
+        BorderedBox(Style style, List<String> lines, int innerWidth, int padding, String title) {
             this.style = style;
             this.lines = lines;
             this.innerWidth = innerWidth;
+            this.padding = padding;
             this.title = title;
         }
 
         @Override
         public IPoint draw(ICanvas canvas, IContext context) {
-            int width = innerWidth + 2;
-            int height = lines.size() + 2;
+            int width = innerWidth + 2 + (2 * padding);
+            int height = lines.size() + 2 + (2 * padding);
 
             canvas.draw(0, 0, String.valueOf(style.horizontal()), width);
             canvas.draw(0, height - 1, String.valueOf(style.horizontal()), width);
@@ -260,8 +298,12 @@ public final class AsciiBox {
                     canvas.draw(x, 0, banner);
                 }
             }
+            // Content draws at (1 + padding, 1 + padding) so the inner
+            // margin pushes lines inward uniformly on all four sides.
+            int contentX = 1 + padding;
+            int contentY = 1 + padding;
             for (int i = 0; i < lines.size(); i++) {
-                canvas.draw(1, i + 1, lines.get(i));
+                canvas.draw(contentX, contentY + i, lines.get(i));
             }
             return new Point(0, 0);
         }

@@ -104,7 +104,9 @@ public final class AsciiSceneFactory {
             elements.add(new ElementSpec(type, params));
         }
         boolean trim = !raw.containsKey("trim") || Boolean.TRUE.equals(raw.get("trim"));
-        return new SceneSpec(width, height, elements, trim);
+        Integer padding = asInteger(raw.get("padding"));
+        int paddingValue = padding == null ? 0 : padding;
+        return new SceneSpec(width, height, elements, trim, paddingValue);
     }
 
     /**

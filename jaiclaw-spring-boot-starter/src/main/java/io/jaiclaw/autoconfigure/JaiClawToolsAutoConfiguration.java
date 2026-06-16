@@ -10,6 +10,8 @@ import io.jaiclaw.tools.ToolRegistry;
 import io.jaiclaw.tools.builtin.BuiltinTools;
 import io.jaiclaw.tools.builtin.ImageGenerationTool;
 import io.jaiclaw.tools.builtin.WebSearchTool;
+import io.jaiclaw.tools.builtin.ascii.AsciiRenderProfilesInitializer;
+import io.jaiclaw.tools.builtin.ascii.AsciiRenderProperties;
 import io.jaiclaw.tools.discovery.ToolBeanDiscovery;
 import io.jaiclaw.tools.exec.ExecPolicyConfig;
 import io.jaiclaw.tools.exec.KubectlPolicyConfig;
@@ -56,7 +58,7 @@ import java.util.Set;
  * (audit {@code CODEBASE-ANALYSIS-2026-06-10.md} §3.4, Phase 3 P3.4).
  */
 @AutoConfiguration(after = JaiClawTenantAutoConfiguration.class)
-@EnableConfigurationProperties(JaiClawProperties.class)
+@EnableConfigurationProperties({JaiClawProperties.class, AsciiRenderProperties.class})
 public class JaiClawToolsAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JaiClawToolsAutoConfiguration.class);
@@ -86,6 +88,20 @@ public class JaiClawToolsAutoConfiguration {
     @ConditionalOnMissingBean(name = "webSearchTool")
     public ToolCallback webSearchTool() {
         return new WebSearchTool();
+    }
+
+    /**
+     * Wire {@code jaiclaw.ascii.*} configuration into the static
+     * {@link io.jaiclaw.asciirender.profile.AsciiRenderProfiles} registry.
+     * Constructed eagerly so operator-supplied profile overrides + the
+     * default-profile setting are in place before any
+     * {@code ascii_box} / {@code ascii_render} tool call resolves a profile.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public AsciiRenderProfilesInitializer asciiRenderProfilesInitializer(
+            AsciiRenderProperties properties) {
+        return new AsciiRenderProfilesInitializer(properties);
     }
 
     /**

@@ -2,17 +2,21 @@
 
 **Release Date:** TBD
 
-> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Three
+> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Four
 > framework-level improvements ship together: **Spring bean auto-discovery
 > for `ToolCallback`** (drop the manual `toolRegistry.registerAll(...)`
 > boilerplate), **vision-attachment auto-injection** (image and PDF
 > attachments now reach the LLM as native Spring AI `Media` content blocks),
-> and a **fix for per-agent `tools.allow` / `tools.deny` being silently
-> dropped** under partial record-binding (functional + security fix).
+> a **fix for per-agent `tools.allow` / `tools.deny` being silently
+> dropped** under partial record-binding (functional + security fix), and
+> **channel-aware rendering profiles** for `ascii_box` / `ascii_render`
+> so agents can pick width + padding appropriate for the target client.
 >
-> The first two are opt-out-by-default, the third is purely a bug fix that
-> makes existing YAML work as written. One of them (the `AttachmentRouter`
-> SPI change) is a source-level break — see Breaking Changes below.
+> The auto-discovery, vision-attachment, and ASCII-profile features are
+> opt-out-by-default. The `tools.allow/deny` fix is purely a bug fix that
+> makes existing YAML work as written. One of them (the
+> `AttachmentRouter` SPI change) is a source-level break — see Breaking
+> Changes below.
 
 ---
 
@@ -59,6 +63,23 @@
   `docs/issues/tool-allow-deny-env-fallback.md` for the original
   diagnosis. No migration required — YAML that was already legal now
   works as written.
+
+- **Channel-aware rendering profiles for `ascii_box` / `ascii_render`**
+  — both built-in tools gain a new optional `profile` parameter that
+  selects a named width + padding bundle curated for common channels:
+  `shell_80`, `shell_120`, `telegram_desktop`, `telegram_mobile`,
+  `slack_desktop`, `slack_mobile`, `discord_desktop`, `discord_mobile`,
+  `email`. Agents pick the profile that matches their target client and
+  the renderer sizes the canvas accordingly. Operators add or override
+  profiles via `jaiclaw.ascii.profiles.<name>.{width,padding}` in
+  `application.yml`; the deployment default is settable via
+  `jaiclaw.ascii.default-profile` (defaults to `shell_80`). LLM-supplied
+  `profile` always beats the deployment default; explicit `width` /
+  `padding` parameters always beat the profile. Both tools also accept
+  a new optional `padding` parameter for inner-margin control. Existing
+  callers continue to work — `width` is now optional on `ascii_render`
+  (the profile supplies it when omitted), but all previous valid
+  arguments produce identical output.
 
 ---
 

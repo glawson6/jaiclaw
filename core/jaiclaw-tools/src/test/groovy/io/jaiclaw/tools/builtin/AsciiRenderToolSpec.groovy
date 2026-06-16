@@ -34,10 +34,14 @@ class AsciiRenderToolSpec extends Specification {
 
         then:
         parsed.type == "object"
-        parsed.required as Set == ["width", "height", "elements"] as Set
+        // width is no longer required at the JSON layer — the profile
+        // (or its default fallback) supplies it when the LLM omits it.
+        parsed.required as Set == ["height", "elements"] as Set
         parsed.properties.width.type == "integer"
         parsed.properties.height.type == "integer"
         parsed.properties.elements.type == "array"
+        parsed.properties.profile.type == "string"
+        parsed.properties.padding.type == "integer"
     }
 
     def "renders a single rectangle covering the whole canvas"() {
@@ -96,9 +100,17 @@ class AsciiRenderToolSpec extends Specification {
         ((ToolResult.Error) result).message.contains("marshmallow")
     }
 
-    def "missing width is rejected"() {
-        when:
+    def "missing width is supplied from the default profile"() {
+        when: "no width, no profile — the deployment default (shell_80, width 78) fills it in"
         ToolResult result = tool.execute([height: 4, elements: []], null)
+
+        then:
+        result instanceof ToolResult.Success
+    }
+
+    def "missing height is still rejected"() {
+        when: "height has no profile-supplied default and is still required"
+        ToolResult result = tool.execute([width: 40, elements: []], null)
 
         then:
         result instanceof ToolResult.Error
