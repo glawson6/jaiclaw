@@ -1,21 +1,22 @@
 package io.jaiclaw.rules.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.rules.engine.config.DroolsConfig;
 import io.jaiclaw.rules.engine.config.DroolsProperties;
 import io.jaiclaw.rules.engine.loader.RuleLoaderFactory;
 import io.jaiclaw.rules.engine.service.RuleExecutionService;
 import io.jaiclaw.rules.engine.service.impl.DroolsRuleExecutionService;
 import io.jaiclaw.rules.mcp.RulesMcpToolProvider;
-import io.jaiclaw.rules.tool.RulesTools;
-import io.jaiclaw.tools.ToolRegistry;
+import io.jaiclaw.rules.tool.CheckRuleTool;
+import io.jaiclaw.rules.tool.ExecuteRuleTool;
+import io.jaiclaw.rules.tool.ListRulesTool;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.StatelessKieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -59,13 +60,24 @@ public class JaiClawRulesAutoConfiguration {
         return new DroolsRuleExecutionService(kieSession);
     }
 
+    // Rules tools as Spring beans. ToolBeanDiscovery picks them up
+    // automatically when a ToolRegistry is present in the context;
+    // when no registry is present, the beans simply remain unwired
+    // until one shows up (no harm).
+
     @Bean
-    @ConditionalOnBean(ToolRegistry.class)
-    public RulesToolsRegistrar rulesToolsRegistrar(ToolRegistry toolRegistry,
-                                                    RuleExecutionService ruleExecutionService) {
-        log.info("Registering Rules tools into ToolRegistry");
-        RulesTools.registerAll(toolRegistry, ruleExecutionService);
-        return new RulesToolsRegistrar();
+    public ToolCallback executeRuleTool(RuleExecutionService ruleExecutionService) {
+        return new ExecuteRuleTool(ruleExecutionService);
+    }
+
+    @Bean
+    public ToolCallback listRulesTool(RuleExecutionService ruleExecutionService) {
+        return new ListRulesTool(ruleExecutionService);
+    }
+
+    @Bean
+    public ToolCallback checkRuleTool(RuleExecutionService ruleExecutionService) {
+        return new CheckRuleTool(ruleExecutionService);
     }
 
     @Bean
@@ -74,6 +86,4 @@ public class JaiClawRulesAutoConfiguration {
         ObjectMapper objectMapper = new ObjectMapper();
         return new RulesMcpToolProvider(ruleExecutionService, objectMapper);
     }
-
-    public static class RulesToolsRegistrar {}
 }

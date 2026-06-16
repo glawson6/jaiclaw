@@ -1,5 +1,6 @@
 package io.jaiclaw.code;
 
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.tools.ToolRegistry;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -9,8 +10,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 
 /**
- * Auto-configuration that registers code tools (file_edit, glob, grep)
- * into the JaiClaw tool registry when present on the classpath.
+ * Auto-configuration that contributes code tools (file_edit, glob, grep) as
+ * Spring beans. Registration into {@link ToolRegistry} is handled by
+ * {@code ToolBeanDiscovery} — no explicit {@code toolRegistry.register(...)}
+ * call needed.
  */
 @AutoConfiguration
 @AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
@@ -18,15 +21,20 @@ import org.springframework.context.annotation.Bean;
 public class CodeToolsAutoConfiguration {
 
     @Bean
-    public CodeToolsRegistrar codeToolsRegistrar(
-            ToolRegistry toolRegistry,
+    public ToolCallback fileEditTool(
             @Value("${jaiclaw.tools.code.workspace-boundary:true}") boolean workspaceBoundary) {
-        CodeTools.registerAll(toolRegistry, workspaceBoundary);
-        return new CodeToolsRegistrar();
+        return new FileEditTool(workspaceBoundary);
     }
 
-    /**
-     * Marker bean to indicate code tools have been registered.
-     */
-    public static class CodeToolsRegistrar {}
+    @Bean
+    public ToolCallback globTool(
+            @Value("${jaiclaw.tools.code.workspace-boundary:true}") boolean workspaceBoundary) {
+        return new GlobTool(workspaceBoundary);
+    }
+
+    @Bean
+    public ToolCallback grepTool(
+            @Value("${jaiclaw.tools.code.workspace-boundary:true}") boolean workspaceBoundary) {
+        return new GrepTool(workspaceBoundary);
+    }
 }

@@ -1,6 +1,12 @@
 package io.jaiclaw.tasks;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tool.ToolCallback;
+import io.jaiclaw.tasks.tool.CreateTaskTool;
+import io.jaiclaw.tasks.tool.DeleteTaskTool;
+import io.jaiclaw.tasks.tool.GetTaskTool;
+import io.jaiclaw.tasks.tool.ListTasksTool;
+import io.jaiclaw.tasks.tool.UpdateTaskTool;
 import io.jaiclaw.tools.ToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,11 +65,32 @@ public class TasksAutoConfiguration {
         return new TaskExecutor(taskStore);
     }
 
+    // Task tools as Spring beans. ToolBeanDiscovery picks them up
+    // automatically; no manual toolRegistry.register(...) call needed.
+
     @Bean
-    public TaskToolsRegistrar taskToolsRegistrar(TaskService service, ToolRegistry toolRegistry) {
-        TaskTools.registerAll(toolRegistry, service);
-        log.info("Task tools registered: task_create, task_list, task_get, task_update, task_delete");
-        return new TaskToolsRegistrar();
+    public ToolCallback createTaskTool(TaskService service) {
+        return new CreateTaskTool(service);
+    }
+
+    @Bean
+    public ToolCallback listTasksTool(TaskService service) {
+        return new ListTasksTool(service);
+    }
+
+    @Bean
+    public ToolCallback getTaskTool(TaskService service) {
+        return new GetTaskTool(service);
+    }
+
+    @Bean
+    public ToolCallback updateTaskTool(TaskService service) {
+        return new UpdateTaskTool(service);
+    }
+
+    @Bean
+    public ToolCallback deleteTaskTool(TaskService service) {
+        return new DeleteTaskTool(service);
     }
 
     /**
@@ -85,5 +112,4 @@ public class TasksAutoConfiguration {
         }
     }
 
-    public static class TaskToolsRegistrar {}
 }

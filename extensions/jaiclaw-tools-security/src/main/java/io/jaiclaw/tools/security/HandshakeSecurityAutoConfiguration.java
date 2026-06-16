@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration
 @AutoConfigureAfter(SecurityToolsAutoConfiguration.class)
 @ConditionalOnProperty(prefix = "jaiclaw.security.handshake.server", name = "enabled", havingValue = "true")
-@ConditionalOnBean(SecurityToolsAutoConfiguration.SecurityToolsRegistrar.class)
+@ConditionalOnBean(SecurityHandshakeProperties.class)
 public class HandshakeSecurityAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(HandshakeSecurityAutoConfiguration.class);

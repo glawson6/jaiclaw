@@ -19,10 +19,25 @@ public final class CanvasTools {
 
     public static List<ToolCallback> all(CanvasService canvasService) {
         return List.of(
-                new PresentTool(canvasService),
-                new EvalTool(canvasService),
-                new SnapshotTool(canvasService)
+                presentTool(canvasService),
+                evalTool(canvasService),
+                snapshotTool(canvasService)
         );
+    }
+
+    /** {@code canvas_present} as an individually-injectable tool factory. */
+    public static ToolCallback presentTool(CanvasService canvasService) {
+        return new PresentTool(canvasService);
+    }
+
+    /** {@code canvas_eval} as an individually-injectable tool factory. */
+    public static ToolCallback evalTool(CanvasService canvasService) {
+        return new EvalTool(canvasService);
+    }
+
+    /** {@code canvas_snapshot} as an individually-injectable tool factory. */
+    public static ToolCallback snapshotTool(CanvasService canvasService) {
+        return new SnapshotTool(canvasService);
     }
 
     static class PresentTool implements ToolCallback {

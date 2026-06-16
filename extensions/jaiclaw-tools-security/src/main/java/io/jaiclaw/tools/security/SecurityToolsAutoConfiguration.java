@@ -1,9 +1,8 @@
 package io.jaiclaw.tools.security;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.tools.ToolRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -41,8 +40,6 @@ import org.springframework.core.env.Environment;
 @ConditionalOnBean(ToolRegistry.class)
 public class SecurityToolsAutoConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(SecurityToolsAutoConfiguration.class);
-
     @Bean
     @ConditionalOnMissingBean
     public SecurityHandshakeProperties securityHandshakeProperties(Environment environment) {
@@ -63,16 +60,17 @@ public class SecurityToolsAutoConfiguration {
         return new HandshakeSessionStore(tenantGuard);
     }
 
+    /**
+     * Security handshake tool as a Spring bean. {@code ToolBeanDiscovery}
+     * picks it up automatically — no manual {@code toolRegistry.register(...)}
+     * call needed.
+     */
     @Bean
-    public SecurityToolsRegistrar securityToolsRegistrar(
-            ToolRegistry toolRegistry,
+    public ToolCallback securityHandshakeTool(
             CryptoService cryptoService,
             HandshakeSessionStore sessionStore,
             SecurityHandshakeProperties properties) {
-        log.info("Registering security_handshake tool into ToolRegistry (mode={}, bootstrap={})",
-                properties.mode(), properties.bootstrap());
-        SecurityTools.registerAll(toolRegistry, cryptoService, sessionStore, properties);
-        return new SecurityToolsRegistrar();
+        return SecurityTools.handshakeTool(cryptoService, sessionStore, properties);
     }
 
     /**
@@ -90,9 +88,4 @@ public class SecurityToolsAutoConfiguration {
             return new SecurityHandshakeAgent(cryptoService, sessionStore);
         }
     }
-
-    /**
-     * Marker bean to indicate that security tools have been registered.
-     */
-    public static class SecurityToolsRegistrar {}
 }

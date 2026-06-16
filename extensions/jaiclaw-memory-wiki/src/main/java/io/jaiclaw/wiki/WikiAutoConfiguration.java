@@ -1,6 +1,7 @@
 package io.jaiclaw.wiki;
 
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.docstore.repository.DocStoreRepository;
 import io.jaiclaw.docstore.repository.JsonFileDocStoreRepository;
 import io.jaiclaw.tools.ToolRegistry;
@@ -53,12 +54,31 @@ public class WikiAutoConfiguration {
         return new WikiService(repository);
     }
 
+    // Wiki tools as Spring beans. ToolBeanDiscovery picks them up
+    // automatically.
+
     @Bean
-    public WikiToolsRegistrar wikiToolsRegistrar(WikiService service, ToolRegistry toolRegistry) {
-        WikiTools.registerAll(toolRegistry, service);
-        log.info("Wiki tools registered: wiki_read, wiki_write, wiki_search, wiki_list, wiki_delete");
-        return new WikiToolsRegistrar();
+    public ToolCallback wikiReadTool(WikiService service) {
+        return new WikiReadTool(service);
     }
 
-    public static class WikiToolsRegistrar {}
+    @Bean
+    public ToolCallback wikiWriteTool(WikiService service) {
+        return new WikiWriteTool(service);
+    }
+
+    @Bean
+    public ToolCallback wikiSearchTool(WikiService service) {
+        return new WikiSearchTool(service);
+    }
+
+    @Bean
+    public ToolCallback wikiListTool(WikiService service) {
+        return new WikiListTool(service);
+    }
+
+    @Bean
+    public ToolCallback wikiDeleteTool(WikiService service) {
+        return new WikiDeleteTool(service);
+    }
 }
