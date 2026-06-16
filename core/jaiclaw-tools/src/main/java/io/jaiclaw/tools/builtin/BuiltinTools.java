@@ -34,6 +34,33 @@ public final class BuiltinTools {
         );
     }
 
+    /**
+     * Same as {@link #all(ExecPolicyConfig, boolean)} but omits the default
+     * {@link WebSearchTool}.
+     *
+     * <p>Used by {@code JaiClawToolsAutoConfiguration} so the default
+     * {@code web_search} can be supplied as a separate
+     * {@code @ConditionalOnMissingBean(name = "webSearchTool")} @Bean —
+     * which lets {@code jaiclaw-web-search}'s {@code RegistryWebSearchTool}
+     * override it cleanly without colliding inside {@link ToolRegistry}.
+     *
+     * <p>{@link #all(ExecPolicyConfig, boolean)} itself is intentionally
+     * left unchanged so callers like {@code ProjectScanner} (the prompt
+     * analyzer's token-budget tool) continue to see the full built-in set.
+     */
+    public static List<ToolCallback> allExceptWebSearch(ExecPolicyConfig execPolicyConfig,
+                                                        boolean ssrfProtection) {
+        return List.of(
+                new FileReadTool(),
+                new FileWriteTool(),
+                new ShellExecTool(execPolicyConfig),
+                new WebFetchTool(ssrfProtection),
+                new ClaudeCliTool(),
+                new AsciiRenderTool(),
+                new AsciiBoxTool()
+        );
+    }
+
     public static void registerAll(ToolRegistry registry) {
         registry.registerAll(all());
     }

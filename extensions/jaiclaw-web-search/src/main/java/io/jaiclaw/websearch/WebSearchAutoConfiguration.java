@@ -1,5 +1,6 @@
 package io.jaiclaw.websearch;
 
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.tools.ToolRegistry;
 import io.jaiclaw.websearch.provider.BraveSearchProvider;
 import io.jaiclaw.websearch.provider.DuckDuckGoSearchProvider;
@@ -14,7 +15,17 @@ import org.springframework.core.env.Environment;
 
 /**
  * Auto-configuration that creates the web search registry, registers providers,
- * and replaces the built-in {@code web_search} tool with the registry-backed version.
+ * and contributes a richer {@code web_search} tool that replaces the built-in
+ * single-provider default.
+ *
+ * <p>The override works through Spring's bean-condition machinery — this
+ * module declares a {@link ToolCallback} bean named {@code webSearchTool},
+ * which suppresses the built-in default that
+ * {@code JaiClawToolsAutoConfiguration} only contributes via
+ * {@code @ConditionalOnMissingBean(name = "webSearchTool")}.
+ * {@code ToolBeanDiscovery} then registers the resulting bean into
+ * {@link ToolRegistry} — no manual {@code toolRegistry.register(...)} call
+ * is needed.
  */
 @AutoConfiguration
 @AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration")
@@ -57,15 +68,19 @@ public class WebSearchAutoConfiguration {
         return registry;
     }
 
-    @Bean
-    public RegistryWebSearchTool registryWebSearchTool(WebSearchRegistry registry,
-                                                        ToolRegistry toolRegistry,
-                                                        Environment env) {
+    /**
+     * Contributes a {@link RegistryWebSearchTool} as the {@code webSearchTool}
+     * bean. Its presence suppresses the built-in default via
+     * {@code @ConditionalOnMissingBean(name = "webSearchTool")} on the default
+     * factory, and {@code ToolBeanDiscovery} registers it into the
+     * {@code ToolRegistry} automatically.
+     */
+    @Bean(name = "webSearchTool")
+    public ToolCallback webSearchTool(WebSearchRegistry registry, Environment env) {
         int maxResults = Integer.parseInt(
                 env.getProperty("jaiclaw.tools.web-search.default-max-results", "5"));
         var tool = new RegistryWebSearchTool(registry, maxResults);
-        toolRegistry.register(tool); // Replaces built-in web_search via upsert
-        log.info("RegistryWebSearchTool registered (replaces built-in web_search), providers: {}",
+        log.info("RegistryWebSearchTool contributed (replaces built-in web_search), providers: {}",
                 registry.providerIds());
         return tool;
     }

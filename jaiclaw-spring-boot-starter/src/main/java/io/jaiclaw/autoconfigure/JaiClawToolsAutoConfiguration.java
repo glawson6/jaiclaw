@@ -4,16 +4,20 @@ import io.jaiclaw.config.CompositeToolProfileRegistry;
 import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.config.ToolsProperties;
 import io.jaiclaw.core.tool.CompositeToolProfile;
+import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.tools.ToolRegistry;
 import io.jaiclaw.tools.builtin.BuiltinTools;
 import io.jaiclaw.tools.builtin.ImageGenerationTool;
+import io.jaiclaw.tools.builtin.WebSearchTool;
+import io.jaiclaw.tools.discovery.ToolBeanDiscovery;
 import io.jaiclaw.tools.exec.ExecPolicyConfig;
 import io.jaiclaw.tools.exec.KubectlPolicyConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.image.ImageModel;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -63,8 +67,44 @@ public class JaiClawToolsAutoConfiguration {
         var registry = new ToolRegistry();
         ExecPolicyConfig execPolicyConfig = toExecPolicyConfig(properties.tools().exec());
         boolean ssrfProtection = properties.tools().web().ssrfProtection();
-        BuiltinTools.registerAll(registry, execPolicyConfig, ssrfProtection);
+        // Seed all built-ins except web_search; web_search is supplied via a
+        // separate @ConditionalOnMissingBean(name = "webSearchTool") @Bean so
+        // extensions like jaiclaw-web-search can override it without colliding
+        // inside ToolRegistry. See ToolBeanDiscovery for the new fail-fast
+        // collision behaviour any other tool name now obeys.
+        registry.registerAll(BuiltinTools.allExceptWebSearch(execPolicyConfig, ssrfProtection));
         return registry;
+    }
+
+    /**
+     * Default {@code web_search} tool. Suppressed when another {@link ToolCallback}
+     * bean named {@code webSearchTool} is present — e.g. the
+     * {@code RegistryWebSearchTool} contributed by {@code jaiclaw-web-search}.
+     * Registration into {@link ToolRegistry} happens via {@link ToolBeanDiscovery}.
+     */
+    @Bean(name = "webSearchTool")
+    @ConditionalOnMissingBean(name = "webSearchTool")
+    public ToolCallback webSearchTool() {
+        return new WebSearchTool();
+    }
+
+    /**
+     * Auto-discovery for any Spring-managed {@link ToolCallback} bean. Mirrors
+     * the {@code PluginDiscovery} / {@code ChannelRegistry} pattern. Runs after
+     * all {@code @Bean} factories — including the {@code webSearchTool} above —
+     * have produced their tools, so every bean lands in {@link ToolRegistry}
+     * via a single funnel with fail-fast collision detection.
+     */
+    @Bean
+    public ToolBeanDiscovery toolBeanDiscovery(
+            ToolRegistry toolRegistry,
+            ObjectProvider<List<ToolCallback>> toolBeansProvider) {
+        ToolBeanDiscovery discovery = new ToolBeanDiscovery(toolRegistry);
+        List<ToolCallback> beans = toolBeansProvider.getIfAvailable();
+        if (beans != null && !beans.isEmpty()) {
+            discovery.discoverAndRegister(beans);
+        }
+        return discovery;
     }
 
     @Bean
