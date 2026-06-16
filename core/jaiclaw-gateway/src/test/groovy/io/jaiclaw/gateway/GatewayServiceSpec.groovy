@@ -35,7 +35,7 @@ class GatewayServiceSpec extends Specification {
         def response = new AssistantMessage("resp1", "Hello back!", "gpt-4o")
         def session = Session.create("s1", "default:telegram:bot:user", "default")
         sessionManager.getOrCreate("default:telegram:bot:user", "default") >> session
-        agentRuntime.run("hello", _ as AgentRuntimeContext) >> CompletableFuture.completedFuture(response)
+        agentRuntime.run("hello", _ as List, _ as AgentRuntimeContext) >> CompletableFuture.completedFuture(response)
 
         def msg = ChannelMessage.inbound("id1", "telegram", "bot", "user", "hello", Map.of())
 
@@ -91,7 +91,7 @@ class GatewayServiceSpec extends Specification {
         def session = Session.create("s1", "default:telegram:bot:user", "default")
         sessionManager.getOrCreate("default:telegram:bot:user", "default") >> session
         def response = new AssistantMessage("r1", "Got your PDF!", "model")
-        agentRuntime.run(_, _) >> CompletableFuture.completedFuture(response)
+        agentRuntime.run(_, _, _) >> CompletableFuture.completedFuture(response)
 
         def pdfData = "pdf content".bytes
         def attachment = new ChannelMessage.Attachment("report.pdf", "application/pdf", null, pdfData)
@@ -117,7 +117,7 @@ class GatewayServiceSpec extends Specification {
 
         def session = Session.create("s1", "default:telegram:bot:user", "default")
         sessionManager.getOrCreate(_, _) >> session
-        agentRuntime.run(_, _) >> CompletableFuture.completedFuture(new AssistantMessage("r1", "ok", "m"))
+        agentRuntime.run(_, _, _) >> CompletableFuture.completedFuture(new AssistantMessage("r1", "ok", "m"))
 
         def attachment = new ChannelMessage.Attachment("file.pdf", "application/pdf", null, new byte[0])
         def msg = ChannelMessage.inbound("id1", "telegram", "bot", "user",
@@ -141,7 +141,7 @@ class GatewayServiceSpec extends Specification {
         channelRegistry.register(adapter)
 
         def response = new AssistantMessage("resp1", "Processed!", "model")
-        agentRuntime.run(_, { AgentRuntimeContext ctx ->
+        agentRuntime.run(_, _ as List, { AgentRuntimeContext ctx ->
             ctx.stateless() == true
         }) >> CompletableFuture.completedFuture(response)
 
@@ -167,7 +167,7 @@ class GatewayServiceSpec extends Specification {
         channelRegistry.markStateless("webhook")
 
         def response = new AssistantMessage("resp1", "Done!", "model")
-        agentRuntime.run(_, _) >> CompletableFuture.completedFuture(response)
+        agentRuntime.run(_, _, _) >> CompletableFuture.completedFuture(response)
 
         def msg = ChannelMessage.inbound("id1", "webhook", "bot", "peer", "data", Map.of())
 

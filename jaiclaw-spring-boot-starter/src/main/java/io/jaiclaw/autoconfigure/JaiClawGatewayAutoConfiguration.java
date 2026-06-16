@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -33,6 +34,7 @@ import java.util.List;
 @AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "io.jaiclaw.gateway.GatewayService")
 @ConditionalOnBean(AgentRuntime.class)
+@EnableConfigurationProperties(io.jaiclaw.gateway.GatewayProperties.class)
 public class JaiClawGatewayAutoConfiguration {
 
     @Bean
@@ -88,19 +90,22 @@ public class JaiClawGatewayAutoConfiguration {
             SessionManager sessionManager,
             ChannelRegistry channelRegistry,
             JaiClawProperties properties,
+            io.jaiclaw.gateway.GatewayProperties gatewayProperties,
             io.jaiclaw.gateway.tenant.CompositeTenantResolver tenantResolver,
             io.jaiclaw.gateway.attachment.AttachmentRouter attachmentRouter,
             ObjectProvider<io.jaiclaw.core.tenant.TenantGuard> tenantGuardProvider,
             ObjectProvider<TenantAgentConfigService> configServiceProvider,
             ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider,
             ObjectProvider<io.jaiclaw.agent.ownership.ThreadOwnershipTracker> ownershipTrackerProvider) {
-        return new io.jaiclaw.gateway.GatewayService(
+        io.jaiclaw.gateway.GatewayService svc = new io.jaiclaw.gateway.GatewayService(
                 agentRuntime, sessionManager, channelRegistry,
                 properties.agent().defaultAgent(), tenantResolver, attachmentRouter,
                 tenantGuardProvider.getIfAvailable(),
                 configServiceProvider.getIfAvailable(),
                 tenantChannelRegistryProvider.getIfAvailable(),
                 ownershipTrackerProvider.getIfAvailable());
+        svc.setAutoVision(gatewayProperties.autoVision());
+        return svc;
     }
 
     /**

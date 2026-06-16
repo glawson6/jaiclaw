@@ -14,6 +14,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.tool.ToolCallback;
@@ -49,15 +50,37 @@ public class ExplicitToolLoop {
         this.approvalHandler = approvalHandler;
     }
 
+    /**
+     * No-media overload — delegates with an empty media list. Kept so existing
+     * callers (and the public signature surface) don't need to know about media.
+     */
     public LoopResult execute(String systemPrompt, List<Message> history,
                               String userInput, Map<String, ToolCallback> toolsByName,
+                              String agentId, String sessionKey) {
+        return execute(systemPrompt, history, userInput, List.of(),
+                toolsByName, agentId, sessionKey);
+    }
+
+    /**
+     * Media-aware execution. When {@code media} is non-empty the user message
+     * is built via {@link UserMessage#builder()} so the media content blocks
+     * land on the prompt; otherwise the string-only constructor is used (a
+     * tiny optimisation that also keeps the trace logs simpler).
+     */
+    public LoopResult execute(String systemPrompt, List<Message> history,
+                              String userInput, List<Media> media,
+                              Map<String, ToolCallback> toolsByName,
                               String agentId, String sessionKey) {
         List<Message> messages = new ArrayList<>();
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             messages.add(new SystemMessage(systemPrompt));
         }
         messages.addAll(history);
-        messages.add(new UserMessage(userInput));
+        if (media == null || media.isEmpty()) {
+            messages.add(new UserMessage(userInput));
+        } else {
+            messages.add(UserMessage.builder().text(userInput).media(media).build());
+        }
 
         List<ToolCallEvent> toolCallHistory = new ArrayList<>();
         TokenUsage accumulatedUsage = TokenUsage.ZERO;

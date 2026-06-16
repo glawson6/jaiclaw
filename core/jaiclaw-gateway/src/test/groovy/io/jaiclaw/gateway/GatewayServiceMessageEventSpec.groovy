@@ -42,7 +42,7 @@ class GatewayServiceMessageEventSpec extends Specification {
 
         def session = Session.create("s1", "default:telegram:bot:user", "default", null)
         sessionManager.getOrCreate(_, _) >> session
-        agentRuntime.run(_, _ as AgentRuntimeContext) >>
+        agentRuntime.run(_, _ as List, _ as AgentRuntimeContext) >>
                 CompletableFuture.completedFuture(new AssistantMessage("r1", "ok", "model"))
     }
 

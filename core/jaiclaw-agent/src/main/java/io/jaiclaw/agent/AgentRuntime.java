@@ -19,6 +19,7 @@ import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.hook.event.LlmInputEvent;
 import io.jaiclaw.core.hook.event.LlmOutputEvent;
 import io.jaiclaw.core.model.AssistantMessage;
+import io.jaiclaw.core.model.MediaAttachment;
 import io.jaiclaw.core.model.TokenUsage;
 import io.jaiclaw.core.model.UserMessage;
 import io.jaiclaw.core.skill.SkillDefinition;
@@ -221,13 +222,34 @@ public class AgentRuntime {
 
     /**
      * Run the agent asynchronously and return a future with the assistant response.
+     *
+     * <p>Convenience overload — no media. Delegates to
+     * {@link #run(String, List, AgentRuntimeContext)} with an empty media list.
      */
     public CompletableFuture<AssistantMessage> run(String userInput, AgentRuntimeContext context) {
-        log.info("AgentRuntime.run() called for session={}, input length={}", context.sessionKey(), userInput != null ? userInput.length() : -1);
+        return run(userInput, List.of(), context);
+    }
+
+    /**
+     * Run the agent asynchronously with optional media attachments on the user
+     * message. Each {@link MediaAttachment} is converted to a Spring AI
+     * {@code org.springframework.ai.content.Media} content block on the
+     * outbound prompt — used by the gateway to forward image and PDF
+     * attachments from a channel when {@code jaiclaw.gateway.auto-vision=true}
+     * and the wired chat model is vision-capable.
+     */
+    public CompletableFuture<AssistantMessage> run(String userInput,
+                                                   List<MediaAttachment> media,
+                                                   AgentRuntimeContext context) {
+        log.info("AgentRuntime.run() called for session={}, input length={}, media count={}",
+                context.sessionKey(),
+                userInput != null ? userInput.length() : -1,
+                media != null ? media.size() : 0);
+        final List<MediaAttachment> safeMedia = media == null ? List.of() : List.copyOf(media);
         var future = CompletableFuture.supplyAsync(TenantContextPropagator.wrap(() -> {
             log.info("AgentRuntime virtual thread started for session={}", context.sessionKey());
             try {
-                return executeSync(userInput, context);
+                return executeSync(userInput, safeMedia, context);
             } catch (Exception e) {
                 log.error("Agent execution failed for session {}", context.sessionKey(), e);
                 return new AssistantMessage(
@@ -246,8 +268,22 @@ public class AgentRuntime {
 
     /**
      * Stream the agent response as a Flux of text chunks. Uses SPRING_AI mode only.
+     *
+     * <p>Convenience overload — no media. Delegates to
+     * {@link #runStreaming(String, List, AgentRuntimeContext)} with an empty list.
      */
     public Flux<String> runStreaming(String userInput, AgentRuntimeContext context) {
+        return runStreaming(userInput, List.of(), context);
+    }
+
+    /**
+     * Stream the agent response with optional media attachments on the user
+     * message. See {@link #run(String, List, AgentRuntimeContext)} for the
+     * media-conversion semantics.
+     */
+    public Flux<String> runStreaming(String userInput,
+                                     List<MediaAttachment> media,
+                                     AgentRuntimeContext context) {
         // Check delegate first for per-tenant config
         if (context.tenantConfig() != null && delegateRegistry != null) {
             Optional<AgentLoopDelegate> delegate = delegateRegistry.resolve(context.tenantConfig());
@@ -260,9 +296,17 @@ public class AgentRuntime {
             }
         }
 
+        final List<MediaAttachment> safeMedia = media == null ? List.of() : List.copyOf(media);
+
         // 1. Record user message
-        UserMessage userMessage = new UserMessage(
-                UUID.randomUUID().toString(), userInput, "user");
+        UserMessage userMessage = UserMessage.builder()
+                .id(UUID.randomUUID().toString())
+                .timestamp(java.time.Instant.now())
+                .content(userInput)
+                .senderId("user")
+                .metadata(Map.of())
+                .media(safeMedia)
+                .build();
         if (!context.stateless()) {
             sessionManager.appendMessage(context.sessionKey(), userMessage);
         }
@@ -293,21 +337,43 @@ public class AgentRuntime {
                 .map(this::toSpringAiMessage)
                 .toList();
 
-        // 4. Stream via ChatClient
+        // 4. Stream via ChatClient. When media is attached we cannot use the
+        // String-only .user(text) shortcut — build the Spring AI UserMessage
+        // explicitly so the media content blocks land on the prompt.
         ChatClient chatClient = effectiveClientBuilder.build();
         var spec = chatClient.prompt();
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             spec.system(systemPrompt);
         }
-        return spec.messages(historyMessages)
-                .user(userInput)
+        if (safeMedia.isEmpty()) {
+            return spec.messages(historyMessages)
+                    .user(userInput)
+                    .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]))
+                    .stream()
+                    .content();
+        }
+        org.springframework.ai.chat.messages.UserMessage springUser =
+                org.springframework.ai.chat.messages.UserMessage.builder()
+                        .text(userInput)
+                        .media(safeMedia.stream().map(this::toSpringAiMedia).toList())
+                        .build();
+        java.util.List<org.springframework.ai.chat.messages.Message> allMessages =
+                new java.util.ArrayList<>(historyMessages);
+        allMessages.add(springUser);
+        return spec.messages(allMessages)
                 .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]))
                 .stream()
                 .content();
     }
 
-    private AssistantMessage executeSync(String userInput, AgentRuntimeContext context) {
-        log.info("executeSync() entered for session={}, tenantConfig={}", context.sessionKey(), context.tenantConfig() != null ? context.tenantConfig().tenantId() : "null");
+    private AssistantMessage executeSync(String userInput,
+                                         List<MediaAttachment> media,
+                                         AgentRuntimeContext context) {
+        log.info("executeSync() entered for session={}, tenantConfig={}, media count={}",
+                context.sessionKey(),
+                context.tenantConfig() != null ? context.tenantConfig().tenantId() : "null",
+                media != null ? media.size() : 0);
+        final List<MediaAttachment> safeMedia = media == null ? List.of() : List.copyOf(media);
         // 1. BEFORE_AGENT_START hook
         fireVoid(AgentStartedEvent.of(context.agentId(), context.sessionKey(), userInput));
 
@@ -361,9 +427,17 @@ public class AgentRuntime {
                 .map(this::toSpringAiMessage)
                 .toList();
 
-        // 5. Append current UserMessage to session
-        UserMessage userMessage = new UserMessage(
-                UUID.randomUUID().toString(), userInput, "user");
+        // 5. Append current UserMessage to session — carry media on the
+        // internal record so callers re-hydrating history (compaction, replay)
+        // see the same shape that went to the LLM.
+        UserMessage userMessage = UserMessage.builder()
+                .id(UUID.randomUUID().toString())
+                .timestamp(java.time.Instant.now())
+                .content(userInput)
+                .senderId("user")
+                .metadata(Map.of())
+                .media(safeMedia)
+                .build();
         if (!context.stateless()) {
             sessionManager.appendMessage(context.sessionKey(), userMessage);
         }
@@ -429,20 +503,39 @@ public class AgentRuntime {
                             (a, b) -> a));
 
             ExplicitToolLoop loop = new ExplicitToolLoop(effectiveChatModel, effectiveToolLoopConfig, hooks, approvalHandler);
+            List<org.springframework.ai.content.Media> springMedia = safeMedia.isEmpty()
+                    ? List.of()
+                    : safeMedia.stream().map(this::toSpringAiMedia).toList();
             var result = loop.execute(systemPrompt, new ArrayList<>(historyMessages),
-                    userInput, toolsByName, context.agentId(), context.sessionKey());
+                    userInput, springMedia, toolsByName, context.agentId(), context.sessionKey());
             responseContent = result.finalText();
             tokenUsage = result.totalUsage();
         } else {
-            // Spring AI built-in loop (default)
+            // Spring AI built-in loop (default). When media is attached we must
+            // build the Spring AI UserMessage explicitly so the media content
+            // blocks land on the prompt — .user(text) is text-only.
             ChatClient chatClient = effectiveClientBuilder.build();
             var spec = chatClient.prompt();
             if (systemPrompt != null && !systemPrompt.isEmpty()) {
                 spec.system(systemPrompt);
             }
-            var callSpec = spec.messages(historyMessages)
-                    .user(userInput)
-                    .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]));
+            org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec callSpec;
+            if (safeMedia.isEmpty()) {
+                callSpec = spec.messages(historyMessages)
+                        .user(userInput)
+                        .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]));
+            } else {
+                org.springframework.ai.chat.messages.UserMessage springUser =
+                        org.springframework.ai.chat.messages.UserMessage.builder()
+                                .text(userInput)
+                                .media(safeMedia.stream().map(this::toSpringAiMedia).toList())
+                                .build();
+                java.util.List<org.springframework.ai.chat.messages.Message> allMessages =
+                        new java.util.ArrayList<>(historyMessages);
+                allMessages.add(springUser);
+                callSpec = spec.messages(allMessages)
+                        .toolCallbacks(springTools.toArray(new org.springframework.ai.tool.ToolCallback[0]));
+            }
 
             var chatResponse = callSpec.call().chatResponse();
             responseContent = chatResponse != null && chatResponse.getResult() != null
@@ -622,8 +715,15 @@ public class AgentRuntime {
 
     private org.springframework.ai.chat.messages.Message toSpringAiMessage(io.jaiclaw.core.model.Message msg) {
         return switch (msg) {
-            case io.jaiclaw.core.model.UserMessage u ->
-                    new org.springframework.ai.chat.messages.UserMessage(u.content());
+            case io.jaiclaw.core.model.UserMessage u -> {
+                if (u.media().isEmpty()) {
+                    yield new org.springframework.ai.chat.messages.UserMessage(u.content());
+                }
+                yield org.springframework.ai.chat.messages.UserMessage.builder()
+                        .text(u.content())
+                        .media(u.media().stream().map(this::toSpringAiMedia).toList())
+                        .build();
+            }
             case io.jaiclaw.core.model.AssistantMessage a ->
                     new org.springframework.ai.chat.messages.AssistantMessage(a.content());
             case io.jaiclaw.core.model.SystemMessage s ->
@@ -631,6 +731,20 @@ public class AgentRuntime {
             case io.jaiclaw.core.model.ToolResultMessage t ->
                     new org.springframework.ai.chat.messages.UserMessage("[Tool: " + t.toolName() + "] " + t.content());
         };
+    }
+
+    /**
+     * Convert a JaiClaw {@link MediaAttachment} into a Spring AI
+     * {@code Media} content block. Used when the gateway forwards image or
+     * PDF attachments to a vision-capable chat model — see
+     * {@code GatewayService} and {@code jaiclaw.gateway.auto-vision}.
+     */
+    private org.springframework.ai.content.Media toSpringAiMedia(MediaAttachment m) {
+        return org.springframework.ai.content.Media.builder()
+                .mimeType(org.springframework.util.MimeType.valueOf(m.mimeType()))
+                .data(m.bytes())
+                .name(m.filename() == null || m.filename().isBlank() ? null : m.filename())
+                .build();
     }
 
     public void cancel(String sessionKey) {

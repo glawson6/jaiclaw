@@ -14,12 +14,14 @@ import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.hook.event.MessageReceivedEvent;
 import io.jaiclaw.core.model.AgentIdentity;
 import io.jaiclaw.core.model.AssistantMessage;
+import io.jaiclaw.core.model.MediaAttachment;
 import io.jaiclaw.core.tenant.TenantContext;
 import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.core.tool.ToolProfileHolder;
 import io.jaiclaw.gateway.attachment.AttachmentRouter;
+import io.jaiclaw.gateway.attachment.RouterResult;
 import io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry;
 import io.jaiclaw.gateway.tenant.TenantResolver;
 import org.slf4j.Logger;
@@ -27,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import io.jaiclaw.core.model.Session;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,6 +57,7 @@ public class GatewayService implements ChannelMessageHandler {
     private final TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
     private final ThreadOwnershipTracker ownershipTracker;
     private AgentHookDispatcher hooks;
+    private boolean autoVision = true;
 
     public static Builder builder() { return new Builder(); }
 
@@ -140,6 +144,16 @@ public class GatewayService implements ChannelMessageHandler {
     }
 
     /**
+     * Toggle auto-vision (image + PDF attachment auto-injection as Spring AI
+     * {@code Media} on the agent's user message). Default {@code true}.
+     * Driven by {@code jaiclaw.gateway.auto-vision} when wired through the
+     * Spring Boot starter.
+     */
+    public void setAutoVision(boolean autoVision) {
+        this.autoVision = autoVision;
+    }
+
+    /**
      * Handle an inbound message from any channel adapter.
      * Routes to the agent runtime and delivers the response back through the originating channel.
      */
@@ -161,17 +175,48 @@ public class GatewayService implements ChannelMessageHandler {
             return;
         }
 
+        // Attachment processing: route via SPI + auto-inject image/PDF as Media.
+        // Result collected here and passed into agentRuntime.run() further below.
+        List<MediaAttachment> mediaForAgent = new ArrayList<>();
+        List<String> routerAnnotations = new ArrayList<>();
         try {
-            // Route attachments if present
-            if (message.hasAttachments() && attachmentRouter != null) {
+            if (message.hasAttachments()) {
                 TenantContext tc = tenant.orElse(null);
                 for (var attachment : message.attachments()) {
+                    AttachmentPayload payload;
                     try {
-                        var payload = AttachmentPayload.of(
+                        payload = AttachmentPayload.of(
                                 attachment.name(), attachment.mimeType(), attachment.data());
-                        attachmentRouter.route(payload, message, tc);
                     } catch (Exception e) {
-                        log.warn("Failed to route attachment {}: {}", attachment.name(), e.getMessage());
+                        log.warn("Failed to build payload for attachment {}: {}",
+                                attachment.name(), e.getMessage());
+                        continue;
+                    }
+
+                    // Auto-vision: forward image + PDF to the agent as Media
+                    // when the operator hasn't disabled it.
+                    if (autoVision && isImageOrPdf(payload.mimeType())) {
+                        try {
+                            mediaForAgent.add(new MediaAttachment(
+                                    payload.mimeType(), payload.bytes(), payload.filename()));
+                        } catch (IllegalArgumentException badPayload) {
+                            log.warn("Skipping malformed media attachment {}: {}",
+                                    payload.filename(), badPayload.getMessage());
+                        }
+                    }
+
+                    // Router still runs for every attachment so apps can
+                    // annotate (returning text to prepend) or claim handling.
+                    if (attachmentRouter != null) {
+                        try {
+                            RouterResult result = attachmentRouter.route(payload, message, tc);
+                            if (result != null) {
+                                result.annotation().ifPresent(routerAnnotations::add);
+                            }
+                        } catch (Exception e) {
+                            log.warn("AttachmentRouter failed for {}: {}",
+                                    attachment.name(), e.getMessage());
+                        }
                     }
                 }
             }
@@ -209,7 +254,14 @@ public class GatewayService implements ChannelMessageHandler {
             AgentRuntimeContext context = new AgentRuntimeContext(
                     agentId, sessionKey, session, identity, toolProfile, ".", tenantConfig, stateless);
 
-            agentRuntime.run(message.content(), context)
+            // Prepend any router-supplied annotation snippets to the user input.
+            String body = message.content() == null ? "" : message.content();
+            String agentInput = routerAnnotations.isEmpty()
+                    ? body
+                    : routerAnnotations.stream().reduce((a, b) -> a + "\n" + b).orElse("")
+                            + (body.isEmpty() ? "" : "\n" + body);
+
+            agentRuntime.run(agentInput, mediaForAgent, context)
                     .orTimeout(5, TimeUnit.MINUTES)
                     .thenAccept(response -> deliverResponse(message, response))
                     .exceptionally(ex -> {
@@ -375,6 +427,12 @@ public class GatewayService implements ChannelMessageHandler {
         log.info("Gateway stopped");
     }
 
+    private static boolean isImageOrPdf(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) return false;
+        return mimeType.startsWith("image/")
+                || "application/pdf".equalsIgnoreCase(mimeType);
+    }
+
     public static final class Builder {
         private AgentRuntime agentRuntime;
         private SessionManager sessionManager;
@@ -386,6 +444,7 @@ public class GatewayService implements ChannelMessageHandler {
         private TenantAgentConfigService tenantAgentConfigService;
         private TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
         private ThreadOwnershipTracker ownershipTracker;
+        private boolean autoVision = true;
 
         public Builder agentRuntime(AgentRuntime agentRuntime) { this.agentRuntime = agentRuntime; return this; }
         public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
@@ -397,11 +456,14 @@ public class GatewayService implements ChannelMessageHandler {
         public Builder tenantAgentConfigService(TenantAgentConfigService tenantAgentConfigService) { this.tenantAgentConfigService = tenantAgentConfigService; return this; }
         public Builder tenantChannelAdapterRegistry(TenantChannelAdapterRegistry tenantChannelAdapterRegistry) { this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry; return this; }
         public Builder ownershipTracker(ThreadOwnershipTracker ownershipTracker) { this.ownershipTracker = ownershipTracker; return this; }
+        public Builder autoVision(boolean autoVision) { this.autoVision = autoVision; return this; }
 
         public GatewayService build() {
-            return new GatewayService(agentRuntime, sessionManager, channelRegistry, defaultAgentId,
+            GatewayService svc = new GatewayService(agentRuntime, sessionManager, channelRegistry, defaultAgentId,
                     tenantResolver, attachmentRouter, tenantGuard, tenantAgentConfigService,
                     tenantChannelAdapterRegistry, ownershipTracker);
+            svc.setAutoVision(autoVision);
+            return svc;
         }
     }
 }
