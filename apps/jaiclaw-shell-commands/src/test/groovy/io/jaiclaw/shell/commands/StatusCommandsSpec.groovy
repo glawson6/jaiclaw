@@ -1,5 +1,6 @@
 package io.jaiclaw.shell.commands
 
+import io.jaiclaw.agent.session.InMemorySessionManager
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.config.*
 import io.jaiclaw.plugin.PluginRegistry
@@ -13,7 +14,7 @@ class StatusCommandsSpec extends Specification {
 
     ToolRegistry toolRegistry = new ToolRegistry()
     PluginRegistry pluginRegistry = new PluginRegistry()
-    SessionManager sessionManager = new SessionManager()
+    SessionManager sessionManager = new InMemorySessionManager()
     SkillLoader skillLoader = Mock()
 
     JaiClawProperties properties = JaiClawProperties.builder().build()

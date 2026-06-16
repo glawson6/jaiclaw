@@ -578,6 +578,15 @@ public class AgentRuntime {
             log.info("LLM cache — read: {} tokens, write: {} tokens",
                     tokenUsage.cacheReadTokens(), tokenUsage.cacheWriteTokens());
         }
+        // 11c. Per-turn session-state snapshot — gives operators a single
+        // grep-able line tying conversation depth to token usage without
+        // having to triangulate from cache reads.
+        log.info("Session turn — session={} history={} msgs, prompt={} tokens (cached={}), response={} tokens",
+                context.sessionKey(),
+                sessionManager.messageCount(context.sessionKey()),
+                tokenUsage.inputTokens(),
+                tokenUsage.cacheReadTokens(),
+                tokenUsage.outputTokens());
 
         // 12. LLM_OUTPUT hook
         fireVoid(LlmOutputEvent.of(context.agentId(), context.sessionKey(), responseContent));

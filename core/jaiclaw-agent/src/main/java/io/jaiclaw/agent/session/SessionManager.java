@@ -7,168 +7,120 @@ import io.jaiclaw.core.model.Message;
 import io.jaiclaw.core.model.Session;
 import io.jaiclaw.core.model.SessionState;
 import io.jaiclaw.core.tenant.TenantGuard;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Optional;
 
 /**
- * In-memory session manager. Manages session lifecycle for the agent runtime.
- * Sessions are scoped to the current tenant via {@link TenantContextHolder}.
- * In MULTI mode, session keys are internally prefixed with tenantId for defense-in-depth.
+ * SPI for chat-session lifecycle and message history. Implementations
+ * back the agent runtime's per-session conversation state; the default
+ * is {@link InMemorySessionManager} (process-local, lost on restart).
+ * Downstream apps that need durable storage (Redis, Postgres, JCache,
+ * encrypted-at-rest) provide their own {@code @Bean SessionManager} and
+ * the framework's default steps aside via {@code @ConditionalOnMissingBean}.
  *
- * <p>Fires {@link SessionStartedEvent} when a session is first created and
- * {@link SessionEndedEvent} when a session is closed or reset, provided an
- * {@link AgentHookDispatcher} is injected. Hooks fail-safe — if the dispatcher
- * throws, session lifecycle continues. (Wired in plan §5 task 1.1.)
+ * <p>Sessions are scoped to the current tenant via {@link TenantGuard}.
+ * In MULTI mode, implementations are expected to prefix session keys
+ * with the resolved tenant id for defense-in-depth.
+ *
+ * <p>Implementations should fire {@link SessionStartedEvent} when a
+ * session is first created and {@link SessionEndedEvent} when a session
+ * is closed or reset, provided an {@link AgentHookDispatcher} is
+ * injected. Hook firing must fail-safe — if the dispatcher throws,
+ * session lifecycle must continue.
  */
-public class SessionManager {
-
-    private static final Logger log = LoggerFactory.getLogger(SessionManager.class);
-
-    private final Map<String, Session> sessions = new ConcurrentHashMap<>();
-    private TenantGuard tenantGuard;
-    private AgentHookDispatcher hooks;
-
-    public SessionManager() {}
-
-    public SessionManager(TenantGuard tenantGuard) {
-        this.tenantGuard = tenantGuard;
-    }
-
-    public SessionManager(TenantGuard tenantGuard, AgentHookDispatcher hooks) {
-        this.tenantGuard = tenantGuard;
-        this.hooks = hooks;
-    }
-
-    public void setTenantGuard(TenantGuard tenantGuard) {
-        this.tenantGuard = tenantGuard;
-    }
-
-    public void setHookDispatcher(AgentHookDispatcher hooks) {
-        this.hooks = hooks;
-    }
-
-    private String scopedKey(String sessionKey) {
-        if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String prefix = tenantGuard.resolveTenantPrefix();
-            if (!sessionKey.startsWith(prefix + ":")) {
-                return prefix + ":" + sessionKey;
-            }
-        }
-        return sessionKey;
-    }
-
-    public Session getOrCreate(String sessionKey, String agentId) {
-        String key = scopedKey(sessionKey);
-        boolean[] created = new boolean[]{false};
-        Session session = sessions.computeIfAbsent(key, k -> {
-            created[0] = true;
-            String tenantId = resolveTenantId();
-            return Session.create(UUID.randomUUID().toString(), k, agentId, tenantId);
-        });
-        if (created[0]) {
-            fireVoid(SessionStartedEvent.of(agentId, key));
-        }
-        return session;
-    }
-
-    public void appendMessage(String sessionKey, Message message) {
-        String key = scopedKey(sessionKey);
-        sessions.computeIfPresent(key,
-                (k, session) -> session.withMessage(message));
-    }
-
-    public Optional<Session> get(String sessionKey) {
-        String key = scopedKey(sessionKey);
-        Session session = sessions.get(key);
-        if (session == null) return Optional.empty();
-        // Enforce tenant isolation if a tenant context is active
-        String currentTenant = resolveTenantId();
-        if (currentTenant != null && session.tenantId() != null
-                && !currentTenant.equals(session.tenantId())) {
-            log.warn("Tenant mismatch: session {} belongs to tenant {}, current tenant is {}",
-                    sessionKey, session.tenantId(), currentTenant);
-            return Optional.empty();
-        }
-        return Optional.of(session);
-    }
-
-    public Session transitionState(String sessionKey, SessionState newState) {
-        String key = scopedKey(sessionKey);
-        return sessions.computeIfPresent(key,
-                (k, session) -> {
-                    log.debug("Session {} state: {} -> {}", sessionKey, session.state(), newState);
-                    return session.withState(newState);
-                });
-    }
-
-    public Session close(String sessionKey) {
-        Session session = transitionState(sessionKey, SessionState.CLOSED);
-        if (session != null) {
-            fireVoid(SessionEndedEvent.of(session.agentId(), scopedKey(sessionKey), "closed"));
-        }
-        return session;
-    }
-
-    public void replaceMessages(String sessionKey, java.util.List<Message> newMessages) {
-        String key = scopedKey(sessionKey);
-        sessions.computeIfPresent(key,
-                (k, session) -> session.withMessages(newMessages));
-    }
-
-    public void reset(String sessionKey) {
-        String key = scopedKey(sessionKey);
-        Session removed = sessions.remove(key);
-        if (removed != null) {
-            fireVoid(SessionEndedEvent.of(removed.agentId(), key, "reset"));
-        }
-    }
+public interface SessionManager {
 
     /**
-     * List sessions for the current tenant. If no tenant context is active,
-     * returns all sessions (backward-compatible single-tenant behavior).
+     * Return the existing session for {@code sessionKey}, or create a
+     * new one bound to {@code agentId} if none exists. Implementations
+     * fire {@link SessionStartedEvent} on first creation.
      */
-    public List<Session> listSessions() {
-        String currentTenant = resolveTenantId();
-        if (currentTenant == null) {
-            return List.copyOf(sessions.values());
-        }
-        return sessions.values().stream()
-                .filter(s -> currentTenant.equals(s.tenantId()))
-                .toList();
-    }
+    Session getOrCreate(String sessionKey, String agentId);
 
-    public List<Session> listActiveSessions() {
-        return listSessions().stream()
-                .filter(s -> s.state() == SessionState.ACTIVE || s.state() == SessionState.IDLE)
-                .toList();
-    }
+    /**
+     * Append a single message to the named session. No-op if the
+     * session does not exist.
+     */
+    void appendMessage(String sessionKey, Message message);
 
-    public int messageCount(String sessionKey) {
-        return get(sessionKey).map(s -> s.messages().size()).orElse(0);
-    }
+    /**
+     * Look up a session by key. Returns empty if the session does not
+     * exist or belongs to a different tenant than the current context.
+     */
+    Optional<Session> get(String sessionKey);
 
-    public boolean exists(String sessionKey) {
-        return sessions.containsKey(scopedKey(sessionKey));
-    }
+    /**
+     * Replace the entire message history of a session. Used by the
+     * context compactor to swap raw history for a summarized version.
+     * No-op if the session does not exist.
+     */
+    void replaceMessages(String sessionKey, List<Message> newMessages);
 
-    public int sessionCount() {
-        return listSessions().size();
-    }
+    /**
+     * Move a session to a new state. Returns the updated session, or
+     * {@code null} if no session exists for the key.
+     */
+    Session transitionState(String sessionKey, SessionState newState);
 
-    private String resolveTenantId() {
-        return tenantGuard != null ? tenantGuard.requireTenantIfMulti() : null;
-    }
+    /**
+     * Close a session — transitions state to {@link SessionState#CLOSED}
+     * and fires {@link SessionEndedEvent} with reason {@code "closed"}.
+     * Returns the closed session, or {@code null} if it did not exist.
+     */
+    Session close(String sessionKey);
 
-    private void fireVoid(io.jaiclaw.core.hook.event.HookEvent event) {
-        if (hooks != null) {
-            try {
-                hooks.fireVoid(event);
-            } catch (Exception e) {
-                log.warn("Session hook {} failed: {}", event.getClass().getSimpleName(), e.getMessage());
-            }
-        }
-    }
+    /**
+     * Remove a session entirely. Fires {@link SessionEndedEvent} with
+     * reason {@code "reset"}. No-op if the session does not exist.
+     */
+    void reset(String sessionKey);
+
+    /**
+     * List all sessions visible to the current tenant. If no tenant
+     * context is active, implementations may return every session
+     * (backward-compatible single-tenant behavior).
+     */
+    List<Session> listSessions();
+
+    /**
+     * List sessions that are currently {@link SessionState#ACTIVE} or
+     * {@link SessionState#IDLE}, scoped to the current tenant.
+     */
+    List<Session> listActiveSessions();
+
+    /**
+     * Number of messages in the named session, or {@code 0} if the
+     * session does not exist.
+     */
+    int messageCount(String sessionKey);
+
+    /**
+     * {@code true} if a session exists for the given key (in the
+     * current tenant scope).
+     */
+    boolean exists(String sessionKey);
+
+    /**
+     * Total number of sessions visible to the current tenant.
+     */
+    int sessionCount();
+
+    /**
+     * Inject (or replace) the {@link TenantGuard} used for session-key
+     * scoping. Called by the auto-config after construction; custom
+     * implementations may treat this as optional / no-op if the guard
+     * is supplied via constructor.
+     */
+    void setTenantGuard(TenantGuard tenantGuard);
+
+    /**
+     * Inject (or replace) the {@link AgentHookDispatcher} used for
+     * firing {@link SessionStartedEvent} / {@link SessionEndedEvent}.
+     * Called by the auto-config post-construction to break the wiring
+     * cycle between {@code SessionManager} and the hook dispatcher.
+     * Custom implementations that do not fire hooks may treat this as
+     * a no-op.
+     */
+    void setHookDispatcher(AgentHookDispatcher hooks);
 }

@@ -5,9 +5,9 @@ import io.jaiclaw.core.model.UserMessage
 import io.jaiclaw.core.model.AssistantMessage
 import spock.lang.Specification
 
-class SessionManagerSpec extends Specification {
+class InMemorySessionManagerSpec extends Specification {
 
-    SessionManager manager = new SessionManager()
+    SessionManager manager = new InMemorySessionManager()
 
     def "getOrCreate creates new session"() {
         when:

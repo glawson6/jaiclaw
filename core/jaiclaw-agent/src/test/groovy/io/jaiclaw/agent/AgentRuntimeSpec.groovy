@@ -1,5 +1,6 @@
 package io.jaiclaw.agent
 
+import io.jaiclaw.agent.session.InMemorySessionManager
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.config.AgentProperties
 import io.jaiclaw.config.CompositeToolProfileRegistry
@@ -17,7 +18,7 @@ import spock.lang.Specification
 
 class AgentRuntimeSpec extends Specification {
 
-    SessionManager sessionManager = new SessionManager()
+    SessionManager sessionManager = new InMemorySessionManager()
     ChatClient.Builder chatClientBuilder = Mock()
     ToolRegistry toolRegistry = new ToolRegistry()
     List<SkillDefinition> skills = []

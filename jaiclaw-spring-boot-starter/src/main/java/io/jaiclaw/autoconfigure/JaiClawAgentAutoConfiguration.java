@@ -3,6 +3,7 @@ package io.jaiclaw.autoconfigure;
 import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.delegate.AgentLoopDelegate;
 import io.jaiclaw.agent.delegate.AgentLoopDelegateRegistry;
+import io.jaiclaw.agent.session.InMemorySessionManager;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.agent.tenant.DefaultTenantChatModelFactory;
 import io.jaiclaw.agent.tenant.TenantAgentRuntimeFactory;
@@ -84,9 +85,9 @@ public class JaiClawAgentAutoConfiguration {
     private static final Logger log = LoggerFactory.getLogger(JaiClawAgentAutoConfiguration.class);
 
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(SessionManager.class)
     public SessionManager sessionManager(TenantGuard tenantGuard) {
-        return new SessionManager(tenantGuard);
+        return new InMemorySessionManager(tenantGuard);
     }
 
     // --- Per-tenant configuration beans ---

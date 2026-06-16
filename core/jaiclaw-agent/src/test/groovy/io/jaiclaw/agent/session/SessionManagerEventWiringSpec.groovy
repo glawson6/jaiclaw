@@ -17,7 +17,7 @@ import spock.lang.Specification
 class SessionManagerEventWiringSpec extends Specification {
 
     AgentHookDispatcher hooks = Mock()
-    SessionManager manager = new SessionManager(null, hooks)
+    SessionManager manager = new InMemorySessionManager(null, hooks)
 
     def "getOrCreate fires SessionStartedEvent exactly once for a new session"() {
         when:
@@ -89,7 +89,7 @@ class SessionManagerEventWiringSpec extends Specification {
 
     def "no dispatcher means no fire, no exception"() {
         given:
-        SessionManager noHooks = new SessionManager()
+        SessionManager noHooks = new InMemorySessionManager()
 
         when:
         noHooks.getOrCreate("k1", "agentX")
@@ -104,7 +104,7 @@ class SessionManagerEventWiringSpec extends Specification {
         given:
         AgentHookDispatcher boom = Mock()
         boom.fireVoid(_) >> { throw new RuntimeException("hook plugin crashed") }
-        SessionManager m = new SessionManager(null, boom)
+        SessionManager m = new InMemorySessionManager(null, boom)
 
         when:
         def s = m.getOrCreate("k1", "agentX")
@@ -116,7 +116,7 @@ class SessionManagerEventWiringSpec extends Specification {
 
     def "setHookDispatcher allows late injection"() {
         given:
-        SessionManager m = new SessionManager()
+        SessionManager m = new InMemorySessionManager()
 
         when:
         m.setHookDispatcher(hooks)

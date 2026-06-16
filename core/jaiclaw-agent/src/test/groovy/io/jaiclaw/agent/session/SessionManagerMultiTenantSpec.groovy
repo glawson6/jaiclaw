@@ -10,7 +10,7 @@ import spock.lang.Specification
 class SessionManagerMultiTenantSpec extends Specification {
 
     def multiGuard = new TenantGuard(new TenantProperties(TenantMode.MULTI, "default"))
-    def manager = new SessionManager(multiGuard)
+    def manager = new InMemorySessionManager(multiGuard)
 
     def setTenant(String id) {
         TenantContextHolder.set(new DefaultTenantContext(id, id))

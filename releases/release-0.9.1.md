@@ -2,21 +2,24 @@
 
 **Release Date:** TBD
 
-> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Four
+> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Five
 > framework-level improvements ship together: **Spring bean auto-discovery
 > for `ToolCallback`** (drop the manual `toolRegistry.registerAll(...)`
 > boilerplate), **vision-attachment auto-injection** (image and PDF
 > attachments now reach the LLM as native Spring AI `Media` content blocks),
 > a **fix for per-agent `tools.allow` / `tools.deny` being silently
-> dropped** under partial record-binding (functional + security fix), and
+> dropped** under partial record-binding (functional + security fix),
 > **channel-aware rendering profiles** for `ascii_box` / `ascii_render`
-> so agents can pick width + padding appropriate for the target client.
+> so agents can pick width + padding appropriate for the target client,
+> and **pluggable chat memory** — `SessionManager` is now an SPI so
+> downstream apps can swap the in-memory default for a durable backend
+> (Redis, Postgres, JCache).
 >
-> The auto-discovery, vision-attachment, and ASCII-profile features are
-> opt-out-by-default. The `tools.allow/deny` fix is purely a bug fix that
-> makes existing YAML work as written. One of them (the
-> `AttachmentRouter` SPI change) is a source-level break — see Breaking
-> Changes below.
+> The auto-discovery, vision-attachment, ASCII-profile, and
+> pluggable-chat-memory features are opt-out-by-default. The
+> `tools.allow/deny` fix is purely a bug fix that makes existing YAML
+> work as written. One of them (the `AttachmentRouter` SPI change) is a
+> source-level break — see Breaking Changes below.
 
 ---
 
@@ -63,6 +66,23 @@
   `docs/issues/tool-allow-deny-env-fallback.md` for the original
   diagnosis. No migration required — YAML that was already legal now
   works as written.
+
+- **Pluggable chat memory (SPI extraction).** `SessionManager` is now an
+  interface; the default in-memory implementation moves to
+  `io.jaiclaw.agent.session.InMemorySessionManager`. The auto-config
+  registers the default via `@ConditionalOnMissingBean(SessionManager.class)`,
+  so downstream apps wanting a durable backend (Redis, Postgres, JCache,
+  encrypted-at-rest) declare their own `@Bean SessionManager` and the
+  framework's default steps aside. All existing consumers
+  (`AgentRuntime`, `GatewayService`, `JaiClawMessagingAutoConfiguration`,
+  admin/status commands) already programmed to the public surface, so
+  no caller changes are required. A new per-turn INFO log line
+  `Session turn — session={} history={} msgs, prompt={} tokens (cached={}),
+  response={} tokens` lands in `AgentRuntime` so operators can diagnose
+  history depth + cache utilization at a glance. See
+  `docs/issues/no-pluggable-chat-memory.md`. A Redis-backed
+  implementation (`jaiclaw-session-redis`) will follow as a separate
+  extension module.
 
 - **Channel-aware rendering profiles for `ascii_box` / `ascii_render`**
   — both built-in tools gain a new optional `profile` parameter that
@@ -136,6 +156,15 @@ factories `none()`, `annotated(String)`, `fullyHandled()`,
 
 `io.jaiclaw.tools.discovery.ToolBeanDiscovery` (new in 0.9.1; sketched
 above) — the bean-discovery class.
+
+`io.jaiclaw.agent.session.SessionManager` (modified) — now an
+interface. 14 method signatures unchanged from the concrete-class
+predecessor; all existing consumers compile without changes.
+
+`io.jaiclaw.agent.session.InMemorySessionManager` (new) — the
+process-local default. Replaces the previous concrete `SessionManager`
+class verbatim; same three constructors, same `ConcurrentHashMap`
+backing store, same hook-firing semantics.
 
 ---
 

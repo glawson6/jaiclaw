@@ -1,5 +1,6 @@
 package io.jaiclaw.gateway.admin
 
+import io.jaiclaw.agent.session.InMemorySessionManager
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.channel.ChannelAdapter
 import io.jaiclaw.channel.ChannelRegistry
@@ -9,7 +10,7 @@ import spock.lang.Specification
 
 class AdminControllerSpec extends Specification {
 
-    SessionManager sessionManager = new SessionManager()
+    SessionManager sessionManager = new InMemorySessionManager()
     ChannelRegistry channelRegistry = new ChannelRegistry()
     ToolRegistry toolRegistry = new ToolRegistry()
     AdminController controller

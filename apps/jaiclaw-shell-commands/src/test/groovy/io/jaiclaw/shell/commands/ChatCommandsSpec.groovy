@@ -1,6 +1,7 @@
 package io.jaiclaw.shell.commands
 
 import io.jaiclaw.agent.AgentRuntime
+import io.jaiclaw.agent.session.InMemorySessionManager
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.config.AgentProperties
 import io.jaiclaw.config.JaiClawProperties
@@ -16,7 +17,7 @@ class ChatCommandsSpec extends Specification {
     ObjectProvider<AgentRuntime> agentRuntimeProvider = Mock() {
         getIfAvailable() >> agentRuntime
     }
-    SessionManager sessionManager = new SessionManager()
+    SessionManager sessionManager = new InMemorySessionManager()
     JaiClawProperties properties = Mock() {
         agent() >> Mock(AgentProperties) {
             defaultAgent() >> "default"
