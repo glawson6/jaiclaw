@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * Channel adapter auto-configuration — runs after {@link JaiClawGatewayAutoConfiguration}
@@ -238,6 +239,7 @@ public class JaiClawChannelAutoConfiguration {
         }
 
         @Bean
+        @Primary
         @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramUserIdFilter.class)
         @ConditionalOnClass(name = "io.jaiclaw.channel.telegram.TelegramUserIdFilter")
         @ConditionalOnBean(io.jaiclaw.security.ratelimit.UserRateLimiter.class)

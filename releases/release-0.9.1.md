@@ -2,7 +2,7 @@
 
 **Release Date:** TBD
 
-> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Five
+> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Six
 > framework-level improvements ship together: **Spring bean auto-discovery
 > for `ToolCallback`** (drop the manual `toolRegistry.registerAll(...)`
 > boilerplate), **vision-attachment auto-injection** (image and PDF
@@ -11,9 +11,11 @@
 > dropped** under partial record-binding (functional + security fix),
 > **channel-aware rendering profiles** for `ascii_box` / `ascii_render`
 > so agents can pick width + padding appropriate for the target client,
-> and **pluggable chat memory** — `SessionManager` is now an SPI so
+> **pluggable chat memory** — `SessionManager` is now an SPI so
 > downstream apps can swap the in-memory default for a durable backend
-> (Redis, Postgres, JCache).
+> (Redis, Postgres, JCache), and a **fix for the Camel + Telegram filter
+> bean ambiguity** that surfaced when apps adopted
+> `jaiclaw-starter-pipeline` alongside a rate-limited Telegram channel.
 >
 > The auto-discovery, vision-attachment, ASCII-profile, and
 > pluggable-chat-memory features are opt-out-by-default. The
@@ -66,6 +68,18 @@
   `docs/issues/tool-allow-deny-env-fallback.md` for the original
   diagnosis. No migration required — YAML that was already legal now
   works as written.
+
+- **Camel pipeline + Telegram filter coexistence.**
+  `JaiClawChannelAutoConfiguration$TelegramAutoConfiguration.telegramUserIdFilter`
+  is now `@Primary`, resolving the `NoUniqueBeanDefinitionException` that
+  surfaced when an app depended on both `jaiclaw-starter-pipeline` (which
+  pulls in `jaiclaw-camel` and its `ObjectProvider<ChannelMessageHandler>.
+  getIfAvailable()` call) and a Telegram channel with rate-limiting
+  enabled. The filter wraps `GatewayService` and IS the canonical handler
+  from the channel-adapter perspective — `@Primary` aligns Spring's
+  autowire default with the runtime semantics. Apps that were applying
+  the `BeanFactoryPostProcessor` workaround (e.g. `jaiclaw-event-agent`)
+  can drop it. See `docs/issues/camel-channel-handler-disambiguation.md`.
 
 - **Pluggable chat memory (SPI extraction).** `SessionManager` is now an
   interface; the default in-memory implementation moves to
