@@ -2,7 +2,7 @@
 
 **Release Date:** TBD
 
-> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Six
+> 0.9.1 is a maintenance + small-feature release on top of 0.9.0. Seven
 > framework-level improvements ship together: **Spring bean auto-discovery
 > for `ToolCallback`** (drop the manual `toolRegistry.registerAll(...)`
 > boilerplate), **vision-attachment auto-injection** (image and PDF
@@ -13,9 +13,12 @@
 > so agents can pick width + padding appropriate for the target client,
 > **pluggable chat memory** — `SessionManager` is now an SPI so
 > downstream apps can swap the in-memory default for a durable backend
-> (Redis, Postgres, JCache), and a **fix for the Camel + Telegram filter
+> (Redis, Postgres, JCache), a **fix for the Camel + Telegram filter
 > bean ambiguity** that surfaced when apps adopted
-> `jaiclaw-starter-pipeline` alongside a rate-limited Telegram channel.
+> `jaiclaw-starter-pipeline` alongside a rate-limited Telegram channel,
+> and **deterministic pipeline AGENT stages via Embabel** — pipeline
+> authors can now opt individual AGENT stages into Embabel's GOAP
+> planner with `runtime: embabel` for reproducible action chains.
 >
 > The auto-discovery, vision-attachment, ASCII-profile, and
 > pluggable-chat-memory features are opt-out-by-default. The
@@ -68,6 +71,35 @@
   `docs/issues/tool-allow-deny-env-fallback.md` for the original
   diagnosis. No migration required — YAML that was already legal now
   works as written.
+
+- **Deterministic pipeline AGENT stages via Embabel.** A new optional
+  `runtime` field on pipeline `AGENT` stages selects between the default
+  `NATIVE` runtime (today's `GatewayServiceAccessor` → LLM+tool loop)
+  and `EMBABEL`, which routes execution through Embabel's GOAP planner
+  via the existing `AgentOrchestrationPort` SPI. Given the same input +
+  `@Agent`-annotated class, Embabel produces a deterministic action
+  sequence — useful when a pipeline does classify → extract → validate
+  → approve and you can't afford the LLM picking a different tool
+  ordering on each replay. Stages opt in per-stage:
+  ```yaml
+  stages:
+    - name: classify
+      type: AGENT
+      runtime: embabel
+      embabelWorkflow: invoice-classifier
+  ```
+  or via DSL:
+  ```java
+  .stage("classify").embabelAgent("invoice-classifier")
+  ```
+  `PipelineValidator` fails fast at startup if `runtime: embabel` is
+  selected without `jaiclaw-starter-embabel` on the classpath, or if
+  the requested workflow name isn't registered with `AgentPlatform`
+  (with Levenshtein "did you mean?" suggestions for typos). The existing
+  per-tenant `loopDelegate: embabel` path continues to work — this adds
+  an additive per-stage opt-in. See
+  `extensions/jaiclaw-pipeline/src/main/java/io/jaiclaw/pipeline/StageRuntime.java`
+  and the new `EmbabelAgentOrchestrationPort`.
 
 - **Camel pipeline + Telegram filter coexistence.**
   `JaiClawChannelAutoConfiguration$TelegramAutoConfiguration.telegramUserIdFilter`
@@ -179,6 +211,27 @@ predecessor; all existing consumers compile without changes.
 process-local default. Replaces the previous concrete `SessionManager`
 class verbatim; same three constructors, same `ConcurrentHashMap`
 backing store, same hook-firing semantics.
+
+`io.jaiclaw.pipeline.StageRuntime` (new enum) — `NATIVE | EMBABEL`,
+referenced from the new `StageDefinition.runtime()` component. Defaults
+to `NATIVE` via the record's compact constructor; the prior 9-arg
+`StageDefinition` constructor remains available as a backward-compat
+delegating overload.
+
+`io.jaiclaw.pipeline.StageDefinition` (modified) — gains two new record
+components (`runtime`, `embabelWorkflow`) on the canonical 11-arg form;
+the 9-arg constructor is preserved for backward compatibility.
+
+`io.jaiclaw.embabel.delegate.EmbabelAgentOrchestrationPort` (new) — the
+first `AgentOrchestrationPort` implementation. Wraps Embabel's
+`AgentPlatform` and shares lookup + execution + result-extraction with
+`EmbabelAgentLoopDelegate` via a new package-private `EmbabelInvocations`
+helper. Auto-registered when `AgentPlatform` is a bean (i.e. with
+`jaiclaw-starter-embabel`).
+
+`io.jaiclaw.pipeline.dsl.StageBuilder#embabelAgent(String workflowName)`
+(new) — fluent DSL alias for `type=AGENT, runtime=EMBABEL,
+embabelWorkflow=<name>`.
 
 ---
 

@@ -3,9 +3,6 @@ package io.jaiclaw.embabel.delegate;
 import com.embabel.agent.core.Agent;
 import com.embabel.agent.core.AgentPlatform;
 import com.embabel.agent.core.AgentProcess;
-import com.embabel.agent.core.AgentProcessStatusCode;
-import com.embabel.agent.core.ProcessOptions;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.delegate.AgentLoopDelegate;
 import io.jaiclaw.agent.delegate.AgentLoopDelegateContext;
@@ -25,6 +22,9 @@ import java.util.Map;
  * via {@code IoBinding.DEFAULT_BINDING} ("it"), and the GOAP planner chains actions
  * until the goal type is achieved. The goal object is serialized to JSON and returned
  * as the assistant response.
+ *
+ * <p>Shares lookup + execution + result-extraction logic with
+ * {@link EmbabelAgentOrchestrationPort} via {@link EmbabelInvocations}.
  */
 public class EmbabelAgentLoopDelegate implements AgentLoopDelegate {
 
@@ -57,31 +57,23 @@ public class EmbabelAgentLoopDelegate implements AgentLoopDelegate {
         String workflowName = context.tenantConfig().loopDelegate().workflow();
         log.info("Executing Embabel agent '{}' with input length={}", workflowName, userInput.length());
 
-        Agent agent = findAgent(workflowName);
+        Agent agent = EmbabelInvocations.findAgent(agentPlatform, workflowName);
 
         try {
-            AgentProcess process = agentPlatform.runAgentFrom(
-                    agent,
-                    ProcessOptions.DEFAULT,
-                    Map.of("it", userInput));
+            AgentProcess process = EmbabelInvocations.run(
+                    agentPlatform, agent, Map.of("it", userInput));
 
-            AgentProcessStatusCode status = process.getStatus();
-            if (status == AgentProcessStatusCode.COMPLETED) {
-                Object result = process.getBlackboard().lastResult();
-                if (result == null) {
+            if (EmbabelInvocations.completed(process)) {
+                String content = EmbabelInvocations.extractResult(process, objectMapper);
+                if (content == null) {
                     log.warn("Embabel agent '{}' completed but blackboard has no last result", workflowName);
                     return AgentLoopDelegateResult.failure(
                             "Agent completed but produced no result");
                 }
-
-                String content = serializeResult(result);
-                log.info("Embabel agent '{}' completed successfully, result type={}",
-                        workflowName, result.getClass().getSimpleName());
+                log.info("Embabel agent '{}' completed successfully", workflowName);
                 return AgentLoopDelegateResult.success(content);
             } else {
-                String failureInfo = process.getFailureInfo() != null
-                        ? process.getFailureInfo().toString()
-                        : "status=" + status;
+                String failureInfo = EmbabelInvocations.failureInfo(process);
                 log.error("Embabel agent '{}' did not complete: {}", workflowName, failureInfo);
                 return AgentLoopDelegateResult.failure(
                         "Agent execution failed: " + failureInfo);
@@ -90,27 +82,6 @@ public class EmbabelAgentLoopDelegate implements AgentLoopDelegate {
             log.error("Error executing Embabel agent '{}'", workflowName, e);
             return AgentLoopDelegateResult.failure(
                     "Agent execution error: " + e.getMessage());
-        }
-    }
-
-    private Agent findAgent(String workflowName) {
-        return agentPlatform.agents().stream()
-                .filter(a -> a.getName().equals(workflowName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No Embabel agent named '" + workflowName + "' found. Available: "
-                                + agentPlatform.agents().stream().map(Agent::getName).toList()));
-    }
-
-    private String serializeResult(Object result) {
-        if (result instanceof String s) {
-            return s;
-        }
-        try {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize result as JSON, falling back to toString()", e);
-            return result.toString();
         }
     }
 }

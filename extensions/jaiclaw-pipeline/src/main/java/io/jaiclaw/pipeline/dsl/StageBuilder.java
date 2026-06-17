@@ -1,6 +1,7 @@
 package io.jaiclaw.pipeline.dsl;
 
 import io.jaiclaw.pipeline.StageDefinition;
+import io.jaiclaw.pipeline.StageRuntime;
 import io.jaiclaw.pipeline.StageType;
 import io.jaiclaw.pipeline.TransportAuthType;
 
@@ -25,6 +26,8 @@ public class StageBuilder {
     private TransportAuthType transportAuthType;
     private String transportSecret;
     private String transportHeaderName;
+    private StageRuntime runtime;
+    private String embabelWorkflow;
 
     StageBuilder(PipelineBuilder parent, String name) {
         this.parent = parent;
@@ -40,6 +43,35 @@ public class StageBuilder {
     public StageBuilder agent(String agentId) {
         this.type = StageType.AGENT;
         this.agentId = agentId;
+        return this;
+    }
+
+    /**
+     * Configure this stage as an Embabel-runtime AGENT stage.
+     *
+     * <p>Routes execution through Embabel's GOAP planner instead of the
+     * native LLM+tool loop. The named {@code workflowName} must match an
+     * {@code @Agent}-annotated class registered with Embabel's
+     * {@code AgentPlatform}; {@code PipelineValidator} fails fast at
+     * startup if the workflow doesn't exist or if
+     * {@code jaiclaw-starter-embabel} isn't on the classpath.
+     *
+     * <p>Equivalent YAML:
+     * <pre>
+     * stages:
+     *   - name: classify
+     *     type: AGENT
+     *     runtime: embabel
+     *     embabel-workflow: invoice-classifier
+     * </pre>
+     *
+     * @param workflowName the Embabel agent name
+     * @return this builder for further configuration
+     */
+    public StageBuilder embabelAgent(String workflowName) {
+        this.type = StageType.AGENT;
+        this.runtime = StageRuntime.EMBABEL;
+        this.embabelWorkflow = workflowName;
         return this;
     }
 
@@ -179,6 +211,8 @@ public class StageBuilder {
             }
             transport = new StageDefinition.TransportConfig(transportUri, auth);
         }
-        return new StageDefinition(name, type, bean, agentId, systemPrompt, channelId, uri, timeout, transport);
+        return new StageDefinition(
+                name, type, bean, agentId, systemPrompt, channelId, uri, timeout, transport,
+                runtime, embabelWorkflow);
     }
 }

@@ -8,7 +8,10 @@ import io.jaiclaw.pipeline.PipelineDefinition;
 import io.jaiclaw.pipeline.PipelineProperties;
 import io.jaiclaw.pipeline.PipelineRegistry;
 import io.jaiclaw.pipeline.StageDefinition;
+import io.jaiclaw.pipeline.StageRuntime;
 import io.jaiclaw.pipeline.StageType;
+import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort;
+import io.jaiclaw.tools.bridge.embabel.WorkflowDescriptor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 
@@ -51,16 +54,27 @@ public class PipelineValidator {
     private final PipelineProperties properties;
     private final ApplicationContext applicationContext;
     private final ObjectProvider<ChannelRegistry> channelRegistryProvider;
+    private final ObjectProvider<AgentOrchestrationPort> orchestrationPortProvider;
 
     public PipelineValidator(
             PipelineRegistry registry,
             PipelineProperties properties,
             ApplicationContext applicationContext,
             ObjectProvider<ChannelRegistry> channelRegistryProvider) {
+        this(registry, properties, applicationContext, channelRegistryProvider, null);
+    }
+
+    public PipelineValidator(
+            PipelineRegistry registry,
+            PipelineProperties properties,
+            ApplicationContext applicationContext,
+            ObjectProvider<ChannelRegistry> channelRegistryProvider,
+            ObjectProvider<AgentOrchestrationPort> orchestrationPortProvider) {
         this.registry = registry;
         this.properties = properties;
         this.applicationContext = applicationContext;
         this.channelRegistryProvider = channelRegistryProvider;
+        this.orchestrationPortProvider = orchestrationPortProvider;
     }
 
     /** Run validation and return the report. Does not throw. */
@@ -69,12 +83,15 @@ public class PipelineValidator {
         ChannelRegistry channelRegistry = channelRegistryProvider != null
                 ? channelRegistryProvider.getIfAvailable()
                 : null;
+        AgentOrchestrationPort orchestrationPort = orchestrationPortProvider != null
+                ? orchestrationPortProvider.getIfAvailable()
+                : null;
         String defaultDeadLetterUri = properties != null && properties.defaults() != null
                 ? properties.defaults().deadLetterUri()
                 : null;
 
         for (PipelineDefinition definition : registry.getAll()) {
-            validatePipeline(definition, channelRegistry, defaultDeadLetterUri, report);
+            validatePipeline(definition, channelRegistry, orchestrationPort, defaultDeadLetterUri, report);
         }
         return report.build();
     }
@@ -90,6 +107,7 @@ public class PipelineValidator {
     private void validatePipeline(
             PipelineDefinition definition,
             ChannelRegistry channelRegistry,
+            AgentOrchestrationPort orchestrationPort,
             String defaultDeadLetterUri,
             ValidationReport.Builder report) {
 
@@ -112,6 +130,11 @@ public class PipelineValidator {
             // 2. PROCESSOR bean existence + type.
             if (stage.type() == StageType.PROCESSOR) {
                 validateProcessorBean(pipelineId, stage, report);
+            }
+
+            // 2b. EMBABEL AGENT-stage runtime availability + workflow lookup.
+            if (stage.type() == StageType.AGENT && stage.runtime() == StageRuntime.EMBABEL) {
+                validateEmbabelStage(pipelineId, stage, orchestrationPort, report);
             }
         }
 
@@ -231,6 +254,52 @@ public class PipelineValidator {
                     "PROCESSOR bean '" + beanName + "' must implement Function<String,String> "
                             + "but is " + type.getName(),
                     null));
+        }
+    }
+
+    private void validateEmbabelStage(
+            String pipelineId,
+            StageDefinition stage,
+            AgentOrchestrationPort orchestrationPort,
+            ValidationReport.Builder report) {
+        if (orchestrationPort == null || !orchestrationPort.isAvailable()) {
+            report.addPipelineError(pipelineId, new ValidationError(
+                    pipelineId,
+                    "stage '" + stage.name() + "'",
+                    "EMBABEL_RUNTIME_UNAVAILABLE",
+                    "stage requests runtime=EMBABEL but no AgentOrchestrationPort bean is available — "
+                            + "add jaiclaw-starter-embabel (or another AgentOrchestrationPort impl) to the classpath",
+                    null));
+            return;
+        }
+        String workflow = stage.embabelWorkflow();
+        // Compact constructor on StageDefinition already enforces non-blank; this
+        // is belt-and-braces in case a future record-binding path skips it.
+        if (workflow == null || workflow.isBlank()) {
+            report.addPipelineError(pipelineId, new ValidationError(
+                    pipelineId,
+                    "stage '" + stage.name() + "'",
+                    "MISSING_EMBABEL_WORKFLOW",
+                    "stage requests runtime=EMBABEL but embabelWorkflow is blank",
+                    null));
+            return;
+        }
+        List<String> available = orchestrationPort.listWorkflows().stream()
+                .map(WorkflowDescriptor::name)
+                .toList();
+        if (!available.contains(workflow)) {
+            Optional<String> suggestion = Levenshtein.suggest(
+                    workflow, available, SUGGESTION_MAX_DISTANCE);
+            String known = available.isEmpty()
+                    ? "(none registered)"
+                    : new TreeSet<>(available).toString();
+            report.addPipelineError(pipelineId, new ValidationError(
+                    pipelineId,
+                    "stage '" + stage.name() + "'",
+                    "UNKNOWN_EMBABEL_WORKFLOW",
+                    "embabelWorkflow '" + workflow + "' not found in "
+                            + orchestrationPort.platformName() + " — registered: " + known,
+                    suggestion.orElse(null)));
         }
     }
 

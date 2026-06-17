@@ -21,6 +21,12 @@
             <artifactId>jaiclaw-agent</artifactId>
         </dependency>
 
+        <!-- AgentOrchestrationPort SPI for pipeline runtime: EMBABEL stages -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-tools</artifactId>
+        </dependency>
+
         <!-- Embabel Agent Platform API (AgentPlatform, AgentProcess, ProcessOptions) -->
         <dependency>
             <groupId>com.embabel.agent</groupId>

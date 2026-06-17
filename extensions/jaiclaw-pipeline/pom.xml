@@ -32,6 +32,11 @@
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-core</artifactId>
         </dependency>
+        <!-- AgentOrchestrationPort SPI for runtime: EMBABEL agent stages -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-tools</artifactId>
+        </dependency>
 
         <!-- Optional JaiClaw modules -->
         <dependency>

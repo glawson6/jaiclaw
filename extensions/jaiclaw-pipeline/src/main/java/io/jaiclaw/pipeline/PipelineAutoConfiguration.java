@@ -125,8 +125,10 @@ public class PipelineAutoConfiguration {
 
     @Bean
     @ConditionalOnBean(GatewayServiceAccessor.class)
-    public AgentStageProcessor agentStageProcessor(GatewayServiceAccessor gateway) {
-        return new AgentStageProcessor(gateway);
+    public AgentStageProcessor agentStageProcessor(
+            GatewayServiceAccessor gateway,
+            ObjectProvider<io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort> orchestrationPortProvider) {
+        return new AgentStageProcessor(gateway, orchestrationPortProvider.getIfAvailable());
     }
 
     @Bean
@@ -194,8 +196,11 @@ public class PipelineAutoConfiguration {
             PipelineRegistry registry,
             PipelineProperties properties,
             ApplicationContext applicationContext,
-            ObjectProvider<ChannelRegistry> channelRegistryProvider) {
-        return new PipelineValidator(registry, properties, applicationContext, channelRegistryProvider);
+            ObjectProvider<ChannelRegistry> channelRegistryProvider,
+            ObjectProvider<io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort> orchestrationPortProvider) {
+        return new PipelineValidator(
+                registry, properties, applicationContext,
+                channelRegistryProvider, orchestrationPortProvider);
     }
 
     /**
