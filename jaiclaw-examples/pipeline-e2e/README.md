@@ -142,6 +142,53 @@ curl -X POST http://localhost:8100/api/pipelines/agent-pipe/trigger \
     -H 'Content-Type: text/plain' -d 'how is the weather?'
 ```
 
+### Optional: enable the EMBABEL pipeline (runtime=EMBABEL)
+
+`embabel-pipe` exercises the `runtime: embabel` AGENT-stage path that
+shipped in 0.9.1. It uses a pure-compute Embabel `@Agent`
+(`TicketScoringAgent`) — no LLM key required for the default flow,
+which makes this safe to run in CI.
+
+```bash
+JAICLAW_E2E_WITH_EMBABEL=true \
+    java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.jar \
+    --server.port=8100
+
+curl -X POST http://localhost:8100/api/pipelines/embabel-pipe/trigger \
+    -H 'Content-Type: text/plain' -d 'priority:high size:large'
+```
+
+Expected app-log markers (in order, all INFO level):
+
+```
+INFO ... Pipeline stage start — stage=score runtime=EMBABEL workflow=TicketScoringAgent timeout=...
+INFO ... Embabel orchestration port — execute start workflow=TicketScoringAgent input-keys=[it] input-size~=27
+INFO ... Embabel agent lookup — workflow=TicketScoringAgent resolved=true
+INFO ... Embabel run — workflow=TicketScoringAgent input-keys=[it]
+INFO ... TicketScoringAgent.parse — input='priority:high size:large'
+INFO ... TicketScoringAgent.parse — parsed=ParsedTicket[priority=high, size=large]
+INFO ... TicketScoringAgent.score — ticket=ParsedTicket[priority=high, size=large]
+INFO ... TicketScoringAgent.score — result=ScoreResult[..., score=100, ...]
+INFO ... Embabel result extracted — type=ScoreResult length=N
+INFO ... Embabel orchestration port — execute end workflow=TicketScoringAgent success=true duration=...ms
+INFO ... Pipeline stage — stage=score runtime=EMBABEL workflow=TicketScoringAgent success=true ...
+```
+
+When `ANTHROPIC_API_KEY` is ALSO set, a second pipeline
+`embabel-triage-pipe` is registered — it routes through the LLM-backed
+`TicketTriageAgent`:
+
+```bash
+JAICLAW_E2E_WITH_EMBABEL=true \
+ANTHROPIC_API_KEY=sk-ant-... \
+    java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.jar \
+    --server.port=8100
+
+curl -X POST http://localhost:8100/api/pipelines/embabel-triage-pipe/trigger \
+    -H 'Content-Type: text/plain' \
+    -d 'Users report login button does not respond after the latest release'
+```
+
 ### Loading pipelines from a YAML file
 
 This example also ships a pipeline definition as a standalone YAML resource

@@ -99,7 +99,25 @@
   per-tenant `loopDelegate: embabel` path continues to work — this adds
   an additive per-stage opt-in. See
   `extensions/jaiclaw-pipeline/src/main/java/io/jaiclaw/pipeline/StageRuntime.java`
-  and the new `EmbabelAgentOrchestrationPort`.
+  and the new `EmbabelAgentOrchestrationPort`. End-to-end coverage lives
+  in `jaiclaw-example-pipeline-e2e` — set `JAICLAW_E2E_WITH_EMBABEL=true`
+  to enable a pure-compute `embabel-pipe` (no LLM key required) and,
+  when an LLM key is also set, an LLM-backed `embabel-triage-pipe`. The
+  e2e harness (`e2e/run-e2e-tests.sh`, sub-scenarios 6f/6g) drives both.
+
+  As part of the e2e work, observability on the EMBABEL hot path was
+  promoted to INFO so operators can follow each transition without
+  flipping log levels:
+  ```
+  INFO Pipeline stage start — stage=score runtime=EMBABEL workflow=TicketScoringAgent ...
+  INFO Embabel orchestration port — execute start workflow=... input-keys=[it] input-size~=...
+  INFO Embabel agent lookup — workflow=... resolved=true
+  INFO Embabel run — workflow=... input-keys=[it]
+  INFO Embabel result extracted — type=... length=...
+  INFO Embabel orchestration port — execute end workflow=... success=true duration=...ms
+  INFO Pipeline stage — stage=... runtime=EMBABEL workflow=... success=true ...
+  ```
+  Silence per deployment with `logging.level.io.jaiclaw.embabel=WARN`.
 
 - **Camel pipeline + Telegram filter coexistence.**
   `JaiClawChannelAutoConfiguration$TelegramAutoConfiguration.telegramUserIdFilter`

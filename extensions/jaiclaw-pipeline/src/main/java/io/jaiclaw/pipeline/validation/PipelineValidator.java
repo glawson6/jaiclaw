@@ -12,6 +12,8 @@ import io.jaiclaw.pipeline.StageRuntime;
 import io.jaiclaw.pipeline.StageType;
 import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort;
 import io.jaiclaw.tools.bridge.embabel.WorkflowDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 
@@ -47,6 +49,8 @@ import java.util.function.Function;
  * we have no way to know which agentIds are valid at startup.
  */
 public class PipelineValidator {
+
+    private static final Logger log = LoggerFactory.getLogger(PipelineValidator.class);
 
     static final int SUGGESTION_MAX_DISTANCE = 2;
 
@@ -262,6 +266,8 @@ public class PipelineValidator {
             StageDefinition stage,
             AgentOrchestrationPort orchestrationPort,
             ValidationReport.Builder report) {
+        log.info("Validating EMBABEL stage — pipeline={} stage={} workflow={}",
+                pipelineId, stage.name(), stage.embabelWorkflow());
         if (orchestrationPort == null || !orchestrationPort.isAvailable()) {
             report.addPipelineError(pipelineId, new ValidationError(
                     pipelineId,

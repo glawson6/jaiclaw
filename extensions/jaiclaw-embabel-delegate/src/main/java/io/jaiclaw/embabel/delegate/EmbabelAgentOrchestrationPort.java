@@ -41,8 +41,12 @@ public class EmbabelAgentOrchestrationPort implements AgentOrchestrationPort {
     @Override
     public CompletableFuture<OrchestrationResult> execute(String workflowName, Map<String, Object> input) {
         return CompletableFuture.supplyAsync(() -> {
-            log.info("Embabel orchestration port executing agent '{}' with input keys={}",
-                    workflowName, input.keySet());
+            long startNanos = System.nanoTime();
+            log.info("Embabel orchestration port — execute start workflow={} input-keys={} input-size~={}",
+                    workflowName, input.keySet(),
+                    input.values().stream()
+                            .mapToInt(v -> v == null ? 0 : v.toString().length())
+                            .sum());
             try {
                 Agent agent = EmbabelInvocations.findAgent(agentPlatform, workflowName);
                 AgentProcess process = EmbabelInvocations.run(agentPlatform, agent, input);
@@ -54,6 +58,9 @@ public class EmbabelAgentOrchestrationPort implements AgentOrchestrationPort {
                         return OrchestrationResult.failure(
                                 "Agent completed but produced no result");
                     }
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+                    log.info("Embabel orchestration port — execute end workflow={} success=true duration={}ms output-length={}",
+                            workflowName, elapsedMs, content.length());
                     return OrchestrationResult.success(content);
                 }
                 String failureInfo = EmbabelInvocations.failureInfo(process);

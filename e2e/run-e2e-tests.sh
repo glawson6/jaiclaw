@@ -24,6 +24,8 @@
 #   E2E_KEEP_ARTIFACTS  Keep temp dirs on success (default: false)
 #   E2E_PIPELINE_PORT   Port for scenario 6 example app (default: 8100)
 #   JAICLAW_E2E_WITH_AGENT  Enable AGENT-stage sub-test in scenario 6 (requires AI key)
+#   JAICLAW_E2E_WITH_EMBABEL Enable runtime=EMBABEL sub-tests in scenario 6:
+#                            6f pure-compute (no key needed), 6g LLM-backed (needs AI key)
 #   JAICLAW_VERSION     Override version detection from pom.xml
 #   PROJECT_ROOT        Override project root auto-detection
 #
@@ -1022,6 +1024,111 @@ run_scenario_6() {
         else
             log_skip "6e — JAICLAW_E2E_WITH_AGENT=true but no AI key detected"
             record_result "6e-Agent" "SKIP" "no AI key"
+        fi
+    fi
+
+    # ── Optional EMBABEL pipeline (pure-compute, no LLM key needed) ────────
+    if [[ "${JAICLAW_E2E_WITH_EMBABEL:-}" == "true" ]]; then
+        log_info "6f — EMBABEL pipeline (JAICLAW_E2E_WITH_EMBABEL=true, pure-compute)..."
+        # Restart with the flag set so embabel-pipe registers.
+        kill "$app_pid" 2>/dev/null || true
+        wait "$app_pid" 2>/dev/null || true
+        (
+            export JAICLAW_E2E_WITH_EMBABEL=true
+            java -jar "$jar" --server.port="$pipeline_port" >>"$app_log" 2>&1
+        ) &
+        app_pid=$!
+        PIDS_TO_KILL+=("$app_pid")
+        if ! wait_for_actuator_health "$pipeline_port" 90; then
+            log_warn "EMBABEL-mode app did not become healthy; skipping 6f/6g"
+            record_result "6f-Embabel" "SKIP" "embabel app did not start"
+        else
+            local embabel_resp embabel_exec_id
+            embabel_resp=$(curl -sS -X POST \
+                "http://localhost:${pipeline_port}/api/pipelines/embabel-pipe/trigger" \
+                -H 'Content-Type: text/plain' -d 'priority:high size:large' 2>/dev/null)
+            embabel_exec_id=$(echo "$embabel_resp" | sed -nE 's/.*"executionId" *: *"([^"]+)".*/\1/p')
+
+            if [[ -z "$embabel_exec_id" ]]; then
+                log_fail "6f — embabel-pipe trigger returned no executionId: $embabel_resp"
+                record_result "6f-Embabel" "FAIL" "no executionId"
+            else
+                # Poll until SUCCESS — Embabel + GOAP can take a beat to plan + run.
+                local embabel_detail="" embabel_attempt=0
+                while [[ $embabel_attempt -lt 50 ]]; do
+                    embabel_detail=$(curl -sS \
+                        "http://localhost:${pipeline_port}/actuator/pipelines/embabel-pipe/${embabel_exec_id}" 2>/dev/null)
+                    if echo "$embabel_detail" | grep -q '"status":"SUCCESS"'; then
+                        break
+                    fi
+                    sleep 0.3
+                    embabel_attempt=$((embabel_attempt + 1))
+                done
+
+                local embabel_ok=true
+                if ! echo "$embabel_detail" | grep -q '"status":"SUCCESS"'; then
+                    log_fail "6f — embabel-pipe did not reach SUCCESS: $embabel_detail"
+                    embabel_ok=false
+                fi
+                # The downstream PROCESSOR uppercases the JSON from ScoreResult;
+                # the priority value "HIGH" must appear in the rendered output.
+                if ! grep -q '"PRIORITY":"HIGH"' "$app_log" && ! grep -q "PRIORITY=HIGH" "$app_log"; then
+                    log_warn "6f — uppercased PRIORITY marker not found in app log (continuing)"
+                fi
+
+                if [[ "$embabel_ok" == "true" ]]; then
+                    log_pass "6f — embabel-pipe reached SUCCESS through runtime=EMBABEL"
+                    record_result "6f-Embabel" "PASS" "executionId=$embabel_exec_id"
+                else
+                    log_fail "6f — embabel-pipe failed"
+                    record_result "6f-Embabel" "FAIL" "see $app_log"
+                fi
+            fi
+
+            # 6g — LLM-backed embabel pipeline (requires an AI key)
+            if detect_api_key >/dev/null 2>&1; then
+                log_info "6g — embabel-triage-pipe (LLM-backed)..."
+                local triage_resp triage_exec_id
+                triage_resp=$(curl -sS -X POST \
+                    "http://localhost:${pipeline_port}/api/pipelines/embabel-triage-pipe/trigger" \
+                    -H 'Content-Type: text/plain' \
+                    -d 'Users report login button does not respond after the latest release' 2>/dev/null)
+                triage_exec_id=$(echo "$triage_resp" | sed -nE 's/.*"executionId" *: *"([^"]+)".*/\1/p')
+
+                if [[ -z "$triage_exec_id" ]]; then
+                    if echo "$triage_resp" | grep -q "not found"; then
+                        log_skip "6g — embabel-triage-pipe not registered (no ANTHROPIC_API_KEY at boot)"
+                        record_result "6g-EmbabelLLM" "SKIP" "no LLM agent registered"
+                    else
+                        log_fail "6g — triage trigger returned no executionId: $triage_resp"
+                        record_result "6g-EmbabelLLM" "FAIL" "no executionId"
+                    fi
+                else
+                    local triage_detail="" triage_attempt=0
+                    while [[ $triage_attempt -lt 120 ]]; do
+                        triage_detail=$(curl -sS \
+                            "http://localhost:${pipeline_port}/actuator/pipelines/embabel-triage-pipe/${triage_exec_id}" 2>/dev/null)
+                        if echo "$triage_detail" | grep -q '"status":"SUCCESS"'; then
+                            break
+                        fi
+                        if echo "$triage_detail" | grep -q '"status":"FAILED"'; then
+                            break
+                        fi
+                        sleep 0.5
+                        triage_attempt=$((triage_attempt + 1))
+                    done
+                    if echo "$triage_detail" | grep -q '"status":"SUCCESS"'; then
+                        log_pass "6g — embabel-triage-pipe reached SUCCESS with LLM-backed @Agent"
+                        record_result "6g-EmbabelLLM" "PASS" "executionId=$triage_exec_id"
+                    else
+                        log_fail "6g — embabel-triage-pipe did not SUCCESS: $triage_detail"
+                        record_result "6g-EmbabelLLM" "FAIL" "see $app_log"
+                    fi
+                fi
+            else
+                log_skip "6g — no AI key detected; LLM-backed embabel test skipped"
+                record_result "6g-EmbabelLLM" "SKIP" "no AI key"
+            fi
         fi
     fi
 

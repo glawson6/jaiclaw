@@ -21,6 +21,27 @@
             <artifactId>jaiclaw-starter-pipeline</artifactId>
             <type>pom</type>
         </dependency>
+        <!-- Embabel starter — pulls embabel-agent-starter (AgentPlatform) + jaiclaw-embabel-delegate
+             (registers EmbabelAgentOrchestrationPort when AgentPlatform is a bean).
+             Required for the embabel-pipe / embabel-triage-pipe pipelines that opt
+             individual AGENT stages into runtime=EMBABEL. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-embabel</artifactId>
+            <type>pom</type>
+        </dependency>
+        <!-- Embabel's AgentPlatformAutoConfiguration validates a default LLM at startup —
+             we need at least one provider registered so it can map embabel.models.default-llm
+             to a concrete entry. The Anthropic starter registers Claude models by name; the
+             Spring AI starter wires the Anthropic ChatModel bean from spring.ai.anthropic.*. -->
+        <dependency>
+            <groupId>com.embabel.agent</groupId>
+            <artifactId>embabel-agent-starter-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
         <!-- PipelineTriggerController needs Spring Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

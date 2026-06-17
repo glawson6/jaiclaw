@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -23,6 +24,9 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration
 @AutoConfigureAfter(name = "com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration")
+// Run BEFORE the tools auto-config so the real Embabel-backed
+// AgentOrchestrationPort wins over the NoOp default registered there.
+@AutoConfigureBefore(name = "io.jaiclaw.autoconfigure.JaiClawToolsAutoConfiguration")
 @ConditionalOnClass(name = "com.embabel.agent.core.AgentPlatform")
 public class EmbabelDelegateAutoConfiguration {
 

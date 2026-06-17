@@ -13,11 +13,25 @@ import org.springframework.context.annotation.Configuration;
  * <p>{@code agent-pipe} — only registered when
  * {@code JAICLAW_E2E_WITH_AGENT=true} is set in the environment, so the
  * default boot does not need an LLM provider key.
+ *
+ * <p>{@code embabel-pipe} — only registered when
+ * {@code JAICLAW_E2E_WITH_EMBABEL=true} is set. Exercises the
+ * {@code runtime: embabel} AGENT-stage path that ships in 0.9.1:
+ * {@code score} routes through {@code AgentOrchestrationPort} →
+ * {@code TicketScoringAgent} (pure-compute, no LLM), then a downstream
+ * PROCESSOR stage uppercases the JSON to prove cross-runtime chaining
+ * works.
+ *
+ * <p>{@code embabel-triage-pipe} — additionally registered when an LLM
+ * key is present alongside {@code JAICLAW_E2E_WITH_EMBABEL=true}.
+ * Exercises an LLM-backed Embabel agent through the same orchestration
+ * port path.
  */
 @Configuration
 public class E2ePipelines extends JaiClawPipeline {
 
     static final String WITH_AGENT_ENV = "JAICLAW_E2E_WITH_AGENT";
+    static final String WITH_EMBABEL_ENV = "JAICLAW_E2E_WITH_EMBABEL";
 
     @Override
     public void define() {
@@ -40,10 +54,45 @@ public class E2ePipelines extends JaiClawPipeline {
                         .systemPrompt("You are a test assistant. Reply with exactly: E2E_AGENT_OK. The original input was: {{input}}")
                     .output().log().template("agent={{stages.answer.output}}");
         }
+
+        // Optional EMBABEL pipeline — pure-compute, no LLM key needed.
+        if (isEmbabelEnabled()) {
+            pipeline("embabel-pipe")
+                    .name("E2E Embabel Pipeline")
+                    .description("AGENT stage with runtime=EMBABEL routed through the GOAP planner, "
+                            + "chained into a PROCESSOR stage to prove cross-runtime composition")
+                    .trigger().manual()
+                    .then("score").embabelAgent("TicketScoringAgent")
+                    .then("format").processor("upperCase")
+                    .output().log().template("embabel-result={{stages.format.output}} input-was={{input}}");
+
+            // LLM-backed embabel pipeline — requires ANTHROPIC_API_KEY in addition to the env flag.
+            if (isLlmAgentEnabled()) {
+                pipeline("embabel-triage-pipe")
+                        .name("E2E Embabel Triage Pipeline")
+                        .description("AGENT stage with runtime=EMBABEL invoking an LLM-backed @Agent")
+                        .trigger().manual()
+                        .then("triage").embabelAgent("TicketTriageAgent")
+                        .output().log().template("triage={{stages.triage.output}}");
+            }
+        }
     }
 
     private static boolean isAgentEnabled() {
-        String v = System.getenv(WITH_AGENT_ENV);
+        return isEnvFlagSet(WITH_AGENT_ENV);
+    }
+
+    private static boolean isEmbabelEnabled() {
+        return isEnvFlagSet(WITH_EMBABEL_ENV);
+    }
+
+    private static boolean isLlmAgentEnabled() {
+        String key = System.getenv("ANTHROPIC_API_KEY");
+        return key != null && !key.isBlank() && !"not-set".equals(key);
+    }
+
+    private static boolean isEnvFlagSet(String name) {
+        String v = System.getenv(name);
         return v != null && (v.equalsIgnoreCase("true") || v.equals("1"));
     }
 }

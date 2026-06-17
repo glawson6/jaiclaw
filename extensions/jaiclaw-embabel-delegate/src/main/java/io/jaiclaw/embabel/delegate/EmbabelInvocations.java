@@ -37,12 +37,20 @@ final class EmbabelInvocations {
      * name, with the available names enumerated in the message.
      */
     static Agent findAgent(AgentPlatform agentPlatform, String workflowName) {
-        return agentPlatform.agents().stream()
+        Agent matched = agentPlatform.agents().stream()
                 .filter(a -> a.getName().equals(workflowName))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No Embabel agent named '" + workflowName + "' found. Available: "
-                                + agentPlatform.agents().stream().map(Agent::getName).toList()));
+                .orElse(null);
+        if (matched == null) {
+            java.util.List<String> available = agentPlatform.agents().stream()
+                    .map(Agent::getName).toList();
+            log.info("Embabel agent lookup — workflow={} resolved=false available={}",
+                    workflowName, available);
+            throw new IllegalStateException(
+                    "No Embabel agent named '" + workflowName + "' found. Available: " + available);
+        }
+        log.info("Embabel agent lookup — workflow={} resolved=true", workflowName);
+        return matched;
     }
 
     /**
@@ -51,6 +59,7 @@ final class EmbabelInvocations {
      * {@link AgentProcess}; callers handle status interpretation.
      */
     static AgentProcess run(AgentPlatform agentPlatform, Agent agent, Map<String, Object> input) {
+        log.info("Embabel run — workflow={} input-keys={}", agent.getName(), input.keySet());
         return agentPlatform.runAgentFrom(agent, ProcessOptions.DEFAULT, input);
     }
 
@@ -72,17 +81,23 @@ final class EmbabelInvocations {
     static String extractResult(AgentProcess process, ObjectMapper objectMapper) {
         Object result = process.getBlackboard().lastResult();
         if (result == null) {
+            log.info("Embabel result extracted — blackboard last-result is null");
             return null;
         }
+        String content;
         if (result instanceof String s) {
-            return s;
+            content = s;
+        } else {
+            try {
+                content = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to serialize Embabel result as JSON, falling back to toString()", e);
+                content = result.toString();
+            }
         }
-        try {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize Embabel result as JSON, falling back to toString()", e);
-            return result.toString();
-        }
+        log.info("Embabel result extracted — type={} length={}",
+                result.getClass().getSimpleName(), content.length());
+        return content;
     }
 
     /**

@@ -123,12 +123,25 @@ public class PipelineAutoConfiguration {
         return registry;
     }
 
+    /**
+     * Always register the agent stage processor when the pipeline module is
+     * active. Both runtime paths inject as optional:
+     * <ul>
+     *   <li>NATIVE: needs a {@link GatewayServiceAccessor} bean — apps without
+     *       it (e.g. headless pipeline-only deployments) get a clear runtime
+     *       error if a NATIVE stage actually executes.</li>
+     *   <li>EMBABEL: needs an {@link io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort}
+     *       whose {@code isAvailable()} is true. The validator catches missing
+     *       wiring at startup; this layer is the runtime guard.</li>
+     * </ul>
+     */
     @Bean
-    @ConditionalOnBean(GatewayServiceAccessor.class)
     public AgentStageProcessor agentStageProcessor(
-            GatewayServiceAccessor gateway,
+            ObjectProvider<GatewayServiceAccessor> gatewayProvider,
             ObjectProvider<io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort> orchestrationPortProvider) {
-        return new AgentStageProcessor(gateway, orchestrationPortProvider.getIfAvailable());
+        return new AgentStageProcessor(
+                gatewayProvider.getIfAvailable(),
+                orchestrationPortProvider.getIfAvailable());
     }
 
     @Bean

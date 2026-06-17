@@ -54,6 +54,12 @@ public class AgentStageProcessor implements StageProcessor {
         this.orchestrationPort = orchestrationPort;
     }
 
+    /** True iff at least one runtime (NATIVE gateway OR EMBABEL port) is wired. */
+    public boolean isAnyRuntimeAvailable() {
+        return gateway != null
+                || (orchestrationPort != null && orchestrationPort.isAvailable());
+    }
+
     @Override
     public void process(Exchange exchange, StageDefinition stage, PipelineContext context) throws Exception {
         String input = exchange.getIn().getBody(String.class);
@@ -74,6 +80,13 @@ public class AgentStageProcessor implements StageProcessor {
 
     private void processNative(Exchange exchange, StageDefinition stage,
                                 PipelineContext context, String input) {
+        if (gateway == null) {
+            throw new IllegalStateException(
+                    "Stage '" + stage.name() + "' requested runtime=NATIVE but no "
+                            + "GatewayServiceAccessor bean is available. Either "
+                            + "configure the gateway path or switch this stage to "
+                            + "runtime=EMBABEL.");
+        }
         log.debug("Agent stage '{}' invoking agent '{}' on channel '{}' (runtime=NATIVE)",
                 stage.name(), stage.agentId(), stage.channelId());
         String response = gateway.handleSync(
@@ -96,7 +109,7 @@ public class AgentStageProcessor implements StageProcessor {
         String workflow = stage.embabelWorkflow();
         long startNanos = System.nanoTime();
 
-        log.debug("Agent stage '{}' invoking Embabel workflow '{}' (runtime=EMBABEL, timeout={})",
+        log.info("Pipeline stage start — stage={} runtime=EMBABEL workflow={} timeout={}",
                 stage.name(), workflow, timeout);
 
         OrchestrationResult result = orchestrationPort

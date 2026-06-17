@@ -31,10 +31,42 @@ jaiclaw:
         - "classpath*:jaiclaw/pipelines/*.yml"
 
 # AGENT-pipe-only knobs (only used when JAICLAW_E2E_WITH_AGENT=true and an agent is provisioned).
+# Also used by the EMBABEL pipelines (JAICLAW_E2E_WITH_EMBABEL=true). The Anthropic
+# starter is on the classpath so Embabel's AgentPlatformAutoConfiguration has a
+# registered LLM to resolve `embabel.models.default-llm` against. The pure-compute
+# Embabel agent (TicketScoringAgent) never invokes the model, so a `not-set` API
+# key still lets the app boot. The LLM-backed TicketTriageAgent gets registered
+# only when ANTHROPIC_API_KEY is actually set in the environment.
 spring:
   ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
     anthropic:
+      enabled: true
       api-key: ${ANTHROPIC_API_KEY:not-set}
+      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
         options:
           model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    # Embabel's bundled agent-application.properties references
+    # spring.ai.openai.api-key — guard the boot with a harmless fallback so we
+    # don't need OPENAI_API_KEY in the environment.
+    openai:
+      api-key: ${OPENAI_API_KEY:not-configured}
+      enabled: false
+
+# Embabel: pick the LLM the GOAP planner uses. `default-llm` must match a
+# model_id from the Anthropic starter's bundled models/anthropic-models.yml.
+# mock-mode is forced off so Embabel actually resolves models (the upstream
+# default is mock-mode=true).
+embabel:
+  models:
+    default-llm: ${EMBABEL_DEFAULT_LLM:${ANTHROPIC_MODEL:claude-sonnet-4-5}}
+  agent:
+    platform:
+      test:
+        mock-mode: false
+      models:
+        anthropic:
+          api-key: ${ANTHROPIC_API_KEY:not-set}
+          base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}

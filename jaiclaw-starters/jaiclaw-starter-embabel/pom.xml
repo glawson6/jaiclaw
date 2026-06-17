@@ -26,5 +26,12 @@
             <groupId>com.embabel.agent</groupId>
             <artifactId>embabel-agent-starter</artifactId>
         </dependency>
+
+        <!-- JaiClaw bridge: AgentLoopDelegate + AgentOrchestrationPort (the latter
+             is what jaiclaw-pipeline's runtime=EMBABEL AGENT stages route through). -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-embabel-delegate</artifactId>
+        </dependency>
     </dependencies>
 </project>
