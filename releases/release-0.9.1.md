@@ -72,6 +72,28 @@
   diagnosis. No migration required — YAML that was already legal now
   works as written.
 
+- **Opaque pipeline trigger API.** `POST /api/pipelines/trigger` is the
+  new (and now only) HTTP entry point. Callers send a trigger resource
+  containing a **logical pipeline alias** — internal pipeline ids never
+  appear in the URL or response. The framework resolves the alias
+  against an operator-managed allow-list:
+  ```yaml
+  jaiclaw:
+    pipeline:
+      http-trigger:
+        allowed:
+          ticket-scoring: embabel-pipe
+          refund-review: refund-pipe
+  ```
+  Aliases not in the map produce 404 (path tampering becomes a no-op);
+  the response is `{"id":"<uuid>","submittedAt":"..."}` with no
+  pipeline-id leak. Status polls move to
+  `GET /api/pipelines/status/{id}` returning a consumer-safe body that
+  also omits `pipelineId`/`tenantId`. Operators continue to use
+  `/actuator/pipelines/{pipelineId}/{executionId}` for the full
+  record. **Breaking change**: `POST /api/pipelines/{id}/trigger` is
+  removed; see Migration Notes below.
+
 - **Deterministic pipeline AGENT stages via Embabel.** A new optional
   `runtime` field on pipeline `AGENT` stages selects between the default
   `NATIVE` runtime (today's `GatewayServiceAccessor` → LLM+tool loop)
@@ -166,6 +188,35 @@
   arguments produce identical output.
 
 ---
+
+## Breaking Changes (HTTP API surface)
+
+**`POST /api/pipelines/{id}/trigger` is removed.** Pipeline ids no
+longer appear in any URL or response over the HTTP trigger surface.
+Apps that were calling the per-id endpoint must:
+
+1. Add an alias map to `application.yml`:
+   ```yaml
+   jaiclaw:
+     pipeline:
+       http-trigger:
+         allowed:
+           <logical-alias>: <internal-pipeline-id>
+   ```
+2. Switch callers to:
+   ```bash
+   POST /api/pipelines/trigger
+   { "pipeline": "<logical-alias>", "payload": "<body>" }
+   ```
+   The response shape is `{"id": "<uuid>", "submittedAt": "..."}`.
+3. Switch status polling from
+   `GET /actuator/pipelines/{pipelineId}/{executionId}` to
+   `GET /api/pipelines/status/{id}` for consumer-facing code. The
+   actuator endpoint stays as the operator surface.
+
+The internal `PipelineGateway` Java API + Camel `direct:pipeline-<id>`
+routes are unchanged — only the externally-facing HTTP surface
+changes.
 
 ## Breaking Changes
 

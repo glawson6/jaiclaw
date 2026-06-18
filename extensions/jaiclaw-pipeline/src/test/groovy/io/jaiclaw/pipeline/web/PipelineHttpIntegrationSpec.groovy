@@ -32,7 +32,10 @@ import java.util.function.Function
         "management.endpoints.web.exposure.include=pipelines,health",
         "jaiclaw.skills.allow-bundled=",
         "jaiclaw.security.mode=none",
-        "jaiclaw.pipeline.enabled=true"
+        "jaiclaw.pipeline.enabled=true",
+        // Alias-routed HTTP trigger surface (0.9.1+): callers POST a logical
+        // alias that the framework maps to the internal pipeline id.
+        "jaiclaw.pipeline.http-trigger.allowed.demo=processor-pipe"
 ])
 class PipelineHttpIntegrationSpec extends Specification {
 
@@ -45,20 +48,23 @@ class PipelineHttpIntegrationSpec extends Specification {
     @Autowired
     PipelineExecutionTracker tracker
 
-    def "POST trigger returns 202 + handle, tracker records SUCCESS, actuator surfaces the execution"() {
-        when: "submit via the controller"
+    def "POST trigger returns 202 + opaque id, tracker records SUCCESS, /status surfaces the execution"() {
+        when: "submit a trigger resource (alias-routed; no pipeline id in URL or response)"
         ResponseEntity<Map> trigger = http.postForEntity(
-                "http://localhost:${port}/api/pipelines/processor-pipe/trigger",
-                "hello integration",
+                "http://localhost:${port}/api/pipelines/trigger",
+                [pipeline: "demo", payload: "hello integration"],
                 Map.class)
 
-        then: "controller returns 202 with a handle"
+        then: "controller returns 202 with the opaque id"
         trigger.statusCode == HttpStatus.ACCEPTED
-        trigger.body.executionId != null
-        trigger.body.pipelineId == "processor-pipe"
+        trigger.body.id != null
+        trigger.body.submittedAt != null
+        // No pipeline id leaks into the response — that's the whole point.
+        !trigger.body.containsKey("pipelineId")
+        !trigger.body.containsKey("executionId")
 
         when: "the async pipeline finishes"
-        String executionId = trigger.body.executionId as String
+        String executionId = trigger.body.id as String
         ExecutionStatus status = pollStatus(executionId)
 
         then:
@@ -83,18 +89,41 @@ class PipelineHttpIntegrationSpec extends Specification {
         byId.statusCode == HttpStatus.OK
         byId.body.definition.id == "processor-pipe"
         byId.body.recentExecutions.any { it.executionId == executionId }
+
+        when: "the consumer-facing GET /status/{id} endpoint is hit with the opaque id"
+        ResponseEntity<Map> statusBody = http.getForEntity(
+                "http://localhost:${port}/api/pipelines/status/${executionId}", Map.class)
+
+        then:
+        statusBody.statusCode == HttpStatus.OK
+        statusBody.body.id == executionId
+        statusBody.body.status == "SUCCESS"
+        // No pipelineId / tenantId leak.
+        !statusBody.body.containsKey("pipelineId")
+        !statusBody.body.containsKey("tenantId")
     }
 
-    def "POST trigger for unknown pipeline returns 404 with error body"() {
+    def "POST trigger for unknown alias returns 404 with error body — pipeline id never appears in URL"() {
         when:
         ResponseEntity<Map> response = http.postForEntity(
-                "http://localhost:${port}/api/pipelines/does-not-exist/trigger",
-                "x", Map.class)
+                "http://localhost:${port}/api/pipelines/trigger",
+                [pipeline: "does-not-exist", payload: "x"],
+                Map.class)
 
         then:
         response.statusCode == HttpStatus.NOT_FOUND
         response.body.error != null
         (response.body.error as String).contains("does-not-exist")
+    }
+
+    def "old /{id}/trigger route is GONE — path tampering returns 404"() {
+        when:
+        ResponseEntity<Map> response = http.postForEntity(
+                "http://localhost:${port}/api/pipelines/processor-pipe/trigger",
+                "x", Map.class)
+
+        then: "Spring MVC returns 404 because no controller method matches the path"
+        response.statusCode == HttpStatus.NOT_FOUND
     }
 
     /** Poll the tracker every 50 ms (up to 5 s) until the execution leaves RUNNING. */

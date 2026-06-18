@@ -884,12 +884,13 @@ run_scenario_6() {
     fi
     log_info "Pipeline app healthy on port $pipeline_port"
 
-    # ── 6b — HTTP trigger (202 + handle) and 404 path ──────────────────────
-    log_info "6b — HTTP trigger + 404 path..."
+    # ── 6b — HTTP trigger (alias-routed, 202 + opaque id) and 404 path ─────
+    log_info "6b — Alias-routed HTTP trigger + 404 path..."
     local trigger_body trigger_code execution_id
     trigger_body=$(curl -sS -X POST \
-        "http://localhost:${pipeline_port}/api/pipelines/processor-pipe/trigger" \
-        -H 'Content-Type: text/plain' -d 'hello e2e' \
+        "http://localhost:${pipeline_port}/api/pipelines/trigger" \
+        -H 'Content-Type: application/json' \
+        -d '{"pipeline":"processor-demo","payload":"hello e2e"}' \
         -w "\n%{http_code}" 2>/dev/null)
     trigger_code=$(echo "$trigger_body" | tail -1)
     local trigger_json
@@ -900,16 +901,23 @@ run_scenario_6() {
         log_fail "Expected HTTP 202, got $trigger_code"
         trigger_ok=false
     fi
-    execution_id=$(echo "$trigger_json" | sed -n 's/.*"executionId":"\([^"]*\)".*/\1/p')
+    # Opaque response shape: { "id": "<uuid>", "submittedAt": "..." }.
+    execution_id=$(echo "$trigger_json" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
     if [[ -z "$execution_id" ]]; then
-        log_fail "No executionId in trigger response: $trigger_json"
+        log_fail "No id in trigger response: $trigger_json"
+        trigger_ok=false
+    fi
+    if echo "$trigger_json" | grep -q "pipelineId"; then
+        log_fail "Trigger response leaked pipelineId: $trigger_json"
         trigger_ok=false
     fi
 
     local notfound_code notfound_body
     notfound_body=$(curl -sS -X POST \
-        "http://localhost:${pipeline_port}/api/pipelines/does-not-exist/trigger" \
-        -d 'x' -w "\n%{http_code}" 2>/dev/null)
+        "http://localhost:${pipeline_port}/api/pipelines/trigger" \
+        -H 'Content-Type: application/json' \
+        -d '{"pipeline":"does-not-exist","payload":"x"}' \
+        -w "\n%{http_code}" 2>/dev/null)
     notfound_code=$(echo "$notfound_body" | tail -1)
     if [[ "$notfound_code" != "404" ]]; then
         log_fail "Expected HTTP 404 for unknown pipeline, got $notfound_code"
@@ -1011,8 +1019,9 @@ run_scenario_6() {
             else
                 local agent_code
                 agent_code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
-                    "http://localhost:${pipeline_port}/api/pipelines/agent-pipe/trigger" \
-                    -H 'Content-Type: text/plain' -d 'how is the weather' 2>/dev/null)
+                    "http://localhost:${pipeline_port}/api/pipelines/trigger" \
+                    -H 'Content-Type: application/json' \
+                    -d '{"pipeline":"weather-agent","payload":"how is the weather"}' 2>/dev/null)
                 if [[ "$agent_code" == "202" ]]; then
                     log_pass "6e — AGENT trigger returned 202"
                     record_result "6e-Agent" "PASS" "trigger accepted"
@@ -1044,20 +1053,23 @@ run_scenario_6() {
             record_result "6f-Embabel" "SKIP" "embabel app did not start"
         else
             local embabel_resp embabel_exec_id
+            # Alias-routed trigger — caller never types a pipeline id in the URL.
             embabel_resp=$(curl -sS -X POST \
-                "http://localhost:${pipeline_port}/api/pipelines/embabel-pipe/trigger" \
-                -H 'Content-Type: text/plain' -d 'priority:high size:large' 2>/dev/null)
-            embabel_exec_id=$(echo "$embabel_resp" | sed -nE 's/.*"executionId" *: *"([^"]+)".*/\1/p')
+                "http://localhost:${pipeline_port}/api/pipelines/trigger" \
+                -H 'Content-Type: application/json' \
+                -d '{"pipeline":"ticket-scoring","payload":"priority:high size:large"}' 2>/dev/null)
+            embabel_exec_id=$(echo "$embabel_resp" | sed -nE 's/.*"id" *: *"([^"]+)".*/\1/p')
 
             if [[ -z "$embabel_exec_id" ]]; then
-                log_fail "6f — embabel-pipe trigger returned no executionId: $embabel_resp"
-                record_result "6f-Embabel" "FAIL" "no executionId"
+                log_fail "6f — embabel-pipe trigger returned no id: $embabel_resp"
+                record_result "6f-Embabel" "FAIL" "no id"
             else
-                # Poll until SUCCESS — Embabel + GOAP can take a beat to plan + run.
+                # Poll via the consumer-safe GET /status/{id} (no pipeline id
+                # in the URL either). Embabel + GOAP can take a beat.
                 local embabel_detail="" embabel_attempt=0
                 while [[ $embabel_attempt -lt 50 ]]; do
                     embabel_detail=$(curl -sS \
-                        "http://localhost:${pipeline_port}/actuator/pipelines/embabel-pipe/${embabel_exec_id}" 2>/dev/null)
+                        "http://localhost:${pipeline_port}/api/pipelines/status/${embabel_exec_id}" 2>/dev/null)
                     if echo "$embabel_detail" | grep -q '"status":"SUCCESS"'; then
                         break
                     fi
@@ -1087,27 +1099,27 @@ run_scenario_6() {
 
             # 6g — LLM-backed embabel pipeline (requires an AI key)
             if detect_api_key >/dev/null 2>&1; then
-                log_info "6g — embabel-triage-pipe (LLM-backed)..."
+                log_info "6g — embabel-triage-pipe (LLM-backed, alias-routed)..."
                 local triage_resp triage_exec_id
                 triage_resp=$(curl -sS -X POST \
-                    "http://localhost:${pipeline_port}/api/pipelines/embabel-triage-pipe/trigger" \
-                    -H 'Content-Type: text/plain' \
-                    -d 'Users report login button does not respond after the latest release' 2>/dev/null)
-                triage_exec_id=$(echo "$triage_resp" | sed -nE 's/.*"executionId" *: *"([^"]+)".*/\1/p')
+                    "http://localhost:${pipeline_port}/api/pipelines/trigger" \
+                    -H 'Content-Type: application/json' \
+                    -d '{"pipeline":"ticket-triage","payload":"Users report login button does not respond after the latest release"}' 2>/dev/null)
+                triage_exec_id=$(echo "$triage_resp" | sed -nE 's/.*"id" *: *"([^"]+)".*/\1/p')
 
                 if [[ -z "$triage_exec_id" ]]; then
-                    if echo "$triage_resp" | grep -q "not found"; then
+                    if echo "$triage_resp" | grep -qiE "misconfigured|not found"; then
                         log_skip "6g — embabel-triage-pipe not registered (no ANTHROPIC_API_KEY at boot)"
                         record_result "6g-EmbabelLLM" "SKIP" "no LLM agent registered"
                     else
-                        log_fail "6g — triage trigger returned no executionId: $triage_resp"
-                        record_result "6g-EmbabelLLM" "FAIL" "no executionId"
+                        log_fail "6g — triage trigger returned no id: $triage_resp"
+                        record_result "6g-EmbabelLLM" "FAIL" "no id"
                     fi
                 else
                     local triage_detail="" triage_attempt=0
                     while [[ $triage_attempt -lt 120 ]]; do
                         triage_detail=$(curl -sS \
-                            "http://localhost:${pipeline_port}/actuator/pipelines/embabel-triage-pipe/${triage_exec_id}" 2>/dev/null)
+                            "http://localhost:${pipeline_port}/api/pipelines/status/${triage_exec_id}" 2>/dev/null)
                         if echo "$triage_detail" | grep -q '"status":"SUCCESS"'; then
                             break
                         fi

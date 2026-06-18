@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Configuration properties for the pipeline module.
@@ -77,16 +78,58 @@ public record PipelineProperties(
     /**
      * HTTP-trigger endpoint settings.
      *
-     * @param enabled  whether to expose POST /{basePath}/{id}/trigger (default: true)
-     * @param basePath base URL path (default: /api/pipelines)
+     * <p>The HTTP trigger surface is alias-routed: callers POST a trigger
+     * resource containing a logical pipeline name (e.g. {@code "ticket-scoring"}),
+     * and the framework resolves it to an internal pipeline id via the
+     * {@link #allowed allowed alias map}. Aliases not in the map produce 404.
+     * This keeps internal pipeline ids out of the API surface and turns path
+     * tampering into a no-op.
+     *
+     * @param enabled  whether to expose {@code POST {basePath}/trigger} (default: true)
+     * @param basePath base URL path (default: {@code /api/pipelines})
+     * @param allowed  alias → internal-pipeline-id map. The framework only
+     *                 honors HTTP trigger requests whose {@code pipeline}
+     *                 field matches a key here. Default: {@link Map#of() empty}
+     *                 (no pipelines callable via HTTP — safe-by-default).
      */
-    public record HttpTriggerProperties(boolean enabled, String basePath) {
+    public record HttpTriggerProperties(
+            boolean enabled,
+            String basePath,
+            Map<String, String> allowed
+    ) {
         public static final HttpTriggerProperties DEFAULT =
-                new HttpTriggerProperties(true, "/api/pipelines");
+                new HttpTriggerProperties(true, "/api/pipelines", Map.of());
 
         public HttpTriggerProperties {
             if (basePath == null || basePath.isBlank()) basePath = "/api/pipelines";
+            // Note: we intentionally do NOT defensively copy `allowed` here.
+            // Spring Boot's @ConfigurationProperties record-binding builds the
+            // map incrementally as properties arrive; wrapping it in an
+            // unmodifiable view inside the compact constructor breaks that
+            // builder path. The map is reachable only through the record
+            // accessor, so leaving it as Spring provides it is safe in
+            // practice. We still validate keys/values, but the validation
+            // tolerates a null map and skips entries with null keys/values
+            // (binding never produces those — defense-in-depth only).
+            if (allowed == null) {
+                allowed = Map.of();
+            } else {
+                for (Map.Entry<String, String> entry : allowed.entrySet()) {
+                    String alias = entry.getKey();
+                    String pipelineId = entry.getValue();
+                    if (alias == null || alias.isBlank()) {
+                        throw new IllegalArgumentException(
+                                "jaiclaw.pipeline.http-trigger.allowed: alias must not be blank");
+                    }
+                    if (pipelineId == null || pipelineId.isBlank()) {
+                        throw new IllegalArgumentException(
+                                "jaiclaw.pipeline.http-trigger.allowed['" + alias
+                                        + "']: pipeline id must not be blank");
+                    }
+                }
+            }
         }
+
     }
 
     /**

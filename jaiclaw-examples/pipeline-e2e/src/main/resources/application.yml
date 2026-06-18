@@ -20,6 +20,22 @@ jaiclaw:
     http-trigger:
       enabled: true
       base-path: /api/pipelines
+      # Alias allow-list (0.9.1+): the only way to expose a pipeline through
+      # the public HTTP surface. Callers POST a trigger resource with one of
+      # these aliases in the `pipeline` field; the framework maps it to the
+      # internal pipeline id. Pipelines not listed here are unreachable via
+      # HTTP — that's the safe-by-default posture.
+      allowed:
+        processor-demo: processor-pipe
+        ticket-scoring: embabel-pipe
+        # The agent-pipe + embabel-triage-pipe aliases are exposed even when
+        # those pipelines aren't registered (JAICLAW_E2E_WITH_AGENT /
+        # JAICLAW_E2E_WITH_EMBABEL + ANTHROPIC_API_KEY off). Trigger calls
+        # against an unregistered backing pipeline produce HTTP 500
+        # ("misconfigured"), which is what the e2e harness's optional
+        # scenarios check for as a soft-skip signal.
+        weather-agent: agent-pipe
+        ticket-triage: embabel-triage-pipe
     tracker:
       enabled: true
       max-per-pipeline: 20

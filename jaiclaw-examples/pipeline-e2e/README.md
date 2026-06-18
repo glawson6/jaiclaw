@@ -93,30 +93,39 @@ java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.ja
     --server.port=8100
 ```
 
-Drive the same four checks the e2e runner uses:
+Drive the four checks the e2e runner uses. The HTTP trigger surface is
+**alias-routed**: callers POST a trigger resource with a logical
+`pipeline` field, the framework maps it through the
+`jaiclaw.pipeline.http-trigger.allowed` map. Internal pipeline ids
+never appear in the URL or response.
 
 ```bash
-# 1. HTTP trigger (Phase E)
-HANDLE=$(curl -sS -X POST http://localhost:8100/api/pipelines/processor-pipe/trigger \
-    -H 'Content-Type: text/plain' -d 'hello e2e')
-EXEC_ID=$(echo "$HANDLE" | jq -r .executionId)
+# 1. Alias-routed HTTP trigger — body shape: { pipeline, payload }
+RESP=$(curl -sS -X POST http://localhost:8100/api/pipelines/trigger \
+    -H 'Content-Type: application/json' \
+    -d '{"pipeline":"processor-demo","payload":"hello e2e"}')
+EXEC_ID=$(echo "$RESP" | jq -r .id)
 echo "Submitted as $EXEC_ID"
 
-# 2. 404 path (Phase E)
-curl -i -X POST http://localhost:8100/api/pipelines/does-not-exist/trigger -d 'x'
+# 2. 404 path — unknown alias rejected; pipeline ids never appear in the URL
+curl -i -X POST http://localhost:8100/api/pipelines/trigger \
+    -H 'Content-Type: application/json' \
+    -d '{"pipeline":"does-not-exist","payload":"x"}'
 
-# 3. Actuator list (Phase D)
-curl -s http://localhost:8100/actuator/pipelines | jq .
-
-# 4. Execution detail (Phases B + D)
+# 3. Consumer-facing status — by execution id only, no pipeline id needed
 sleep 1
+curl -s "http://localhost:8100/api/pipelines/status/$EXEC_ID" | jq .
+
+# 4. Operator-facing actuator (full record, pipeline id required)
+curl -s http://localhost:8100/actuator/pipelines | jq .
 curl -s "http://localhost:8100/actuator/pipelines/processor-pipe/$EXEC_ID" | jq .
 ```
 
-Expected: step 1 returns 202 with a JSON handle; step 2 returns 404 with
-`{"error": "..."}`; step 3 lists `processor-pipe` in the registered
-pipelines; step 4 shows `status: SUCCESS` and `stageDurationsMs.upper` /
-`stageDurationsMs.exclaim` populated.
+Expected: step 1 returns 202 with `{"id":"...","submittedAt":"..."}` —
+no `pipelineId` in the body. Step 2 returns 404 with
+`{"error":"Unknown pipeline: does-not-exist"}`. Step 3 returns
+`{"id":"...","status":"SUCCESS",...}` — no `pipelineId` / `tenantId`
+leak. Step 4 (operator surface) still surfaces the full record.
 
 ### Trigger the validator failure
 
@@ -138,8 +147,9 @@ ANTHROPIC_API_KEY=sk-ant-... \
     java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.jar \
     --server.port=8100
 
-curl -X POST http://localhost:8100/api/pipelines/agent-pipe/trigger \
-    -H 'Content-Type: text/plain' -d 'how is the weather?'
+curl -X POST http://localhost:8100/api/pipelines/trigger \
+    -H 'Content-Type: application/json' \
+    -d '{"pipeline":"weather-agent","payload":"how is the weather?"}'
 ```
 
 ### Optional: enable the EMBABEL pipeline (runtime=EMBABEL)
@@ -154,8 +164,14 @@ JAICLAW_E2E_WITH_EMBABEL=true \
     java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.jar \
     --server.port=8100
 
-curl -X POST http://localhost:8100/api/pipelines/embabel-pipe/trigger \
-    -H 'Content-Type: text/plain' -d 'priority:high size:large'
+# Alias-routed: caller never sees that this maps to embabel-pipe.
+ID=$(curl -sS -X POST http://localhost:8100/api/pipelines/trigger \
+     -H 'Content-Type: application/json' \
+     -d '{"pipeline":"ticket-scoring","payload":"priority:high size:large"}' \
+     | jq -r .id)
+
+# Poll consumer-facing status by id (no pipeline id in the URL).
+curl -sS "http://localhost:8100/api/pipelines/status/$ID" | jq .
 ```
 
 Expected app-log markers (in order, all INFO level):
@@ -184,9 +200,9 @@ ANTHROPIC_API_KEY=sk-ant-... \
     java -jar jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-*.jar \
     --server.port=8100
 
-curl -X POST http://localhost:8100/api/pipelines/embabel-triage-pipe/trigger \
-    -H 'Content-Type: text/plain' \
-    -d 'Users report login button does not respond after the latest release'
+curl -X POST http://localhost:8100/api/pipelines/trigger \
+    -H 'Content-Type: application/json' \
+    -d '{"pipeline":"ticket-triage","payload":"Users report login button does not respond after the latest release"}'
 ```
 
 ### Loading pipelines from a YAML file

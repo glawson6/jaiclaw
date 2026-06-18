@@ -112,3 +112,7 @@ drop it.
 
 `jaiclaw-event-agent` can remove the `telegramFilterAsPrimaryMessageHandler`
 `BeanFactoryPostProcessor` from `EventAgentBeans` after upgrading.
+
+**Removed from `jaiclaw-event-agent` on 2026-06-16** after upgrading to the
+fixed framework build. Clean boot verified live: pipeline registers 6 stages,
+no `NoUniqueBeanDefinitionException`, no app-side BFPP needed.
