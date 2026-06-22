@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-extensions</artifactId>
+        <version>0.9.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-html-pdf</artifactId>
+    <name>JaiClaw :: HTML to PDF</name>
+    <description>SPI for HTML-to-PDF rendering with pluggable backends (OpenHTMLtoPDF, iText)</description>
+
+    <properties>
+        <!--
+          OpenHTMLtoPDF 1.0.10 (LGPL) — pure-Java, recommended default.
+          iText html2pdf 6.3.2 (AGPL or commercial) — alternate backend;
+          consumers must accept iText's license terms to use it.
+        -->
+        <openhtmltopdf.version>1.0.10</openhtmltopdf.version>
+        <itext.html2pdf.version>6.3.2</itext.html2pdf.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- OpenHTMLtoPDF backend (optional — consumers pull in if used) -->
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- jsoup normalizes HTML fragments to XHTML for OpenHTMLtoPDF -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.3</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- iText html2pdf backend (optional — Apache 2.0 in 5.x line) -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>html2pdf</artifactId>
+            <version>${itext.html2pdf.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+          PDFBox 2.0.x is required because OpenHTMLtoPDF 1.0.10 uses APIs
+          (PDType1Font.COURIER_BOLD_OBLIQUE) removed in PDFBox 3.x.
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.32</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx512m</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

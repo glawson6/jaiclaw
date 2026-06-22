@@ -16,6 +16,7 @@
 
     <modules>
         <module>jaiclaw-documents</module>
+        <module>jaiclaw-html-pdf</module>
         <module>jaiclaw-media</module>
         <module>jaiclaw-audit</module>
         <module>jaiclaw-compaction</module>
