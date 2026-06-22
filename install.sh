@@ -11,13 +11,17 @@
 # Or from the repo:
 #   ./install.sh
 #
+# Source: https://github.com/glawson6/jaiclaw/blob/main/install.sh
+# This is a copy of the canonical script. Update from the jaiclaw repo when the installer changes.
+#
 set -euo pipefail
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
-JAICLAW_VERSION="${JAICLAW_VERSION:-0.7.1-SNAPSHOT}"
+JAICLAW_VERSION="${JAICLAW_VERSION:-latest}"
 JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
 JAICLAW_REPO="glawson6/jaiclaw"
+JAICLAW_CLI_BASE_URL="${JAICLAW_CLI_BASE_URL:-https://tooling.taptech.net/repository/maven-public/io/jaiclaw/jaiclaw-cli}"
 JAVA_MIN_VERSION=21
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
@@ -154,11 +158,11 @@ install_jar() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Check for locally built JAR
+    # Check for locally built JAR (Spring Boot fat jar, classifier 'exec')
     local target_dir="$script_dir/apps/jaiclaw-cli/target"
     if [[ -d "$target_dir" ]]; then
         local jar
-        jar=$(find "$target_dir" -maxdepth 1 -name "jaiclaw-cli-*.jar" ! -name "*-original*" -type f 2>/dev/null | head -1)
+        jar=$(find "$target_dir" -maxdepth 1 -name "jaiclaw-cli-*-exec.jar" -type f 2>/dev/null | head -1)
         if [[ -n "$jar" ]]; then
             cp "$jar" "$JAICLAW_HOME/bin/jaiclaw-cli.jar"
             ok "Installed CLI JAR from local build"
@@ -166,16 +170,73 @@ install_jar() {
         fi
     fi
 
-    # Try to download from GitHub releases
-    local url="https://github.com/$JAICLAW_REPO/releases/download/v${JAICLAW_VERSION}/jaiclaw-cli-${JAICLAW_VERSION}.jar"
-    info "Downloading CLI JAR from GitHub releases..."
-    if curl -sSL -o "$JAICLAW_HOME/bin/jaiclaw-cli.jar" "$url" 2>/dev/null; then
-        ok "Downloaded CLI JAR"
-    else
-        warn "CLI JAR not available for download"
-        echo "Build from source: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
-        echo "Then copy to: $JAICLAW_HOME/bin/jaiclaw-cli.jar"
+    # Resolve 'latest' via Maven metadata
+    if [[ "$JAICLAW_VERSION" == "latest" ]]; then
+        info "Resolving latest version from Nexus"
+        local metadata_url="${JAICLAW_CLI_BASE_URL}/maven-metadata.xml"
+        local resolved
+        resolved=$(curl -fsSL "$metadata_url" 2>/dev/null \
+            | sed -n 's:.*<release>\(.*\)</release>.*:\1:p' | head -1)
+        if [[ -z "$resolved" ]]; then
+            # Fall back to <latest> if <release> is absent (snapshots-only repo)
+            resolved=$(curl -fsSL "$metadata_url" 2>/dev/null \
+                | sed -n 's:.*<latest>\(.*\)</latest>.*:\1:p' | head -1)
+        fi
+        if [[ -z "$resolved" ]]; then
+            err "Failed to resolve latest version from $metadata_url"
+            echo "Pin a specific version with: JAICLAW_VERSION=X.Y.Z curl -fsSL https://jaiclaw.io/install.sh | bash"
+            return 1
+        fi
+        JAICLAW_VERSION="$resolved"
+        ok "Latest version: $JAICLAW_VERSION"
     fi
+
+    # Resolve the jar filename. For releases (e.g. 0.9.0) it's the simple name.
+    # For snapshots (e.g. 0.9.1-SNAPSHOT) Nexus stores the actual file under a
+    # timestamped name (e.g. 0.9.1-20260622.222750-1-exec.jar) and does NOT
+    # auto-rewrite the simple URL — we have to look it up in the version-level
+    # maven-metadata.xml.
+    local jar_filename="jaiclaw-cli-${JAICLAW_VERSION}-exec.jar"
+    if [[ "$JAICLAW_VERSION" == *-SNAPSHOT ]]; then
+        info "Resolving snapshot timestamp from Nexus"
+        local snap_metadata_url="${JAICLAW_CLI_BASE_URL}/${JAICLAW_VERSION}/maven-metadata.xml"
+        # Pull the <value> from the snapshotVersion entry whose classifier is 'exec'.
+        # Squash whitespace to a single space so a single-line sed can match
+        # across what would otherwise be a multi-line block. Anchor on the
+        # snapshotVersion containing <classifier>exec</classifier>.
+        local snap_value
+        snap_value=$(curl -fsSL "$snap_metadata_url" 2>/dev/null \
+            | tr -s '[:space:]' ' ' \
+            | sed -n 's:.*<snapshotVersion> <classifier>exec</classifier> <extension>jar</extension> <value>\([^<]*\)</value>.*:\1:p')
+        if [[ -z "$snap_value" ]]; then
+            err "Failed to resolve snapshot timestamp from $snap_metadata_url"
+            return 1
+        fi
+        jar_filename="jaiclaw-cli-${snap_value}-exec.jar"
+    fi
+
+    # Download from Nexus (fat jar lives under the 'exec' classifier)
+    local url="${JAICLAW_CLI_BASE_URL}/${JAICLAW_VERSION}/${jar_filename}"
+    local dest="$JAICLAW_HOME/bin/jaiclaw-cli.jar"
+    info "Downloading CLI JAR from ${url}"
+    # -f: fail on HTTP errors instead of writing the error body into the jar.
+    if ! curl -fsSL -o "$dest" "$url"; then
+        rm -f "$dest"
+        err "Failed to download CLI JAR from $url"
+        echo "Build from source: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
+        echo "Then copy to: $dest"
+        return 1
+    fi
+
+    # Sanity check — every JAR is a ZIP and starts with the magic bytes 'PK\x03\x04'.
+    # A 404 HTML page or rate-limit error written into the file would fail this check
+    # and trip "Invalid or corrupt jarfile" only later when Java tries to run it.
+    if ! head -c4 "$dest" | grep -q $'^PK\x03\x04'; then
+        rm -f "$dest"
+        err "Downloaded file is not a valid JAR (magic bytes mismatch). Aborting."
+        return 1
+    fi
+    ok "Downloaded CLI JAR ($(wc -c <"$dest" | tr -d ' ') bytes)"
 }
 
 # ─── Create default profile ─────────────────────────────────────────────────
@@ -281,7 +342,11 @@ setup_path() {
 
 main() {
     echo ""
-    printf "${BOLD}${CYAN}JaiClaw Installer v%s${NC}\n" "$JAICLAW_VERSION"
+    if [[ "$JAICLAW_VERSION" == "latest" ]]; then
+        printf "${BOLD}${CYAN}JaiClaw Installer${NC} (resolving latest)\n"
+    else
+        printf "${BOLD}${CYAN}JaiClaw Installer v%s${NC}\n" "$JAICLAW_VERSION"
+    fi
     echo ""
 
     detect_platform

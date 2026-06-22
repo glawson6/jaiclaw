@@ -600,7 +600,7 @@ run_scenario_4() {
     # Check if CLI JAR exists first
     local cli_jar_exists=false
     local cli_jar
-    cli_jar=$(find "$PROJECT_ROOT/apps/jaiclaw-cli/target" -maxdepth 1 -name "jaiclaw-cli-*.jar" ! -name "*-original*" -type f 2>/dev/null | head -1)
+    cli_jar=$(find "$PROJECT_ROOT/apps/jaiclaw-cli/target" -maxdepth 1 -name "jaiclaw-cli-*-exec.jar" -type f 2>/dev/null | head -1)
     if [[ -n "$cli_jar" ]]; then
         cli_jar_exists=true
     fi

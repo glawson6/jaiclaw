@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-apps</artifactId>
-        <version>0.9.1-SNAPSHOT</version>
+        <version>0.9.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-cli</artifactId>
@@ -15,7 +15,7 @@
     <description>Standalone CLI application for JaiClaw — unified command-line interface</description>
 
     <properties>
-        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.deploy.skip>false</maven.deploy.skip>
     </properties>
 
     <dependencies>
@@ -99,6 +99,16 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>exec</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
@@ -138,7 +148,7 @@
                                         <argument>-t</argument>
                                         <argument>${project.groupId}/${project.artifactId}:${project.version}</argument>
                                         <argument>--build-arg</argument>
-                                        <argument>CLI_JAR=apps/jaiclaw-cli/target/${project.build.finalName}.jar</argument>
+                                        <argument>CLI_JAR=apps/jaiclaw-cli/target/${project.build.finalName}-exec.jar</argument>
                                         <argument>-f</argument>
                                         <argument>apps/jaiclaw-cli/Dockerfile</argument>
                                         <argument>.</argument>
@@ -199,7 +209,7 @@
                                                 </fileSets>
                                                 <files>
                                                     <file>
-                                                        <source>${project.build.directory}/${project.build.finalName}.jar</source>
+                                                        <source>${project.build.directory}/${project.build.finalName}-exec.jar</source>
                                                         <outputDirectory>bin</outputDirectory>
                                                         <destName>jaiclaw-cli.jar</destName>
                                                     </file>
