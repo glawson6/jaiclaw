@@ -251,6 +251,91 @@ contract above will work. JaiClaw doesn't know or care which.
   the Secret definitions in git but encrypted at rest. The decrypted
   Secret must still match the env-var contract.
 
+#### 3.1.3 Standalone / non-K8s deployments (1Password CLI)
+
+For local development, single-host deployments, or when running the
+gateway under `start.sh` / `bin/jaiclaw` without an orchestrator, the
+1Password CLI (`op`) provides the same env-var-injection guarantee
+without requiring an in-cluster operator.
+
+**Mechanism.** The launcher (`bin/jaiclaw` or `start.sh`) accepts a
+`--use-1password` flag. When set, the launcher re-execs itself under
+`op run --env-file=<.env.op.tpl> -- <self> <args>`. `op run` reads
+the template, resolves each `op://` reference against the operator's
+signed-in 1Password session, exports the resolved values as env vars,
+then invokes the launcher. The launcher's existing "only set if not
+already in env" semantics mean op-resolved values win over any
+literal value still in the regular `.env`.
+
+**Template format.** The same `op://<vault>/<item>/<field>` shape as
+in §3.1.1, one per line:
+
+```bash
+# .env.op.tpl — JaiClaw 1Password template
+# Resolved at startup via:  jaiclaw --use-1password <command>
+# Contains REFERENCES only; safe to commit to a private repo.
+JAICLAW_API_KEY=op://JaiClaw-Prod/gateway-auth/api-key
+ANTHROPIC_API_KEY=op://JaiClaw-Prod/anthropic/api-key
+ANTHROPIC_BASE_URL=op://JaiClaw-Prod/anthropic/base-url
+TELEGRAM_BOT_TOKEN=op://JaiClaw-Prod/telegram/bot-token
+```
+
+**Template location.** The launcher looks for the template in this
+precedence order:
+
+1. `$JAICLAW_OP_ENV_TPL` (explicit override env var)
+2. `$JAICLAW_PROFILE_DIR/.env.op.tpl` (per-profile sibling of `.env`)
+3. `$JAICLAW_HOME/.env.op.tpl` (cross-profile default)
+4. For `start.sh`: `docker-compose/.env.op.tpl` (relative to the
+   project root)
+
+**Generating the template.** Two paths, depending on operator
+preference:
+
+- **Interactive Spring Shell wizard** — running `jaiclaw setup` (the
+  full onboarding flow) detects whether `op` is on PATH and, if so,
+  offers a "Generate a 1Password template?" yes/no step. Defaults
+  derive the item title from the env-var prefix and the field name
+  from the suffix (e.g. `ANTHROPIC_API_KEY` → `anthropic/api-key`).
+  Run this once during initial setup.
+
+- **Standalone bash command** — `jaiclaw setup-1password` is a
+  pre-JVM bash command in the launcher itself. Use it when:
+  - You installed JaiClaw but haven't installed `op` yet (because
+    the wizard skipped the offer).
+  - You want per-key prompts so each env var maps to a different
+    vault item.
+  - You're migrating an existing `.env` to 1Password incrementally.
+
+  The command reads the existing `$JAICLAW_PROFILE_DIR/.env` (key
+  names only — values are never displayed), lets the operator pick
+  which keys to migrate, prompts for vault/item/field per key, runs
+  a smoke test against `op run` to verify each reference resolves,
+  and writes `.env.op.tpl` next to the existing `.env`. The original
+  `.env` is left intact for non-destructive migration.
+
+**No-leakage guarantees.** Both code paths:
+- Never persist a service-account token (the operator authenticates
+  via `op signin` interactively).
+- Never display secret values from existing files.
+- Write templates containing references only — no plaintext.
+- Leave existing `.env` files untouched. Migration is additive.
+
+**Usage:**
+
+```bash
+op signin                                  # one-time per session
+jaiclaw setup-1password                    # OR: jaiclaw setup → answer yes to OP step
+jaiclaw --use-1password chat "hello"
+```
+
+For Docker / Compose deploys via `start.sh`, the same flag works:
+
+```bash
+op signin
+./start.sh --use-1password docker
+```
+
 ### 3.2 Application config
 
 The gateway looks for `application.yml` in `/config/` on the container.

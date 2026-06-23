@@ -263,15 +263,46 @@ examples. The chart that consumes the contract lives elsewhere.
 
 Use `op run --` to wrap the JVM. This injects secrets as env vars at process start without writing them to disk. Works identically for `java -jar`, `start.sh local`, and `start.sh` (Docker).
 
-### 4.2 Changes
+The 0.9.2 work ships **two complementary entry points** because they cover different scenarios:
 
-- **`start.sh`** and **`start.sh local`** subcommands gain a `--use-1password` flag. When set, the launcher detects `op` in PATH and re-execs through `op run --env-file=<profile>/.env.tpl -- ...`. The `.env.tpl` lives in the user's profile directory; values are `op://...` references the user fills in once.
-- **`bin/jaiclaw setup` onboarding wizard** gains a new step: "Are you using 1Password for secrets? (y/N)". On yes, walks through service-account token entry, creates `.env.tpl` from a template, and runs a smoke test (`op run -- echo hello`).
-- **`docs/user/DEPLOYMENT.md`** documents the standalone pattern with copy-pasteable `op run --` invocations.
+- **Bash fast-path command** (`jaiclaw setup-1password`) — pre-JVM, runs even on a fresh install before the wizard would work. Handles per-key prompts so each env var can map to a different vault item/field. Also useful for adopting 1Password after JaiClaw is already installed and running with plaintext `.env`.
+- **Java wizard step** (`OnePasswordStep` inside `jaiclaw setup`) — folded into the standard onboarding flow so new users discover the option organically. Skipped silently when `op` isn't on PATH. Uses sensible defaults (item title = lowercase prefix of env-var name, field = hyphenated suffix) to keep the wizard short; operators wanting finer control are pointed at the bash command.
+
+Both write the same `.env.op.tpl` format. Both are non-destructive — the regular `.env` is left intact, and the launcher's "only set if not already in env" semantics make op-resolved values win over `.env` literals when `--use-1password` is on.
+
+### 4.2 What shipped
+
+- **`bin/jaiclaw`**:
+  - New `--use-1password` (and aliases `--use-onepassword`, `--op`) flag on the global flag parser. When set, re-execs the script under `op run --env-file=<tpl>` so injected env vars arrive before the per-profile `.env` source.
+  - Template precedence: `$JAICLAW_OP_ENV_TPL` → `$JAICLAW_PROFILE_DIR/.env.op.tpl` → `$JAICLAW_HOME/.env.op.tpl`.
+  - New `setup-1password` fast-path subcommand (`cmd_setup_1password`): detects `op`, reads existing `.env` to enumerate key names (values never displayed), prompts for selection + per-key vault/item/field, smoke-tests against `op run`, writes/merges `.env.op.tpl`. Strict no-leakage: never asks for a service-account token, never writes plaintext, leaves existing `.env` untouched.
+  - The new subcommand lives inside `bin/jaiclaw` (not a sibling file) so the installer's single-file copy still picks it up.
+
+- **`start.sh`**:
+  - Same `--use-1password` flag with the same alias set. Re-execs through `op run --env-file=<tpl>` before sourcing the regular `.env`. Template precedence: `$JAICLAW_OP_ENV_TPL` → `<dir of $ENV_FILE>/.env.op.tpl` → `docker-compose/.env.op.tpl`.
+  - `JAICLAW_OP_RUN_ACTIVE=1` sentinel env var prevents re-exec loops.
+  - Flag stripped from the `PASSTHROUGH_ARGS` list before the re-exec so the second invocation proceeds normally.
+
+- **Setup wizard (Java)**:
+  - New `OnePasswordStep` in `OnboardWizardOrchestrator` inserted between MCP Servers and Config Location. Manual-mode only; silent skip when `op` is absent.
+  - New `OnePasswordTemplateWriter` (Spring `@Component`) writes `.env.op.tpl` next to `.env` during `FinalizationStep`. 0600 perms on POSIX.
+  - New `OnboardResult.OnePasswordConfig` record carries the vault name + selected env keys through the wizard. Contains no secrets.
+  - 9 new Spock specs in `OnePasswordTemplateWriterSpec` cover the writer; existing `OnboardWizardOrchestratorSpec` updated for the new step (76/76 specs pass).
+
+- **`docs/user/PRODUCTION-DEPLOYMENT.md` §3.1.3**:
+  - New "Standalone / non-K8s deployments (1Password CLI)" section.
+  - Documents the template format, location precedence, both setup paths (wizard vs bash), no-leakage guarantees, and the `start.sh`/`bin/jaiclaw` invocations.
 
 ### 4.3 Acceptance
 
-A fresh developer with `op` installed can run `bin/jaiclaw setup` → answer yes → start the CLI with secrets sourced from their 1Password vault, never having to write the secrets to a file or env var manually.
+- A fresh developer with `op` installed can run `bin/jaiclaw setup` and the wizard offers (only when `op` is on PATH) to scaffold the 1Password template alongside the regular config.
+- An existing user who installs `op` *after* JaiClaw can run `bin/jaiclaw setup-1password` to migrate at any time.
+- Either path produces a `.env.op.tpl` consumable by `jaiclaw --use-1password <cmd>` and `start.sh --use-1password`.
+- The regular `.env` workflow continues to work unchanged for users who don't adopt 1Password.
+
+### 4.4 Deferred to 0.9.3
+
+- **`op-vault/` operator-side helpers**: `op-upsert-ci-secrets.sh` and `op-upsert-maven-central.sh` remain gitignored. The general `op-upsert-ci-secrets.sh` is operator-tool, not user-facing. Documenting them in `docs/dev/CI-SECRETS.md` is a 0.9.3 follow-up.
 
 ---
 

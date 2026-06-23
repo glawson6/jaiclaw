@@ -21,6 +21,8 @@
 #   ./start.sh auth json       # show auth profile status (JSON)
 #   ./start.sh --force-build          # rebuild from source, then start gateway locally
 #   ./start.sh --force-build docker  # rebuild Docker image, then start gateway
+#   ./start.sh --use-1password        # inject secrets via 1Password CLI before launch
+#   ./start.sh --use-1password docker # same, but for the Docker stack
 #   ./start.sh stop         # stop Docker Compose stack
 #   ./start.sh logs         # tail gateway container logs
 #
@@ -417,24 +419,84 @@ cmd_logs() {
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 FORCE_BUILD=false
+USE_1PASSWORD=false
 COMMAND=""
 EXTRA_ARGS=()
+PASSTHROUGH_ARGS=()  # args minus --use-1password, used for the op-run re-exec
 
 # Parse global flags and command
 for arg in "$@"; do
     case "$arg" in
-        --force-build) FORCE_BUILD=true ;;
+        --force-build)
+            FORCE_BUILD=true
+            PASSTHROUGH_ARGS+=("$arg")
+            ;;
+        --use-1password|--use-onepassword|--op)
+            # Three spellings for the same flag. We strip ALL of them
+            # from PASSTHROUGH_ARGS so the re-exec never re-triggers
+            # the op-run wrap.
+            USE_1PASSWORD=true
+            ;;
         *)
             if [ -z "$COMMAND" ]; then
                 COMMAND="$arg"
             else
                 EXTRA_ARGS+=("$arg")
             fi
+            PASSTHROUGH_ARGS+=("$arg")
             ;;
     esac
 done
 
 COMMAND="${COMMAND:-local}"
+
+# ─── 1Password wrap: re-exec under `op run` if requested ─────────────────────
+#
+# When --use-1password is set AND we're not already inside an op-run-
+# driven invocation, look for a template that lists every secret as
+# `KEY=op://vault/item/field` lines. Re-exec the script under
+# `op run --env-file=<tpl> -- ...`. The injected env vars then arrive
+# in load_env() with values pre-set, and load_env's existing "only
+# export if not already set" check makes them win over the .env file.
+
+if [ "$USE_1PASSWORD" = "true" ] && [ -z "${JAICLAW_OP_RUN_ACTIVE:-}" ]; then
+    # Search precedence:
+    #   1. $JAICLAW_OP_ENV_TPL (operator override)
+    #   2. <dir of $ENV_FILE>/.env.op.tpl (sibling of the real .env)
+    #   3. docker-compose/.env.op.tpl (the canonical default location)
+    OP_TPL="${JAICLAW_OP_ENV_TPL:-}"
+    if [ -z "$OP_TPL" ] && [ -f "$(dirname "$ENV_FILE")/.env.op.tpl" ]; then
+        OP_TPL="$(dirname "$ENV_FILE")/.env.op.tpl"
+    fi
+    if [ -z "$OP_TPL" ] && [ -f "$COMPOSE_DIR/.env.op.tpl" ]; then
+        OP_TPL="$COMPOSE_DIR/.env.op.tpl"
+    fi
+
+    if [ -z "$OP_TPL" ] || [ ! -f "$OP_TPL" ]; then
+        err "--use-1password: no template found."
+        echo "  Expected one of:"
+        echo "    \$JAICLAW_OP_ENV_TPL                      (override)"
+        echo "    $(dirname "$ENV_FILE")/.env.op.tpl    (next to your .env)"
+        echo "    $COMPOSE_DIR/.env.op.tpl"
+        echo ""
+        echo "  Template format (one per line):"
+        echo "    ANTHROPIC_API_KEY=op://TapTech-Security/MiniMax-Anthropic-API/anthropic-api-key"
+        echo "    JAICLAW_API_KEY=op://TapTech-Security/JaiClaw-Gateway-Auth/api-key"
+        echo ""
+        echo "  See docs/user/PRODUCTION-DEPLOYMENT.md §3.1.1 for the full reference."
+        exit 1
+    fi
+
+    if ! command -v op >/dev/null 2>&1; then
+        err "--use-1password: 'op' CLI not found in PATH."
+        echo "  Install: https://developer.1password.com/docs/cli/get-started/"
+        exit 1
+    fi
+
+    info "Re-executing under 'op run' using $OP_TPL"
+    export JAICLAW_OP_RUN_ACTIVE=1
+    exec op run --env-file="$OP_TPL" -- "$0" "${PASSTHROUGH_ARGS[@]}"
+fi
 
 case "$COMMAND" in
     local)    cmd_local ;;
@@ -451,7 +513,8 @@ case "$COMMAND" in
         echo "Usage: ./start.sh [options] [command]"
         echo ""
         echo "Options:"
-        echo "  --force-build    Force rebuild (local JARs or Docker images)"
+        echo "  --force-build      Force rebuild (local JARs or Docker images)"
+        echo "  --use-1password    Inject secrets via 'op run --env-file=...' (also: --op, --use-onepassword)"
         echo ""
         echo "Commands:"
         echo "  (default)        Start gateway locally (requires Java 21)"

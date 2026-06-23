@@ -30,6 +30,15 @@
 #   jaiclaw --log-level DEBUG chat "hi"  # raw root log level override
 #   Aliases: -q for --quiet, -V (capital) for --verbose. Note: -v is `version`.
 #
+# Secrets injection (must precede subcommand):
+#   jaiclaw --use-1password chat "hi"    # re-exec under `op run --env-file=<tpl>` so
+#                                          1Password-resolved secrets land as env vars
+#                                          before the JVM starts. Template lives at
+#                                          $JAICLAW_PROFILE_DIR/.env.op.tpl (or
+#                                          $JAICLAW_HOME/.env.op.tpl for cross-profile,
+#                                          or $JAICLAW_OP_ENV_TPL to override).
+#   Aliases: --use-onepassword, --op.
+#
 set -euo pipefail
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -52,6 +61,7 @@ info()   { printf "${CYAN}▸${NC} %s\n" "$*"; }
 ok()     { printf "${GREEN}✓${NC} %s\n" "$*"; }
 warn()   { printf "${YELLOW}!${NC} %s\n" "$*"; }
 err()    { printf "${RED}✗${NC} %s\n" "$*" >&2; }
+header() { printf "\n${BOLD}${CYAN}── %s ──${NC}\n\n" "$*"; }
 
 # ─── Resolve JAICLAW_HOME ────────────────────────────────────────────────────
 
@@ -67,6 +77,7 @@ JAICLAW_QUIET=0           # 1 = silence io.jaiclaw INFO too (truly minimal outpu
 JAICLAW_VERBOSE=0         # 1 = re-enable Spring framework INFO + banner
 JAICLAW_SPRING_DEBUG=0    # 1 = pass Spring's --debug flag (autoconfig conditions report)
 JAICLAW_LOG_LEVEL=""      # explicit root log level override (DEBUG/INFO/WARN/ERROR/TRACE)
+JAICLAW_USE_1PASSWORD=0   # 1 = re-exec under `op run --env-file=<tpl>` to inject secrets
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -96,6 +107,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --log-level=*)
             JAICLAW_LOG_LEVEL="${1#*=}"
+            shift
+            ;;
+        --use-1password|--use-onepassword|--op)
+            JAICLAW_USE_1PASSWORD=1
             shift
             ;;
         *)
@@ -135,6 +150,65 @@ resolve_profile() {
 
 ACTIVE_PROFILE=$(resolve_profile)
 JAICLAW_PROFILE_DIR="$JAICLAW_HOME/profiles/$ACTIVE_PROFILE"
+
+# ─── 1Password wrap: re-exec under `op run` if requested ─────────────────────
+#
+# When --use-1password is set AND we're not already inside an op-run-
+# driven invocation, look for a template that lists every secret as
+# `KEY=op://vault/item/field` lines. Re-exec under `op run --env-file`
+# so injected env vars arrive BEFORE the per-profile .env source below.
+# The .env's "only set if not already in env" semantics then make the
+# op-resolved values win over any literal value in the .env, which is
+# what we want.
+
+if [[ $JAICLAW_USE_1PASSWORD -eq 1 && -z "${JAICLAW_OP_RUN_ACTIVE:-}" ]]; then
+    # Search precedence:
+    #   1. $JAICLAW_OP_ENV_TPL (operator override)
+    #   2. $JAICLAW_PROFILE_DIR/.env.op.tpl (per-profile sibling of .env)
+    #   3. $JAICLAW_HOME/.env.op.tpl (cross-profile default)
+    OP_TPL="${JAICLAW_OP_ENV_TPL:-}"
+    if [[ -z "$OP_TPL" && -f "$JAICLAW_PROFILE_DIR/.env.op.tpl" ]]; then
+        OP_TPL="$JAICLAW_PROFILE_DIR/.env.op.tpl"
+    fi
+    if [[ -z "$OP_TPL" && -f "$JAICLAW_HOME/.env.op.tpl" ]]; then
+        OP_TPL="$JAICLAW_HOME/.env.op.tpl"
+    fi
+
+    if [[ -z "$OP_TPL" || ! -f "$OP_TPL" ]]; then
+        err "--use-1password: no template found."
+        echo "  Expected one of:"
+        echo "    \$JAICLAW_OP_ENV_TPL                                (override)"
+        echo "    $JAICLAW_PROFILE_DIR/.env.op.tpl    (next to your profile .env)"
+        echo "    $JAICLAW_HOME/.env.op.tpl                           (cross-profile)"
+        echo ""
+        echo "  Template format (one KEY=op://... per line):"
+        echo "    ANTHROPIC_API_KEY=op://TapTech-Security/MiniMax-Anthropic-API/anthropic-api-key"
+        echo ""
+        echo "  See docs/user/PRODUCTION-DEPLOYMENT.md §3.1.1 for the reference layout."
+        exit 1
+    fi
+
+    if ! command -v op >/dev/null 2>&1; then
+        err "--use-1password: 'op' CLI not found in PATH."
+        echo "  Install: https://developer.1password.com/docs/cli/get-started/"
+        exit 1
+    fi
+
+    # Rebuild the original arg list MINUS --use-1password (which would
+    # otherwise re-trigger this block on the next invocation). The
+    # surviving global flags get prepended; positional subcommand args
+    # are still in $@ because the flag-parser left them in place.
+    REEXEC_FLAGS=()
+    [[ -n "$JAICLAW_PROFILE"        ]] && REEXEC_FLAGS+=("--profile" "$JAICLAW_PROFILE")
+    [[ $JAICLAW_QUIET -eq 1         ]] && REEXEC_FLAGS+=("--quiet")
+    [[ $JAICLAW_VERBOSE -eq 1       ]] && REEXEC_FLAGS+=("--verbose")
+    [[ $JAICLAW_SPRING_DEBUG -eq 1  ]] && REEXEC_FLAGS+=("--spring-debug")
+    [[ -n "$JAICLAW_LOG_LEVEL"      ]] && REEXEC_FLAGS+=("--log-level" "$JAICLAW_LOG_LEVEL")
+
+    info "Re-executing under 'op run' using $OP_TPL"
+    export JAICLAW_OP_RUN_ACTIVE=1
+    exec op run --env-file="$OP_TPL" -- "$0" "${REEXEC_FLAGS[@]}" "$@"
+fi
 
 # ─── Source profile .env ──────────────────────────────────────────────────────
 
@@ -428,6 +502,270 @@ cmd_auth_status() {
     fi
 }
 
+# ─── 1Password setup wizard (fast-path, pre-JVM) ─────────────────────────────
+#
+# Walks the operator through writing a `.env.op.tpl` template for a
+# JaiClaw profile. The template is a list of `KEY=op://vault/item/field`
+# lines — `op run --env-file=<tpl>` resolves them at startup. Combined
+# with the `--use-1password` flag, this lets JaiClaw read secrets from
+# 1Password without ever touching plaintext on disk after install.
+#
+# Strict no-leakage rules followed by this command:
+#
+#   1. Never prints any value from the existing .env to stdout/stderr.
+#      Only key names are displayed.
+#   2. Never writes the operator's vault/item/field choices anywhere
+#      except into the template (which contains references only).
+#   3. Never asks for or stores a 1Password service-account token. The
+#      operator authenticates via `op signin` independently.
+#   4. Leaves the existing .env in place. Migration is additive.
+#   5. The smoke test uses `op run --env-file=<tmp> -- env` and pipes
+#      that output through grep -c so individual values never reach
+#      this script's stdout.
+#
+cmd_setup_1password() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    header "JaiClaw 1Password setup"
+
+    # ── Preflight ───────────────────────────────────────────────────────
+    if ! command -v op >/dev/null 2>&1; then
+        err "1Password CLI ('op') not found in PATH."
+        echo "Install: https://developer.1password.com/docs/cli/get-started/"
+        return 1
+    fi
+    info "Detected: $(op --version 2>/dev/null) (1Password CLI)"
+
+    if ! op vault list >/dev/null 2>&1; then
+        warn "Not signed in to 1Password CLI."
+        echo "  Run 'op signin' (or 'eval \$(op signin)') first, then re-run this command."
+        echo "  This script never asks for or stores any token."
+        return 1
+    fi
+
+    # ── Resolve target profile + env files ─────────────────────────────
+    local profile_dir="${JAICLAW_PROFILE_DIR:-$JAICLAW_HOME/profiles/default}"
+    local env_file="$profile_dir/.env"
+    local op_tpl="$profile_dir/.env.op.tpl"
+
+    if [[ ! -f "$env_file" ]]; then
+        warn "No existing .env at $env_file."
+        info "Creating a fresh template — you'll add keys interactively below."
+        mkdir -p "$profile_dir"
+        : > "$env_file"
+    fi
+
+    info "Target profile dir: $profile_dir"
+    if [[ -f "$op_tpl" ]]; then
+        info "Existing template found at $op_tpl — entries will be merged."
+    fi
+
+    # ── Vault + item defaults ──────────────────────────────────────────
+    # Generic defaults only. No org-specific names baked into this
+    # public script. Operators with a standard vault should
+    # `export JAICLAW_OP_DEFAULT_VAULT=MyVault` before running.
+    local default_vault="${JAICLAW_OP_DEFAULT_VAULT:-<your-vault>}"
+    local default_item="${JAICLAW_OP_DEFAULT_ITEM:-<your-item>}"
+
+    printf '%s' "  Vault name [${default_vault}]: " >&2
+    local vault
+    read -r vault
+    vault="${vault:-$default_vault}"
+
+    if [[ "$vault" == "<your-vault>" ]]; then
+        err "Vault name required. Set JAICLAW_OP_DEFAULT_VAULT or type a name."
+        return 1
+    fi
+
+    # ── Enumerate keys present in the existing .env (names only) ──────
+    local -a env_keys=()
+    if [[ -s "$env_file" ]]; then
+        while IFS='=' read -r key _value; do
+            [[ "$key" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$key" ]] && continue
+            env_keys+=("$key")
+        done <"$env_file"
+    fi
+
+    echo
+    if [[ ${#env_keys[@]} -eq 0 ]]; then
+        info "Existing .env has no keys. You'll add references by name below."
+    else
+        info "Existing .env contains ${#env_keys[@]} key(s):"
+        local i
+        for i in "${!env_keys[@]}"; do
+            printf "    [%d] %s\n" "$((i+1))" "${env_keys[$i]}"
+        done
+        echo
+        info "Pick keys to migrate. Enter numbers separated by spaces,"
+        info "or 'all' to migrate everything, or 'none' to add new keys"
+        info "by name only."
+        printf '%s' "  Selection: " >&2
+    fi
+
+    local -a chosen_keys=()
+    if [[ ${#env_keys[@]} -gt 0 ]]; then
+        local picks
+        read -r picks
+        case "$picks" in
+            all|ALL|"")
+                chosen_keys=("${env_keys[@]}")
+                ;;
+            none|NONE)
+                ;;
+            *)
+                local n
+                for n in $picks; do
+                    if [[ "$n" =~ ^[0-9]+$ ]] && (( n >= 1 && n <= ${#env_keys[@]} )); then
+                        chosen_keys+=("${env_keys[$((n-1))]}")
+                    fi
+                done
+                ;;
+        esac
+    fi
+
+    # ── Optional: add brand-new keys (not in .env) ─────────────────────
+    echo
+    info "Add additional keys (not currently in .env)? Enter one KEY per line."
+    info "Empty line when done."
+    while true; do
+        printf '%s' "  Key name: " >&2
+        local extra
+        read -r extra
+        [[ -z "$extra" ]] && break
+        chosen_keys+=("$extra")
+    done
+
+    if [[ ${#chosen_keys[@]} -eq 0 ]]; then
+        warn "Nothing to migrate. Exiting."
+        return 0
+    fi
+
+    # ── Per-key item/field mapping ─────────────────────────────────────
+    echo
+    info "Mapping ${#chosen_keys[@]} key(s) to 1Password references."
+    info "Hit Enter to accept defaults; everything is shown so you can"
+    info "review before writing."
+    echo
+
+    local -A mapping=()  # KEY -> "op://vault/item/field"
+    local k default_field
+    for k in "${chosen_keys[@]}"; do
+        # Heuristic for field default: lowercase the key, replace '_' with '-'
+        default_field="$(printf '%s' "$k" | tr '[:upper:]_' '[:lower:]-')"
+
+        printf '  %s\n' "$k"
+        printf '%s' "    item  [${default_item}]: " >&2
+        local item
+        read -r item
+        item="${item:-$default_item}"
+
+        printf '%s' "    field [${default_field}]: " >&2
+        local field
+        read -r field
+        field="${field:-$default_field}"
+
+        if [[ "$item" == "<your-item>" ]]; then
+            warn "    Skipping $k — no item specified."
+            continue
+        fi
+        mapping["$k"]="op://${vault}/${item}/${field}"
+        echo
+    done
+
+    if [[ ${#mapping[@]} -eq 0 ]]; then
+        warn "No mappings to write. Exiting."
+        return 0
+    fi
+
+    # ── Smoke test against a temp template ─────────────────────────────
+    local tmp_tpl
+    tmp_tpl="$(mktemp -t jaiclaw-op-tpl.XXXXXX)" || {
+        err "Cannot create temp file."
+        return 1
+    }
+    trap 'rm -f "$tmp_tpl"' RETURN
+
+    for k in "${!mapping[@]}"; do
+        printf '%s=%s\n' "$k" "${mapping[$k]}" >>"$tmp_tpl"
+    done
+
+    info "Smoke test: resolving all ${#mapping[@]} references via 'op run'"
+    info "(values are piped to grep -c — none reach this script's stdout)"
+
+    local resolved_count
+    if resolved_count="$(op run --env-file="$tmp_tpl" -- env 2>/dev/null \
+                       | grep -cE "^($(IFS='|'; echo "${!mapping[*]}"))=" 2>/dev/null)"; then
+        if (( resolved_count == ${#mapping[@]} )); then
+            ok "All ${#mapping[@]} references resolved cleanly."
+        else
+            warn "Only $resolved_count of ${#mapping[@]} references resolved."
+            warn "Some op:// paths may point at missing items/fields."
+            printf '%s' "  Write template anyway? [y/N]: " >&2
+            local conf
+            read -r conf
+            if [[ "$conf" != "y" && "$conf" != "Y" ]]; then
+                info "Aborted. Nothing written."
+                return 0
+            fi
+        fi
+    else
+        err "Smoke test failed — 'op run' returned non-zero."
+        echo "  Check that you're signed in ('op vault list') and that the vault"
+        echo "  name is correct. Nothing written."
+        return 1
+    fi
+
+    # ── Merge into the persistent template ─────────────────────────────
+    local backup=""
+    if [[ -f "$op_tpl" ]]; then
+        backup="${op_tpl}.bak.$(date +%s)"
+        cp "$op_tpl" "$backup"
+        info "Backed up existing template to $backup"
+    fi
+
+    # Build merged file. Existing entries we're not overwriting stay;
+    # any entry whose key matches a new one gets replaced.
+    local merged
+    merged="$(mktemp -t jaiclaw-op-merged.XXXXXX)" || return 1
+    if [[ -f "$op_tpl" ]]; then
+        while IFS='=' read -r key value; do
+            [[ "$key" =~ ^[[:space:]]*# ]] && { printf '%s=%s\n' "$key" "$value" >>"$merged"; continue; }
+            [[ -z "$key" ]] && { echo "" >>"$merged"; continue; }
+            if [[ -z "${mapping[$key]:-}" ]]; then
+                printf '%s=%s\n' "$key" "$value" >>"$merged"
+            fi
+        done <"$op_tpl"
+    else
+        cat >>"$merged" <<EOF
+# JaiClaw 1Password template — generated by 'jaiclaw setup-1password'
+# Format: KEY=op://<vault>/<item>/<field>
+# Resolved at startup via: jaiclaw --use-1password <command>
+# This file contains REFERENCES only. Safe to commit to a private repo.
+EOF
+    fi
+    for k in "${!mapping[@]}"; do
+        printf '%s=%s\n' "$k" "${mapping[$k]}" >>"$merged"
+    done
+
+    mv "$merged" "$op_tpl"
+    ok "Wrote ${#mapping[@]} reference(s) to $op_tpl"
+
+    # ── Closing guidance — do NOT touch the existing .env ──────────────
+    echo
+    info "Existing plaintext keys for the migrated names are still in:"
+    info "  $env_file"
+    info "Recommended: after a successful 'jaiclaw --use-1password' run,"
+    info "comment out (or delete) those lines manually. The launcher's"
+    info "'only set if not already in env' semantics mean op-resolved"
+    info "values already win over .env literals — so the migration is"
+    info "non-destructive in either direction."
+    echo
+    info "Try it now:"
+    echo "    jaiclaw --use-1password chat \"hello\""
+}
+
 # ─── JVM-path dispatch ───────────────────────────────────────────────────────
 
 run_jvm() {
@@ -548,6 +886,9 @@ case "$SUBCOMMAND" in
             *)      run_jvm auth "$@" ;;
         esac
         ;;
+    setup-1password|onepassword-setup)
+        cmd_setup_1password
+        ;;
     # JVM-path commands
     chat|setup|onboard|gateway|gateway-start|gateway-stop|gateway-status|\
     tools|skills|status|models|login|logout|\
@@ -571,6 +912,7 @@ Fast commands (no JVM):
   profiles create <name>    Create a new profile
   profiles switch <name>    Switch active profile
   auth status               Show auth profile status
+  setup-1password           Wizard: write .env.op.tpl for `op run` injection
 
 JVM commands:
   chat <message>            Send a message (or start REPL)
