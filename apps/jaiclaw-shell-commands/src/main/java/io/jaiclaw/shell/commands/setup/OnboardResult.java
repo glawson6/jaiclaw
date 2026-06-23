@@ -40,6 +40,9 @@ public final class OnboardResult {
     // MCP Servers
     private List<McpServerConfig> mcpServers = new ArrayList<>();
 
+    // 1Password integration (optional; null = not configured)
+    private OnePasswordConfig onePassword;
+
     // Config output
     private Path configDir;
 
@@ -55,6 +58,22 @@ public final class OnboardResult {
             String url,                          // sse/http
             String authToken                     // http (nullable)
     ) {}
+
+    /**
+     * Captures the operator's choice to scaffold a 1Password template
+     * during setup. The actual {@code .env.op.tpl} is written by
+     * {@code OnePasswordTemplateWriter} in the FinalizationStep.
+     *
+     * <p>Contains no secret values — only the vault name and the list
+     * of env-var names the operator wants to migrate. The mapping
+     * uses a "same-vault, one-item-per-bundle" heuristic where the
+     * item title is derived from the env-var prefix (e.g.
+     * {@code ANTHROPIC_API_KEY} → item "Anthropic", field "api-key").
+     * Operators who need different shapes can edit the generated
+     * file directly or use the {@code bin/jaiclaw setup-1password}
+     * fast-path command for finer control.
+     */
+    public record OnePasswordConfig(String vault, List<String> envKeys) {}
 
     // --- Getters and setters ---
 
@@ -111,6 +130,9 @@ public final class OnboardResult {
 
     public List<McpServerConfig> mcpServers() { return mcpServers; }
     public void setMcpServers(List<McpServerConfig> mcpServers) { this.mcpServers = mcpServers; }
+
+    public OnePasswordConfig onePassword() { return onePassword; }
+    public void setOnePassword(OnePasswordConfig onePassword) { this.onePassword = onePassword; }
 
     public boolean isManual() { return flowMode == FlowMode.MANUAL; }
 }

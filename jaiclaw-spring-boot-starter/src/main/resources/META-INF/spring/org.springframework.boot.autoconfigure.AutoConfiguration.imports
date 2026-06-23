@@ -1,0 +1,12 @@
+io.jaiclaw.autoconfigure.JaiClawHttpAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawTenantAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawSecretsAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawToolsAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawPluginAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawMemoryAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawSkillsAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawAgentAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawGatewayAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration
+io.jaiclaw.autoconfigure.JaiClawIdentityAutoConfiguration
+io.jaiclaw.autoconfigure.MiniMaxThinkingFilterAutoConfiguration

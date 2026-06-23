@@ -4,6 +4,7 @@ import io.jaiclaw.shell.commands.setup.OnboardResult;
 import io.jaiclaw.shell.commands.setup.WizardStep;
 import io.jaiclaw.shell.commands.setup.config.ConfigLocation;
 import io.jaiclaw.shell.commands.setup.config.EnvFileWriter;
+import io.jaiclaw.shell.commands.setup.config.OnePasswordTemplateWriter;
 import io.jaiclaw.shell.commands.setup.config.YamlConfigWriter;
 import org.springframework.shell.component.flow.ComponentFlow;
 
@@ -14,13 +15,16 @@ public final class FinalizationStep implements WizardStep {
     private final ComponentFlow.Builder flowBuilder;
     private final YamlConfigWriter yamlWriter;
     private final EnvFileWriter envWriter;
+    private final OnePasswordTemplateWriter onePasswordWriter;
 
     public FinalizationStep(ComponentFlow.Builder flowBuilder,
                            YamlConfigWriter yamlWriter,
-                           EnvFileWriter envWriter) {
+                           EnvFileWriter envWriter,
+                           OnePasswordTemplateWriter onePasswordWriter) {
         this.flowBuilder = flowBuilder;
         this.yamlWriter = yamlWriter;
         this.envWriter = envWriter;
+        this.onePasswordWriter = onePasswordWriter;
     }
 
     @Override
@@ -96,6 +100,7 @@ public final class FinalizationStep implements WizardStep {
         try {
             yamlWriter.write(result);
             envWriter.write(result);
+            Path opTplPath = onePasswordWriter.writeIfConfigured(result, result.configDir());
 
             Path yamlPath = ConfigLocation.yamlFile(result.configDir());
             Path envPath = ConfigLocation.envFile(result.configDir());
@@ -103,6 +108,9 @@ public final class FinalizationStep implements WizardStep {
             System.out.println("\n  Files written:");
             System.out.println("    " + yamlPath);
             System.out.println("    " + envPath);
+            if (opTplPath != null) {
+                System.out.println("    " + opTplPath + " (references only — no secrets)");
+            }
 
             System.out.println("""
 

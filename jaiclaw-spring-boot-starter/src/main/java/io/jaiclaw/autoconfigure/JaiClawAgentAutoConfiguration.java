@@ -414,7 +414,7 @@ public class JaiClawAgentAutoConfiguration {
                 new io.jaiclaw.config.AgentProperties.ToolPolicyConfig(
                         effectiveProfile, effectiveAllow, effectiveDeny);
 
-        log.info("Tools config resolved from Environment (record binding fallback) — "
+        log.debug("Tools config resolved from Environment (record binding fallback) — "
                         + "profile: {}, allow: {}, deny: {}",
                 config.profile(), config.allow(), config.deny());
         return config;

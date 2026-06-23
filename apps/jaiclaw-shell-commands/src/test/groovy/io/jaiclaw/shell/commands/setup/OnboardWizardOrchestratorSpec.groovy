@@ -4,6 +4,7 @@ import io.jaiclaw.config.JaiClawProperties
 import io.jaiclaw.config.ModelsProperties
 import io.jaiclaw.config.ModelsProperties.ModelProviderConfig
 import io.jaiclaw.shell.commands.setup.config.EnvFileWriter
+import io.jaiclaw.shell.commands.setup.config.OnePasswordTemplateWriter
 import io.jaiclaw.shell.commands.setup.config.YamlConfigWriter
 import io.jaiclaw.shell.commands.setup.validation.DiscordTokenValidator
 import io.jaiclaw.shell.commands.setup.validation.LlmConnectivityTester
@@ -36,16 +37,19 @@ class OnboardWizardOrchestratorSpec extends Specification {
             )))
             .build()
 
+    OnePasswordTemplateWriter onePasswordWriter = new OnePasswordTemplateWriter()
+
     OnboardWizardOrchestrator orchestrator = new OnboardWizardOrchestrator(
             flowBuilder, llmTester, telegramValidator, slackValidator,
-            discordValidator, yamlWriter, envWriter, jaiClawProperties)
+            discordValidator, yamlWriter, envWriter, onePasswordWriter,
+            jaiClawProperties)
 
-    def "buildSteps returns all 13 wizard steps"() {
+    def "buildSteps returns all 14 wizard steps"() {
         when:
         def steps = orchestrator.buildSteps(new OnboardResult())
 
         then:
-        steps.size() == 13
+        steps.size() == 14
         steps[0].name() == "Welcome"
         steps[1].name() == "Flow Mode"
         steps[2].name() == "Existing Config"
@@ -57,8 +61,9 @@ class OnboardWizardOrchestratorSpec extends Specification {
         steps[8].name() == "Discord"
         steps[9].name() == "Skills"
         steps[10].name() == "MCP Servers"
-        steps[11].name() == "Config Location"
-        steps[12].name() == "Finalization"
+        steps[11].name() == "1Password"
+        steps[12].name() == "Config Location"
+        steps[13].name() == "Finalization"
     }
 
     def "all steps implement WizardStep sealed interface"() {

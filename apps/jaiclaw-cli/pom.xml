@@ -66,6 +66,24 @@
             <type>pom</type>
         </dependency>
 
+        <!--
+            commons-logging exclusion. Apache HttpClient (transitively pulled
+            in via spring-ai-google-genai → google-genai → httpclient) drags
+            in commons-logging-1.2 even though Spring 6 ships spring-jcl as
+            a drop-in replacement. Both on the classpath causes JCL to print
+            "Standard Commons Logging discovery in action..." to stderr at
+            class-init time, BEFORE Logback can suppress it. The Spring Boot
+            documented workaround is to declare commons-logging at <provided>
+            scope, which keeps Maven happy without including it in the fat
+            jar. spring-jcl provides the LogFactory class at runtime.
+        -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -106,6 +124,21 @@
                         </goals>
                         <configuration>
                             <classifier>exec</classifier>
+                            <!--
+                                Drop commons-logging from the fat jar.
+                                Spring 6 ships spring-jcl as a drop-in JCL
+                                replacement; if both are on the runtime
+                                classpath, commons-logging prints a noisy
+                                discovery banner to stderr at class-init.
+                                The provided-scope dep above keeps Maven
+                                happy; this exclusion keeps the bytes out.
+                            -->
+                            <excludes>
+                                <exclude>
+                                    <groupId>commons-logging</groupId>
+                                    <artifactId>commons-logging</artifactId>
+                                </exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>

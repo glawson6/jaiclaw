@@ -108,23 +108,31 @@
              via SimpleDriverDataSource — no separate test-scope entries. -->
 
         <!-- Phase 4b: Testcontainers for the Postgres + Redis contract specs.
-             First Testcontainers use in the jaiclaw repo (decision log §12). -->
+             First Testcontainers use in the jaiclaw repo (decision log §12).
+
+             0.9.2: bumped 1.20.3 -> 1.21.4 to ship a newer docker-java
+             client (3.4.x). Docker Desktop 4.78+ enforces a minimum
+             API version of 1.40; 1.20.x's bundled docker-java still
+             negotiates 1.32 and fails with
+             "client version 1.32 is too old". Held back from the 2.0.x
+             line because that's a major API change unrelated to this
+             hotfix. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.20.3</version>
+            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <version>1.20.3</version>
+            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.redis</groupId>
             <artifactId>testcontainers-redis</artifactId>
-            <version>2.2.2</version>
+            <version>2.2.4</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

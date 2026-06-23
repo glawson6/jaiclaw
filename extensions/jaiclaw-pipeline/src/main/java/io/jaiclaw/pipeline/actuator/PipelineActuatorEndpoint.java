@@ -1,9 +1,11 @@
 package io.jaiclaw.pipeline.actuator;
 
+import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.pipeline.PipelineDefinition;
 import io.jaiclaw.pipeline.PipelineRegistry;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionSummary;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.actuate.endpoint.annotation.Selector;
@@ -11,6 +13,7 @@ import org.springframework.boot.actuate.endpoint.annotation.Selector;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -22,10 +25,24 @@ public class PipelineActuatorEndpoint {
 
     private final PipelineRegistry registry;
     private final PipelineExecutionTracker tracker;
+    /**
+     * Multi-tenant filter. Nullable for back-compat with apps that
+     * don't wire a {@link TenantGuard} bean. When non-null AND
+     * {@link TenantGuard#isMultiTenant()}, execution data is filtered
+     * to the current thread's tenant (SEV-010).
+     */
+    @Nullable
+    private final TenantGuard tenantGuard;
 
     public PipelineActuatorEndpoint(PipelineRegistry registry, PipelineExecutionTracker tracker) {
+        this(registry, tracker, null);
+    }
+
+    public PipelineActuatorEndpoint(PipelineRegistry registry, PipelineExecutionTracker tracker,
+                                    @Nullable TenantGuard tenantGuard) {
         this.registry = registry;
         this.tracker = tracker;
+        this.tenantGuard = tenantGuard;
     }
 
     /** {@code GET /actuator/pipelines} — list all registered pipelines. */
@@ -51,6 +68,7 @@ public class PipelineActuatorEndpoint {
         result.put("definition", summarize(definition));
         if (tracker != null) {
             result.put("recentExecutions", tracker.recent(id).stream()
+                    .filter(this::visibleToCurrentTenant)
                     .map(PipelineActuatorEndpoint::summarize)
                     .toList());
         } else {
@@ -66,10 +84,30 @@ public class PipelineActuatorEndpoint {
             return Map.of("error", "Execution tracker is disabled");
         }
         Optional<PipelineExecutionSummary> summary = tracker.byId(executionId);
-        if (summary.isEmpty() || !id.equals(summary.get().pipelineId())) {
+        if (summary.isEmpty()
+                || !id.equals(summary.get().pipelineId())
+                || !visibleToCurrentTenant(summary.get())) {
+            // SEV-010: in multi-tenant mode, treat cross-tenant lookups
+            // exactly like not-found so we don't leak the existence of
+            // another tenant's execution, let alone its failure reason.
             return Map.of("error", "Execution '" + executionId + "' not found for pipeline '" + id + "'");
         }
         return summarize(summary.get());
+    }
+
+    /**
+     * SEV-010: multi-tenant visibility filter for execution data.
+     * In SINGLE mode or when no {@link TenantGuard} is wired, returns
+     * {@code true} for all summaries. In MULTI mode returns {@code true}
+     * only when the summary's tenant matches the current thread's
+     * tenant context.
+     */
+    private boolean visibleToCurrentTenant(PipelineExecutionSummary summary) {
+        if (tenantGuard == null || !tenantGuard.isMultiTenant()) {
+            return true;
+        }
+        String currentTenant = tenantGuard.requireTenantIfMulti();
+        return Objects.equals(currentTenant, summary.tenantId());
     }
 
     private static Map<String, Object> summarize(PipelineDefinition definition) {

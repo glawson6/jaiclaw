@@ -31,7 +31,12 @@ class JaiClawSecurityNoneModeHeadersSpec extends Specification {
             .withConfiguration(AutoConfigurations.of(
                     SecurityAutoConfiguration,
                     JaiClawSecurityAutoConfiguration))
-            .withPropertyValues("jaiclaw.security.mode=none")
+            // server.address=127.0.0.1 satisfies the 0.9.2 fail-fast
+            // guard in NoneSecurityConfiguration#verifyBindAddress.
+            // See RELEASE-PLAN-0.9.2.md §5.
+            .withPropertyValues(
+                    "jaiclaw.security.mode=none",
+                    "server.address=127.0.0.1")
 
     def "mode=none chain registers HeaderWriterFilter (configureSecurityHeaders was called)"() {
         when:

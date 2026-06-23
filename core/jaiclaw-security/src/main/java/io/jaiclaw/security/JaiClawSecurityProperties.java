@@ -1,6 +1,7 @@
 package io.jaiclaw.security;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.util.Map;
 
@@ -23,13 +24,16 @@ public record JaiClawSecurityProperties(
         boolean timingSafeApiKey,
         JwtProperties jwt,
         RoleMappingProperties roleMapping,
-        RateLimitProperties rateLimit
+        RateLimitProperties rateLimit,
+        boolean allowNoneOnPublicBind
 ) {
     public JaiClawSecurityProperties() {
         this(false, null, null, null, true,
-                new JwtProperties(), new RoleMappingProperties(), new RateLimitProperties());
+                new JwtProperties(), new RoleMappingProperties(), new RateLimitProperties(),
+                false);
     }
 
+    @ConstructorBinding
     public JaiClawSecurityProperties {
         // Backward compatibility: derive mode from enabled flag if mode not set explicitly.
         // Only default when mode is genuinely absent (null), not when set to an explicit value.
@@ -55,6 +59,7 @@ public record JaiClawSecurityProperties(
         private JwtProperties jwt;
         private RoleMappingProperties roleMapping;
         private RateLimitProperties rateLimit;
+        private boolean allowNoneOnPublicBind;
 
         public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
         public Builder mode(String mode) { this.mode = mode; return this; }
@@ -64,10 +69,11 @@ public record JaiClawSecurityProperties(
         public Builder jwt(JwtProperties jwt) { this.jwt = jwt; return this; }
         public Builder roleMapping(RoleMappingProperties roleMapping) { this.roleMapping = roleMapping; return this; }
         public Builder rateLimit(RateLimitProperties rateLimit) { this.rateLimit = rateLimit; return this; }
+        public Builder allowNoneOnPublicBind(boolean v) { this.allowNoneOnPublicBind = v; return this; }
 
         public JaiClawSecurityProperties build() {
             return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey,
-                    jwt, roleMapping, rateLimit);
+                    jwt, roleMapping, rateLimit, allowNoneOnPublicBind);
         }
     }
 

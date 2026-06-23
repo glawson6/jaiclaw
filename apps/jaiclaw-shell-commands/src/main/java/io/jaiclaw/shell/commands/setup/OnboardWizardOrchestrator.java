@@ -2,6 +2,7 @@ package io.jaiclaw.shell.commands.setup;
 
 import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.shell.commands.setup.config.EnvFileWriter;
+import io.jaiclaw.shell.commands.setup.config.OnePasswordTemplateWriter;
 import io.jaiclaw.shell.commands.setup.config.YamlConfigWriter;
 import io.jaiclaw.shell.commands.setup.steps.*;
 import io.jaiclaw.shell.commands.setup.validation.DiscordTokenValidator;
@@ -25,6 +26,7 @@ public class OnboardWizardOrchestrator {
     private final DiscordTokenValidator discordValidator;
     private final YamlConfigWriter yamlWriter;
     private final EnvFileWriter envWriter;
+    private final OnePasswordTemplateWriter onePasswordWriter;
     private final JaiClawProperties jaiClawProperties;
 
     public OnboardWizardOrchestrator(ComponentFlow.Builder flowBuilder,
@@ -34,6 +36,7 @@ public class OnboardWizardOrchestrator {
                                      DiscordTokenValidator discordValidator,
                                      YamlConfigWriter yamlWriter,
                                      EnvFileWriter envWriter,
+                                     OnePasswordTemplateWriter onePasswordWriter,
                                      JaiClawProperties jaiClawProperties) {
         this.flowBuilder = flowBuilder;
         this.llmTester = llmTester;
@@ -42,6 +45,7 @@ public class OnboardWizardOrchestrator {
         this.discordValidator = discordValidator;
         this.yamlWriter = yamlWriter;
         this.envWriter = envWriter;
+        this.onePasswordWriter = onePasswordWriter;
         this.jaiClawProperties = jaiClawProperties;
     }
 
@@ -77,9 +81,15 @@ public class OnboardWizardOrchestrator {
         steps.add(new SkillsStep(flowBuilder));
         steps.add(new McpServersStep(flowBuilder));
 
+        // 1Password integration — manual mode only, silently skipped
+        // when `op` CLI isn't on PATH. Runs after channels so it can
+        // offer to migrate only the env vars the wizard will actually
+        // emit.
+        steps.add(new OnePasswordStep(flowBuilder));
+
         // Config location and finalization
         steps.add(new ConfigLocationStep(flowBuilder));
-        steps.add(new FinalizationStep(flowBuilder, yamlWriter, envWriter));
+        steps.add(new FinalizationStep(flowBuilder, yamlWriter, envWriter, onePasswordWriter));
 
         return steps;
     }

@@ -1,5 +1,14 @@
 # Road to JaiClaw 1.0
 
+> **⚠️ Superseded.** This document captures the 0.8.0 → 0.9.0 framing of
+> the API stability program. It is kept for historical context (the
+> `@Stable` / `@Experimental` / `@Internal` regime defined here is still
+> the contract).
+>
+> For current release plans, see:
+> - [dev/RELEASE-PLAN-0.9.2.md](./dev/RELEASE-PLAN-0.9.2.md) — the next release (secrets baseline).
+> - [dev/RELEASE-PLAN-1.0.0.md](./dev/RELEASE-PLAN-1.0.0.md) — the umbrella plan through 1.0 GA.
+
 > **Status at 0.8.0:** The framework is production-deployable today. The
 > API stability program ([P3.5](CODEBASE-ANALYSIS-2026-06-10.md)) ships
 > in 0.8.0 with `@Stable` / `@Experimental` / `@Internal` markers on
