@@ -51,17 +51,20 @@ public class JaiClawTenantAutoConfiguration {
     public TenantGuard tenantGuard(TenantProperties tenantProperties) {
         TenantGuard guard = new TenantGuard(tenantProperties);
         if (guard.isMultiTenant()) {
-            log.info("JaiClaw tenant mode: MULTI — strict isolation enabled");
+            log.debug("JaiClaw tenant mode: MULTI — strict isolation enabled");
         } else {
-            log.info("JaiClaw tenant mode: SINGLE — shared data space");
+            log.debug("JaiClaw tenant mode: SINGLE — shared data space");
         }
         // Security: the SINGLE-mode storage-key prefix is sourced from
         // TenantProperties#defaultTenantId. If it's still the literal
         // placeholder "default", an attacker who can influence tenant-id
         // headers could probe predictable namespaces. Operators must
-        // override jaiclaw.tenant.default-tenant-id in production.
+        // override jaiclaw.tenant.default-tenant-id in production. The
+        // hard guard is jaiclaw.tenant.strict-default-tenant-id=true; this
+        // log is a softer reminder, kept at DEBUG so quiet CLI runs aren't
+        // spammed every command.
         if (!guard.isMultiTenant() && tenantProperties.isUsingPlaceholderDefaultTenantId()) {
-            log.warn("jaiclaw.tenant.default-tenant-id is still the literal string 'default'. "
+            log.debug("jaiclaw.tenant.default-tenant-id is still the literal string 'default'. "
                     + "In SINGLE mode this value is used as the storage-key prefix. Set this "
                     + "property to a high-entropy value (e.g., a UUID) before exposing this app "
                     + "to untrusted callers, otherwise an attacker who can influence tenant-id "

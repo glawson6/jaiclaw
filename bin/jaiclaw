@@ -23,6 +23,13 @@
 #   jaiclaw skills                  # list skills
 #   jaiclaw model list              # list models
 #
+# Verbosity controls (must precede subcommand):
+#   jaiclaw --quiet chat "hi"            # also hide io.jaiclaw INFO (token usage, session turn)
+#   jaiclaw --verbose chat "hi"          # re-enable Spring banner + framework INFO
+#   jaiclaw --spring-debug chat "hi"     # Spring autoconfig conditions report (Spring's --debug)
+#   jaiclaw --log-level DEBUG chat "hi"  # raw root log level override
+#   Aliases: -q for --quiet, -V (capital) for --verbose. Note: -v is `version`.
+#
 set -euo pipefail
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -50,9 +57,17 @@ err()    { printf "${RED}✗${NC} %s\n" "$*" >&2; }
 
 JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
 
-# ─── Parse global --profile flag ─────────────────────────────────────────────
+# ─── Parse global flags ──────────────────────────────────────────────────────
+# These flags are consumed by the launcher and translated to JVM properties or
+# Spring Boot args before subcommand dispatch. They MUST appear before the
+# subcommand (e.g. `jaiclaw --verbose chat hello`, not `jaiclaw chat hello --verbose`).
 
 JAICLAW_PROFILE=""
+JAICLAW_QUIET=0           # 1 = silence io.jaiclaw INFO too (truly minimal output)
+JAICLAW_VERBOSE=0         # 1 = re-enable Spring framework INFO + banner
+JAICLAW_SPRING_DEBUG=0    # 1 = pass Spring's --debug flag (autoconfig conditions report)
+JAICLAW_LOG_LEVEL=""      # explicit root log level override (DEBUG/INFO/WARN/ERROR/TRACE)
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --profile)
@@ -61,6 +76,26 @@ while [[ $# -gt 0 ]]; do
             ;;
         --profile=*)
             JAICLAW_PROFILE="${1#*=}"
+            shift
+            ;;
+        --quiet|-q)
+            JAICLAW_QUIET=1
+            shift
+            ;;
+        --verbose|-V)
+            JAICLAW_VERBOSE=1
+            shift
+            ;;
+        --spring-debug)
+            JAICLAW_SPRING_DEBUG=1
+            shift
+            ;;
+        --log-level)
+            JAICLAW_LOG_LEVEL="$2"
+            shift 2
+            ;;
+        --log-level=*)
+            JAICLAW_LOG_LEVEL="${1#*=}"
             shift
             ;;
         *)
@@ -426,6 +461,46 @@ run_jvm() {
     local CDS_ARCHIVE="$JAICLAW_HOME/bin/jaiclaw-cli.jsa"
     if [[ -f "$CDS_ARCHIVE" ]]; then
         JVM_OPTS+=("-XX:SharedArchiveFile=$CDS_ARCHIVE")
+    fi
+
+    # ─── Verbosity controls ──────────────────────────────────────────────────
+    # application.yml is the quiet baseline (banner off, framework loggers WARN,
+    # io.jaiclaw at INFO). Flags below override it from the launcher side so the
+    # same jar serves all verbosity modes.
+
+    if [[ $JAICLAW_QUIET -eq 1 ]]; then
+        JVM_OPTS+=("-Dlogging.level.io.jaiclaw=WARN")
+    fi
+
+    if [[ $JAICLAW_VERBOSE -eq 1 ]]; then
+        JVM_OPTS+=("-Dspring.main.banner-mode=console")
+        JVM_OPTS+=("-Dspring.main.log-startup-info=true")
+        JVM_OPTS+=("-Dlogging.level.root=INFO")
+        JVM_OPTS+=("-Dlogging.level.org.springframework=INFO")
+        JVM_OPTS+=("-Dlogging.level.com.embabel=INFO")
+        JVM_OPTS+=("-Dlogging.level.org.apache.camel=INFO")
+    fi
+
+    if [[ -n "$JAICLAW_LOG_LEVEL" ]]; then
+        # Override root AND io.jaiclaw — application.yml pins io.jaiclaw at INFO,
+        # which would otherwise win over a root override and hide JaiClaw DEBUG.
+        JVM_OPTS+=("-Dlogging.level.root=$JAICLAW_LOG_LEVEL")
+        JVM_OPTS+=("-Dlogging.level.io.jaiclaw=$JAICLAW_LOG_LEVEL")
+    fi
+
+    # Spring Boot's --debug flag prints the autoconfig conditions report.
+    # We pass it as a JVM property (`-Ddebug=true`) rather than a CLI arg
+    # because Spring Shell's NonInteractiveShellRunner concatenates ALL args
+    # into the command name — so `... -jar JAR --debug tools` becomes a lookup
+    # for the command literally named "--debug tools", which fails. The system
+    # property is read by Spring Boot's Environment identically to the CLI arg.
+    #
+    # The report is emitted by org.springframework.boot.autoconfigure at DEBUG.
+    # Our application.yml pins that logger to WARN, so we explicitly raise it
+    # here too — otherwise -Ddebug=true has no visible effect.
+    if [[ $JAICLAW_SPRING_DEBUG -eq 1 ]]; then
+        JVM_OPTS+=("-Ddebug=true")
+        JVM_OPTS+=("-Dlogging.level.org.springframework.boot.autoconfigure=DEBUG")
     fi
 
     exec "$JAVA_BIN" "${JVM_OPTS[@]}" -jar "$JAR_PATH" "$@"

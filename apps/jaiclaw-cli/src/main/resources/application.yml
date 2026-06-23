@@ -57,6 +57,8 @@ jaiclaw:
 spring:
   main:
     web-application-type: none
+    banner-mode: "off"
+    log-startup-info: false
   config:
     import: optional:file:${JAICLAW_PROFILE_DIR:${user.home}/.jaiclaw/profiles/default}/application-local.yml,optional:file:${user.home}/.jaiclaw/application-local.yml
   ai:
@@ -92,3 +94,16 @@ spring:
   shell:
     interactive:
       enabled: true
+
+logging:
+  level:
+    root: WARN
+    io.jaiclaw: INFO
+    org.springframework: WARN
+    org.springframework.boot: WARN
+    com.embabel: WARN
+    org.apache.camel: WARN
+    # Spring AI community MCP providers emit "No sampling/elicitation methods
+    # found" at WARN every startup — that's a routine no-op condition, not an
+    # error. Demote to ERROR so they only surface on actual failures.
+    org.springaicommunity.mcp.provider: ERROR
