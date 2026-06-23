@@ -55,5 +55,6 @@
         <module>jaiclaw-agentmind-memory</module>
         <module>jaiclaw-agentmind-tendencies</module>
         <module>jaiclaw-tendencies-honcho</module>
+        <module>jaiclaw-secrets-1password</module>
     </modules>
 </project>
