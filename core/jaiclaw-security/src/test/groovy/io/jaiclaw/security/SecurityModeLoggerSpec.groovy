@@ -10,7 +10,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
         def provider = Stub(ApiKeyProvider) {
             getMaskedKey() >> "****test-key"
             getSource() >> "property"
@@ -30,7 +31,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
         def logger = new SecurityModeLogger(properties, null)
 
         when:
@@ -46,7 +48,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
         def logger = new SecurityModeLogger(properties, null)
 
         when:
@@ -62,7 +65,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
         def logger = new SecurityModeLogger(properties, null)
 
         when:

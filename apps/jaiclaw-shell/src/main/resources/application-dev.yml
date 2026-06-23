@@ -1,0 +1,14 @@
+# Dev profile — disables the 0.9.2 hardened defaults for local
+# development. Activate with: SPRING_PROFILES_ACTIVE=dev
+#
+# The shell is non-web so most of the hardening flags don't apply
+# here. The handful that do (SSRF, workspace-boundary) are the same
+# pattern as the gateway-app.
+jaiclaw:
+  security:
+    timing-safe-api-key: false
+  tools:
+    web:
+      ssrf-protection: false
+    code:
+      workspace-boundary: false

@@ -1,0 +1,23 @@
+# Dev profile — disables the 0.9.2 hardened defaults for local
+# development. Activate with: SPRING_PROFILES_ACTIVE=dev
+#
+# Use this ONLY on a developer machine bound to localhost. Production
+# deployments should NEVER use this profile — the defaults in
+# application.yml are the production-safe values.
+#
+# Mirror image of application-security-hardened.yml — both exist as
+# explicit, named-profile escapes from the default.
+jaiclaw:
+  security:
+    timing-safe-api-key: false
+  channels:
+    slack:
+      verify-signature: false
+    telegram:
+      verify-webhook: false
+      mask-bot-token: false
+  tools:
+    web:
+      ssrf-protection: false
+    code:
+      workspace-boundary: false

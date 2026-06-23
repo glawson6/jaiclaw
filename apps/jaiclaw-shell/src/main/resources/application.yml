@@ -1,6 +1,10 @@
 jaiclaw:
   security:
     mode: none
+    # The shell is a non-web Spring app (web-application-type: none),
+    # so the 0.9.2 non-loopback fail-fast guard never triggers here.
+    # Listed for symmetry with gateway-app/application.yml.
+    timing-safe-api-key: ${JAICLAW_SECURITY_TIMING_SAFE_API_KEY:true}
   identity:
     name: JaiClaw
     description: Personal AI assistant
@@ -14,6 +18,12 @@ jaiclaw:
           profile: coding
   tools:
     profile: coding
+    # 0.9.2: SSRF protection on WebFetchTool and workspace-boundary
+    # checks in code-execution tools are now default-on.
+    web:
+      ssrf-protection: ${JAICLAW_TOOLS_WEB_SSRF_PROTECTION:true}
+    code:
+      workspace-boundary: ${JAICLAW_TOOLS_CODE_WORKSPACE_BOUNDARY:true}
   skills:
     allow-bundled:
       - "*"

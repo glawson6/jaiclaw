@@ -18,7 +18,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(true, null, null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then:
         props.mode() == "jwt"
@@ -29,7 +30,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(false, null, null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then:
         props.mode() == "api-key"
@@ -40,7 +42,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(true, "none", null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then:
         props.mode() == "none"
@@ -51,7 +54,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(false, "none", null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then:
         props.mode() == "none"
@@ -62,7 +66,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(true, "api-key", null, null, false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then: "explicit api-key is not overridden to jwt despite enabled=true"
         props.mode() == "api-key"
@@ -81,7 +86,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def props = new JaiClawSecurityProperties(false, "api-key", null, "/custom/path", false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties())
+                new JaiClawSecurityProperties.RateLimitProperties(),
+                false)
 
         then:
         props.apiKeyFile() == "/custom/path"
