@@ -1,6 +1,9 @@
 package io.jaiclaw.pipeline.gateway;
 
+import io.jaiclaw.core.tenant.TenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.pipeline.PipelineProperties;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +89,16 @@ public class PipelineSyncCoordinator {
             return CompletableFuture.failedFuture(new PipelineCapacityException(executionId, cap));
         }
         CompletableFuture<PipelineExecutionResult> future = new CompletableFuture<>();
-        PendingEntry existing = pending.putIfAbsent(executionId, new PendingEntry(future, Instant.now()));
+        // SEV-006: capture the caller's tenant context here so that
+        // continuations attached to the returned future (via thenApply,
+        // thenAccept, etc.) see the right tenant when the Camel route
+        // completes us back on the completion executor. Without this,
+        // multi-tenant downstream tools running off the future would
+        // observe either no tenant or whichever tenant the Camel worker
+        // happened to carry — both wrong.
+        TenantContext capturedTenant = TenantContextHolder.get();
+        PendingEntry existing = pending.putIfAbsent(
+                executionId, new PendingEntry(future, Instant.now(), capturedTenant));
         if (existing != null) {
             // Re-registration on the same id: hand back the existing future so
             // the caller doesn't end up holding a stranded one.
@@ -106,7 +118,10 @@ public class PipelineSyncCoordinator {
         if (entry == null) return;
         CompletableFuture<PipelineExecutionResult> future = entry.future();
         if (future.isDone()) return;
-        future.completeAsync(() -> result, completionExecutor);
+        // SEV-006: future.completeAsync runs both the supplier AND any
+        // attached continuations on completionExecutor — wrap with the
+        // captured tenant so those see the caller's context.
+        future.completeAsync(withTenant(entry.tenant(), () -> result), completionExecutor);
     }
 
     /**
@@ -120,7 +135,58 @@ public class PipelineSyncCoordinator {
         if (entry == null) return;
         CompletableFuture<PipelineExecutionResult> future = entry.future();
         if (future.isDone()) return;
-        completionExecutor.execute(() -> future.completeExceptionally(cause));
+        // SEV-006: same as complete() — propagate the caller's tenant
+        // into any continuations attached to the future. Lambda is
+        // typed explicitly as Runnable because future.completeExceptionally
+        // returns boolean, which would otherwise resolve to Supplier<Boolean>.
+        Runnable completeTask = () -> future.completeExceptionally(cause);
+        completionExecutor.execute(withTenant(entry.tenant(), completeTask));
+    }
+
+    /**
+     * Wrap a Runnable so it sets {@link TenantContextHolder} to the
+     * captured tenant before running the task. Returns the bare task
+     * when no tenant was captured (SINGLE mode).
+     *
+     * <p>Subtle design choice: this intentionally does NOT clear the
+     * tenant in a {@code finally} block (unlike {@link
+     * io.jaiclaw.core.tenant.TenantContextPropagator#wrap(Runnable)}).
+     * The reason: {@code CompletableFuture.completeAsync(supplier,
+     * executor)} runs any registered {@code .thenAccept} / {@code
+     * .thenApply} continuations on the same executor thread immediately
+     * after the supplier returns. If we clear in a finally, the
+     * continuation runs with no tenant context — defeating the whole
+     * purpose of SEV-006.
+     *
+     * <p>Leaving the tenant set is safe in this specific case because:
+     * <ul>
+     *   <li>The completion executor is JaiClaw-owned ({@code
+     *       jaiclaw-pipeline-sync-complete} thread factory) and only
+     *       runs tasks we put on it.</li>
+     *   <li>Every wrapped task SETs (replaces) the tenant, so no
+     *       cross-tenant leak between successive tasks on the same
+     *       pool thread.</li>
+     *   <li>{@code TenantContextHolder.set(null)} would be the only
+     *       case where a leftover lingers — but we never get here
+     *       with a null tenant (we return the bare task above).</li>
+     * </ul>
+     */
+    private static Runnable withTenant(@Nullable TenantContext tenant, Runnable task) {
+        if (tenant == null) return task;
+        return () -> {
+            TenantContextHolder.set(tenant);
+            task.run();
+        };
+    }
+
+    /** Variant of {@link #withTenant(TenantContext, Runnable)} for suppliers. */
+    private static <T> java.util.function.Supplier<T> withTenant(
+            @Nullable TenantContext tenant, java.util.function.Supplier<T> supplier) {
+        if (tenant == null) return supplier;
+        return () -> {
+            TenantContextHolder.set(tenant);
+            return supplier.get();
+        };
     }
 
     /** Current in-flight pending count. */
@@ -193,7 +259,14 @@ public class PipelineSyncCoordinator {
         };
     }
 
-    /** Internal: pending-future + submit-time for orphan TTL bookkeeping. */
-    private record PendingEntry(CompletableFuture<PipelineExecutionResult> future, Instant submittedAt) {
+    /**
+     * Internal: pending-future + submit-time for orphan TTL bookkeeping,
+     * plus the caller's tenant context (SEV-006) for propagation into
+     * the future's downstream continuations.
+     */
+    private record PendingEntry(
+            CompletableFuture<PipelineExecutionResult> future,
+            Instant submittedAt,
+            @Nullable TenantContext tenant) {
     }
 }

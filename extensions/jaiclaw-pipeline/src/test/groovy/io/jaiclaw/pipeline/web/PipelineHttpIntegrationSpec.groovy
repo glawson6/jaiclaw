@@ -32,6 +32,9 @@ import java.util.function.Function
         "management.endpoints.web.exposure.include=pipelines,health",
         "jaiclaw.skills.allow-bundled=",
         "jaiclaw.security.mode=none",
+        // 0.9.2 fail-fast guard requires loopback bind for mode=none.
+        // RANDOM_PORT doesn't set server.address; pin to 127.0.0.1.
+        "server.address=127.0.0.1",
         "jaiclaw.pipeline.enabled=true",
         // Alias-routed HTTP trigger surface (0.9.1+): callers POST a logical
         // alias that the framework maps to the internal pipeline id.
