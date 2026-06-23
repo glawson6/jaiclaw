@@ -92,31 +92,164 @@ or by editing `jkube.docker.registry` in the module POMs.
 
 ### 3.1 Secrets
 
-Create a single Kubernetes secret that holds every credential the gateway
-needs. Channel-related entries are only required if you enabled that
-channel.
+JaiClaw's contract with the deploying environment is **a set of
+environment variables, presented to the gateway container at startup**.
+How those env vars get there — operator-synced from a vault, hand-rolled
+literal Secret, sealed-secrets, External Secrets — is the cluster's
+concern. JaiClaw never speaks to your secret store directly.
 
-```bash
-kubectl create namespace jaiclaw
+#### The env-var contract (what JaiClaw reads)
 
-kubectl -n jaiclaw create secret generic jaiclaw-secrets \
-  --from-literal=JAICLAW_API_KEY=$(openssl rand -hex 32) \
-  --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
-  --from-literal=OPENAI_API_KEY=sk-... \
-  --from-literal=TELEGRAM_BOT_TOKEN=123456:ABC... \
-  --from-literal=SLACK_BOT_TOKEN=xoxb-... \
-  --from-literal=SLACK_SIGNING_SECRET=... \
-  --from-literal=TWILIO_ACCOUNT_SID=AC... \
-  --from-literal=TWILIO_AUTH_TOKEN=... \
-  --from-literal=EMAIL_USERNAME=bot@example.com \
-  --from-literal=EMAIL_PASSWORD=...
-```
+The gateway resolves `${VAR}` placeholders in `application.yml` at
+startup. Every value below maps to one such placeholder; the table is
+the exhaustive list of env vars the production gateway needs. Channel-
+related entries are only required when the matching channel is enabled.
+
+| Env var                       | Purpose                                       | Required?            |
+|-------------------------------|-----------------------------------------------|----------------------|
+| `JAICLAW_API_KEY`             | Gateway auth (constant-time compared)         | Yes (api-key mode)   |
+| `JAICLAW_SECURITY_MODE`       | `api-key` / `jwt` / `none`                    | Default `api-key`    |
+| `ANTHROPIC_API_KEY`           | Anthropic chat model                          | One LLM key required |
+| `ANTHROPIC_BASE_URL`          | Override (e.g. MiniMax-Anthropic endpoint)    | Optional             |
+| `ANTHROPIC_MODEL`             | Default model id                              | Optional             |
+| `OPENAI_API_KEY`              | OpenAI chat model                             | Optional             |
+| `GEMINI_API_KEY`              | Google Gemini chat model                      | Optional             |
+| `OLLAMA_BASE_URL`             | Self-hosted Ollama endpoint                   | Optional             |
+| `TELEGRAM_BOT_TOKEN`          | Telegram channel                              | If telegram enabled  |
+| `TELEGRAM_WEBHOOK_URL`        | Telegram channel webhook URL                  | If telegram enabled  |
+| `SLACK_BOT_TOKEN`             | Slack channel                                 | If slack enabled     |
+| `SLACK_SIGNING_SECRET`        | Slack signature verification                  | If slack enabled     |
+| `SLACK_APP_TOKEN`             | Slack socket-mode app token                   | If slack socket-mode |
+| `DISCORD_BOT_TOKEN`           | Discord channel                               | If discord enabled   |
+| `DISCORD_APPLICATION_ID`      | Discord app ID                                | If discord enabled   |
+| `EMAIL_USERNAME`              | SMTP/IMAP user                                | If email enabled     |
+| `EMAIL_PASSWORD`              | SMTP/IMAP password                            | If email enabled     |
+| `TWILIO_ACCOUNT_SID`          | SMS channel via Twilio                        | If sms enabled       |
+| `TWILIO_AUTH_TOKEN`           | SMS channel via Twilio                        | If sms enabled       |
+| `TWILIO_FROM_NUMBER`          | SMS sender number                             | If sms enabled       |
+| `TEAMS_APP_ID`                | Microsoft Teams channel                       | If teams enabled     |
+| `TEAMS_APP_SECRET`            | Microsoft Teams channel                       | If teams enabled     |
+| `TEAMS_TENANT_ID`             | Microsoft Teams channel                       | If teams enabled     |
 
 > **0.8.0 hard-break note:** the legacy `jclaw_ak_…` API-key prefix was
 > dropped in 0.8.0. New keys should be plain bytes (e.g. `openssl rand
 > -hex 32`); the gateway uses constant-time comparison (`jaiclaw.security.
 > timing-safe-api-key` defaults to **on** in 0.8.0). See
 > [MIGRATION-0.8.md](../MIGRATION-0.8.md) §P3.5.
+
+#### 3.1.1 Recommended: 1Password Connect Operator
+
+Run the [1Password Connect Operator] in your cluster and let it sync
+vault items into K8s `Secret`s automatically. JaiClaw reads those
+Secrets as env vars; nothing in the application changes.
+
+[1Password Connect Operator]: https://github.com/1Password/onepassword-operator
+
+**Prerequisite (one-time, cluster-side):** the Operator and Connect
+server must be running. The setup procedure lives in your shared
+cluster-infra repo (e.g. `taptech-sentinel`) — JaiClaw assumes it's
+done by the time you deploy.
+
+**Naming convention.** JaiClaw recommends **per-domain Secrets** rather
+than one monolithic Secret. This matches the 1Password vault structure
+(one item per logical credential bundle: `Maven-Central`, `MiniMax-
+Anthropic-API`, `OSS-Index`, …) and lets per-domain RBAC be applied at
+the Kubernetes layer.
+
+| K8s Secret name              | 1Password vault item               | Env vars produced                                              |
+|------------------------------|------------------------------------|----------------------------------------------------------------|
+| `jaiclaw-gateway-auth`       | `JaiClaw-Gateway-Auth`             | `JAICLAW_API_KEY`                                              |
+| `jaiclaw-llm-keys`           | `MiniMax-Anthropic-API` (+ peers)  | `ANTHROPIC_*`, `OPENAI_API_KEY`, `GEMINI_API_KEY`              |
+| `jaiclaw-telegram`           | `JaiClaw-Telegram`                 | `TELEGRAM_*`                                                   |
+| `jaiclaw-slack`              | `JaiClaw-Slack`                    | `SLACK_*`                                                      |
+| `jaiclaw-discord`            | `JaiClaw-Discord`                  | `DISCORD_*`                                                    |
+| `jaiclaw-email`              | `JaiClaw-Email`                    | `EMAIL_*`                                                      |
+| `jaiclaw-sms`                | `JaiClaw-Twilio`                   | `TWILIO_*`                                                     |
+| `jaiclaw-teams`              | `JaiClaw-Teams`                    | `TEAMS_*`                                                      |
+
+**Defining the sync.** Per Secret, one `OnePasswordItem` resource. The
+Operator watches these and creates/refreshes the matching K8s Secret.
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: jaiclaw-llm-keys
+  namespace: jaiclaw
+spec:
+  itemPath: vaults/TapTech-Security/items/MiniMax-Anthropic-API
+```
+
+The 1Password item's field labels (`anthropic-api-key`, `anthropic-base-
+url`, `anthropic-model`) become the synced Secret's data keys. JaiClaw's
+Spring Boot relaxed-binding turns `anthropic-api-key` into the
+`ANTHROPIC_API_KEY` env var at config-resolution time — no further
+mapping required.
+
+**Mounting in the gateway Deployment.** Use `envFrom: secretRef:` to
+load every key in each Secret as an env var:
+
+```yaml
+spec:
+  containers:
+    - name: jaiclaw-gateway
+      image: tooling.taptech.net:5000/jaiclaw-gateway:0.9.2
+      envFrom:
+        - secretRef: { name: jaiclaw-gateway-auth }
+        - secretRef: { name: jaiclaw-llm-keys }
+        # Add channel Secrets only for channels you enable:
+        - secretRef:
+            name: jaiclaw-telegram
+            optional: true
+        - secretRef:
+            name: jaiclaw-slack
+            optional: true
+```
+
+The `optional: true` flag lets the Deployment start even when a channel
+Secret isn't present (e.g. you haven't enabled Slack yet) — the
+matching `OnePasswordItem` is simply not applied for that channel.
+
+**Reference chart.** The marketing-site Helm chart at
+[`jaiclaw.io/deployment/helm/jaiclaw-io/`](https://github.com/glawson6/jaiclaw.io/tree/main/deployment/helm/jaiclaw-io)
+demonstrates the full wiring for a comparable Spring Boot workload.
+
+#### 3.1.2 Alternatives (vendor-agnostic)
+
+Any mechanism that produces a K8s `Secret` matching the env-var
+contract above will work. JaiClaw doesn't know or care which.
+
+- **HashiCorp Vault + External Secrets Operator.** Define an
+  `ExternalSecret` per logical group, targeting the same Secret names
+  (`jaiclaw-llm-keys`, etc.). The translation from vault path to K8s
+  Secret keys is done by ESO; JaiClaw consumes the resulting Secrets
+  identically.
+
+- **AWS Secrets Manager / Azure Key Vault / GCP Secret Manager.**
+  Same pattern via ESO providers or the cloud-native CSI driver.
+
+- **Plain literal Secret (small / hobby / dev clusters).** Acceptable
+  when you don't have a vault yet. Note the obvious downside: the
+  values end up in shell history, in the apiserver audit log, and in
+  any `kubectl get secret -o yaml` output that gets pasted into a
+  ticket. Don't ship this to production.
+
+  ```bash
+  kubectl create namespace jaiclaw
+
+  kubectl -n jaiclaw create secret generic jaiclaw-llm-keys \
+    --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+    --from-literal=OPENAI_API_KEY=sk-...
+
+  kubectl -n jaiclaw create secret generic jaiclaw-gateway-auth \
+    --from-literal=JAICLAW_API_KEY=$(openssl rand -hex 32)
+
+  # Repeat per channel as you enable it.
+  ```
+
+- **Sealed Secrets / SOPS / age-encrypted YAML.** Useful when you want
+  the Secret definitions in git but encrypted at rest. The decrypted
+  Secret must still match the env-var contract.
 
 ### 3.2 Application config
 
@@ -211,8 +344,16 @@ spec:
             - name: http
               containerPort: 8888
           envFrom:
+            # Per-domain Secrets per §3.1.1. Only enabled-channel
+            # Secrets are mounted; the rest stay absent.
+            - secretRef: { name: jaiclaw-gateway-auth }
+            - secretRef: { name: jaiclaw-llm-keys }
             - secretRef:
-                name: jaiclaw-secrets
+                name: jaiclaw-telegram
+                optional: true
+            - secretRef:
+                name: jaiclaw-slack
+                optional: true
           env:
             - name: SPRING_CONFIG_ADDITIONAL_LOCATION
               value: file:/config/
@@ -332,7 +473,15 @@ env:
   SPRING_PROFILES_ACTIVE: production,security-hardened
   SPRING_CONFIG_ADDITIONAL_LOCATION: file:/config/
 
-envFromSecret: jaiclaw-secrets
+# Per-domain Secrets per §3.1.1. Single-Secret consumers (older
+# generic charts) can also point envFromSecret at a monolithic
+# `jaiclaw-secrets` Secret if the deploy environment can't run
+# multiple OnePasswordItem syncs.
+envFromSecrets:
+  - jaiclaw-gateway-auth
+  - jaiclaw-llm-keys
+  - jaiclaw-telegram      # remove when channel disabled
+  - jaiclaw-slack         # remove when channel disabled
 
 configMap:
   name: jaiclaw-config
@@ -526,7 +675,10 @@ jaiclaw:
 mount it in the secret:
 
 ```bash
-kubectl -n jaiclaw patch secret jaiclaw-secrets --type merge \
+# JAICLAW_DEFAULT_TENANT_ID is gateway-auth-adjacent — patch the
+# gateway-auth Secret to add it. If you're still on the legacy
+# single-Secret pattern, target `jaiclaw-secrets` instead.
+kubectl -n jaiclaw patch secret jaiclaw-gateway-auth --type merge \
   -p "{\"stringData\":{\"JAICLAW_DEFAULT_TENANT_ID\":\"$(uuidgen)\"}}"
 ```
 

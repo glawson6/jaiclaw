@@ -186,43 +186,74 @@ All three workflows pass on the next CI run. `grep -r 'secrets\.' .github/workfl
 
 ---
 
-## Section 3 — Kubernetes deployment integration (deploy dimension, K8s first)
+## Section 3 — Kubernetes deployment contract (documentation only)
+
+> **Scope correction (re-planned mid-0.9.2).** The original plan called for
+> Helm chart authoring against `apps/jaiclaw-gateway-app/src/main/helm/`,
+> but that directory doesn't exist — the gateway-app uses JKube
+> (`kubernetes-maven-plugin`), not a checked-in Helm chart. The actual
+> production chart for the marketing site lives in the separate
+> `jaiclaw.io` repo, and the cluster-side 1Password Connect Operator
+> install lives in `taptech-sentinel`. Both are deployed already, and
+> both are out of scope for this branch.
+>
+> What remains in JaiClaw's repo for 0.9.2 is the **contract**: the
+> exhaustive list of env vars the gateway expects, with a recommended
+> 1Password Connect wiring pattern that consuming charts can mirror.
 
 ### 3.1 Approach
 
-Use the official **1Password Connect Operator** to sync vault items into K8s `Secret` resources. The Operator runs in-cluster; Helm charts reference the synced `Secret` names normally. No JaiClaw runtime code change required — the SecretsProvider SPI is for in-app dynamic lookups, but Helm-injected env vars are the standard for static config and they still flow through the SPI's `EnvironmentSecretsProvider` transparently.
+JaiClaw doesn't speak to any secret store. The application reads
+`${VAR}` placeholders in `application.yml` at startup; the environment
+provides those values as env vars. How the env vars get there is the
+cluster's concern. This means the deploying environment can use the
+1Password Connect Operator (recommended), External Secrets + Vault,
+plain literal Secrets, sealed-secrets, SOPS — anything that produces
+K8s `Secret`s whose data keys match JaiClaw's env-var names.
+
+The JaiClaw repo documents the **contract** (which env vars exist,
+which Secret names hold them, how to wire them in a Deployment) and
+recommends the 1Password Connect approach with concrete copy-pasteable
+examples. The chart that consumes the contract lives elsewhere.
 
 ### 3.2 Changes
 
-**Helm charts to update:**
-- `jaiclaw.io/deployment/helm/jaiclaw-io/` — frontend, doesn't need many secrets but standardize the pattern.
-- `apps/jaiclaw-gateway-app/src/main/helm/` — the production target. Replace `${ANTHROPIC_API_KEY}` etc. references in `values-prod.yaml` with secret references.
+**One doc file touched:** `docs/user/PRODUCTION-DEPLOYMENT.md` §3.1.
 
-**Pattern change in `values-prod.yaml`** (illustrative; final shape lands in the implementation PR):
+  - The full env-var contract as a table.
+  - A new §3.1.1 "Recommended: 1Password Connect Operator" with the
+    per-domain Secret naming convention and an `OnePasswordItem`
+    example.
+  - A new §3.1.2 "Alternatives (vendor-agnostic)" covering Vault/ESO,
+    cloud-native CSI, sealed-secrets, and the legacy literal-Secret
+    fallback (preserved from the pre-0.9.2 doc).
+  - Updates to downstream sections (§4 Deployment manifest, §5 Helm
+    values stub, §11 runbook) so the per-domain Secret naming
+    (`jaiclaw-gateway-auth`, `jaiclaw-llm-keys`, `jaiclaw-telegram`, …)
+    is internally consistent.
 
-```yaml
-# Before
-env:
-  ANTHROPIC_API_KEY: <secret-from-helm-cli>
+**Out of scope for the JaiClaw repo (handled in other repos):**
 
-# After
-secrets:
-  oneOfPasswordItems:
-    - itemPath: "vaults/JaiClaw-Prod/items/anthropic"
-      kind: connect
-  envFromSecret:
-    name: jaiclaw-gateway-secrets
-```
-
-**New prereq doc**: `docs/user/DEPLOYMENT.md` gains a section titled "1Password Connect Operator setup" with the `helm install` invocation and the steps to create the `OnePasswordConnect` CRD.
-
-**Touch the macOS-helm workaround**: `taptech-ai-agent-parent/helm/helm-deploy.sh` (the Docker-based helm shim required on macOS due to extended-attribute issues — see global CLAUDE.md). Confirm it still works when the chart references `OnePasswordItem` CRDs; the operator and the CRDs are cluster-side, so the shim shouldn't need changes, but verify.
+  - 1Password Connect Operator install + cluster-side configuration —
+    `taptech-sentinel`.
+  - Helm chart `values-prod.yaml` that consumes the Secrets —
+    `jaiclaw.io/deployment/helm/jaiclaw-io/`.
+  - `OnePasswordItem` resource templates — same as the chart, lives
+    with the chart that needs them.
+  - `taptech-ai-agent-parent/helm/helm-deploy.sh` macOS shim — already
+    works against `OnePasswordItem` CRDs because the operator is
+    cluster-side; no shim change needed.
 
 ### 3.3 Verification
 
-- Deploy to a staging cluster with the 1Password Operator running.
-- Confirm pods come up with credentials populated from synced `Secret`s.
-- Rotate a vault item; confirm the Operator re-syncs and a pod restart picks up the new value.
+- Read the updated §3.1 from top to bottom and confirm a fresh
+  deployer can pick a strategy (Connect / Vault / literal) and execute
+  it without leaving the doc.
+- Spot-check that downstream sections (§4, §5, §11) reference the new
+  per-domain Secret names consistently — no stray `jaiclaw-secrets`
+  monolith references that aren't called out as legacy.
+- Confirm the cross-reference to `taptech-sentinel` matches the actual
+  location of the Operator install procedure.
 
 ---
 
