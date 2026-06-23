@@ -11,8 +11,11 @@ name: Publish to Maven Central
 # OP_SERVICE_ACCOUNT_TOKEN — the bootstrap token for a 1Password Service
 # Account scoped read-only to TapTech-Security.
 #
-# To rotate or pre-seed the 1Password item, run:
-#   ./scripts/op-upsert-maven-central.sh
+# To rotate or pre-seed the 1Password item, operators run the upsert
+# script kept under op-vault/ (a gitignored, operator-private tree):
+#   ./op-vault/op-upsert-maven-central.sh
+# The script itself is not checked into git — it's distributed
+# out-of-band among operators with vault write access.
 #
 # Audit references:
 #   docs/CODEBASE-ANALYSIS-2026-06-10.md §1.4, §2.6
