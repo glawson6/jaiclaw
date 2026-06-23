@@ -40,6 +40,23 @@ jobs:
         env:
           MAVEN_OPTS: '-Xmx2g'
 
+      # 0.9.2: load LLM provider keys from 1Password. The Anthropic
+      # triple lives in the existing MiniMax-Anthropic-API item (the
+      # e2e suite uses MiniMax-via-Anthropic-endpoint by default).
+      # OPENAI_API_KEY and GOOGLE_API_KEY are not yet migrated — the
+      # e2e harness gracefully no-ops when a provider's key is absent
+      # (per CLAUDE.md ${VAR:not-set} pattern), and the default
+      # scenario set runs Anthropic-only.
+      - name: Load secrets from 1Password
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          ANTHROPIC_API_KEY:  op://TapTech-Security/MiniMax-Anthropic-API/anthropic-api-key
+          ANTHROPIC_BASE_URL: op://TapTech-Security/MiniMax-Anthropic-API/anthropic-base-url
+          ANTHROPIC_MODEL:    op://TapTech-Security/MiniMax-Anthropic-API/anthropic-model
+
       - name: Run E2E tests
         run: |
           chmod +x e2e/run-e2e-tests.sh
@@ -47,11 +64,6 @@ jobs:
         env:
           E2E_SCENARIOS: ${{ github.event.inputs.scenarios || '1,3,4,5' }}
           AI_PROVIDER: ${{ github.event.inputs.ai_provider || 'anthropic' }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
-          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
       - name: Upload test artifacts
         if: always()

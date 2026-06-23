@@ -5,12 +5,18 @@ name: Publish to Maven Central
 # Sonatype Central Portal. Also creates a GitHub Release using the matching
 # releases/release-X.Y.Z.md as the release body.
 #
-# Required secrets (configure in repository Settings → Secrets):
-#   MAVEN_CENTRAL_USERNAME, MAVEN_CENTRAL_PASSWORD  — Sonatype Central token
-#   GPG_PRIVATE_KEY                                   — ASCII-armored key
-#   GPG_PASSPHRASE
+# Secrets (0.9.2+): all four publishing secrets live in 1Password under
+# the TapTech-Security vault, item "Maven-Central", and are loaded via
+# 1password/load-secrets-action. The only GitHub-native repo secret is
+# OP_SERVICE_ACCOUNT_TOKEN — the bootstrap token for a 1Password Service
+# Account scoped read-only to TapTech-Security.
 #
-# Audit reference: docs/CODEBASE-ANALYSIS-2026-06-10.md §1.4, §2.6.
+# To rotate or pre-seed the 1Password item, run:
+#   ./scripts/op-upsert-maven-central.sh
+#
+# Audit references:
+#   docs/CODEBASE-ANALYSIS-2026-06-10.md §1.4, §2.6
+#   docs/dev/RELEASE-PLAN-0.9.2.md §2 (GitHub Actions migration)
 
 on:
   push:
@@ -42,13 +48,26 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      # 0.9.2: load Maven Central + GPG secrets from 1Password. The
+      # action registers each loaded value with GitHub's log masking so
+      # they cannot leak into job output even if a later step echoes
+      # them by accident.
+      - name: Load secrets from 1Password
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          MAVEN_CENTRAL_USERNAME: op://TapTech-Security/Maven-Central/username
+          MAVEN_CENTRAL_PASSWORD: op://TapTech-Security/Maven-Central/password
+          GPG_PRIVATE_KEY:        op://TapTech-Security/Maven-Central/gpg-private-key
+          GPG_PASSPHRASE:         op://TapTech-Security/Maven-Central/gpg-passphrase
+
       - name: Import GPG key
         run: |
           echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
           echo "default-cache-ttl 7200" > ~/.gnupg/gpg-agent.conf
           gpg-connect-agent reloadagent /bye
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Determine version
         id: ver
@@ -71,9 +90,9 @@ jobs:
         run: ./mvnw -B -Prelease deploy -DskipTests
         env:
           MAVEN_OPTS: '-Xmx2g'
-          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          # Loaded by the "Load secrets from 1Password" step above and
+          # exposed to every subsequent step via export-env: true.
+          MAVEN_GPG_PASSPHRASE: ${{ env.GPG_PASSPHRASE }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
