@@ -44,12 +44,12 @@ class OnboardWizardOrchestratorSpec extends Specification {
             discordValidator, yamlWriter, envWriter, onePasswordWriter,
             jaiClawProperties)
 
-    def "buildSteps returns all 14 wizard steps"() {
+    def "buildSteps returns all 15 wizard steps"() {
         when:
         def steps = orchestrator.buildSteps(new OnboardResult())
 
         then:
-        steps.size() == 14
+        steps.size() == 15
         steps[0].name() == "Welcome"
         steps[1].name() == "Flow Mode"
         steps[2].name() == "Existing Config"
@@ -61,9 +61,10 @@ class OnboardWizardOrchestratorSpec extends Specification {
         steps[8].name() == "Discord"
         steps[9].name() == "Skills"
         steps[10].name() == "MCP Servers"
-        steps[11].name() == "1Password"
-        steps[12].name() == "Config Location"
-        steps[13].name() == "Finalization"
+        steps[11].name() == "Prompt"
+        steps[12].name() == "1Password"
+        steps[13].name() == "Config Location"
+        steps[14].name() == "Finalization"
     }
 
     def "all steps implement WizardStep sealed interface"() {

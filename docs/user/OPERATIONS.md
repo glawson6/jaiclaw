@@ -289,6 +289,8 @@ bin/jaiclaw --profile personal chat "hello"
 3. `active-profile:` key in `~/.jaiclaw/config.yaml`
 4. Default: `"default"`
 
+**Per-profile REPL prompt.** Because the prompt format (`jaiclaw.shell.prompt.format`) lives in the profile's `application-local.yml`, switching profiles flips both the runtime configuration *and* the visual cue in the prompt. Set per-profile prompts (e.g. `'${identity}@prod > '` vs `'${identity}@dev > '`) at install time via the wizard's optional Prompt step, or anytime in the REPL with `prompt-set '<format>'`. See `docs/user/CLI-REFERENCE.md` § `prompt` for the full set of placeholders.
+
 ### Configuration
 
 | Path | Description |
@@ -298,6 +300,15 @@ bin/jaiclaw --profile personal chat "hello"
 | `~/.jaiclaw/profiles/<name>/.env` | Per-profile environment variables (API keys) |
 | `~/.jaiclaw/profiles/<name>/sessions/` | Per-profile session history |
 | `~/.jaiclaw/bin/jaiclaw-cli.jar` | Installed CLI fat JAR |
+
+**Notable keys** in `application-local.yml`:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `jaiclaw.identity.name` | `JaiClaw` | Display name used in the prompt and system prompt |
+| `jaiclaw.shell.prompt.format` | `'${identity} > '` | REPL prompt format; see [CLI-REFERENCE § `prompt`](./CLI-REFERENCE.md) |
+| `jaiclaw.agent.default-agent` | `default` | Agent id used when no `--agent` is passed |
+| `jaiclaw.security.mode` | `none` (dev) / `api-key` (prod) | Auth strategy for the gateway HTTP surface |
 
 ### Environment Variables
 

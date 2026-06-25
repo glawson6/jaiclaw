@@ -58,6 +58,66 @@ public class YamlConfigWriter {
         Files.writeString(file, generate(result));
     }
 
+    /**
+     * Load the YAML at {@code file} (creating an empty doc if it doesn't exist),
+     * set the nested key indicated by {@code dottedKey} (e.g.
+     * {@code jaiclaw.shell.prompt.format}) to {@code value}, and rewrite the
+     * file. Preserves other keys verbatim by round-tripping through the same
+     * YAMLMapper used elsewhere in the writer.
+     *
+     * <p>Intentionally does not lock — callers (the {@code prompt set} shell
+     * command, the wizard) run interactively and one-at-a-time per profile.
+     */
+    public void merge(Path file, String dottedKey, Object value) throws IOException {
+        if (dottedKey == null || dottedKey.isBlank()) {
+            throw new IllegalArgumentException("dottedKey must not be blank");
+        }
+        Files.createDirectories(file.getParent());
+
+        Map<String, Object> root;
+        if (Files.exists(file)) {
+            String existing = Files.readString(file);
+            if (existing.isBlank()) {
+                root = new LinkedHashMap<>();
+            } else {
+                Object parsed = MAPPER.readValue(existing, Object.class);
+                root = parsed instanceof Map<?, ?> map ? coerceMap(map) : new LinkedHashMap<>();
+            }
+        } else {
+            root = new LinkedHashMap<>();
+        }
+
+        String[] parts = dottedKey.split("\\.");
+        Map<String, Object> cursor = root;
+        for (int i = 0; i < parts.length - 1; i++) {
+            String segment = parts[i];
+            Object child = cursor.get(segment);
+            Map<String, Object> next;
+            if (child instanceof Map<?, ?> childMap) {
+                next = coerceMap(childMap);
+            } else {
+                next = new LinkedHashMap<>();
+            }
+            // Always re-link the (possibly-coerced) child so the typed
+            // view replaces the parsed Map<?, ?> view in the parent. Cheap
+            // and removes the "did the type get preserved?" question.
+            cursor.put(segment, next);
+            cursor = next;
+        }
+        cursor.put(parts[parts.length - 1], value);
+
+        Files.writeString(file, MAPPER.writeValueAsString(root));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> coerceMap(Map<?, ?> src) {
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> e : src.entrySet()) {
+            out.put(String.valueOf(e.getKey()), e.getValue());
+        }
+        return out;
+    }
+
     private Map<String, Object> buildJclawSection(OnboardResult result) {
         var jaiclaw = new LinkedHashMap<String, Object>();
 
@@ -106,6 +166,13 @@ public class YamlConfigWriter {
         var channels = buildChannelsSection(result);
         if (channels != null) {
             jaiclaw.put("channels", channels);
+        }
+
+        // shell — REPL prompt customization (only when the wizard captured one)
+        if (result.promptFormat() != null && !result.promptFormat().isBlank()) {
+            var prompt = new LinkedHashMap<String, Object>();
+            prompt.put("format", result.promptFormat());
+            jaiclaw.put("shell", Map.of("prompt", prompt));
         }
 
         return jaiclaw;

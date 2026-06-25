@@ -396,6 +396,33 @@ jaiclaw config
 jaiclaw config show
 ```
 
+### `prompt` / `prompt-set`
+
+Inspect and customize the interactive REPL command prompt. The format string supports the placeholders `${identity}`, `${profile}`, `${agent}`, `${model}`, and `${tenant}`. Placeholders the framework can't resolve render as literal `${name}` so typos are obvious. Calling `prompt-set` writes the new format to the active profile's `application-local.yml` (under `jaiclaw.shell.prompt.format`) and updates the live shell immediately — no restart needed.
+
+```text
+shell> prompt
+Format:  ${identity} >
+Preview: JaiClaw >
+File:    /Users/tap/.jaiclaw/profiles/default/application-local.yml
+
+shell> prompt-set '${identity}@${profile} > '
+Saved.
+Format:  ${identity}@${profile} >
+Preview: JaiClaw@default >
+```
+
+Common formats:
+
+| Format | Renders as |
+|--------|------------|
+| `${identity} > ` *(default)* | `JaiClaw > ` |
+| `${identity}@${profile}> ` | `JaiClaw@prod> ` |
+| `[${profile}] ${agent}: ` | `[prod] default: ` |
+| `${identity}/${model}> ` | `JaiClaw/claude-sonnet-4-6> ` |
+
+Embed raw ANSI escapes for color (e.g. `'[36m${identity}[0m > '`). Persistence is per-profile, so switching profiles via `profile switch <name>` swaps both the config and the prompt visual cue.
+
 ## Profile Isolation
 
 Profiles provide isolated configuration environments. Each profile has its own `application-local.yml`, `.env`, and `sessions/` directory.

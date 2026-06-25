@@ -81,6 +81,11 @@ public class OnboardWizardOrchestrator {
         steps.add(new SkillsStep(flowBuilder));
         steps.add(new McpServersStep(flowBuilder));
 
+        // Optional REPL prompt customization — manual mode only, defaults
+        // to skip. Sits before 1Password because it's pure UX and has no
+        // dependency on the env-var bundle the next step inventories.
+        steps.add(new PromptStep(flowBuilder));
+
         // 1Password integration — manual mode only, silently skipped
         // when `op` CLI isn't on PATH. Runs after channels so it can
         // offer to migrate only the env vars the wizard will actually

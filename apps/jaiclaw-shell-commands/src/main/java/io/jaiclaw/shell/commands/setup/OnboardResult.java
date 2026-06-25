@@ -43,6 +43,9 @@ public final class OnboardResult {
     // 1Password integration (optional; null = not configured)
     private OnePasswordConfig onePassword;
 
+    // Optional REPL prompt format (null = leave the default `${identity} > `)
+    private String promptFormat;
+
     // Config output
     private Path configDir;
 
@@ -133,6 +136,9 @@ public final class OnboardResult {
 
     public OnePasswordConfig onePassword() { return onePassword; }
     public void setOnePassword(OnePasswordConfig onePassword) { this.onePassword = onePassword; }
+
+    public String promptFormat() { return promptFormat; }
+    public void setPromptFormat(String promptFormat) { this.promptFormat = promptFormat; }
 
     public boolean isManual() { return flowMode == FlowMode.MANUAL; }
 }
