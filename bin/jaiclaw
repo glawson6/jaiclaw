@@ -41,9 +41,43 @@
 #
 set -euo pipefail
 
-# ─── Constants ────────────────────────────────────────────────────────────────
+# ─── Version resolution ──────────────────────────────────────────────────────
+# Read the version from the installed CLI jar's MANIFEST.MF at call time, so
+# `bin/jaiclaw` doesn't need to be edited (or republished) at every release.
+# Falls back to "unknown" if the jar or unzip is missing — the fast-path
+# `version` command must never abort the whole script.
 
-JAICLAW_VERSION="0.7.1-SNAPSHOT"
+resolve_jaiclaw_version() {
+    local jar="${JAICLAW_HOME:-$HOME/.jaiclaw}/bin/jaiclaw-cli.jar"
+    if [[ ! -f "$jar" ]]; then
+        echo "unknown (jar not installed)"
+        return 0
+    fi
+    if ! command -v unzip &>/dev/null; then
+        echo "unknown (unzip not on PATH)"
+        return 0
+    fi
+    # Maven always writes META-INF/maven/<groupId>/<artifactId>/pom.properties
+    # into the module jar. Spring Boot's repackage preserves this at the top
+    # of the fat jar (not under BOOT-INF/). Format:
+    #     artifactId=jaiclaw-cli
+    #     groupId=io.jaiclaw
+    #     version=0.9.3-SNAPSHOT
+    local version
+    version=$(unzip -p "$jar" META-INF/maven/io.jaiclaw/jaiclaw-cli/pom.properties 2>/dev/null \
+        | awk -F= '/^version=/ { gsub(/\r/, "", $2); print $2; exit }')
+    if [[ -z "$version" ]]; then
+        # Fallback: Implementation-Version is empty in the default Spring Boot
+        # repackage, but may be present if we ever wire it into the pom build.
+        version=$(unzip -p "$jar" META-INF/MANIFEST.MF 2>/dev/null \
+            | awk -F': ' '/^Implementation-Version:/ { gsub(/\r/, "", $2); print $2; exit }')
+    fi
+    if [[ -z "$version" ]]; then
+        echo "unknown (no version in jar)"
+        return 0
+    fi
+    echo "$version"
+}
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -286,7 +320,7 @@ resolve_jar() {
 # ─── Fast-path commands (no JVM) ─────────────────────────────────────────────
 
 cmd_version() {
-    echo "jaiclaw $JAICLAW_VERSION"
+    echo "jaiclaw $(resolve_jaiclaw_version)"
 }
 
 cmd_doctor() {
