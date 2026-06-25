@@ -63,37 +63,82 @@ detect_platform() {
 
 # ─── Check Java ──────────────────────────────────────────────────────────────
 
-check_java() {
-    header "Checking Java"
-
+# Probe for an executable `java` at the usual locations. Sets JAVA_BIN to the
+# resolved path on success (and exports JAVA_HOME when discovered via SDKMAN).
+# Returns 0 if a Java >= JAVA_MIN_VERSION is found, 1 otherwise. Quiet — does
+# NOT print warnings about the wrong version, so callers can probe both before
+# and after a fresh SDKMAN install without doubling up the messaging.
+probe_java() {
     local java_cmd=""
 
-    # Check JAVA_HOME first
     if [[ -n "${JAVA_HOME:-}" ]] && [[ -x "$JAVA_HOME/bin/java" ]]; then
         java_cmd="$JAVA_HOME/bin/java"
-    # Check SDKMAN
     elif [[ -x "$HOME/.sdkman/candidates/java/current/bin/java" ]]; then
         java_cmd="$HOME/.sdkman/candidates/java/current/bin/java"
         export JAVA_HOME="$HOME/.sdkman/candidates/java/current"
-    # Check PATH
     elif command -v java &>/dev/null; then
         java_cmd="java"
     fi
 
-    if [[ -n "$java_cmd" ]]; then
-        local java_version
-        java_version=$("$java_cmd" -version 2>&1 | head -1 | sed 's/.*"\(.*\)".*/\1/' | cut -d. -f1)
-        if [[ "$java_version" -ge "$JAVA_MIN_VERSION" ]]; then
-            ok "Java $java_version found ($java_cmd)"
-            JAVA_BIN="$java_cmd"
-            return 0
-        else
-            warn "Java $java_version found but $JAVA_MIN_VERSION+ required"
+    if [[ -z "$java_cmd" ]]; then
+        return 1
+    fi
+
+    local java_version
+    java_version=$("$java_cmd" -version 2>&1 | head -1 | sed 's/.*"\(.*\)".*/\1/' | cut -d. -f1)
+    if [[ "$java_version" -ge "$JAVA_MIN_VERSION" ]]; then
+        JAVA_BIN="$java_cmd"
+        return 0
+    fi
+    return 1
+}
+
+# Try to install Java via SDKMAN. Sources the freshly-installed shell init so
+# the rest of this script sees `sdk` and the new `java` on PATH. Returns 0 on
+# success, 1 on failure — leaves a usable JAVA_BIN set when successful.
+install_java_via_sdkman() {
+    header "Installing Java via SDKMAN"
+
+    # Install SDKMAN if missing. The upstream installer writes to ~/.sdkman/
+    # and prints to stderr; it does NOT modify shell profiles when piped
+    # through bash this way, so the user's shell is untouched.
+    if [[ ! -s "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
+        info "Bootstrapping SDKMAN"
+        if ! curl -s "https://get.sdkman.io" | bash >/dev/null 2>&1; then
+            err "SDKMAN bootstrap failed"
+            return 1
         fi
     fi
 
-    # No suitable Java found
-    warn "Java $JAVA_MIN_VERSION+ not found"
+    # Source the init script in a way that survives `set -u`. SDKMAN's init
+    # references unset vars and would otherwise abort the installer.
+    set +u
+    # shellcheck disable=SC1090
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
+
+    info "Installing Java 21.0.9-oracle (this may take a minute)"
+    set +u
+    # `<<< y` answers SDKMAN's "make default" prompt without a TTY.
+    if ! sdk install java 21.0.9-oracle <<< "y" >/dev/null 2>&1; then
+        set -u
+        err "sdk install java 21.0.9-oracle failed"
+        return 1
+    fi
+    set -u
+
+    export JAVA_HOME="$HOME/.sdkman/candidates/java/current"
+    if probe_java; then
+        ok "Java installed: $JAVA_BIN"
+        return 0
+    fi
+    err "SDKMAN reported success but Java still not on PATH — installation incomplete"
+    return 1
+}
+
+# Print the manual-install fallback message. Used in three places: piped
+# (no TTY), user declined, or SDKMAN install failed.
+print_java_manual_instructions() {
     echo ""
     echo "Install Java 21 via SDKMAN (recommended):"
     echo "  curl -s https://get.sdkman.io | bash"
@@ -104,13 +149,49 @@ check_java() {
         macos) echo "  brew install --cask temurin@21" ;;
         linux) echo "  sudo apt install openjdk-21-jdk" ;;
     esac
+    echo ""
+}
 
-    read -rp "Continue without Java? (JVM commands won't work) [y/N] " answer
-    if [[ "${answer,,}" != "y" ]]; then
-        exit 1
+check_java() {
+    header "Checking Java"
+
+    if probe_java; then
+        ok "Java found ($JAVA_BIN)"
+        return 0
     fi
-    JAVA_BIN=""
-    return 0
+
+    warn "Java $JAVA_MIN_VERSION+ not found"
+
+    # Non-interactive (curl|bash with no /dev/tty, CI, or explicit opt-out):
+    # print the manual instructions and continue in degraded mode.
+    if [[ "${JAICLAW_NON_INTERACTIVE:-false}" == "true" ]] || [[ ! -r /dev/tty ]]; then
+        print_java_manual_instructions
+        warn "Continuing without Java — JVM commands (chat, setup) will not work until Java is installed."
+        JAVA_BIN=""
+        return 0
+    fi
+
+    # Interactive: ask via /dev/tty so we work under `curl | bash`.
+    echo ""
+    local answer=""
+    read -rp "Install Java 21 via SDKMAN now? [Y/n] " answer </dev/tty || answer=""
+    case "${answer,,}" in
+        ""|y|yes)
+            if install_java_via_sdkman; then
+                return 0
+            fi
+            warn "Falling back to manual install instructions"
+            print_java_manual_instructions
+            JAVA_BIN=""
+            return 0
+            ;;
+        *)
+            print_java_manual_instructions
+            warn "Continuing without Java — re-run 'jaiclaw doctor' once Java is installed."
+            JAVA_BIN=""
+            return 0
+            ;;
+    esac
 }
 
 # ─── Create directory structure ──────────────────────────────────────────────

@@ -96,10 +96,10 @@ install_java() {
 
     # Install Java 21
     info "Installing Java $REQUIRED_JAVA_VERSION via SDKMAN..."
-    sdk install java 21.0.5-tem <<< "y" 2>/dev/null || sdk install java 21.0.5-tem || true
+    sdk install java 21.0.9-oracle <<< "y" 2>/dev/null || sdk install java 21.0.9-oracle || true
 
     # Activate
-    sdk use java 21.0.5-tem 2>/dev/null || true
+    sdk use java 21.0.9-oracle 2>/dev/null || true
     export JAVA_HOME="${SDKMAN_DIR:-$HOME/.sdkman}/candidates/java/current"
 
     # Verify
