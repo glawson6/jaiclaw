@@ -21,8 +21,8 @@ import io.jaiclaw.examples.travel.api.TravelDataProvider;
  * <p>The first 4 actions can run in any order (GOAP planner decides).
  * {@code assemblePlan} depends on all 4 results being on the blackboard.
  *
- * <p>Data comes from {@link TravelDataProvider} — a stub by default,
- * or a live API with the {@code live-api} Spring profile.
+ * <p>Data comes from {@link TravelDataProvider}. The example ships with
+ * a stub implementation; swap in your own bean to hit a real travel API.
  */
 @Agent(description = "Plans trips by researching flights, hotels, activities, and weather, then assembling a complete itinerary")
 public class TravelPlannerAgent {

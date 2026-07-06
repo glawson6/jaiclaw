@@ -29,16 +29,10 @@ jaiclaw:
           profile: full
 
 # --- Travel Data Source ---
-# Default: StubTravelDataProvider (hardcoded data, no API key needed)
-# Live API: activate with SPRING_PROFILES_ACTIVE=live-api
-#   Requires Amadeus Self-Service API credentials (free tier: 500 calls/month):
-#     TRAVEL_AMADEUS_API_KEY=your-key
-#     TRAVEL_AMADEUS_API_SECRET=your-secret
-#   Sign up: https://developers.amadeus.com
-travel:
-  amadeus:
-    api-key: ${TRAVEL_AMADEUS_API_KEY:not-set}
-    api-secret: ${TRAVEL_AMADEUS_API_SECRET:not-set}
+# StubTravelDataProvider ships as the only provider — realistic hardcoded data
+# for Tokyo, Paris, Cancun, and NYC. To hit a real API, add a bean implementing
+# TravelDataProvider (Amadeus, Skyscanner, or your own aggregator). See
+# tools/api/TravelDataProvider.java for the SPI shape.
 
 logging:
   level:

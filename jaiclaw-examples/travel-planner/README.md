@@ -29,8 +29,7 @@ Multi-step trip planning showcasing **both** JaiClaw plugin tools and Embabel GO
 │                  │  └──────────────┬──────────────────────┘      │
 ├──────────────────┼─────────────────┼─────────────────────────────┤
 │ Data Layer       │     TravelDataProvider (SPI)                   │
-│                  │      ├── StubTravelDataProvider (default)      │
-│                  │      └── AmadeusApiTravelDataProvider (live)   │
+│                  │      └── StubTravelDataProvider                │
 ├──────────────────┼───────────────────────────────────────────────┤
 │ Domain Records   │  FlightOptions, HotelOptions, ActivityOptions │
 │                  │  WeatherForecast, TravelRequest, TripPlan     │
@@ -139,9 +138,12 @@ curl http://localhost:8080/api/health
 | `GATEWAY_PORT` | `8080` | Server port |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (required) |
 | `AI_PROVIDER` | `anthropic` | AI provider (`anthropic`, `openai`, `ollama`) |
-| `SPRING_PROFILES_ACTIVE` | — | Set to `live-api` to use Amadeus API |
-| `TRAVEL_AMADEUS_API_KEY` | — | Amadeus API key (only with `live-api` profile) |
-| `TRAVEL_AMADEUS_API_SECRET` | — | Amadeus API secret (only with `live-api` profile) |
+
+> **Live-API integration is future work.** The example ships with
+> `StubTravelDataProvider` — realistic hardcoded data for Tokyo, Paris,
+> Cancun, and NYC. To hit a real travel API (Amadeus, Skyscanner, etc.),
+> implement `TravelDataProvider` and register your bean in
+> `TravelPlannerConfiguration`.
 
 ### Bundled Skills
 
@@ -202,6 +204,8 @@ To debug what is being sent to the LLM, temporarily set `io.jaiclaw.agent.LlmTra
 To implement a real travel data provider:
 
 1. Create a class implementing `TravelDataProvider`
-2. Register it as a `@Bean` in `TravelPlannerConfiguration` with a `@Profile` annotation
+2. Register it as a `@Bean` in `TravelPlannerConfiguration` (replace or annotate with `@Profile` if you want to keep the stub as a fallback)
 3. Use `ProxyAwareHttpClientFactory.createWithDefaults()` for HTTP calls (proxy-aware)
-4. See `AmadeusApiTravelDataProvider` for the full pattern including OAuth2 token exchange
+4. Wire your API credentials via `@Value("${...}")` or environment variables
+
+The Amadeus Self-Service API is a common starting point (free tier: 500 calls/month, sign up at [developers.amadeus.com](https://developers.amadeus.com)). Skyscanner, Kiwi, and Duffel are other options.

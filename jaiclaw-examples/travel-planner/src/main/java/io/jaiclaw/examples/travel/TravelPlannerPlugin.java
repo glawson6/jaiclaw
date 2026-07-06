@@ -19,8 +19,9 @@ import java.util.Set;
 /**
  * JaiClaw plugin registering 4 travel planning tools callable by the LLM tool loop.
  *
- * <p>All tools delegate to the active {@link TravelDataProvider} implementation
- * (stub by default, Amadeus with the {@code live-api} profile).
+ * <p>All tools delegate to the active {@link TravelDataProvider} implementation.
+ * The example ships with {@code StubTravelDataProvider}; swap in your own bean
+ * to hit a real travel API.
  *
  * <p>Registered as a bean by {@link TravelPlannerConfiguration}.
  */

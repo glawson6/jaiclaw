@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Default travel data provider returning realistic hardcoded data.
- * Registered as a bean by {@link TravelDataProviderConfiguration} when
- * the {@code live-api} profile is NOT active.
+ * Travel data provider returning realistic hardcoded data. The only
+ * implementation the example ships with — swap in your own
+ * {@link TravelDataProvider} bean to hit a real travel API.
  *
  * <p>Supports 4 popular destinations with tailored data (Tokyo, Paris, Cancun, NYC).
  * Unknown destinations receive generic data with adjusted prices.
