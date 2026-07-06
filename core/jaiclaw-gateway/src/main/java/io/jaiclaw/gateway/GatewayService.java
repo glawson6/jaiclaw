@@ -61,58 +61,6 @@ public class GatewayService implements ChannelMessageHandler {
 
     public static Builder builder() { return new Builder(); }
 
-    @Deprecated
-    public GatewayService(AgentRuntime agentRuntime,
-                          SessionManager sessionManager,
-                          ChannelRegistry channelRegistry,
-                          String defaultAgentId) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, null, null, null, null, null, null);
-    }
-
-    @Deprecated
-    public GatewayService(AgentRuntime agentRuntime,
-                          SessionManager sessionManager,
-                          ChannelRegistry channelRegistry,
-                          String defaultAgentId,
-                          TenantResolver tenantResolver) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, null, null, null, null, null);
-    }
-
-    @Deprecated
-    public GatewayService(AgentRuntime agentRuntime,
-                          SessionManager sessionManager,
-                          ChannelRegistry channelRegistry,
-                          String defaultAgentId,
-                          TenantResolver tenantResolver,
-                          AttachmentRouter attachmentRouter) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, null, null, null, null);
-    }
-
-    @Deprecated
-    public GatewayService(AgentRuntime agentRuntime,
-                          SessionManager sessionManager,
-                          ChannelRegistry channelRegistry,
-                          String defaultAgentId,
-                          TenantResolver tenantResolver,
-                          AttachmentRouter attachmentRouter,
-                          TenantGuard tenantGuard) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver, attachmentRouter, tenantGuard, null, null, null);
-    }
-
-    @Deprecated
-    public GatewayService(AgentRuntime agentRuntime,
-                          SessionManager sessionManager,
-                          ChannelRegistry channelRegistry,
-                          String defaultAgentId,
-                          TenantResolver tenantResolver,
-                          AttachmentRouter attachmentRouter,
-                          TenantGuard tenantGuard,
-                          TenantAgentConfigService tenantAgentConfigService,
-                          TenantChannelAdapterRegistry tenantChannelAdapterRegistry) {
-        this(agentRuntime, sessionManager, channelRegistry, defaultAgentId, tenantResolver,
-                attachmentRouter, tenantGuard, tenantAgentConfigService, tenantChannelAdapterRegistry, null);
-    }
-
     public GatewayService(AgentRuntime agentRuntime,
                           SessionManager sessionManager,
                           ChannelRegistry channelRegistry,

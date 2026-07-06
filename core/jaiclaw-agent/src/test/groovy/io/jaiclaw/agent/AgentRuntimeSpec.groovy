@@ -27,15 +27,20 @@ class AgentRuntimeSpec extends Specification {
         sessionManager.getOrCreate("test-session", "default")
     }
 
-    def "backward-compatible 4-arg constructor works"() {
+    def "builder produces a runtime with the minimum required collaborators"() {
         when:
-        def runtime = new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills)
+        def runtime = AgentRuntime.builder()
+                .sessionManager(sessionManager)
+                .chatClientBuilder(chatClientBuilder)
+                .toolRegistry(toolRegistry)
+                .skills(skills)
+                .build()
 
         then:
         runtime != null
     }
 
-    def "full constructor accepts all SPI collaborators"() {
+    def "builder accepts full SPI collaborators"() {
         given:
         def hooks = Mock(AgentHookDispatcher)
         def compactor = Mock(ContextCompactor)
@@ -44,21 +49,18 @@ class AgentRuntimeSpec extends Specification {
         def orchestration = Mock(AgentOrchestrationPort)
 
         when:
-        def runtime = new AgentRuntime(
-                sessionManager, chatClientBuilder, toolRegistry, skills,
-                null, ToolLoopConfig.DEFAULT, compactor, hooks, memory, approval, orchestration
-        )
-
-        then:
-        runtime != null
-    }
-
-    def "full constructor accepts all null SPIs"() {
-        when:
-        def runtime = new AgentRuntime(
-                sessionManager, chatClientBuilder, toolRegistry, skills,
-                null, null, null, null, null, null, null
-        )
+        def runtime = AgentRuntime.builder()
+                .sessionManager(sessionManager)
+                .chatClientBuilder(chatClientBuilder)
+                .toolRegistry(toolRegistry)
+                .skills(skills)
+                .toolLoopConfig(ToolLoopConfig.DEFAULT)
+                .compactor(compactor)
+                .hooks(hooks)
+                .memoryProvider(memory)
+                .approvalHandler(approval)
+                .orchestrationPort(orchestration)
+                .build()
 
         then:
         runtime != null
@@ -66,7 +68,12 @@ class AgentRuntimeSpec extends Specification {
 
     def "cancel removes from active tasks"() {
         given:
-        def runtime = new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills)
+        def runtime = AgentRuntime.builder()
+                .sessionManager(sessionManager)
+                .chatClientBuilder(chatClientBuilder)
+                .toolRegistry(toolRegistry)
+                .skills(skills)
+                .build()
 
         when:
         runtime.cancel("test-session")
@@ -77,7 +84,12 @@ class AgentRuntimeSpec extends Specification {
 
     def "isRunning returns false for unknown session"() {
         given:
-        def runtime = new AgentRuntime(sessionManager, chatClientBuilder, toolRegistry, skills)
+        def runtime = AgentRuntime.builder()
+                .sessionManager(sessionManager)
+                .chatClientBuilder(chatClientBuilder)
+                .toolRegistry(toolRegistry)
+                .skills(skills)
+                .build()
 
         expect:
         !runtime.isRunning("unknown-session")

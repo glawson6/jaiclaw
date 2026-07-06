@@ -20,7 +20,12 @@ class GatewayServiceSpec extends Specification {
     GatewayService gateway
 
     def setup() {
-        gateway = new GatewayService(agentRuntime, sessionManager, channelRegistry, "default")
+        gateway = GatewayService.builder()
+                .agentRuntime(agentRuntime)
+                .sessionManager(sessionManager)
+                .channelRegistry(channelRegistry)
+                .defaultAgentId("default")
+                .build()
     }
 
     def "onMessage routes inbound to agent and delivers response"() {
@@ -78,8 +83,13 @@ class GatewayServiceSpec extends Specification {
     def "onMessage routes attachments through AttachmentRouter"() {
         given:
         def attachmentRouter = Mock(AttachmentRouter)
-        def gatewayWithRouter = new GatewayService(
-                agentRuntime, sessionManager, channelRegistry, "default", null, attachmentRouter)
+        def gatewayWithRouter = GatewayService.builder()
+                .agentRuntime(agentRuntime)
+                .sessionManager(sessionManager)
+                .channelRegistry(channelRegistry)
+                .defaultAgentId("default")
+                .attachmentRouter(attachmentRouter)
+                .build()
 
         def adapter = Mock(ChannelAdapter)
         adapter.channelId() >> "telegram"

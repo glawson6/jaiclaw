@@ -3,11 +3,6 @@ package io.jaiclaw.agent
 import io.jaiclaw.core.model.AgentIdentity
 import io.jaiclaw.core.skill.SkillDefinition
 import io.jaiclaw.core.skill.SkillMetadata
-import io.jaiclaw.core.tool.ToolCallback
-import io.jaiclaw.core.tool.ToolContext
-import io.jaiclaw.core.tool.ToolDefinition
-import io.jaiclaw.core.tool.ToolProfile
-import io.jaiclaw.core.tool.ToolResult
 import spock.lang.Specification
 
 class SystemPromptBuilderSpec extends Specification {
@@ -59,22 +54,6 @@ class SystemPromptBuilderSpec extends Specification {
         prompt.contains("## code-review")
     }
 
-    def "tools() is a deprecated no-op — Spring AI sends tool schemas directly"() {
-        given:
-        def tools = [
-            stubTool("file_read", "Read a file", "Files"),
-            stubTool("shell_exec", "Execute shell command", "Execution"),
-        ]
-
-        when:
-        def prompt = builder.tools(tools).build()
-
-        then:
-        !prompt.contains("# Available Tools")
-        !prompt.contains("file_read")
-        !prompt.contains("shell_exec")
-    }
-
     def "includes additional instructions"() {
         when:
         def prompt = builder
@@ -92,20 +71,5 @@ class SystemPromptBuilderSpec extends Specification {
         then:
         !prompt.contains("# Skills")
         !prompt.contains("# Available Tools")
-    }
-
-    private ToolCallback stubTool(String name, String desc, String section) {
-        def definition = new ToolDefinition(name, desc, section,
-            '{"type":"object","properties":{},"required":[]}',
-            Set.of(ToolProfile.FULL))
-        return new ToolCallback() {
-            @Override
-            ToolDefinition definition() { return definition }
-
-            @Override
-            ToolResult execute(Map<String, Object> parameters, ToolContext context) {
-                return new ToolResult.Success("ok")
-            }
-        }
     }
 }

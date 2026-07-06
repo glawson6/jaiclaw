@@ -30,7 +30,12 @@ class GatewayServiceMessageEventSpec extends Specification {
     GatewayService gateway
 
     def setup() {
-        gateway = new GatewayService(agentRuntime, sessionManager, channelRegistry, "default")
+        gateway = GatewayService.builder()
+                .agentRuntime(agentRuntime)
+                .sessionManager(sessionManager)
+                .channelRegistry(channelRegistry)
+                .defaultAgentId("default")
+                .build()
         gateway.setHookDispatcher(hooks)
 
         def adapter = Mock(ChannelAdapter)
@@ -66,7 +71,12 @@ class GatewayServiceMessageEventSpec extends Specification {
 
     def "onMessage with no hook dispatcher set fires no events and does not throw"() {
         given:
-        GatewayService noHooks = new GatewayService(agentRuntime, sessionManager, channelRegistry, "default")
+        GatewayService noHooks = GatewayService.builder()
+                .agentRuntime(agentRuntime)
+                .sessionManager(sessionManager)
+                .channelRegistry(channelRegistry)
+                .defaultAgentId("default")
+                .build()
         def msg = ChannelMessage.inbound("id1", "telegram", "bot", "user", "hello", Map.of())
 
         when:

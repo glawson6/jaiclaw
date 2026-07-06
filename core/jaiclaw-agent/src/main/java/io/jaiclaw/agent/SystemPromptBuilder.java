@@ -25,14 +25,6 @@ public class SystemPromptBuilder {
         return this;
     }
 
-    /**
-     * @deprecated Tools are now sent as structured JSON schemas by Spring AI. This setter is a no-op.
-     */
-    @Deprecated
-    public SystemPromptBuilder tools(Object tools) {
-        return this;
-    }
-
     public SystemPromptBuilder additionalInstructions(String instructions) {
         this.additionalInstructions = instructions;
         return this;

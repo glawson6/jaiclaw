@@ -187,40 +187,6 @@ public class AgentRuntime {
     }
 
     /**
-     * Constructor with all SPI collaborators (backward-compatible, no per-tenant support).
-     */
-    @Deprecated
-    public AgentRuntime(
-            SessionManager sessionManager,
-            ChatClient.Builder chatClientBuilder,
-            ToolRegistry toolRegistry,
-            List<SkillDefinition> skills,
-            ChatModel chatModel,
-            ToolLoopConfig toolLoopConfig,
-            ContextCompactor compactor,
-            AgentHookDispatcher hooks,
-            MemoryProvider memoryProvider,
-            ToolApprovalHandler approvalHandler,
-            AgentOrchestrationPort orchestrationPort) {
-        this(sessionManager, chatClientBuilder, toolRegistry, skills,
-                chatModel, toolLoopConfig, compactor, hooks, memoryProvider,
-                approvalHandler, orchestrationPort, null, null, null);
-    }
-
-    /**
-     * Backward-compatible 4-arg constructor (no SPI collaborators).
-     */
-    @Deprecated
-    public AgentRuntime(
-            SessionManager sessionManager,
-            ChatClient.Builder chatClientBuilder,
-            ToolRegistry toolRegistry,
-            List<SkillDefinition> skills) {
-        this(sessionManager, chatClientBuilder, toolRegistry, skills,
-                null, null, null, null, null, null, null, null, null, null);
-    }
-
-    /**
      * Run the agent asynchronously and return a future with the assistant response.
      *
      * <p>Convenience overload — no media. Delegates to
@@ -676,7 +642,6 @@ public class AgentRuntime {
             return defaultAdditionalInstructions;
         }
         return new SystemPromptBuilder()
-                .tools(tools)
                 .skills(skills)
                 .identity(context.identity())
                 .additionalInstructions(defaultAdditionalInstructions)
