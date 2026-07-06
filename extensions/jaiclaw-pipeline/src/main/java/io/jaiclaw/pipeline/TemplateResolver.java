@@ -39,25 +39,6 @@ public final class TemplateResolver {
     private TemplateResolver() {}
 
     /**
-     * Legacy 2-arg form. Resolves only stage placeholders, leaves anything else
-     * silently in place. Prefer {@link #resolve(String, PipelineContext)} which
-     * also handles {@code {{input}}} and {@code {{pipeline.*}}} and warns on
-     * unresolved placeholders.
-     *
-     * @deprecated use the context-aware overload — kept for source/binary
-     *             compatibility with callers outside this module.
-     */
-    @Deprecated(forRemoval = false)
-    public static String resolve(String template, Map<String, PipelineContext.StageOutput> stageOutputs) {
-        if (template == null || template.isEmpty()) return template;
-        if (stageOutputs == null || stageOutputs.isEmpty()) return template;
-
-        String result = resolveMetadata(template, stageOutputs);
-        result = resolveStageOutputs(result, stageOutputs);
-        return result;
-    }
-
-    /**
      * Resolve every supported placeholder against {@code ctx}. Logs a WARN for
      * any placeholder left unresolved (lists the available variable keys),
      * then returns the partially-resolved string unchanged at those spots.
