@@ -72,44 +72,32 @@ This is the largest of the three milestones by code volume and the highest-lever
 
 The 0.8.0 → 0.9.0 transition introduced new constructor signatures while keeping legacy overloads marked `@Deprecated`. By 1.0 these need to go — if they survive into 1.0 they become a `@Stable` commitment we'd have to keep until 2.0.
 
-| File | What to remove |
-|---|---|
-| `core/jaiclaw-agent/src/main/java/io/jaiclaw/agent/AgentRuntime.java` | 3 deprecated constructors (legacy `RecordingSessionStore` parameter signatures) |
-| `core/jaiclaw-gateway/src/main/java/io/jaiclaw/gateway/GatewayService.java` | 5 deprecated constructors (parallel `SessionManager` / `ChannelRegistry` overloads) |
-| `core/jaiclaw-agent/src/main/java/io/jaiclaw/agent/SystemPromptBuilder.java` | `tools()` method (replaced by `systemPrompt()`) |
+| File | What to remove | Status |
+|---|---|---|
+| `core/jaiclaw-agent/src/main/java/io/jaiclaw/agent/AgentRuntime.java` | 2 deprecated constructors (11-arg no-tenant form + 4-arg backward-compat form). Callers migrate to `AgentRuntime.builder()`. | ✅ done (0.9.3) |
+| `core/jaiclaw-gateway/src/main/java/io/jaiclaw/gateway/GatewayService.java` | 5 deprecated constructors (parallel `SessionManager` / `ChannelRegistry` overloads). Callers migrate to `GatewayService.builder()`. | ✅ done (0.9.3) |
+| `core/jaiclaw-agent/src/main/java/io/jaiclaw/agent/SystemPromptBuilder.java` | `tools()` no-op method (Spring AI now sends tool schemas structurally, not via the prompt). | ✅ done (0.9.3) |
 
 Process: verify zero in-reactor callers via `./mvnw compile` before removal. If the compile passes, no external caller in the repo depends on them. External adopters get one clean error message at 0.9.2 → 0.9.3 upgrade.
 
-### `TemplateResolver` removal date
+### `TemplateResolver` removal date ✅ done (0.9.3)
 
-The `TemplateResolver.resolve()` static helper is currently `@Deprecated(forRemoval = false)` — indefinite. That's the worst of both worlds. Pick one:
+The 2-arg `TemplateResolver.resolve(String, Map<String, StageOutput>)` overload was `@Deprecated(forRemoval = false)` — indefinite. Removed per recommendation (a). Both production callers (`AgentStageProcessor`, `PipelineRouteBuilder`) already used the `PipelineContext` overload; only test code exercised the deprecated form and was migrated to the `ctxWith(...)` helper.
 
-- **(a) Remove it now.** If no in-reactor callers, this is the right call. Lower maintenance forever.
-- **(b) Set a removal release.** Flip to `@Deprecated(forRemoval = true)`, javadoc-pin the removal to `1.1.0`. Gives adopters one minor to migrate.
-
-**Recommendation**: (a). The whole point of 0.9.3 is to clean the deprecated surface before freezing.
-
-### Missing `allow-bundled` config in 2 examples
+### Missing `allow-bundled` config in 2 examples ✅ done (0.9.3)
 
 Per CLAUDE.md § Skills & Prompt Size, every example MUST explicitly configure `jaiclaw.skills.allow-bundled` to prevent the 60× token-cost inflation from loading all bundled skills.
 
-| File | Action |
-|---|---|
-| `jaiclaw-examples/security-handshake-server/src/main/resources/application.yml` | Add `jaiclaw.skills.allow-bundled: []` |
-| `jaiclaw-examples/security-handshake/src/main/resources/application.yml` | Same |
+| File | Action | Status |
+|---|---|---|
+| `jaiclaw-examples/security-handshake-server/src/main/resources/application.yml` | Added `jaiclaw.skills.allow-bundled: []` | ✅ |
+| `jaiclaw-examples/security-handshake/src/main/resources/application.yml` | Same | ✅ |
 
-Also: add the `jaiclaw-maven-plugin` `analyze` execution to both example POMs. This is the CI gate that would have caught the missing config; absent it the regression slipped through. Per CLAUDE.md, every example POM MUST include this plugin.
+Both example POMs already had the `jaiclaw-maven-plugin analyze` execution — the CI gate was in place but ran with the `["*"]` default because the config was missing. Post-fix, `jaiclaw:analyze` reports 2,208 tokens (security-handshake) / 2,125 tokens (security-handshake-server) instead of the ~28K they would have hit.
 
-### Broken `travel-planner` example
+### Broken `travel-planner` example ✅ done (0.9.3)
 
-`jaiclaw-examples/travel-planner/src/main/java/io/jaiclaw/examples/travel/api/AmadeusApiTravelDataProvider.java` has 4 methods that throw `UnsupportedOperationException` under the `live-api` Spring profile. The class javadoc says "Method bodies are structurally complete but throw `UnsupportedOperationException` to indicate they need the actual API integration filled in." That's tech-debt-in-public.
-
-Two clean options:
-
-- **(a) Delete the `live-api` provider** entirely. Keep `StubTravelDataProvider` as the only path. Document in the example README that the live Amadeus API integration is "future work" with a link to the Amadeus docs.
-- **(b) Implement the four methods** against the real Amadeus API. Requires API credentials, adds an e2e dependency that nobody will run without a key.
-
-**Recommendation**: (a). Examples are reference code for the framework, not a travel SaaS demo. A working stub with a clear README is more valuable than a stub-plus-broken-stub. Lower maintenance, no `UnsupportedOperationException` lurking in a published artifact, and the example still demonstrates the framework's tool/skill/agent wiring.
+`AmadeusApiTravelDataProvider.java` (226 lines, 4 methods throwing `UnsupportedOperationException`) was tech-debt-in-public. Removed per recommendation (a). `StubTravelDataProvider` is now the only bundled data source; `TravelPlannerConfiguration` simplified to one `@Bean` method (no `@Profile("!live-api")`/`@Profile("live-api")` split). README + application.yml + 3 javadoc comments updated to point adopters at the `TravelDataProvider` SPI as the extension point.
 
 ### JaCoCo coverage closure ≥50% on 10 core modules
 
