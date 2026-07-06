@@ -25,6 +25,10 @@ spring:
           model: ${MINIMAX_MODEL:M2-her}
 
 jaiclaw:
+  skills:
+    # Prevents the ~26K-token cost of loading all bundled skills into the
+    # system prompt. Whitelist specific skills here if the example needs them.
+    allow-bundled: []
   security:
     handshake:
       mode: HTTP_CLIENT

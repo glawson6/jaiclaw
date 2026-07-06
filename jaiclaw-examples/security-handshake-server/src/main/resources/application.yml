@@ -1,6 +1,12 @@
 server:
   port: 8080
 
+jaiclaw:
+  skills:
+    # Prevents the ~26K-token cost of loading all bundled skills into the
+    # system prompt. Whitelist specific skills here if the example needs them.
+    allow-bundled: []
+
 logging:
   level:
     io.jaiclaw: DEBUG
