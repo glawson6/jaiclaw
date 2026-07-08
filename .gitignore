@@ -18,3 +18,6 @@ BUILD-MEMORY.md
 feature-parity-report.md
 **/feature-parity-report.md
 /docs/dev/SUBSCRIPTION-PROVIDER-AUDIT-2026-06-15.md
+# Internal compliance / risk audits — findings not for public consumption.
+# The implementation PLANS they drive DO get committed; the raw AUDITS don't.
+/docs/dev/COMPLIANCE-ANALYSIS-*.md
