@@ -614,7 +614,7 @@ fi
 #### Step 6 — Test non-root user
 
 ```bash
-# Verify the container runs as non-root (use --entrypoint to bypass launcher)
+# Verify the container runs as non-root (use --entrypoint to skip the launcher)
 WHOAMI=$(docker run --rm --entrypoint whoami "$IMAGE" 2>&1)
 if [ "$WHOAMI" = "jaiclaw" ]; then
     echo "PASS: runs as non-root user 'jaiclaw'"

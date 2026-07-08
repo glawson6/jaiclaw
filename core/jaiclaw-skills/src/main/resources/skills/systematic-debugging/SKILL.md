@@ -38,7 +38,7 @@ ShellExec: command_that_fails 2>&1 | tee /tmp/debug-output.txt
 
 Narrow down the problem space.
 
-- **Binary search** — comment out or bypass half the code path, test, repeat.
+- **Binary search** — comment out or short-circuit half the code path, test, repeat.
 - **Minimal reproduction** — strip away unrelated code until you have the smallest case that fails.
 - **Check boundaries** — is the bug in your code, a dependency, the runtime, or the environment?
 - **Diff against working state** — what changed between the last known-good state and now?
