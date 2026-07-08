@@ -1,0 +1,105 @@
+{
+  "count" : 3,
+  "entries" : [ {
+    "id" : "daily-security-audit",
+    "title" : "Daily Security Audit",
+    "description" : "Sweep hosts every morning for CVE regressions and privilege drift. Posts a summary to the alert channel; suppresses delivery with [SILENT] when nothing changed since yesterday.",
+    "category" : "devops",
+    "tags" : [ "security", "ops", "cve" ],
+    "scheduleTemplate" : "{minute} {hour} * * *",
+    "scheduleHuman" : "Daily at {hour}:{minute:00}",
+    "promptTemplate" : "Run the healthcheck skill against host group {host_group} and diff findings\nagainst the previous run. Report new critical CVEs, changed sudoers, and\nnew listening ports to the {alert_channel} Slack channel. If nothing new,\nreply exactly \"[SILENT]\" so delivery is suppressed.\n",
+    "slots" : [ {
+      "key" : "hour",
+      "label" : "Hour of day (0-23)",
+      "type" : "HOUR_OF_DAY",
+      "required" : true,
+      "defaultValue" : "6",
+      "description" : "Local-time hour to run the audit."
+    }, {
+      "key" : "minute",
+      "label" : "Minute",
+      "type" : "MINUTE_OF_HOUR",
+      "required" : false,
+      "defaultValue" : "0",
+      "description" : "Minute past the hour."
+    }, {
+      "key" : "host_group",
+      "label" : "Host group",
+      "type" : "TEXT",
+      "required" : true,
+      "description" : "A hosts.yml group name to audit (e.g. \"prod-webservers\")."
+    }, {
+      "key" : "alert_channel",
+      "label" : "Alert channel",
+      "type" : "TEXT",
+      "required" : true,
+      "defaultValue" : "#sec-alerts",
+      "description" : "Slack channel to receive the summary."
+    } ],
+    "path" : "extensions/jaiclaw-blueprints/src/main/resources/blueprints/samples/daily-security-audit.yml"
+  }, {
+    "id" : "hourly-cost-check",
+    "title" : "Hourly LLM Cost Watchdog",
+    "description" : "Poll model-usage every hour; alert if the cumulative cost since midnight exceeds the threshold, so runaway loops don't burn a day's budget while the team is asleep.",
+    "category" : "finops",
+    "tags" : [ "finops", "alerting", "llm" ],
+    "scheduleTemplate" : "0 * * * *",
+    "scheduleHuman" : "Every hour, on the hour",
+    "promptTemplate" : "Use the model-usage skill to fetch the cost total since 00:00 today. If it\nexceeds {threshold_usd} USD, post a warning to {alert_channel} naming the\ntop-spending session ids and their models. If below the threshold, reply\nexactly \"[SILENT]\".\n",
+    "slots" : [ {
+      "key" : "threshold_usd",
+      "label" : "Threshold (USD)",
+      "type" : "TEXT",
+      "required" : true,
+      "defaultValue" : "100",
+      "description" : "Alert when day-to-date cost exceeds this dollar figure."
+    }, {
+      "key" : "alert_channel",
+      "label" : "Alert channel",
+      "type" : "TEXT",
+      "required" : true,
+      "defaultValue" : "#finops-alerts",
+      "description" : "Slack channel to receive the warning."
+    } ],
+    "path" : "extensions/jaiclaw-blueprints/src/main/resources/blueprints/samples/hourly-cost-check.yml"
+  }, {
+    "id" : "weekly-github-pr-review",
+    "title" : "Weekly GitHub PR Review Digest",
+    "description" : "Every Friday, compile the list of open PRs older than the review SLA and post the digest for the team to triage.",
+    "category" : "github",
+    "tags" : [ "github", "code-review", "weekly" ],
+    "scheduleTemplate" : "0 {hour} * * FRI",
+    "scheduleHuman" : "Weekly on Friday at {hour}:00",
+    "promptTemplate" : "Use the github skill to list open PRs on {repo} that have been open more\nthan {sla_days} days without a review or with a stale review request.\nGroup by reviewer, sort by age, and post the digest to {channel}. Include\nthe PR title, author, days open, and last activity for each item.\n",
+    "slots" : [ {
+      "key" : "hour",
+      "label" : "Hour of day (0-23)",
+      "type" : "HOUR_OF_DAY",
+      "required" : false,
+      "defaultValue" : "10",
+      "description" : "Local-time hour to post the digest."
+    }, {
+      "key" : "repo",
+      "label" : "Repository",
+      "type" : "TEXT",
+      "required" : true,
+      "description" : "owner/repo to scan (e.g. \"acme/monorepo\")."
+    }, {
+      "key" : "sla_days",
+      "label" : "Review SLA (days)",
+      "type" : "INTEGER",
+      "required" : false,
+      "defaultValue" : "3",
+      "description" : "PRs older than this without review get flagged."
+    }, {
+      "key" : "channel",
+      "label" : "Destination channel",
+      "type" : "TEXT",
+      "required" : true,
+      "defaultValue" : "#code-review",
+      "description" : "Slack channel that receives the digest."
+    } ],
+    "path" : "extensions/jaiclaw-blueprints/src/main/resources/blueprints/samples/weekly-github-pr-review.yml"
+  } ]
+}

@@ -1,0 +1,487 @@
+{
+  "count" : 70,
+  "entries" : [ {
+    "name" : "1password",
+    "description" : "1Password CLI (op) for reading/injecting secrets, managing vaults, and secure credential access. Use when asked to look up passwords, retrieve secrets, or manage 1Password items.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "op" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/1password/SKILL.md"
+  }, {
+    "name" : "apple-notes",
+    "description" : "Manage Apple Notes via the memo CLI on macOS (create, view, edit, delete, search, move, and export notes).",
+    "requiredBins" : [ "memo" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/apple-notes/SKILL.md"
+  }, {
+    "name" : "apple-reminders",
+    "description" : "Manage Apple Reminders via remindctl CLI (list, add, edit, complete, delete). Supports lists, date filters, and JSON/plain output.",
+    "requiredBins" : [ "remindctl" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/apple-reminders/SKILL.md"
+  }, {
+    "name" : "ascii-rendering",
+    "description" : "Render ASCII art (boxes, diagrams, scatter plots, tables) via the ascii_box and ascii_render tools.",
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/ascii-rendering/SKILL.md"
+  }, {
+    "name" : "bear-notes",
+    "description" : "Create, search, and manage Bear notes via grizzly CLI.",
+    "requiredBins" : [ "grizzly" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/bear-notes/SKILL.md"
+  }, {
+    "name" : "blogwatcher",
+    "description" : "Monitor blogs and RSS/Atom feeds for updates using the blogwatcher CLI. Use when asked to track blogs, monitor RSS feeds, check for new articles, or follow content updates.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "blogwatcher" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/blogwatcher/SKILL.md"
+  }, {
+    "name" : "blucli",
+    "description" : "BluOS CLI (blu) for discovery, playback, grouping, and volume.",
+    "requiredBins" : [ "blu" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/blucli/SKILL.md"
+  }, {
+    "name" : "camsnap",
+    "description" : "Capture frames or clips from RTSP/ONVIF cameras.",
+    "requiredBins" : [ "camsnap", "ffmpeg" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/camsnap/SKILL.md"
+  }, {
+    "name" : "canvas",
+    "description" : "Display HTML content on connected nodes via the canvas tools (canvas_present, canvas_eval, canvas_snapshot).",
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/canvas/SKILL.md"
+  }, {
+    "name" : "clawhub",
+    "description" : "Use the ClawHub CLI to search, install, update, and publish agent skills from clawhub.com.",
+    "requiredBins" : [ "clawhub" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/clawhub/SKILL.md"
+  }, {
+    "name" : "cli-architect",
+    "description" : "Generate Spring Shell CLI modules that wrap REST APIs, with dual-use as both human CLI commands and JaiClaw LLM tools. Use when asked to create a CLI for an API, wrap an API in a command-line tool, build a CLI wrapper, or generate commands for a REST service. Supports OpenAPI spec parsing, API docs fetching, and auto-extraction of auth patterns.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/cli-architect/SKILL.md"
+  }, {
+    "name" : "coding-agent",
+    "description" : "Delegate coding tasks to Codex, Claude Code, or Pi agents via background process. Use when building features, reviewing PRs, or refactoring large codebases.",
+    "requiredBins" : [ "claude", "codex" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/coding-agent/SKILL.md"
+  }, {
+    "name" : "coding",
+    "description" : "Code generation, editing, and software engineering assistance",
+    "alwaysInclude" : true,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/coding/SKILL.md"
+  }, {
+    "name" : "conversation",
+    "description" : "Conversational assistant with memory and context awareness",
+    "alwaysInclude" : true,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/conversation/SKILL.md"
+  }, {
+    "name" : "discord",
+    "description" : "Discord actions via the discord MCP tools (send, react, edit, delete, pin, thread, poll).",
+    "requiredConfig" : [ "jaiclaw.channels.discord.bot-token" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/discord/SKILL.md"
+  }, {
+    "name" : "e2e-test",
+    "description" : "End-to-end validation of JaiClaw bootstrap, scaffolding, build, runtime, and Docker CLI images. Tests quickstart.sh, project creation from Maven releases, provider connectivity, CLI launcher, and Docker image builds.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "java", "mvn", "git", "curl", "docker" ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/e2e-test/SKILL.md"
+  }, {
+    "name" : "eightctl",
+    "description" : "Control Eight Sleep pods (status, temperature, alarms, schedules).",
+    "requiredBins" : [ "eightctl" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/eightctl/SKILL.md"
+  }, {
+    "name" : "gemini",
+    "description" : "Gemini CLI for one-shot Q&A, summaries, and generation.",
+    "requiredBins" : [ "gemini" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/gemini/SKILL.md"
+  }, {
+    "name" : "gh-issues",
+    "description" : "Fetch GitHub issues, analyze them, and assist with creating fixes and PRs. Use when asked to triage, fix, or batch-process GitHub issues. Requires GH_TOKEN or gh CLI auth.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "gh" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/gh-issues/SKILL.md"
+  }, {
+    "name" : "gifgrep",
+    "description" : "Search GIF providers (Tenor/Giphy), download results, and extract stills/sheets. Use when asked to find, search for, or share GIFs.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "gifgrep" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/gifgrep/SKILL.md"
+  }, {
+    "name" : "github",
+    "description" : "GitHub operations via gh CLI: issues, PRs, CI runs, code review, API queries. Use when checking PR status or CI, creating/commenting on issues, listing/filtering PRs or issues, viewing run logs.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "gh" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/github/SKILL.md"
+  }, {
+    "name" : "gog",
+    "description" : "Google Workspace CLI for Gmail, Calendar, Drive, Contacts, Sheets, and Docs via the gog CLI. Use when asked to send emails, check calendar, search Drive, read/update spreadsheets, or interact with Google Workspace.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "gog" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/gog/SKILL.md"
+  }, {
+    "name" : "goplaces",
+    "description" : "Query Google Places API for text search, place details, resolve, and reviews via the goplaces CLI. Use when asked about nearby places, restaurants, businesses, or location lookups. Requires GOOGLE_PLACES_API_KEY.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "goplaces" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/goplaces/SKILL.md"
+  }, {
+    "name" : "healthcheck",
+    "description" : "Host security hardening and system health assessment. Use when asked for security audits, system hardening, exposure review, firewall/SSH checks, or overall system health status.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/healthcheck/SKILL.md"
+  }, {
+    "name" : "himalaya",
+    "description" : "CLI to manage emails via IMAP/SMTP. Use himalaya to list, read, write, reply, forward, search, and organize emails from the terminal.",
+    "requiredBins" : [ "himalaya" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/himalaya/SKILL.md"
+  }, {
+    "name" : "home-assistant",
+    "description" : "Home Assistant REST API for controlling smart home devices, automations, and scenes. Use when asked to control lights, thermostats, switches, locks, sensors, or any smart home device. Also for checking device status, triggering automations, or managing scenes. Requires HOME_ASSISTANT_URL and HOME_ASSISTANT_TOKEN.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/home-assistant/SKILL.md"
+  }, {
+    "name" : "imsg",
+    "description" : "iMessage/SMS CLI for listing chats, history, and sending messages via Messages.app.",
+    "requiredBins" : [ "imsg" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/imsg/SKILL.md"
+  }, {
+    "name" : "jaiclaw-developer",
+    "description" : "Comprehensive guide for building JaiClaw applications — project setup, tools, plugins, channels, skills, and testing",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "mvn" ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/jaiclaw-developer/SKILL.md"
+  }, {
+    "name" : "k8s-monitoring",
+    "description" : "Kubernetes cluster monitoring and SRE assistant",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "kubectl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/k8s-monitoring/SKILL.md"
+  }, {
+    "name" : "kanban-orchestrator",
+    "description" : "Decompose and route work through multi-agent Kanban systems",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/kanban-orchestrator/SKILL.md"
+  }, {
+    "name" : "kanban-worker",
+    "description" : "Task lifecycle management and workspace handoff for Kanban workers",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/kanban-worker/SKILL.md"
+  }, {
+    "name" : "mcporter",
+    "description" : "List, configure, authenticate, and call MCP servers/tools directly via the mcporter CLI. Use when interacting with MCP (Model Context Protocol) servers, listing available tools, or calling tool endpoints.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "mcporter" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/mcporter/SKILL.md"
+  }, {
+    "name" : "model-usage",
+    "description" : "Use CodexBar CLI local cost logs to summarize per-model usage for Codex or Claude.",
+    "requiredBins" : [ "codexbar" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/model-usage/SKILL.md"
+  }, {
+    "name" : "nano-pdf",
+    "description" : "Edit PDFs with natural-language instructions using the nano-pdf CLI. Use when asked to modify, edit, or update content in PDF files.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "nano-pdf" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/nano-pdf/SKILL.md"
+  }, {
+    "name" : "node-connect",
+    "description" : "Diagnose node connection and pairing failures for Android, iOS, and macOS companion apps.",
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/node-connect/SKILL.md"
+  }, {
+    "name" : "node-inspect-debugger",
+    "description" : "Terminal-based Node.js debugging via V8 inspector protocol",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "node" ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/node-inspect-debugger/SKILL.md"
+  }, {
+    "name" : "notion",
+    "description" : "Notion API for creating and managing pages, databases, and blocks. Use when creating/reading/updating Notion pages, querying databases, or managing content in Notion workspaces. Requires NOTION_API_KEY.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/notion/SKILL.md"
+  }, {
+    "name" : "obsidian",
+    "description" : "Work with Obsidian vaults (plain Markdown notes) and automate via obsidian-cli.",
+    "requiredBins" : [ "obsidian-cli" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/obsidian/SKILL.md"
+  }, {
+    "name" : "openai-image-gen",
+    "description" : "Generate images via the OpenAI Images API (DALL-E 3, GPT Image). Use when asked to create, generate, or produce images. Requires OPENAI_API_KEY.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/openai-image-gen/SKILL.md"
+  }, {
+    "name" : "openai-whisper-api",
+    "description" : "Transcribe audio via the OpenAI Audio Transcriptions API (Whisper). Use when asked to transcribe audio files, convert speech to text, or extract text from recordings. Requires OPENAI_API_KEY.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/openai-whisper-api/SKILL.md"
+  }, {
+    "name" : "openai-whisper",
+    "description" : "Local speech-to-text with the Whisper CLI (no API key).",
+    "requiredBins" : [ "whisper" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/openai-whisper/SKILL.md"
+  }, {
+    "name" : "openhue",
+    "description" : "Control Philips Hue lights and scenes via the OpenHue CLI.",
+    "requiredBins" : [ "openhue" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/openhue/SKILL.md"
+  }, {
+    "name" : "oracle",
+    "description" : "Best practices for using the oracle CLI (prompt + file bundling, engines, sessions, and file attachment patterns).",
+    "requiredBins" : [ "oracle" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/oracle/SKILL.md"
+  }, {
+    "name" : "ordercli",
+    "description" : "Foodora-only CLI for checking past orders and active order status (Deliveroo WIP).",
+    "requiredBins" : [ "ordercli" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/ordercli/SKILL.md"
+  }, {
+    "name" : "pdf-form-filler",
+    "description" : "Map data to PDF form fields and produce filled PDFs",
+    "alwaysInclude" : false,
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/pdf-form-filler/SKILL.md"
+  }, {
+    "name" : "peekaboo",
+    "description" : "Capture and automate macOS UI with the Peekaboo CLI.",
+    "requiredBins" : [ "peekaboo" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/peekaboo/SKILL.md"
+  }, {
+    "name" : "python-debugpy",
+    "description" : "Python debugging with pdb, debugpy, and remote attach",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "python3" ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/python-debugpy/SKILL.md"
+  }, {
+    "name" : "sag",
+    "description" : "ElevenLabs text-to-speech with mac-style say UX.",
+    "requiredBins" : [ "sag" ],
+    "requiredEnv" : [ "ELEVENLABS_API_KEY" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/sag/SKILL.md"
+  }, {
+    "name" : "scaffold-project",
+    "description" : "Generate a JaiClaw project manifest YAML from a conversational requirements gathering session",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/scaffold-project/SKILL.md"
+  }, {
+    "name" : "session-logs",
+    "description" : "Search and analyze session logs (older/parent conversations) using jq.",
+    "requiredBins" : [ "jq", "rg" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/session-logs/SKILL.md"
+  }, {
+    "name" : "sherpa-onnx-tts",
+    "description" : "Local text-to-speech via sherpa-onnx (offline, no cloud).",
+    "requiredEnv" : [ "SHERPA_ONNX_RUNTIME_DIR", "SHERPA_ONNX_MODEL_DIR" ],
+    "platforms" : [ "darwin", "linux", "win32" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/sherpa-onnx-tts/SKILL.md"
+  }, {
+    "name" : "skill-creator",
+    "description" : "Create, edit, improve, or audit JaiClaw skills. Use when creating a new skill from scratch or when asked to improve, review, audit, or clean up an existing SKILL.md file.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/skill-creator/SKILL.md"
+  }, {
+    "name" : "slack",
+    "description" : "Slack actions via the slack MCP tools (send, react, edit, delete, pin, member info, emoji list).",
+    "requiredConfig" : [ "jaiclaw.channels.slack.bot-token" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/slack/SKILL.md"
+  }, {
+    "name" : "songsee",
+    "description" : "Generate spectrograms and feature-panel visualizations from audio with the songsee CLI.",
+    "requiredBins" : [ "songsee" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/songsee/SKILL.md"
+  }, {
+    "name" : "sonoscli",
+    "description" : "Control Sonos speakers (discover/status/play/volume/group).",
+    "requiredBins" : [ "sonos" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/sonoscli/SKILL.md"
+  }, {
+    "name" : "spotify-player",
+    "description" : "Terminal Spotify playback/search via spogo (preferred) or spotify_player.",
+    "requiredBins" : [ "spogo" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/spotify-player/SKILL.md"
+  }, {
+    "name" : "summarize",
+    "description" : "Content summarization for URLs, files, and conversations",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/summarize/SKILL.md"
+  }, {
+    "name" : "system-admin",
+    "description" : "System administration and diagnostics",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/system-admin/SKILL.md"
+  }, {
+    "name" : "systematic-debugging",
+    "description" : "Root-cause investigation methodology before applying fixes",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/systematic-debugging/SKILL.md"
+  }, {
+    "name" : "test-driven-development",
+    "description" : "Enforce RED-GREEN-REFACTOR TDD cycle",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/test-driven-development/SKILL.md"
+  }, {
+    "name" : "things-mac",
+    "description" : "Manage Things 3 via the things CLI on macOS (add/update projects+todos via URL scheme; read/search/list from the local Things database).",
+    "requiredBins" : [ "things" ],
+    "platforms" : [ "darwin" ],
+    "version" : "1.0.0",
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/things-mac/SKILL.md"
+  }, {
+    "name" : "tmux",
+    "description" : "Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output. Use when monitoring background sessions, sending input to interactive terminals, or managing parallel workers.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "tmux" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/tmux/SKILL.md"
+  }, {
+    "name" : "trello",
+    "description" : "Manage Trello boards, lists, and cards via the Trello REST API. Use when creating/moving cards, listing boards, or managing project tasks in Trello. Requires TRELLO_API_KEY and TRELLO_TOKEN.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/trello/SKILL.md"
+  }, {
+    "name" : "video-frames",
+    "description" : "Extract frames or short clips from videos using ffmpeg. Use when asked to capture a frame, create a thumbnail, or extract a clip from a video file.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "ffmpeg" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/video-frames/SKILL.md"
+  }, {
+    "name" : "voice-call",
+    "description" : "Make and manage phone calls via telephony providers (Twilio)",
+    "alwaysInclude" : false,
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/voice-call/SKILL.md"
+  }, {
+    "name" : "wacli",
+    "description" : "Send WhatsApp messages and search/sync WhatsApp history via the wacli CLI. Use when asked to message someone on WhatsApp or search WhatsApp conversation history. NOT for normal user chats.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "wacli" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/wacli/SKILL.md"
+  }, {
+    "name" : "weather",
+    "description" : "Get current weather and forecasts via wttr.in or Open-Meteo. Use when user asks about weather, temperature, or forecasts for any location. No API key needed.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "curl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/weather/SKILL.md"
+  }, {
+    "name" : "web-research",
+    "description" : "Web research and information synthesis",
+    "alwaysInclude" : false,
+    "requiredBins" : [ ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/web-research/SKILL.md"
+  }, {
+    "name" : "xurl",
+    "description" : "X (Twitter) API CLI for posting tweets, replying, searching, reading posts, managing followers, sending DMs, and uploading media. Use when asked to interact with X/Twitter. Requires xurl CLI with pre-configured auth.",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "xurl" ],
+    "platforms" : [ "darwin", "linux" ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/xurl/SKILL.md"
+  }, {
+    "name" : "youtube-content",
+    "description" : "Extract YouTube transcripts and transform into structured content",
+    "alwaysInclude" : false,
+    "requiredBins" : [ "python3" ],
+    "platforms" : [ "darwin", "linux" ],
+    "version" : "1.0.0",
+    "tenantIds" : [ ],
+    "path" : "core/jaiclaw-skills/src/main/resources/skills/youtube-content/SKILL.md"
+  } ]
+}

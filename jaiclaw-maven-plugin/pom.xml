@@ -92,6 +92,18 @@
             <artifactId>slf4j-simple</artifactId>
         </dependency>
 
+        <!-- Jackson: emit skills-catalog.json + blueprints-catalog.json -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- SnakeYAML: parse SKILL.md frontmatter + blueprint YAML files -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.apache.groovy</groupId>
