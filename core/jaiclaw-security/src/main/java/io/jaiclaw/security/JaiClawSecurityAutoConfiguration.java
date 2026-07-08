@@ -46,6 +46,21 @@ public class JaiClawSecurityAutoConfiguration {
     }
 
     /**
+     * T1-7: enforce HTTPS on non-loopback binds when
+     * {@code jaiclaw.security.require-https=true}. Bean creation is the
+     * enforcement point — throwing here aborts Spring startup before any
+     * traffic hits the wire.
+     */
+    @Bean
+    public RequireHttpsStartupGuard requireHttpsStartupGuard(
+            org.springframework.core.env.Environment env,
+            JaiClawSecurityProperties properties) {
+        RequireHttpsStartupGuard guard = new RequireHttpsStartupGuard(env, properties);
+        guard.enforce();
+        return guard;
+    }
+
+    /**
      * Rate limit filter — shared across API key and JWT modes.
      */
     @Bean
