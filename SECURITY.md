@@ -75,6 +75,13 @@ Several security knobs are **opt-in** by design:
 - `SPRING_PROFILES_ACTIVE=security-hardened` enables HMAC webhook
   verification, SSRF guards, timing-safe API-key comparison, and other
   hardening — see `docs/user/OPERATIONS.md`.
+- `jaiclaw.compliance.profile={gdpr|hipaa|both}` layers GDPR + HIPAA
+  orchestration on top of `security-hardened`: retention enforcement,
+  LLM-call auditing, BAA-eligible provider warnings, and an HTTPS
+  startup guard. Individual flags at `jaiclaw.compliance.*` override
+  any element of the profile bundle. See
+  [docs/user/COMPLIANCE.md](docs/user/COMPLIANCE.md) for the full
+  article-to-capability mapping.
 - `jaiclaw.tenant.strict-default-tenant-id=true` rejects weak
   `default-tenant-id` values at startup; required for production
   multi-tenant deployments.
