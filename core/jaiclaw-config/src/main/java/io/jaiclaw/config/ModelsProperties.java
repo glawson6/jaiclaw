@@ -15,10 +15,26 @@ public record ModelsProperties(
             List<ModelDef> models,
             List<String> wizardModels,
             String fallbackModel,
-            String displayName
+            String displayName,
+            /**
+             * T1-4: whether this provider is HIPAA-BAA-eligible. Drives the
+             * startup warning emitted for tenants marked
+             * {@code hipaa.phi_processing=true}. Defaults per provider name
+             * are supplied by {@code BaaEligibleProviders} — override here
+             * (e.g. {@code true} for a custom Anthropic route via Bedrock,
+             * {@code false} for the direct API).
+             */
+            Boolean baaEligible
     ) {
         public ModelProviderConfig {
             if (wizardModels == null) wizardModels = List.of();
+        }
+
+        /** Backward-compat 7-arg ctor for pre-T1-4 callers — baaEligible defaults to null (unknown). */
+        public ModelProviderConfig(String baseUrl, String apiKey, String api,
+                                    List<ModelDef> models, List<String> wizardModels,
+                                    String fallbackModel, String displayName) {
+            this(baseUrl, apiKey, api, models, wizardModels, fallbackModel, displayName, null);
         }
 
         public static Builder builder() { return new Builder(); }
@@ -31,6 +47,7 @@ public record ModelsProperties(
             private List<String> wizardModels;
             private String fallbackModel;
             private String displayName;
+            private Boolean baaEligible;
 
             public Builder baseUrl(String baseUrl) { this.baseUrl = baseUrl; return this; }
             public Builder apiKey(String apiKey) { this.apiKey = apiKey; return this; }
@@ -39,9 +56,11 @@ public record ModelsProperties(
             public Builder wizardModels(List<String> wizardModels) { this.wizardModels = wizardModels; return this; }
             public Builder fallbackModel(String fallbackModel) { this.fallbackModel = fallbackModel; return this; }
             public Builder displayName(String displayName) { this.displayName = displayName; return this; }
+            public Builder baaEligible(Boolean baaEligible) { this.baaEligible = baaEligible; return this; }
 
             public ModelProviderConfig build() {
-                return new ModelProviderConfig(baseUrl, apiKey, api, models, wizardModels, fallbackModel, displayName);
+                return new ModelProviderConfig(baseUrl, apiKey, api, models, wizardModels,
+                        fallbackModel, displayName, baaEligible);
             }
         }
     }

@@ -25,12 +25,25 @@ public record JaiClawSecurityProperties(
         JwtProperties jwt,
         RoleMappingProperties roleMapping,
         RateLimitProperties rateLimit,
-        boolean allowNoneOnPublicBind
+        boolean allowNoneOnPublicBind,
+        boolean requireHttps
 ) {
     public JaiClawSecurityProperties() {
         this(false, null, null, null, true,
                 new JwtProperties(), new RoleMappingProperties(), new RateLimitProperties(),
-                false);
+                false, false);
+    }
+
+    /**
+     * Backward-compatible 9-arg constructor for pre-0.9.4 callers. Defaults
+     * the new {@code requireHttps} field to {@code false} (preserves dev workflow).
+     */
+    public JaiClawSecurityProperties(
+            boolean enabled, String mode, String apiKey, String apiKeyFile,
+            boolean timingSafeApiKey, JwtProperties jwt, RoleMappingProperties roleMapping,
+            RateLimitProperties rateLimit, boolean allowNoneOnPublicBind) {
+        this(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey, jwt, roleMapping,
+                rateLimit, allowNoneOnPublicBind, false);
     }
 
     @ConstructorBinding
@@ -60,6 +73,7 @@ public record JaiClawSecurityProperties(
         private RoleMappingProperties roleMapping;
         private RateLimitProperties rateLimit;
         private boolean allowNoneOnPublicBind;
+        private boolean requireHttps;
 
         public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
         public Builder mode(String mode) { this.mode = mode; return this; }
@@ -70,10 +84,11 @@ public record JaiClawSecurityProperties(
         public Builder roleMapping(RoleMappingProperties roleMapping) { this.roleMapping = roleMapping; return this; }
         public Builder rateLimit(RateLimitProperties rateLimit) { this.rateLimit = rateLimit; return this; }
         public Builder allowNoneOnPublicBind(boolean v) { this.allowNoneOnPublicBind = v; return this; }
+        public Builder requireHttps(boolean v) { this.requireHttps = v; return this; }
 
         public JaiClawSecurityProperties build() {
             return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey,
-                    jwt, roleMapping, rateLimit, allowNoneOnPublicBind);
+                    jwt, roleMapping, rateLimit, allowNoneOnPublicBind, requireHttps);
         }
     }
 

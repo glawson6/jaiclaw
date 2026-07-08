@@ -57,5 +57,6 @@
         <module>jaiclaw-tendencies-honcho</module>
         <module>jaiclaw-secrets-1password</module>
         <module>jaiclaw-blueprints</module>
+        <module>jaiclaw-compliance</module>
     </modules>
 </project>

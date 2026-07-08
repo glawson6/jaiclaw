@@ -75,4 +75,39 @@ class InMemoryCalendarProviderMultiTenantSpec extends Specification {
         provider.getEvent("tenant-a", null, "evt-1").block().title() == "Tenant A updated"
         provider.getEvent("tenant-b", null, "evt-1").block().title() == "Tenant B original"
     }
+
+    def "getAvailableSlots (T1-5): tenant A's busy times don't block tenant B's availability"() {
+        // Regression test for SEV-004: getAvailableSlots previously passed
+        // null tenantId to listEvents, so every tenant's events were treated
+        // as busy — leaking one tenant's occupancy into another's availability.
+        given: "tenant A has a 2 PM meeting"
+        def base = Instant.parse("2026-08-01T09:00:00Z")
+        provider.createEvent(CalendarEvent.builder()
+                .id("a-mtg")
+                .tenantId("tenant-a")
+                .title("Tenant A 2 PM meeting")
+                .startTime(base.plusSeconds(5 * 3600))
+                .endTime(base.plusSeconds(6 * 3600))
+                .status(EventStatus.CONFIRMED)
+                .build()).block()
+
+        when: "tenant B queries availability for a 30-minute slot at 2 PM"
+        def slots = null
+        try {
+            io.jaiclaw.core.tenant.TenantContextHolder.set(
+                    new io.jaiclaw.core.tenant.DefaultTenantContext("tenant-b", "Tenant B"))
+            slots = provider.getAvailableSlots(base, base.plusSeconds(9 * 3600), 1800)
+                    .collectList().block()
+        } finally {
+            io.jaiclaw.core.tenant.TenantContextHolder.clear()
+        }
+
+        then: "2 PM is available for tenant B (tenant A's meeting is invisible)"
+        // The whole 9-hour window should yield exactly one slot spanning
+        // the full window because tenant B has no events in it. If leaked,
+        // we'd see two slots split around tenant A's 2 PM meeting.
+        slots.size() == 1
+        slots[0].startTime() == base
+        slots[0].endTime() == base.plusSeconds(9 * 3600)
+    }
 }
