@@ -7,15 +7,21 @@ import io.jaiclaw.compliance.audit.AuditingChatModelBeanPostProcessor;
 import io.jaiclaw.compliance.audit.BaaWarningChatModelDecorator;
 import io.jaiclaw.compliance.gdpr.AggregateDataSubjectErasureSpi;
 import io.jaiclaw.compliance.gdpr.AggregateDataSubjectExportService;
+import io.jaiclaw.compliance.gdpr.AuditBasedRopaGenerator;
 import io.jaiclaw.compliance.gdpr.DefaultPrivacyNoticeService;
+import io.jaiclaw.compliance.gdpr.DefaultProcessorMetadataExporter;
 import io.jaiclaw.compliance.gdpr.InMemoryConsentManager;
+import io.jaiclaw.compliance.gdpr.InMemoryObjectionService;
 import io.jaiclaw.compliance.gdpr.RegexPromptRedactor;
 import io.jaiclaw.config.ModelsProperties;
 import io.jaiclaw.core.gdpr.ConsentManager;
 import io.jaiclaw.core.gdpr.DataSubjectErasureSpi;
 import io.jaiclaw.core.gdpr.DataSubjectExportService;
+import io.jaiclaw.core.gdpr.ObjectionService;
 import io.jaiclaw.core.gdpr.PrivacyNoticeService;
+import io.jaiclaw.core.gdpr.ProcessorMetadataExporter;
 import io.jaiclaw.core.gdpr.PromptRedactor;
+import io.jaiclaw.core.gdpr.RopaGenerator;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -140,6 +146,47 @@ public class JaiClawComplianceAutoConfiguration {
             ObjectProvider<AuditLogger> auditLoggers) {
         String text = env.getProperty("jaiclaw.compliance.privacy-notice-text", "");
         return new DefaultPrivacyNoticeService(text, auditLoggers.stream().toList());
+    }
+
+    /**
+     * T3-1: {@link RopaGenerator} rebuilt from the audit trail. Wired under
+     * the same gate as the other GDPR-facing beans.
+     */
+    @Bean
+    @ConditionalOnMissingBean(RopaGenerator.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.retention-enforcement", havingValue = "true")
+    public RopaGenerator ropaGenerator(ObjectProvider<AuditLogger> auditLoggers) {
+        return new AuditBasedRopaGenerator(auditLoggers.stream().toList());
+    }
+
+    /**
+     * T3-2: {@link ObjectionService} — sibling of ConsentManager for Art. 21
+     * objections. In-memory reference impl; production adopters override.
+     */
+    @Bean
+    @ConditionalOnMissingBean(ObjectionService.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.retention-enforcement", havingValue = "true")
+    public ObjectionService objectionService(ObjectProvider<AuditLogger> auditLoggers) {
+        return new InMemoryObjectionService(auditLoggers.stream().toList());
+    }
+
+    /**
+     * T3-4: {@link ProcessorMetadataExporter} for DPA generation. Processor
+     * name + contact email sourced from
+     * {@code jaiclaw.compliance.processor-name} +
+     * {@code jaiclaw.compliance.processor-contact-email}.
+     */
+    @Bean
+    @ConditionalOnMissingBean(ProcessorMetadataExporter.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.retention-enforcement", havingValue = "true")
+    public ProcessorMetadataExporter processorMetadataExporter(
+            org.springframework.core.env.Environment env,
+            ObjectProvider<ModelsProperties> modelsPropertiesProvider) {
+        String name = env.getProperty("jaiclaw.compliance.processor-name", "JaiClaw deployment");
+        String email = env.getProperty("jaiclaw.compliance.processor-contact-email", "");
+        ModelsProperties props = modelsPropertiesProvider.getIfAvailable(
+                () -> new ModelsProperties(java.util.Map.of()));
+        return new DefaultProcessorMetadataExporter(name, email, props, java.util.List.of());
     }
 }
 

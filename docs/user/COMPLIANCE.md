@@ -31,11 +31,12 @@ Tier 2 SPIs shipped alongside 0.9.4 (opt-in — see § "Tier 2 SPIs" below):
 - `HashChainedAuditLogger` decorator — cryptographic chain-of-hashes (§164.312(b), (c))
 - `PrivacyNoticeService` (Art. 13/14)
 
-Deferred beyond 1.0:
+Tier 3 governance-layer SPIs (self-contained; ship when adopter demand asks):
 
-- RoPA generator (Art. 30 export)
-- `ObjectionService` (Art. 21)
-- `AnomalyDetector` for breach signals
+- `RopaGenerator` — Art. 30 machine-readable RoPA reconstructed from the audit trail (`AuditBasedRopaGenerator` reference impl)
+- `ObjectionService` — Art. 21 objection recording (mirrors `ConsentManager`; `InMemoryObjectionService` reference impl)
+- `AnomalyDetector` SPI — mass-read / bulk-export / off-hours-access detection over the audit trail (`MassReadDetector` reference impl; adopters implement additional detectors)
+- `ProcessorMetadataExporter` — DPA-ready sub-processor + security-measures export (`DefaultProcessorMetadataExporter` reference impl over `ModelsProperties` + BAA-eligible-provider catalog)
 
 ## Enabling compliance
 
@@ -213,6 +214,19 @@ The compliance module ships SPIs an adopter can plug in to satisfy specific GDPR
 **Chain-of-hashes audit (T2-6):** `HashChainedAuditLogger` wraps any `AuditLogger` and stamps every event with `prevHash` + `chainHash` under `details`. `verifyChain(tenantId)` replays the tenant's chain and reports the first break (or emits an `audit.integrity_violation` event and returns a report). Adopters SHOULD run `verifyChain` at startup + on a scheduled tick.
 
 **Erasure boundary (T2-1):** the aggregate erasure cascades over registered `TranscriptStore` + `AuditLogger` beans. Erasure on the primary — replicas + backups remain the deployer's responsibility (per plan risk callout #4). Audit erasure is a soft-delete + tombstone: the event shell survives so GDPR Art. 30 + HIPAA §164.312(b) still see that erasure happened.
+
+## Tier 3 governance SPIs
+
+Tier 3 items are self-contained additions the plan tags as "ship when there's adopter demand or a specific sales requirement". All are wired automatically when the compliance profile is active; adopters override with a `@Bean` of the same SPI type.
+
+| SPI | Reference impl | Solves |
+|---|---|---|
+| `RopaGenerator` | `AuditBasedRopaGenerator` | GDPR Art. 30 machine-readable RoPA per tenant from the audit stream. Default window is 30 days; caller supplies `from`/`to` for arbitrary reporting periods. Groups events by `action`; aggregates distinct lawful bases, data categories, recipients, and per-basis retention. |
+| `ObjectionService` | `InMemoryObjectionService` | GDPR Art. 21 objection recording. Adopters use `hasObjection(...)` to short-circuit downstream processing (skip profiling for a subject who opted out). Every record + rescind emits an `objection.recorded` / `objection.rescinded` audit event. |
+| `AnomalyDetector` | `MassReadDetector` (5-subject default threshold; adopters implement additional detectors: bulk export, off-hours access, cross-tenant probe) | Emits `security.event` audit entries when suspicious patterns appear. Alerting itself is external (SIEM); the framework's job is to emit structured signals. |
+| `ProcessorMetadataExporter` | `DefaultProcessorMetadataExporter` | Exports processor + sub-processor + retention + security-measures metadata for auto-filling a DPA template. Sub-processor list is built from `ModelsProperties` cross-referenced with the BAA-eligible-provider catalog; security-measures list reflects the currently-enabled compliance modules. |
+
+None of these obviate the operator's legal work — the auto-generated RoPA / DPA fields still need counsel review, and anomaly detections still need triage. The framework provides the raw material.
 
 ## What's still the operator's responsibility
 
