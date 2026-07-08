@@ -21,14 +21,14 @@ Sections below map each capability to the article/safeguard it helps with. Every
 | `security-hardened` profile — HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe API key comparison | Art. 32 | §164.312(a), (d) |
 | Pluggable `SecretsProvider` SPI (env / file / 1Password / custom) | Art. 32 | §164.312(a)(2)(iv) — key material only, not payload encryption |
 
-Deferred to 1.0 (`docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md` Tier 2):
+Tier 2 SPIs shipped alongside 0.9.4 (opt-in — see § "Tier 2 SPIs" below):
 
 - `DataSubjectErasureSpi` (GDPR Art. 17 cascade delete)
 - `DataSubjectExportService` + `/api/gdpr/export/{id}` (Art. 15, 20)
 - `PromptRedactor` SPI (PHI/PII masking before LLM dispatch)
-- At-rest encryption decorators for transcript / memory / audit stores
+- `FieldEncryptor` SPI + `EncryptedTranscriptStore` / `EncryptedAuditLogger` decorators (AES-GCM at rest)
 - `ConsentManager` SPI (Art. 6, 7)
-- Cryptographic chain-of-hashes on audit log (§164.312(b), (c))
+- `HashChainedAuditLogger` decorator — cryptographic chain-of-hashes (§164.312(b), (c))
 - `PrivacyNoticeService` (Art. 13/14)
 
 Deferred beyond 1.0:
@@ -189,6 +189,30 @@ When `audit-chat-client` is on, every `ChatModel` bean in the Spring context is 
 Deployers can reconstruct a GDPR Art. 30 RoPA from the audit trail without instrumenting individual call sites. Every cross-border transfer (Art. 44) has a matching event with the recipient identifier.
 
 **Recipient resolution.** The recipient string is currently `<providerName>` (e.g. `openai`, `anthropic`, `bedrock`) derived from the `ChatModel` class name. Region-tagged recipients (`bedrock-us-east-1`) are on the T2 roadmap; adopters who need region tagging today can wrap `AuditingChatModel` again with their own region-aware layer.
+
+## Tier 2 SPIs
+
+The compliance module ships SPIs an adopter can plug in to satisfy specific GDPR / HIPAA requirements. Reference implementations are wired automatically when the compliance profile is active; adopters replace them by registering their own `@Bean` of the same SPI type.
+
+| SPI | Reference impl | Wired when | Solves |
+|---|---|---|---|
+| `DataSubjectErasureSpi` | `AggregateDataSubjectErasureSpi` | profile != none | GDPR Art. 17 cascade delete across transcript + audit stores |
+| `DataSubjectExportService` | `AggregateDataSubjectExportService` | profile != none | GDPR Art. 15 / 20 export (JSON, JSON-LD, CSV bundle) |
+| `PromptRedactor` | `RegexPromptRedactor` (SSN, MRN, phone, email, DOB, credit card) | `jaiclaw.compliance.prompt-redaction=true` (default on for HIPAA + both profiles) | HIPAA §164.502 PHI masking before LLM dispatch |
+| `FieldEncryptor` | `AesGcmFieldEncryptor` (AES-GCM 256, random per-call nonce) | manually — adopter wires the key material | Payload encryption for transcripts + audit + memory decorators |
+| `ConsentManager` | `InMemoryConsentManager` (production adopters should replace with a durable store) | profile != none | GDPR Art. 6 / 7 consent + Art. 21 withdrawal recording |
+| `AuditLogger` chain-of-hashes | `HashChainedAuditLogger` decorator | manually — adopter wraps the underlying `AuditLogger` | §164.312(b), (c) tamper-evident audit trail with `verifyChain()` |
+| `PrivacyNoticeService` | `DefaultPrivacyNoticeService` | profile != none | GDPR Art. 13 / 14 first-message notice + acceptance |
+
+**REST surface (T2-2):** `GdprController` exposes the export + erasure SPIs at `/api/gdpr/export/{dataSubjectId}` and `/api/gdpr/subject/{dataSubjectId}` when Spring Web is on the classpath. The controller resolves tenant scope from `TenantContextHolder`; requests without tenant context receive `403`. Adopters MUST front the controller with a rate-limiter + a role-guarded auth layer (`gdpr.operator`).
+
+**Encryption key management (T2-4):** the framework does NOT resolve encryption keys — the adopter wires the 32-byte key from a `SecretsProvider` (env, file, 1Password, Vault). Losing the key means losing the encrypted data. Maintain a key-rotation runbook + backup-encryption-key pattern. Ciphertext format is `base64(nonce || tag_and_ciphertext)`; decrypting a ciphertext with the wrong key raises `EncryptionException` without leaking which of {wrong key, corrupted blob, tampered auth tag} caused the failure.
+
+**Prompt redaction (T2-3):** `RegexPromptRedactor` is best-effort — regex-based patterns will miss free-form PHI expressions. The plan's risk callout #3 says explicitly: use redaction as a risk reduction, not a HIPAA safeguard on its own. A covered entity should still contract-restrict the LLM provider via a BAA.
+
+**Chain-of-hashes audit (T2-6):** `HashChainedAuditLogger` wraps any `AuditLogger` and stamps every event with `prevHash` + `chainHash` under `details`. `verifyChain(tenantId)` replays the tenant's chain and reports the first break (or emits an `audit.integrity_violation` event and returns a report). Adopters SHOULD run `verifyChain` at startup + on a scheduled tick.
+
+**Erasure boundary (T2-1):** the aggregate erasure cascades over registered `TranscriptStore` + `AuditLogger` beans. Erasure on the primary — replicas + backups remain the deployer's responsibility (per plan risk callout #4). Audit erasure is a soft-delete + tombstone: the event shell survives so GDPR Art. 30 + HIPAA §164.312(b) still see that erasure happened.
 
 ## What's still the operator's responsibility
 
