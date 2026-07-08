@@ -48,10 +48,19 @@ set -euo pipefail
 # `version` command must never abort the whole script.
 
 resolve_jaiclaw_version() {
+    # Two probes, in the same order as the JVM-invocation jar-resolution below:
+    #   1. $JAICLAW_HOME/bin/jaiclaw-cli.jar (canonical installer layout)
+    #   2. <launcher-dir>/jaiclaw-cli.jar    (Docker image ships them side-by-side)
     local jar="${JAICLAW_HOME:-$HOME/.jaiclaw}/bin/jaiclaw-cli.jar"
     if [[ ! -f "$jar" ]]; then
-        echo "unknown (jar not installed)"
-        return 0
+        local script_dir
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        if [[ -f "$script_dir/jaiclaw-cli.jar" ]]; then
+            jar="$script_dir/jaiclaw-cli.jar"
+        else
+            echo "unknown (jar not installed)"
+            return 0
+        fi
     fi
     if ! command -v unzip &>/dev/null; then
         echo "unknown (unzip not on PATH)"

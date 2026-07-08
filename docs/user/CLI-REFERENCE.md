@@ -4,60 +4,98 @@ Comprehensive reference for the JaiClaw command-line interface.
 
 ## Installation
 
-### From Source
+The `install.sh` script supports three install modes: the default JAR download, a Docker-backed launcher, and a from-source build. All three land at `~/.jaiclaw/` and produce the same `jaiclaw` command on your PATH — the difference is what backs it and what needs to be locally installed.
+
+| Mode | Flag | Backing artifact | Needs on target | First-install time |
+|---|---|---|---|---|
+| Default (JAR) | *(none)* | fat JAR from Nexus | Java 21 (offers SDKMAN install) | ~30 sec |
+| Docker | `--docker` | Docker image | Docker daemon | ~1 min (image pull) |
+| From source | `--from-source` | git checkout + `./mvnw` build | git + Java 21 | 5–15 min (cold cache) / ~1 min (warm) |
+
+### Default (JAR)
 
 ```bash
-# Clone and build
-git clone https://github.com/glawson6/jaiclaw.git
-cd jaiclaw
-export JAVA_HOME=/path/to/java21
-./mvnw package -pl :jaiclaw-cli -am -DskipTests
+# curl-installable — downloads the launcher + fat JAR to ~/.jaiclaw
+curl -fsSL https://jaiclaw.io/install.sh | bash
 
-# Run directly from the repo
-bin/jaiclaw version
-```
-
-### Via Installer
-
-```bash
-# curl-installable (downloads launcher + JAR to ~/.jaiclaw)
-curl -sSL https://raw.githubusercontent.com/glawson6/jaiclaw/main/install.sh | bash
-
-# Or run from the repo
+# Or run from a local clone
 ./install.sh
 ```
 
-The installer creates the following directory structure:
+If Java 21+ isn't on PATH, the installer offers to install it via SDKMAN interactively. Under `curl | bash`, the prompt reads from `/dev/tty`; if that's not available (CI, container), the installer prints manual instructions and continues in degraded mode. Set `JAICLAW_NON_INTERACTIVE=true` to skip the prompt entirely.
+
+### Docker
+
+For operators who prefer no local Java. The installer pulls the CLI image and writes a shim launcher at `~/.jaiclaw/bin/jaiclaw` that runs `docker run` behind the scenes, mounting `~/.jaiclaw/` for profile + session persistence.
+
+```bash
+curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
+
+# Or explicit version
+JAICLAW_VERSION=0.9.3-SNAPSHOT curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
+
+# Or from a local clone
+./install.sh --docker
+```
+
+The default image base is `tooling.taptech.net:5000/jaiclaw-cli` — override with `JAICLAW_DOCKER_IMAGE_BASE=<registry>/<repo>` if you host the image elsewhere.
+
+The shim launcher looks like this and is safe to inspect / re-generate:
+
+```bash
+$ cat ~/.jaiclaw/bin/jaiclaw
+#!/usr/bin/env bash
+set -euo pipefail
+IMAGE="${JAICLAW_IMAGE:-tooling.taptech.net:5000/jaiclaw-cli:latest}"
+JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
+exec docker run --rm -it \
+    -v "$JAICLAW_HOME:/home/jaiclaw/.jaiclaw" \
+    "$IMAGE" "$@"
+```
+
+### From source
+
+For installing a specific git branch, tag, or SHA on a fresh box — useful when a snapshot hasn't been deployed yet, or when you want to test a PR head.
+
+```bash
+# Default: latest main HEAD
+curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+
+# Specific ref (branch, tag, or SHA)
+JAICLAW_REF=v0.9.2 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+JAICLAW_REF=feat/my-branch curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+
+# Use an existing local checkout (skips the clone)
+JAICLAW_SOURCE_DIR=$HOME/dev/jaiclaw ./install.sh --from-source
+```
+
+**Time-honest logging.** The Maven build streams to `~/.jaiclaw/install.log` (tail it in another terminal) and the installer emits a `Building... (Nm elapsed)` heartbeat every 30 seconds so a multi-minute build doesn't look hung. First-time builds take 5–15 minutes on a cold `~/.m2` cache; subsequent installs with warm cache finish in ~60 seconds.
+
+**Disk usage.** ~500 MB during build (Maven dep download), ~80 MB resident (the jar), plus ~500 MB in `~/.m2/repository` that stays for future builds. The source tree is deleted after install unless you pass `--keep-source` or point at your own `JAICLAW_SOURCE_DIR` (which is never touched).
+
+**Flags:**
+
+| Flag | Effect |
+|---|---|
+| `--clean-cache` | `rm -rf ~/.m2/repository/io/jaiclaw` before build. Useful when re-testing a SNAPSHOT after a code change. Only prunes JaiClaw's own artifacts; third-party deps stay warm. |
+| `--keep-source` | Preserve `$JAICLAW_HOME/src` after the build. Default is delete to save ~500 MB. |
+
+### The `~/.jaiclaw/` layout
+
+All three install modes produce the same layout:
 
 ```
 ~/.jaiclaw/
   bin/
-    jaiclaw              # bash launcher
-    jaiclaw-cli.jar      # fat JAR
-  config.yaml            # global config (active profile)
+    jaiclaw              # bash launcher (or Docker shim in --docker mode)
+    jaiclaw-cli.jar      # fat JAR (absent in --docker mode)
+  config.yaml            # global config (active profile pointer)
+  install.log            # Maven build log (only after --from-source)
   profiles/
     default/
       application-local.yml   # profile-specific config
       .env                     # profile-specific secrets
       sessions/                # session history
-```
-
-### Via Docker
-
-```bash
-# Fast-path commands (no JVM)
-docker run --rm taptechnet/jaiclaw-cli version
-docker run --rm taptechnet/jaiclaw-cli doctor
-
-# JVM-path commands
-docker run --rm taptechnet/jaiclaw-cli tools
-docker run --rm taptechnet/jaiclaw-cli status
-
-# With host config volume
-docker run --rm -v ~/.jaiclaw:/home/jaiclaw/.jaiclaw taptechnet/jaiclaw-cli config show
-
-# With API key
-docker run --rm -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY taptechnet/jaiclaw-cli chat "hello"
 ```
 
 ## Architecture: Two-Path Dispatch
@@ -398,7 +436,7 @@ jaiclaw config show
 
 ### `prompt` / `prompt-set`
 
-Inspect and customize the interactive REPL command prompt. The format string supports the placeholders `${identity}`, `${profile}`, `${agent}`, `${model}`, and `${tenant}`. Placeholders the framework can't resolve render as literal `${name}` so typos are obvious. Calling `prompt-set` writes the new format to the active profile's `application-local.yml` (under `jaiclaw.shell.prompt.format`) and updates the live shell immediately — no restart needed.
+Inspect and customize the interactive REPL command prompt. The format string supports the placeholders `${identity}`, `${profile}`, `${agent}`, `${model}`, `${tenant}`, and `${version}` (the jaiclaw-cli Maven version, read from the jar manifest — handy on from-source installs where you want the built version visible). Placeholders the framework can't resolve render as literal `${name}` so typos are obvious. Calling `prompt-set` writes the new format to the active profile's `application-local.yml` (under `jaiclaw.shell.prompt.format`) and updates the live shell immediately — no restart needed.
 
 ```text
 shell> prompt
@@ -420,6 +458,7 @@ Common formats:
 | `${identity}@${profile}> ` | `JaiClaw@prod> ` |
 | `[${profile}] ${agent}: ` | `[prod] default: ` |
 | `${identity}/${model}> ` | `JaiClaw/claude-sonnet-4-6> ` |
+| `${identity} (${version})> ` | `JaiClaw (0.9.3-SNAPSHOT)> ` |
 
 Embed raw ANSI escapes for color (e.g. `'[36m${identity}[0m > '`). Persistence is per-profile, so switching profiles via `profile switch <name>` swaps both the config and the prompt visual cue.
 

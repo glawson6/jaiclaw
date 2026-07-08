@@ -91,6 +91,7 @@ public class PromptCommands {
             return m != null ? m : JaiClawPromptProvider.rawProperty(environment, "spring.ai.openai.chat.options.model");
         });
         vars.put("tenant", () -> "");
+        vars.put("version", JaiClawPromptProvider::jaiClawVersion);
         return JaiClawPromptProvider.substitute(format, vars);
     }
 

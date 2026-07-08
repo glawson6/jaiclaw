@@ -64,4 +64,21 @@ class JaiClawPromptProviderSpec extends Specification {
         expect:
         provider.prompt.toString() == "J[]> "
     }
+
+    def "version placeholder stays literal when jaiclaw-cli pom.properties isn't on the test classpath"() {
+        // In the shell-commands unit test context, the CLI-artifact's
+        // pom.properties is NOT on the classpath — only the shell-commands
+        // module's own resources are. So VERSION resolves to null and the
+        // placeholder renders as its literal form, matching the "unresolved
+        // placeholder stays literal" invariant.
+        given:
+        jaiClawPropsProvider.getIfAvailable() >> JaiClawProperties.builder()
+                .identity(new IdentityProperties("J", "d"))
+                .build()
+        env.setProperty("jaiclaw.shell.prompt.format", '${identity}@${version}> ')
+        JaiClawPromptProvider provider = new JaiClawPromptProvider(props, jaiClawPropsProvider, env)
+
+        expect:
+        provider.prompt.toString() == 'J@${version}> '
+    }
 }

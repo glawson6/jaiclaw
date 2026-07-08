@@ -225,15 +225,23 @@ The wizard writes `application-local.yml` + `.env` to `~/.jaiclaw/` (or current 
 
 ### Installation
 
-```bash
-# Option 1: Build from source
-./mvnw package -pl :jaiclaw-cli -am -DskipTests
+Three modes — pick based on what's already on the target machine:
 
-# Option 2: Curl-installable installer
-curl -sSL https://raw.githubusercontent.com/.../install.sh | bash
+```bash
+# Default: JAR download from Nexus (needs Java 21; offers SDKMAN install if missing)
+curl -fsSL https://jaiclaw.io/install.sh | bash
+
+# Docker: no Java needed, needs Docker daemon
+curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
+
+# From source: build the CLI jar via `./mvnw` (needs Java 21 + git; 5-15 min cold cache)
+curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+JAICLAW_REF=v0.9.2 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 ```
 
-The installer creates `~/.jaiclaw/bin/`, copies the launcher and JAR, sets up the default profile, and adds to PATH.
+All three land at `~/.jaiclaw/` and produce the same `jaiclaw` command on your PATH. See [CLI-REFERENCE § Installation](CLI-REFERENCE.md#installation) for the full flag reference and layout.
+
+**Disk usage — from-source only:** ~500 MB Maven dep download during first build, ~80 MB resident (the jar), plus ~500 MB in `~/.m2/repository` that stays warm for future builds. Source tree is deleted after install unless you pass `--keep-source` or point at your own `JAICLAW_SOURCE_DIR` (which is never touched).
 
 ### Fast-Path Commands (no JVM)
 

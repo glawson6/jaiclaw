@@ -10,10 +10,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.shell.jline.PromptProvider;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,6 +36,11 @@ import java.util.regex.Pattern;
  *       literal {@code ${model}} when not resolvable</li>
  *   <li>{@code ${tenant}} — {@link TenantContextHolder#get()} tenant id, empty
  *       string in SINGLE-mode</li>
+ *   <li>{@code ${version}} — jaiclaw-cli Maven version read from
+ *       {@code META-INF/maven/io.jaiclaw/jaiclaw-cli/pom.properties} at
+ *       classpath load (cached; resolved once per JVM). Useful for
+ *       from-source installs where operators want to see the built
+ *       version at a glance.</li>
  * </ul>
  *
  * <p>Unresolved placeholders render as literal {@code ${name}} so operators
@@ -41,6 +49,32 @@ import java.util.regex.Pattern;
 public class JaiClawPromptProvider implements PromptProvider {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9_.-]*)}");
+
+    // Maven writes this file into every module jar. In the CLI fat jar, the
+    // top-level entry is jaiclaw-cli's own pom.properties — the artifact whose
+    // version we want in ${version}. Cached at classload time; if the file
+    // isn't reachable, the placeholder renders as its literal form.
+    private static final String VERSION = resolveJaiClawVersion();
+
+    /** Package-private accessor so PromptCommands can render a faithful preview. */
+    static String jaiClawVersion() {
+        return VERSION;
+    }
+
+    private static String resolveJaiClawVersion() {
+        String resource = "META-INF/maven/io.jaiclaw/jaiclaw-cli/pom.properties";
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        if (cl == null) cl = JaiClawPromptProvider.class.getClassLoader();
+        try (InputStream in = cl.getResourceAsStream(resource)) {
+            if (in == null) return null;
+            Properties props = new Properties();
+            props.load(in);
+            String v = props.getProperty("version");
+            return (v != null && !v.isBlank()) ? v : null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
 
     private final PromptProperties properties;
     private final ObjectProvider<JaiClawProperties> jaiClawProperties;
@@ -110,6 +144,7 @@ public class JaiClawPromptProvider implements PromptProvider {
             return rawProperty(environment, "spring.ai.ollama.chat.options.model");
         });
         vars.put("tenant", JaiClawPromptProvider::resolveTenant);
+        vars.put("version", () -> VERSION);
         return vars;
     }
 

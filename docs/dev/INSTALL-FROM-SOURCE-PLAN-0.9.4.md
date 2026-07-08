@@ -2,7 +2,7 @@
 
 **Target:** 0.9.4 (deferred from 0.9.3, where the immediate gap was instead closed by publishing snapshots to Nexus).
 
-**Status:** Design discussion. Not yet committed.
+**Status:** ✅ Implemented 2026-07-06. Shipped in 0.9.3-SNAPSHOT ahead of the 0.9.4 cut. Alongside `--from-source`, `--docker` also landed (Docker publish pipeline in `deploy-nexus.sh` + `release.sh`, image pushed to `tooling.taptech.net:5000/jaiclaw-cli`). The `${version}` prompt placeholder was added as the small companion feature.
 
 ---
 

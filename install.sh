@@ -3,13 +3,32 @@
 # JaiClaw Installer — curl-installable setup script
 #
 # Usage:
-#   curl -fsSL https://jaiclaw.io/install.sh | bash
-#
-# Or from GitHub:
-#   curl -sSL https://raw.githubusercontent.com/glawson6/jaiclaw/main/install.sh | bash
+#   curl -fsSL https://jaiclaw.io/install.sh | bash                        # default (JAR from Nexus)
+#   curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker         # Docker-backed launcher
+#   curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source    # Build from git
 #
 # Or from the repo:
-#   ./install.sh
+#   ./install.sh                                                            # default (JAR)
+#   ./install.sh --docker                                                   # Docker mode
+#   ./install.sh --from-source                                              # From-source build
+#
+# Install modes:
+#   default        — download the CLI fat jar from Nexus (needs Java 21 locally;
+#                    offers to install via SDKMAN if missing).
+#   --docker       — pull the CLI Docker image and install a shim launcher
+#                    (needs Docker locally; no Java needed).
+#   --from-source  — clone the repo (or use JAICLAW_SOURCE_DIR) and build the
+#                    jar with the Maven wrapper (needs Java + git; 5-15 min
+#                    first build, ~60 sec subsequent builds with warm cache).
+#
+# Environment overrides:
+#   JAICLAW_VERSION            — pin an explicit version tag ("0.9.3-SNAPSHOT")
+#   JAICLAW_HOME               — install root (default: ~/.jaiclaw)
+#   JAICLAW_REF                — git ref for --from-source (default: main)
+#   JAICLAW_SOURCE_DIR         — use an existing git checkout for --from-source
+#                                (skip the clone)
+#   JAICLAW_NON_INTERACTIVE    — skip TTY prompts (used for CI / curl|bash)
+#   JAICLAW_DOCKER_IMAGE_BASE  — override the Docker registry/repo
 #
 # Source: https://github.com/glawson6/jaiclaw/blob/main/install.sh
 # This is a copy of the canonical script. Update from the jaiclaw repo when the installer changes.
@@ -22,7 +41,49 @@ JAICLAW_VERSION="${JAICLAW_VERSION:-latest}"
 JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
 JAICLAW_REPO="glawson6/jaiclaw"
 JAICLAW_CLI_BASE_URL="${JAICLAW_CLI_BASE_URL:-https://tooling.taptech.net/repository/maven-public/io/jaiclaw/jaiclaw-cli}"
+JAICLAW_DOCKER_IMAGE_BASE="${JAICLAW_DOCKER_IMAGE_BASE:-tooling.taptech.net:5000/jaiclaw-cli}"
 JAVA_MIN_VERSION=21
+
+# Install mode: "jar" (default), "docker", or "source".
+INSTALL_MODE="jar"
+
+# --from-source knobs
+JAICLAW_REF="${JAICLAW_REF:-main}"
+JAICLAW_SOURCE_DIR="${JAICLAW_SOURCE_DIR:-}"
+CLEAN_CACHE=0
+KEEP_SOURCE=0
+
+# ─── Parse flags ─────────────────────────────────────────────────────────────
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --docker)
+            INSTALL_MODE="docker"
+            shift
+            ;;
+        --from-source)
+            INSTALL_MODE="source"
+            shift
+            ;;
+        --clean-cache)
+            CLEAN_CACHE=1
+            shift
+            ;;
+        --keep-source)
+            KEEP_SOURCE=1
+            shift
+            ;;
+        --help|-h)
+            sed -n '2,35p' "$0" | sed 's/^# \?//'
+            exit 0
+            ;;
+        *)
+            echo "Unknown flag: $1" >&2
+            echo "Run '$0 --help' for usage." >&2
+            exit 1
+            ;;
+    esac
+done
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -320,6 +381,261 @@ install_jar() {
     ok "Downloaded CLI JAR ($(wc -c <"$dest" | tr -d ' ') bytes)"
 }
 
+# ─── Docker install path ─────────────────────────────────────────────────────
+
+# Verify Docker is on PATH and the daemon is reachable. No install offer here —
+# unlike Java+SDKMAN, Docker installation is platform-specific, needs root on
+# Linux, needs Docker Desktop on macOS, and can't be automated from a curl|bash.
+check_docker() {
+    header "Checking Docker"
+
+    if ! command -v docker &>/dev/null; then
+        err "Docker not found on PATH"
+        echo ""
+        echo "Install Docker:"
+        case "$PLATFORM" in
+            macos) echo "  https://docs.docker.com/desktop/install/mac-install/" ;;
+            linux) echo "  https://docs.docker.com/engine/install/" ;;
+        esac
+        echo ""
+        echo "Then re-run this installer with --docker."
+        exit 1
+    fi
+
+    if ! docker info &>/dev/null; then
+        err "Docker daemon not reachable"
+        echo "  (docker CLI is installed but 'docker info' failed — daemon may be stopped)"
+        exit 1
+    fi
+
+    ok "Docker $(docker version --format '{{.Client.Version}}') available"
+}
+
+# Pull the CLI image + write a shim launcher that invokes it.
+install_via_docker() {
+    header "Pulling CLI Docker image"
+
+    # Resolve 'latest' to a real image tag by querying the registry — same
+    # spirit as the Nexus Maven-metadata resolution in install_jar. Falls
+    # back to :latest if the registry doesn't expose a tags API.
+    local image_tag="$JAICLAW_VERSION"
+    if [[ "$image_tag" == "latest" ]]; then
+        # Just pull :latest — Docker registries always resolve this.
+        image_tag="latest"
+    fi
+
+    local image="${JAICLAW_DOCKER_IMAGE_BASE}:${image_tag}"
+    info "Pulling $image"
+    if ! docker pull "$image"; then
+        err "docker pull failed for $image"
+        echo "  Registry may be unreachable, credentials may be missing, or the tag may not exist."
+        echo "  Pin an explicit version:  JAICLAW_VERSION=X.Y.Z ... --docker"
+        echo "  Or set a different base:  JAICLAW_DOCKER_IMAGE_BASE=<registry>/<repo> ... --docker"
+        exit 1
+    fi
+    ok "Image pulled"
+
+    header "Installing Docker-backed launcher"
+    local shim="$JAICLAW_HOME/bin/jaiclaw"
+    cat > "$shim" <<SHIM
+#!/usr/bin/env bash
+# JaiClaw Docker-backed launcher
+# Generated by install.sh --docker. To switch to the JAR path, re-run install.sh
+# without --docker.
+set -euo pipefail
+
+IMAGE="\${JAICLAW_IMAGE:-${image}}"
+JAICLAW_HOME="\${JAICLAW_HOME:-\$HOME/.jaiclaw}"
+
+# Mount ~/.jaiclaw into the container so profiles + sessions + auth persist.
+# -it gives us a TTY for the REPL; --rm cleans up between invocations.
+# The image entrypoint already points at /opt/jaiclaw/bin/jaiclaw so we pass
+# subcommand args straight through.
+exec docker run --rm -it \\
+    -v "\$JAICLAW_HOME:/home/jaiclaw/.jaiclaw" \\
+    "\$IMAGE" "\$@"
+SHIM
+    chmod +x "$shim"
+    ok "Installed launcher at $shim"
+}
+
+# ─── From-source install path ────────────────────────────────────────────────
+
+# Verify git is on PATH. We deliberately do NOT try to install git ourselves —
+# xcode-select on macOS launches a GUI installer, apt-get needs sudo, both
+# surprise operators running under curl|bash. Bail with a clear message.
+detect_git() {
+    header "Checking git"
+    if ! command -v git &>/dev/null; then
+        err "git not found on PATH"
+        echo ""
+        echo "Install git:"
+        case "$PLATFORM" in
+            macos) echo "  xcode-select --install     # opens the Developer Tools installer" ;;
+            linux) echo "  sudo apt install git       # or your distro's equivalent" ;;
+        esac
+        echo ""
+        echo "Then re-run this installer with --from-source."
+        exit 1
+    fi
+    ok "git $(git --version | awk '{print $3}') found"
+}
+
+# Clone the repo into $JAICLAW_HOME/src, or use $JAICLAW_SOURCE_DIR as-is.
+# Prints elapsed seconds so the multi-second clone step isn't silent.
+acquire_source() {
+    header "Acquiring source"
+    if [[ -n "$JAICLAW_SOURCE_DIR" ]]; then
+        if [[ ! -d "$JAICLAW_SOURCE_DIR/.git" ]]; then
+            err "JAICLAW_SOURCE_DIR=$JAICLAW_SOURCE_DIR is not a git checkout"
+            exit 1
+        fi
+        SOURCE_DIR="$JAICLAW_SOURCE_DIR"
+        ok "Using existing checkout at $SOURCE_DIR"
+        return 0
+    fi
+
+    SOURCE_DIR="$JAICLAW_HOME/src"
+    if [[ -d "$SOURCE_DIR/.git" ]]; then
+        info "Existing clone at $SOURCE_DIR — updating"
+        (cd "$SOURCE_DIR" && git fetch --depth 1 origin "$JAICLAW_REF" >/dev/null 2>&1 && git checkout "$JAICLAW_REF" >/dev/null 2>&1) \
+            || { err "git fetch failed"; exit 1; }
+        ok "Updated to $JAICLAW_REF"
+        return 0
+    fi
+
+    info "Cloning $JAICLAW_REPO@$JAICLAW_REF into $SOURCE_DIR (~10 sec)"
+    local start end
+    start=$(date +%s)
+    # --depth 1 keeps the clone small; --branch works for tags too, not just branch names.
+    if ! git clone --depth 1 --branch "$JAICLAW_REF" \
+            "https://github.com/$JAICLAW_REPO.git" "$SOURCE_DIR" >/dev/null 2>&1; then
+        err "git clone failed"
+        echo "  Network / auth / bad ref '$JAICLAW_REF'?"
+        exit 1
+    fi
+    end=$(date +%s)
+    ok "Cloned ($((end - start))s)"
+}
+
+# Purge only JaiClaw's own artifacts from ~/.m2. Third-party deps are left alone
+# so the next build stays warm. Called for --clean-cache before build_from_source.
+purge_jaiclaw_m2() {
+    local m2_root="${HOME}/.m2/repository/io/jaiclaw"
+    if [[ -d "$m2_root" ]]; then
+        info "Purging Maven cache for io/jaiclaw"
+        rm -rf "$m2_root"
+    fi
+}
+
+# Build via the Maven wrapper. Streams full output to $JAICLAW_HOME/install.log
+# and shows a heartbeat every 30 sec so multi-minute builds don't look hung.
+build_from_source() {
+    header "Building jaiclaw-cli from source"
+
+    if [[ "$CLEAN_CACHE" -eq 1 ]]; then
+        purge_jaiclaw_m2
+    fi
+
+    local m2_size_hint=""
+    if [[ ! -d "${HOME}/.m2/repository" ]]; then
+        m2_size_hint="First-time build: downloading ~500 MB of Maven dependencies. This typically takes 5–15 minutes."
+    else
+        m2_size_hint="Warm Maven cache detected. Build typically takes ~60 seconds."
+    fi
+    info "$m2_size_hint"
+
+    local log="$JAICLAW_HOME/install.log"
+    info "Progress is streamed to $log; tail it in another terminal:"
+    echo "    tail -f $log"
+    echo ""
+
+    # Start the build in the background so we can emit a heartbeat.
+    cd "$SOURCE_DIR"
+    (
+        # `-o` (offline) is intentionally NOT set — cold cache needs the network.
+        # `-am` builds jaiclaw-cli's Maven dependencies within the reactor.
+        ./mvnw package -pl :jaiclaw-cli -am -DskipTests >"$log" 2>&1
+    ) &
+    local mvn_pid=$!
+
+    # Heartbeat: emit an elapsed-seconds line every 30 sec while Maven runs.
+    local start
+    start=$(date +%s)
+    while kill -0 "$mvn_pid" 2>/dev/null; do
+        sleep 30
+        # kill -0 again to avoid printing a heartbeat immediately after exit.
+        if kill -0 "$mvn_pid" 2>/dev/null; then
+            local now=$(date +%s)
+            local elapsed=$((now - start))
+            local mins=$((elapsed / 60))
+            local secs=$((elapsed % 60))
+            info "Building... (${mins}m${secs}s elapsed)"
+        fi
+    done
+
+    wait "$mvn_pid" || {
+        err "Maven build failed"
+        echo ""
+        echo "Last 50 lines of $log:"
+        echo "─────────────────────────────────────────────────────────────"
+        tail -n 50 "$log"
+        echo "─────────────────────────────────────────────────────────────"
+        exit 1
+    }
+    local end
+    end=$(date +%s)
+    local elapsed=$((end - start))
+    local mins=$((elapsed / 60))
+    local secs=$((elapsed % 60))
+
+    # Locate the produced exec.jar.
+    local built_jar
+    built_jar=$(find "$SOURCE_DIR/apps/jaiclaw-cli/target" -maxdepth 1 \
+                    -name "jaiclaw-cli-*-exec.jar" -type f 2>/dev/null | head -1)
+    if [[ -z "$built_jar" ]]; then
+        err "Build succeeded but no jaiclaw-cli-*-exec.jar found in target/"
+        echo "  This is a bug in install.sh — please report."
+        exit 1
+    fi
+
+    ok "Build complete ($(basename "$built_jar"), $(wc -c <"$built_jar" | tr -d ' ') bytes, ${mins}m${secs}s)"
+    BUILT_JAR="$built_jar"
+}
+
+# Install the from-source-built jar + the launcher script. Reuses install_launcher's
+# copy-from-repo path by pointing at $SOURCE_DIR/bin/jaiclaw.
+install_from_source() {
+    detect_git
+    check_java
+    if [[ -z "${JAVA_BIN:-}" ]]; then
+        err "--from-source needs Java 21+ — cannot build without it"
+        exit 1
+    fi
+
+    acquire_source
+    build_from_source
+
+    header "Installing built artifacts"
+    cp "$BUILT_JAR" "$JAICLAW_HOME/bin/jaiclaw-cli.jar"
+    ok "Installed CLI JAR to $JAICLAW_HOME/bin/jaiclaw-cli.jar"
+
+    if [[ -f "$SOURCE_DIR/bin/jaiclaw" ]]; then
+        cp "$SOURCE_DIR/bin/jaiclaw" "$JAICLAW_HOME/bin/jaiclaw"
+        chmod +x "$JAICLAW_HOME/bin/jaiclaw"
+        ok "Installed launcher from source"
+    fi
+
+    # By default, remove the ~500 MB source tree — the jar is what runs, and
+    # the Maven cache in ~/.m2 stays warm for the next --from-source install.
+    # Preserve when --keep-source or when the operator pointed us at their
+    # own checkout (JAICLAW_SOURCE_DIR).
+    if [[ "$KEEP_SOURCE" -eq 0 ]] && [[ -z "$JAICLAW_SOURCE_DIR" ]]; then
+        info "Cleaning up $SOURCE_DIR (pass --keep-source to preserve it)"
+        rm -rf "$SOURCE_DIR"
+    fi
+}
+
 # ─── Create default profile ─────────────────────────────────────────────────
 
 create_default_profile() {
@@ -424,19 +740,41 @@ setup_path() {
 main() {
     echo ""
     if [[ "$JAICLAW_VERSION" == "latest" ]]; then
-        printf "${BOLD}${CYAN}JaiClaw Installer${NC} (resolving latest)\n"
+        printf "${BOLD}${CYAN}JaiClaw Installer${NC} (resolving latest, mode=%s)\n" "$INSTALL_MODE"
     else
-        printf "${BOLD}${CYAN}JaiClaw Installer v%s${NC}\n" "$JAICLAW_VERSION"
+        printf "${BOLD}${CYAN}JaiClaw Installer v%s${NC} (mode=%s)\n" "$JAICLAW_VERSION" "$INSTALL_MODE"
     fi
     echo ""
 
     detect_platform
-    check_java
-    create_directories
-    install_launcher
-    install_jar
-    create_default_profile
-    setup_path
+
+    case "$INSTALL_MODE" in
+        docker)
+            check_docker
+            create_directories
+            install_via_docker
+            create_default_profile
+            setup_path
+            ;;
+        source)
+            create_directories
+            install_from_source
+            create_default_profile
+            setup_path
+            ;;
+        jar)
+            check_java
+            create_directories
+            install_launcher
+            install_jar
+            create_default_profile
+            setup_path
+            ;;
+        *)
+            err "Unknown install mode: $INSTALL_MODE"
+            exit 1
+            ;;
+    esac
 
     header "Installation complete"
     echo "Run 'jaiclaw doctor' to check your environment."

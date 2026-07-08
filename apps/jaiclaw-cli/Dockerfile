@@ -10,6 +10,11 @@ FROM eclipse-temurin:21-jre
 
 ARG CLI_JAR
 
+# unzip is needed by the launcher's `resolve_jaiclaw_version` (reads the jar's
+# META-INF/maven/.../pom.properties). Base image ships jre-only.
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -r jaiclaw && \
     useradd -r -g jaiclaw -m -d /home/jaiclaw -s /bin/bash jaiclaw
