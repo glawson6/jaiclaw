@@ -79,6 +79,32 @@ public interface TranscriptStore {
         return removed;
     }
 
+    /**
+     * T2-1: erase every transcript session for a data subject within a tenant.
+     * Matches on the JaiClaw session-key convention
+     * {@code {agentId}:{channel}:{accountId}:{peerId}} — a session belongs to
+     * the subject when its {@code sessionId} contains
+     * {@code ":<dataSubjectId>"} as a suffix or as a peerId component. Default
+     * impl walks {@link #list} + {@link #delete}; impls with a real index
+     * should override.
+     *
+     * @param tenantId      tenant that owns the subject's data
+     * @param dataSubjectId the subject identifier (peerId in the session key
+     *                      convention)
+     * @return number of sessions removed
+     */
+    default int eraseForDataSubject(String tenantId, String dataSubjectId) {
+        if (dataSubjectId == null || dataSubjectId.isBlank()) return 0;
+        String suffix = ":" + dataSubjectId;
+        int removed = 0;
+        for (String sessionId : list(tenantId, Integer.MAX_VALUE)) {
+            if (sessionId != null && (sessionId.equals(dataSubjectId) || sessionId.endsWith(suffix))) {
+                if (delete(sessionId)) removed++;
+            }
+        }
+        return removed;
+    }
+
     default List<TranscriptSearchResult> search(String query, String tenantId, int limit) {
         if (query == null || query.isBlank() || limit <= 0) return List.of();
         String needle = query.toLowerCase();

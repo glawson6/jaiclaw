@@ -51,4 +51,23 @@ public interface AuditLogger {
     default int purgeOlderThan(String tenantId, java.time.Instant cutoff) {
         return 0;
     }
+
+    /**
+     * T2-1: soft-erase audit events for a data subject within a tenant. The
+     * event shells (id, timestamp, tenantId, action) MUST survive so
+     * GDPR Art. 30 + HIPAA §164.312(b) still see that erasure happened; the
+     * content-bearing fields (details, dataCategories, recipients,
+     * consentToken) SHOULD be cleared or replaced with tombstone markers.
+     * Default impl returns 0 — impls that support content redaction should
+     * override.
+     *
+     * @param tenantId      tenant that owns the subject's data
+     * @param dataSubjectId subject identifier used to match events whose
+     *                      {@code resource} references the subject (typically
+     *                      the session key suffix)
+     * @return number of events soft-erased
+     */
+    default int eraseForDataSubject(String tenantId, String dataSubjectId) {
+        return 0;
+    }
 }
