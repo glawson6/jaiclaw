@@ -15,8 +15,10 @@ class DefaultProcessorMetadataExporterSpec extends Specification {
     def "exports sub-processor entry per configured LLM provider with BAA eligibility flag"() {
         given:
         def props = new ModelsProperties([
-                "bedrock":   new ModelsProperties.ModelProviderConfig("https://bedrock.us-east-1.amazonaws.com", "k", "aws", null, null, null, null),
-                "anthropic": new ModelsProperties.ModelProviderConfig("https://api.anthropic.com", "k", "sdk", null, null, null, null),
+                "bedrock":   ModelsProperties.ModelProviderConfig.builder()
+                        .baseUrl("https://bedrock.us-east-1.amazonaws.com").apiKey("k").api("aws").build(),
+                "anthropic": ModelsProperties.ModelProviderConfig.builder()
+                        .baseUrl("https://api.anthropic.com").apiKey("k").api("sdk").build(),
         ])
         def exporter = new DefaultProcessorMetadataExporter(
                 "JaiClaw gateway prod", "compliance@example.com", props, [], fixed)
