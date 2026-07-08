@@ -702,7 +702,7 @@ spring:
 
 ## Compliance Orchestration
 
-The `jaiclaw-compliance` extension (shipped in 0.9.4) layers GDPR + HIPAA orchestration on top of the security-hardened profile. The full adopter-facing guide is at `docs/user/COMPLIANCE.md`; this section covers the internal architecture.
+The `jaiclaw-compliance` extension (shipped in 0.9.3) layers GDPR + HIPAA orchestration on top of the security-hardened profile. The full adopter-facing guide is at `docs/user/COMPLIANCE.md`; this section covers the internal architecture.
 
 ### Profile → effective-flag translation
 
@@ -845,6 +845,6 @@ Canonicalization excludes the chain fields themselves during recomputation (via 
 
 - Adopter-facing guide: `docs/user/COMPLIANCE.md`
 - Deployment: `docs/user/PRODUCTION-DEPLOYMENT.md` § 9.1 Compliance-aware deployment
-- Migration: `docs/MIGRATION-0.9.4.md`
+- Migration: `docs/MIGRATION-0.9.3.md`
 - Plan: `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md`
-- Release notes: `releases/release-0.9.4.md`
+- Release notes: `releases/release-0.9.3.md`

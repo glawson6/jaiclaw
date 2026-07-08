@@ -1011,7 +1011,7 @@ via a `SecurityFilterChain` override if your deployment needs it.
 
 ## Compliance (GDPR + HIPAA)
 
-The `jaiclaw-compliance` extension (0.9.4+) layers GDPR + HIPAA orchestration on top of `security-hardened`. Everything is opt-in via one property:
+The `jaiclaw-compliance` extension (0.9.3+) layers GDPR + HIPAA orchestration on top of `security-hardened`. Everything is opt-in via one property:
 
 ```yaml
 jaiclaw:
@@ -1106,7 +1106,7 @@ FieldEncryptor fieldEncryptor(SecretsResolver secrets) {
 
 - **How-to playbook** for making a deployment GDPR / HIPAA / both ready: **[docs/user/COMPLIANCE-HOWTO.md](./COMPLIANCE-HOWTO.md)**.
 - Article-to-capability mapping, BAA-eligible provider catalog, per-tenant metadata reference, and Tier 2/3 SPI reference: **[docs/user/COMPLIANCE.md](./COMPLIANCE.md)**.
-- Migration guide from 0.9.3: **[docs/MIGRATION-0.9.4.md](../MIGRATION-0.9.4.md)**.
+- Migration guide from 0.9.3: **[docs/MIGRATION-0.9.3.md](../MIGRATION-0.9.3.md)**.
 
 ---
 

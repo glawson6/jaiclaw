@@ -1,14 +1,14 @@
 # Compliance Implementation Plan — GDPR + HIPAA
 
 **Status:** Draft, 2026-07-07.
-**Target milestones:** Tier 1 → 0.9.4. Tier 2 → 1.0. Tier 3 → post-1.0.
+**Target milestones:** Tier 1 → 0.9.3. Tier 2 → 1.0. Tier 3 → post-1.0.
 **Scope:** Framework-level SPIs and reference implementations. Deployer-side items (TLS termination, SIEM integration, BAA legal negotiation, IAM lifecycle) are called out explicitly as out-of-scope so we don't overpromise.
 
 ## Context
 
 JaiClaw is being evaluated for enterprise deployments that touch personal data (GDPR-covered) and Protected Health Information (HIPAA-covered). The current framework has a strong compliance *substrate* — multi-tenant isolation, audit SPI, `SecretsProvider`, security-hardened profile, JWT + timing-safe crypto — but does not yet ship the compliance-specific data structures and enforcement machinery adopters need to build defensible deployments.
 
-This plan enumerates the SPIs, records, config properties, and reference implementations we'll add. Every item names the file it touches, the acceptance criterion, and whether it's shippable in 0.9.4 without breaking existing consumers.
+This plan enumerates the SPIs, records, config properties, and reference implementations we'll add. Every item names the file it touches, the acceptance criterion, and whether it's shippable in 0.9.3 without breaking existing consumers.
 
 ### Positioning after Tier 1 ships
 
@@ -18,7 +18,7 @@ This is a defensible statement to a controller / covered entity's compliance rev
 
 ---
 
-## Tier 1 — 0.9.4 (non-breaking, ~1–2 weeks)
+## Tier 1 — 0.9.3 (non-breaking, ~1–2 weeks)
 
 Every Tier 1 item is optional metadata / opt-in behavior. Existing consumers see no change.
 
@@ -104,7 +104,7 @@ The decorator must be **transparent** — same return type, same streaming seman
 
 **Rationale:** Every cross-border data transfer (GDPR Art. 44) and every third-party disclosure (HIPAA §164.502) needs an audit trail entry. Without a decorator, adopters would have to instrument every call site by hand.
 
-**Config:** Opt-in via `jaiclaw.audit.chat-client.enabled=true`. Default false in 0.9.4 (safe rollout), flip to `true` in 1.0 after telemetry.
+**Config:** Opt-in via `jaiclaw.audit.chat-client.enabled=true`. Default false in 0.9.3 (safe rollout), flip to `true` in 1.0 after telemetry.
 
 **Acceptance:** Spock spec: mock `ChatModel`, inject via `ChatClient.Builder`, verify one `AuditEvent` per call with the expected recipient string. Streaming variant tested via a mock `Flux` publisher. Negative test: with the flag off, zero audit events.
 
@@ -126,7 +126,7 @@ Behavior:
 2. When a `TenantContext.isPhiProcessing()` tenant resolves a provider that is NOT BAA-eligible:
    - Startup: log `WARN` with the tenant id + provider name + a link to the BAA docs section.
    - Runtime: same warning on first `ChatClient` call in that session.
-   - **Non-blocking** in 0.9.4 (opt-in strict mode via `jaiclaw.compliance.strict-baa=true` in 1.0 → throws instead of warns).
+   - **Non-blocking** in 0.9.3 (opt-in strict mode via `jaiclaw.compliance.strict-baa=true` in 1.0 → throws instead of warns).
 
 **Rationale:** The single most consequential HIPAA failure mode is silently routing PHI to a non-BAA LLM. A default-on warning eliminates that class of accident without breaking dev workflows.
 
@@ -188,7 +188,7 @@ New Spring `@Bean` — an `ApplicationListener<ApplicationReadyEvent>` — that:
 1. Reads `server.address` and `server.ssl.enabled`.
 2. If SSL is off AND `server.address` is not loopback (`127.0.0.1` / `::1` / `localhost`) AND `jaiclaw.security.require-https=true`:
    - Throw `IllegalStateException` at startup with a clear message.
-3. Default `require-https` to `false` in 0.9.4 for backward compatibility.
+3. Default `require-https` to `false` in 0.9.3 for backward compatibility.
 
 **Rationale:** GDPR Art. 32 and HIPAA §164.312(e) both require transmission encryption. The framework can't force TLS termination (that's the reverse proxy's job) but it can refuse to start on a public bind without it.
 
@@ -209,12 +209,12 @@ The BAA-eligible provider table is the single most valuable doc artifact — it 
 
 ### Tier 1 acceptance gate
 
-For 0.9.4 to be considered compliance-ready-substrate:
+For 0.9.3 to be considered compliance-ready-substrate:
 
 - [ ] All Tier 1 Spock specs green in `./mvnw test`.
 - [ ] `jaiclaw:analyze` extended with a `compliance` sub-check that verifies every bundled example's `TenantContext` metadata (advisory, not blocking).
 - [ ] `docs/user/COMPLIANCE.md` reviewed by counsel (external step, tracked separately).
-- [ ] `release-0.9.4.md` calls out the Tier 1 delivery under a "Compliance substrate" section.
+- [ ] `release-0.9.3.md` calls out the Tier 1 delivery under a "Compliance substrate" section.
 
 ---
 
@@ -394,9 +394,9 @@ T1-1 TenantContext metadata ──┬── T1-3 AuditingChatClient   ── T2-
 
 T1-2 AuditEvent extension  ──── T2-6 Immutable audit log
 
-T1-5 SEV-004 fixes  ─────  independent, ship any time in 0.9.4
+T1-5 SEV-004 fixes  ─────  independent, ship any time in 0.9.3
 
-T1-7 require-https  ─────  independent, ship any time in 0.9.4
+T1-7 require-https  ─────  independent, ship any time in 0.9.3
 
 T2-4 Encryption decorators  ── independent of T1 items
 
@@ -405,7 +405,7 @@ T2-2 DataSubjectExport      ── depends on T2-1 (uses same erasure infra for 
 T2-7 PrivacyNotice          ── depends on T2-5 (writes into ConsentManager)
 ```
 
-Suggested 0.9.4 order: T1-1, T1-2, T1-5, T1-7 first (independent + low-risk), then T1-6, T1-4, T1-3, T1-8 (build on the metadata + audit extensions).
+Suggested 0.9.3 order: T1-1, T1-2, T1-5, T1-7 first (independent + low-risk), then T1-6, T1-4, T1-3, T1-8 (build on the metadata + audit extensions).
 
 ---
 
@@ -421,7 +421,7 @@ Suggested 0.9.4 order: T1-1, T1-2, T1-5, T1-7 first (independent + low-risk), th
 
 ## Success criteria
 
-**0.9.4 ships successfully if:**
+**0.9.3 ships successfully if:**
 
 1. All T1 Spock specs green.
 2. `docs/user/COMPLIANCE.md` exists and is fair (audit-checked internally).

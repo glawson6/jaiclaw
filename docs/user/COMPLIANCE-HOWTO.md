@@ -1,6 +1,6 @@
 # How To — Make a JaiClaw Deployment Compliance-Ready
 
-**Companion to:** [COMPLIANCE.md](COMPLIANCE.md) (reference), [MIGRATION-0.9.4.md](../MIGRATION-0.9.4.md) (upgrade path)
+**Companion to:** [COMPLIANCE.md](COMPLIANCE.md) (reference), [MIGRATION-0.9.3.md](../MIGRATION-0.9.3.md) (upgrade path)
 
 This document is a **step-by-step playbook** for taking a JaiClaw deployment from "not compliance-configured" to "GDPR-ready" or "HIPAA-ready" or both. It's task-oriented — each section is a concrete thing you do, in order, with the YAML / Java / kubectl commands you'll actually run.
 
@@ -12,7 +12,7 @@ If you want to understand *what* the framework provides and *why* (article-to-ca
 
 You need all of these on hand before starting:
 
-- [ ] JaiClaw 0.9.4 or later (`./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout` from repo root, or check the BOM version your project imports)
+- [ ] JaiClaw 0.9.3 or later (`./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout` from repo root, or check the BOM version your project imports)
 - [ ] Multi-tenant deployment already working (`jaiclaw.tenant.mode: multi` and JWT auth set up)
 - [ ] A `SecretsProvider` wired (env / file / 1Password / vault)
 - [ ] TLS-terminating layer in front of the gateway — reverse proxy or `server.ssl.*`
@@ -487,8 +487,8 @@ If all five pass, ship. If any fails, dig in — a partial pass gives false conf
 ## Related
 
 - [COMPLIANCE.md](COMPLIANCE.md) — reference guide (what & why)
-- [MIGRATION-0.9.4.md](../MIGRATION-0.9.4.md) — upgrade path from 0.9.3
+- [MIGRATION-0.9.3.md](../MIGRATION-0.9.3.md) — upgrade path from 0.9.2
 - [PRODUCTION-DEPLOYMENT.md § 9.1](PRODUCTION-DEPLOYMENT.md) — deployment topology for compliance-aware setups
 - [OPERATIONS.md § Compliance](OPERATIONS.md) — operator runbook
 - [dev/COMPLIANCE-IMPLEMENTATION-PLAN.md](../dev/COMPLIANCE-IMPLEMENTATION-PLAN.md) — internal plan document
-- [releases/release-0.9.4.md](../../releases/release-0.9.4.md) — release notes
+- [releases/release-0.9.3.md](../../releases/release-0.9.3.md) — release notes

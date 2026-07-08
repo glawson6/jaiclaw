@@ -1,6 +1,6 @@
 # JaiClaw Compliance Guide (GDPR + HIPAA)
 
-**Framework version:** 0.9.4+
+**Framework version:** 0.9.3+
 **Audience:** operators and architects evaluating JaiClaw for deployments subject to GDPR (EU personal data) or HIPAA (US Protected Health Information).
 
 **Position:** JaiClaw is a **compliance-capable** framework. It provides the multi-tenant isolation, audit SPI, secrets management, retention enforcement, BAA-eligible-provider metadata, and LLM-call audit trail adopters need to build defensible GDPR + HIPAA deployments. **It is not a compliance-certified product.** Both frameworks are properties of a deployment, not of a framework.
@@ -21,7 +21,7 @@ Sections below map each capability to the article/safeguard it helps with. Every
 | `security-hardened` profile — HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe API key comparison | Art. 32 | §164.312(a), (d) |
 | Pluggable `SecretsProvider` SPI (env / file / 1Password / custom) | Art. 32 | §164.312(a)(2)(iv) — key material only, not payload encryption |
 
-Tier 2 SPIs shipped alongside 0.9.4 (opt-in — see § "Tier 2 SPIs" below):
+Tier 2 SPIs shipped alongside 0.9.3 (opt-in — see § "Tier 2 SPIs" below):
 
 - `DataSubjectErasureSpi` (GDPR Art. 17 cascade delete)
 - `DataSubjectExportService` + `/api/gdpr/export/{id}` (Art. 15, 20)
@@ -133,7 +133,7 @@ jaiclaw:
         baa-eligible: false         # override — awaiting AWS contract
 ```
 
-The classification catalog is `io.jaiclaw.config.BaaEligibleProviders`. Rows in the default table reflect the state at 0.9.4 cut; if a future BAA offering changes any classification, update the property (no code change required).
+The classification catalog is `io.jaiclaw.config.BaaEligibleProviders`. Rows in the default table reflect the state at 0.9.3 cut; if a future BAA offering changes any classification, update the property (no code change required).
 
 ## HTTPS enforcement
 
@@ -243,8 +243,8 @@ Framework can't do these; you must:
 ## Related documentation
 
 - **[COMPLIANCE-HOWTO.md](COMPLIANCE-HOWTO.md)** — step-by-step playbook: how to make a JaiClaw deployment GDPR-ready, HIPAA-ready, or both. Task-oriented companion to this reference.
-- `docs/MIGRATION-0.9.4.md` — 0.9.3 → 0.9.4 adopter migration path.
-- `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md` — the internal roadmap that produced 0.9.4's Tier 1 + Tier 2 + Tier 3 delivery.
+- `docs/MIGRATION-0.9.3.md` — 0.9.3 → 0.9.3 adopter migration path.
+- `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md` — the internal roadmap that produced 0.9.3's Tier 1 + Tier 2 + Tier 3 delivery.
 - `docs/user/PRODUCTION-DEPLOYMENT.md` § 9.1 — compliance-aware deployment topology.
 - `docs/user/OPERATIONS.md` § Compliance — operator runbook (property reference, runtime inspection, retention runbook).
 - `SECURITY.md` — security posture and vulnerability reporting.

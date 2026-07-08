@@ -1,15 +1,15 @@
-# Migration Guide — JaiClaw 0.9.3 → 0.9.4
+# Migration Guide — JaiClaw 0.9.2 → 0.9.3
 
-**Nothing breaks.** Every 0.9.4 change is additive: new SPI methods have default implementations, extended records have backward-compat constructors, and the new `jaiclaw-compliance` module is opt-in. An adopter can bump the version and redeploy without touching code or config.
+**Nothing breaks.** Every 0.9.3 change is additive: new SPI methods have default implementations, extended records have backward-compat constructors, and the new `jaiclaw-compliance` module is opt-in. An adopter can bump the version and redeploy without touching code or config.
 
-This guide is for adopters who want to **opt into** the new compliance surface (GDPR + HIPAA) that 0.9.4 unlocks.
+This guide is for adopters who want to **opt into** the new compliance surface (GDPR + HIPAA) that 0.9.3 unlocks.
 
 ## 1. Bump the version
 
 Update your BOM import or root property:
 
 ```xml
-<jaiclaw.version>0.9.4</jaiclaw.version>
+<jaiclaw.version>0.9.3</jaiclaw.version>
 ```
 
 ## 2. Pull the compliance extension onto the classpath
@@ -191,4 +191,4 @@ The framework provides the substrate. Legal artifacts (DPA, RoPA, breach notific
 - [docs/user/COMPLIANCE.md](user/COMPLIANCE.md) — full compliance reference
 - [docs/user/PRODUCTION-DEPLOYMENT.md § 9.1](user/PRODUCTION-DEPLOYMENT.md) — compliance-aware deployment topology
 - [docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md](dev/COMPLIANCE-IMPLEMENTATION-PLAN.md) — full plan document (Tier 1 + Tier 2 + Tier 3 spec)
-- [releases/release-0.9.4.md](../releases/release-0.9.4.md) — full 0.9.4 release notes
+- [releases/release-0.9.3.md](../releases/release-0.9.3.md) — full 0.9.3 release notes

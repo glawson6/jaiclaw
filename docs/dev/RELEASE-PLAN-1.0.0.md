@@ -1,7 +1,7 @@
 # JaiClaw 1.0.0 Release Plan
 
-> **Status**: 0.9.4 compliance substrate shipped. 30-day pilot window active.
-> **Sequence**: 0.9.2 (secrets) → 0.9.3 (API cleanup) → 0.9.4 (compliance substrate) → (30-day pilot window) → 1.0.0 cut.
+> **Status**: 0.9.3 compliance substrate cut in progress (includes API cleanup + compliance). 30-day pilot window opens once 0.9.3 lands on Central.
+> **Sequence**: 0.9.2 (secrets) → 0.9.3 (API cleanup + compliance substrate) → (30-day pilot window) → 1.0.0 cut.
 > **Companion plans**: [RELEASE-PLAN-0.9.2.md](./RELEASE-PLAN-0.9.2.md), [COMPLIANCE-IMPLEMENTATION-PLAN.md](./COMPLIANCE-IMPLEMENTATION-PLAN.md).
 > **Supersedes**: [../ROAD-TO-1.0.md](../ROAD-TO-1.0.md) (kept as historical context for the 0.8 → 0.9 transition).
 
@@ -9,13 +9,12 @@
 
 1.0 is a **stability commitment**, not a feature release. The `@Stable` annotation regime introduced in 0.8.0 (see the historical `ROAD-TO-1.0.md`) makes the commitment precise: from 1.0 onward, breaking changes to `@Stable` types require a major version bump (2.0). `@Experimental` and `@Internal` types continue to evolve under their own contract.
 
-To get to 1.0 from today (0.9.4 shipped, pilot active):
+To get to 1.0 from today (0.9.3-SNAPSHOT, release in flight):
 
 1. ✅ **0.9.2** — secrets baseline (see the companion doc). Shipped.
-2. ✅ **0.9.3** — API surface polish + example cleanup. Shipped (see 0.9.3 API cleanup commits).
-3. ✅ **0.9.4** — compliance substrate (GDPR + HIPAA — Tier 1 + Tier 2 + Tier 3 from [COMPLIANCE-IMPLEMENTATION-PLAN.md](./COMPLIANCE-IMPLEMENTATION-PLAN.md)). Shipped. Positions JaiClaw as a "compliance-capable" framework for enterprise adopters and closes the article-to-capability gap identified in the internal audit.
-4. **30-day pilot window** with two non-internal production deployments. Empirical evidence that the API freeze is real. In progress.
-5. **1.0.0 cut** — review `@Experimental` surfaces, promote a few to `@Stable`, write the consolidated migration guide, tag.
+2. **0.9.3** — API surface polish + example cleanup **plus** the compliance substrate (GDPR + HIPAA — Tier 1 + Tier 2 + Tier 3 from [COMPLIANCE-IMPLEMENTATION-PLAN.md](./COMPLIANCE-IMPLEMENTATION-PLAN.md)). Bundled into one release because both were in-flight when the cut was scheduled. Positions JaiClaw as a "compliance-capable" framework for enterprise adopters and closes the article-to-capability gap identified in the internal audit. **Cut in progress.**
+3. **30-day pilot window** with two non-internal production deployments. Empirical evidence that the API freeze is real. Opens once 0.9.3 lands on Central.
+4. **1.0.0 cut** — review `@Experimental` surfaces, promote a few to `@Stable`, write the consolidated migration guide, tag.
 
 **Hard ceiling**: Spring Boot 3.5.x. Embabel — JaiClaw's binding Tier 1 dependency — has not released a Spring Boot 4-compatible version. Their `main` branch (`0.4.0-SNAPSHOT`) still targets Spring Boot 3.5.x. **Spring Boot 4 / Spring Framework 7 / Apache Camel 4.19+ are post-1.0 work**, slated for JaiClaw 2.0 when Embabel ships a 4.x GA. This is intentional, not an oversight.
 
@@ -127,7 +126,7 @@ This is the gate that makes 1.0 a real commitment rather than a marketing event.
 - **Two non-internal pilot deployments running 0.9.3 in production for ≥30 days.** "Non-internal" means not run by JaiClaw maintainers. Identify candidate pilots now during the 0.9.2 cycle so they can plan an upgrade.
 - **Feedback channel must be documented** before the pilot starts. Slack / GitHub Discussions / email — your call, but pilots need to know where to file issues and expect a response SLA.
 
-If the API freeze breaks during this window (i.e., we have to ship a breaking 0.9.x to fix something), we re-cut 0.9.4 and restart the 30-day clock. This is by design.
+If the API freeze breaks during this window (i.e., we have to ship a breaking 0.9.x to fix something), we cut 0.9.4 and restart the 30-day clock. This is by design.
 
 ---
 

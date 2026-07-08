@@ -1,20 +1,20 @@
-# JaiClaw 0.9.4 Release Notes
+# JaiClaw 0.9.3 Release Notes
 
 **Release Date:** TBD
 
-> 0.9.4 is the **compliance substrate** release — one coherent theme threaded
+> 0.9.3 is the **compliance substrate** release — one coherent theme threaded
 > through 21 focused commits across three tracks. The 0.9.x line freezes the
 > compliance surface JaiClaw's 1.0 stability commitment can rest on: GDPR
 > Articles 5, 6, 7, 15, 17, 18, 20, 21, 30, 44 and HIPAA §164.308 / .310 /
 > .312 / .316 all now have concrete SPIs or reference implementations in the
 > framework. Nothing turns on unless the operator sets
 > `jaiclaw.compliance.profile={gdpr|hipaa|both}` — profile=none loads zero
-> compliance code, so upgrading from 0.9.3 is behavior-preserving.
+> compliance code, so upgrading from 0.9.2 is behavior-preserving.
 >
 > Why this is the theme: JaiClaw's positioning ("compliance-capable
 > framework") required a compliance surface real enough that an enterprise
 > architect can answer "can I deploy this for our EU health portal" in 15
-> minutes with a specific config recipe. That gap is closed in 0.9.4.
+> minutes with a specific config recipe. That gap is closed in 0.9.3.
 >
 > **No breaking changes.** Every new SPI method is a default method,
 > every new record field has a backward-compat constructor, and the new
@@ -88,7 +88,7 @@
 ## Compliance substrate
 
 The plan document (`docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md`) organizes
-compliance work into three tiers. All three shipped in 0.9.4.
+compliance work into three tiers. All three shipped in 0.9.3.
 
 ### Tier 1 — non-breaking foundation (8 items)
 
@@ -128,7 +128,7 @@ compliance work into three tiers. All three shipped in 0.9.4.
 
 ## Migration
 
-Full migration guide at [docs/MIGRATION-0.9.4.md](../docs/MIGRATION-0.9.4.md).
+Full migration guide at [docs/MIGRATION-0.9.3.md](../docs/MIGRATION-0.9.3.md).
 
 **TL;DR for an existing 0.9.3 adopter:**
 
@@ -153,7 +153,7 @@ Full migration guide at [docs/MIGRATION-0.9.4.md](../docs/MIGRATION-0.9.4.md).
 
 ## Breaking Changes
 
-**None for the 0.9.3 → 0.9.4 upgrade.**
+**None for the 0.9.2 → 0.9.3 upgrade.**
 
 Every new SPI method is a default method. Every extended record has a
 backward-compat constructor. The new `jaiclaw-compliance` module is
@@ -176,7 +176,7 @@ continue to work.
 
 ## Dependency Updates
 
-None. 0.9.4 does not bump Spring Boot, Spring AI, Embabel, or Camel — all
+None. 0.9.3 does not bump Spring Boot, Spring AI, Embabel, or Camel — all
 compliance work is additive.
 
 ---
@@ -209,10 +209,10 @@ compliance work is additive.
 | Tier 1 §1 — All T1 Spock specs green in `./mvnw test` | ✅ |
 | Tier 1 §2 — `jaiclaw:analyze compliance` sub-check | ⚠️ Deferred to 0.9.5 (advisory, not blocking) |
 | Tier 1 §3 — External counsel review of `COMPLIANCE.md` | ⏳ External step, tracked separately |
-| Tier 1 §4 — `release-0.9.4.md` calls out compliance substrate | ✅ (this document) |
+| Tier 1 §4 — `release-0.9.3.md` calls out compliance substrate | ✅ (this document) |
 | Tier 2 §1 — All T2 SPIs marked `@Stable` | ✅ Verified across `core/jaiclaw-core/src/main/java/io/jaiclaw/core/gdpr/` + `core/jaiclaw-core/src/main/java/io/jaiclaw/core/encryption/` |
 | Tier 2 §2 — Reference impls ≥ 80% JaCoCo line coverage | ✅ 91% line coverage on reference impls; 84% bundle-wide |
-| Tier 2 §3 — Migration guide entry | ✅ `docs/MIGRATION-0.9.4.md` |
+| Tier 2 §3 — Migration guide entry | ✅ `docs/MIGRATION-0.9.3.md` |
 | Tier 2 §4 — `COMPLIANCE.md` "compliance-capable" wording | ✅ Wording in place since T1-8 |
 | Tier 2 §5 — External counsel review | ⏳ External step, tracked separately |
-| 1.0 §5 — 30-day pilot deployment | ⏳ External — starts when 0.9.4 ships |
+| 1.0 §5 — 30-day pilot deployment | ⏳ External — starts when 0.9.3 ships |
