@@ -50,6 +50,35 @@ public interface TranscriptStore {
      * @param limit    maximum number of matches to return
      * @return matches, most-recent-session first, at most {@code limit} items
      */
+    /**
+     * T1-6: purge transcripts for a tenant whose {@code startTime} is strictly
+     * before {@code cutoff}. Returns the number of sessions removed. The
+     * default implementation walks {@link #list} + {@link #load} + {@link
+     * #delete} so existing stores get purge for free; impls with a real
+     * index should override.
+     *
+     * <p>Callers (typically {@code RetentionEnforcementService}) invoke this
+     * on their scheduled purge tick. Impls MUST scope the delete to the
+     * given tenantId — never delete cross-tenant.
+     *
+     * @param tenantId the tenant to scope the purge to (null for
+     *                 single-tenant / all)
+     * @param cutoff   sessions strictly before this instant are removed
+     * @return count of removed sessions
+     */
+    default int purgeOlderThan(String tenantId, java.time.Instant cutoff) {
+        if (cutoff == null) return 0;
+        int removed = 0;
+        for (String sessionId : list(tenantId, Integer.MAX_VALUE)) {
+            Optional<TranscriptSession> session = load(sessionId);
+            if (session.isEmpty()) continue;
+            if (session.get().startTime() != null && session.get().startTime().isBefore(cutoff)) {
+                if (delete(sessionId)) removed++;
+            }
+        }
+        return removed;
+    }
+
     default List<TranscriptSearchResult> search(String query, String tenantId, int limit) {
         if (query == null || query.isBlank() || limit <= 0) return List.of();
         String needle = query.toLowerCase();
