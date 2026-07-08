@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-This guide is for operators putting JaiClaw 0.8.0 into a real production
+This guide is for operators putting JaiClaw 0.9.4 into a real production
 environment. It covers container images, Kubernetes manifests, a minimal
 Helm chart, secrets, observability via Spring Boot Actuator + Micrometer,
 health probes, rolling upgrades, and a short operational runbook.
@@ -10,7 +10,7 @@ If you are still evaluating JaiClaw or running it locally, start with
 workflow (`start.sh`, `bin/jaiclaw`, local provider setup). This guide
 assumes you have a working configuration and want to ship it.
 
-> JaiClaw 0.8.0 is pre-1.0. The API/SPI surface is governed by
+> JaiClaw 0.9.4 is pre-1.0. The API/SPI surface is governed by
 > `@Stable` / `@Experimental` / `@Internal` markers
 > ([P3.5](../CODEBASE-ANALYSIS-2026-06-10.md)). Deploying with
 > `@Experimental` features in production is supported — just track them

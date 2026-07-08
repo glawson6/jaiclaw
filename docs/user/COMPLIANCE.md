@@ -242,7 +242,9 @@ Framework can't do these; you must:
 
 ## Related documentation
 
-- `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md` — the roadmap that produced 0.9.4's Tier 1 delivery + the SPI additions coming in 1.0.
-- `docs/user/PRODUCTION-DEPLOYMENT.md` — production deployment topology.
-- `docs/user/OPERATIONS.md` — operator runbook.
+- **[COMPLIANCE-HOWTO.md](COMPLIANCE-HOWTO.md)** — step-by-step playbook: how to make a JaiClaw deployment GDPR-ready, HIPAA-ready, or both. Task-oriented companion to this reference.
+- `docs/MIGRATION-0.9.4.md` — 0.9.3 → 0.9.4 adopter migration path.
+- `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md` — the internal roadmap that produced 0.9.4's Tier 1 + Tier 2 + Tier 3 delivery.
+- `docs/user/PRODUCTION-DEPLOYMENT.md` § 9.1 — compliance-aware deployment topology.
+- `docs/user/OPERATIONS.md` § Compliance — operator runbook (property reference, runtime inspection, retention runbook).
 - `SECURITY.md` — security posture and vulnerability reporting.

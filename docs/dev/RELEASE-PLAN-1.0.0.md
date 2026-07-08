@@ -1,20 +1,21 @@
 # JaiClaw 1.0.0 Release Plan
 
-> **Status**: 0.9.2-SNAPSHOT in flight.
-> **Sequence**: 0.9.2 → 0.9.3 → (30-day pilot window) → 1.0.0.
-> **Companion plan**: [RELEASE-PLAN-0.9.2.md](./RELEASE-PLAN-0.9.2.md) covers 0.9.2 in depth (it has enough scope to deserve its own doc).
+> **Status**: 0.9.4 compliance substrate shipped. 30-day pilot window active.
+> **Sequence**: 0.9.2 (secrets) → 0.9.3 (API cleanup) → 0.9.4 (compliance substrate) → (30-day pilot window) → 1.0.0 cut.
+> **Companion plans**: [RELEASE-PLAN-0.9.2.md](./RELEASE-PLAN-0.9.2.md), [COMPLIANCE-IMPLEMENTATION-PLAN.md](./COMPLIANCE-IMPLEMENTATION-PLAN.md).
 > **Supersedes**: [../ROAD-TO-1.0.md](../ROAD-TO-1.0.md) (kept as historical context for the 0.8 → 0.9 transition).
 
 ## TL;DR
 
 1.0 is a **stability commitment**, not a feature release. The `@Stable` annotation regime introduced in 0.8.0 (see the historical `ROAD-TO-1.0.md`) makes the commitment precise: from 1.0 onward, breaking changes to `@Stable` types require a major version bump (2.0). `@Experimental` and `@Internal` types continue to evolve under their own contract.
 
-To get there from today (0.9.2-SNAPSHOT) we need:
+To get to 1.0 from today (0.9.4 shipped, pilot active):
 
-1. **0.9.2** — secrets baseline (see the companion doc). Big scope; goes first.
-2. **0.9.3** — API surface polish + example cleanup. Small scope; bookends the 0.9.x stabilization.
-3. **A 30-day pilot window** with two non-internal production deployments. Empirical evidence that the API freeze is real.
-4. **1.0.0 cut** — review `@Experimental` surfaces, promote a few to `@Stable`, write the consolidated migration guide, tag.
+1. ✅ **0.9.2** — secrets baseline (see the companion doc). Shipped.
+2. ✅ **0.9.3** — API surface polish + example cleanup. Shipped (see 0.9.3 API cleanup commits).
+3. ✅ **0.9.4** — compliance substrate (GDPR + HIPAA — Tier 1 + Tier 2 + Tier 3 from [COMPLIANCE-IMPLEMENTATION-PLAN.md](./COMPLIANCE-IMPLEMENTATION-PLAN.md)). Shipped. Positions JaiClaw as a "compliance-capable" framework for enterprise adopters and closes the article-to-capability gap identified in the internal audit.
+4. **30-day pilot window** with two non-internal production deployments. Empirical evidence that the API freeze is real. In progress.
+5. **1.0.0 cut** — review `@Experimental` surfaces, promote a few to `@Stable`, write the consolidated migration guide, tag.
 
 **Hard ceiling**: Spring Boot 3.5.x. Embabel — JaiClaw's binding Tier 1 dependency — has not released a Spring Boot 4-compatible version. Their `main` branch (`0.4.0-SNAPSHOT`) still targets Spring Boot 3.5.x. **Spring Boot 4 / Spring Framework 7 / Apache Camel 4.19+ are post-1.0 work**, slated for JaiClaw 2.0 when Embabel ships a 4.x GA. This is intentional, not an oversight.
 

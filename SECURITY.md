@@ -7,9 +7,9 @@ Older minor versions are best-effort.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.7.x   | :white_check_mark: |
-| 0.6.x   | :warning: best-effort |
-| < 0.6   | :x: upgrade required |
+| 0.9.x   | :white_check_mark: |
+| 0.8.x   | :warning: best-effort |
+| < 0.8   | :x: upgrade required |
 
 ## Reporting a Vulnerability
 
