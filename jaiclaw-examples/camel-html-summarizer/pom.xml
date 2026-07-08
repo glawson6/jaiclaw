@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-examples</artifactId>
-        <version>0.9.3</version>
+        <version>0.9.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-example-camel-html-summarizer</artifactId>
