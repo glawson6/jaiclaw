@@ -1,0 +1,38 @@
+id: weekly-github-pr-review
+title: Weekly GitHub PR Review Digest
+description: >-
+  Every Friday, compile the list of open PRs older than the review SLA and
+  post the digest for the team to triage.
+category: github
+tags: [github, code-review, weekly]
+scheduleTemplate: "0 {hour} * * FRI"
+scheduleHuman: "Weekly on Friday at {hour}:00"
+promptTemplate: |
+  Use the github skill to list open PRs on {repo} that have been open more
+  than {sla_days} days without a review or with a stale review request.
+  Group by reviewer, sort by age, and post the digest to {channel}. Include
+  the PR title, author, days open, and last activity for each item.
+slots:
+  - key: hour
+    label: Hour of day (0-23)
+    type: HOUR_OF_DAY
+    required: false
+    defaultValue: "10"
+    description: Local-time hour to post the digest.
+  - key: repo
+    label: Repository
+    type: TEXT
+    required: true
+    description: owner/repo to scan (e.g. "acme/monorepo").
+  - key: sla_days
+    label: Review SLA (days)
+    type: INTEGER
+    required: false
+    defaultValue: "3"
+    description: PRs older than this without review get flagged.
+  - key: channel
+    label: Destination channel
+    type: TEXT
+    required: true
+    defaultValue: "#code-review"
+    description: Slack channel that receives the digest.

@@ -1,0 +1,39 @@
+id: daily-security-audit
+title: Daily Security Audit
+description: >-
+  Sweep hosts every morning for CVE regressions and privilege drift. Posts a
+  summary to the alert channel; suppresses delivery with [SILENT] when
+  nothing changed since yesterday.
+category: devops
+tags: [security, ops, cve]
+scheduleTemplate: "{minute} {hour} * * *"
+scheduleHuman: "Daily at {hour}:{minute:00}"
+promptTemplate: |
+  Run the healthcheck skill against host group {host_group} and diff findings
+  against the previous run. Report new critical CVEs, changed sudoers, and
+  new listening ports to the {alert_channel} Slack channel. If nothing new,
+  reply exactly "[SILENT]" so delivery is suppressed.
+slots:
+  - key: hour
+    label: Hour of day (0-23)
+    type: HOUR_OF_DAY
+    required: true
+    defaultValue: "6"
+    description: Local-time hour to run the audit.
+  - key: minute
+    label: Minute
+    type: MINUTE_OF_HOUR
+    required: false
+    defaultValue: "0"
+    description: Minute past the hour.
+  - key: host_group
+    label: Host group
+    type: TEXT
+    required: true
+    description: A hosts.yml group name to audit (e.g. "prod-webservers").
+  - key: alert_channel
+    label: Alert channel
+    type: TEXT
+    required: true
+    defaultValue: "#sec-alerts"
+    description: Slack channel to receive the summary.

@@ -1,0 +1,28 @@
+id: hourly-cost-check
+title: Hourly LLM Cost Watchdog
+description: >-
+  Poll model-usage every hour; alert if the cumulative cost since midnight
+  exceeds the threshold, so runaway loops don't burn a day's budget while
+  the team is asleep.
+category: finops
+tags: [finops, alerting, llm]
+scheduleTemplate: "0 * * * *"
+scheduleHuman: "Every hour, on the hour"
+promptTemplate: |
+  Use the model-usage skill to fetch the cost total since 00:00 today. If it
+  exceeds {threshold_usd} USD, post a warning to {alert_channel} naming the
+  top-spending session ids and their models. If below the threshold, reply
+  exactly "[SILENT]".
+slots:
+  - key: threshold_usd
+    label: Threshold (USD)
+    type: TEXT
+    required: true
+    defaultValue: "100"
+    description: Alert when day-to-date cost exceeds this dollar figure.
+  - key: alert_channel
+    label: Alert channel
+    type: TEXT
+    required: true
+    defaultValue: "#finops-alerts"
+    description: Slack channel to receive the warning.
