@@ -100,6 +100,7 @@ Surface-level evidence that this is a serious framework, not a demo:
 - **22 plugin lifecycle hooks** — intercept before/after LLM calls, tool execution, message pipeline, context compaction, session events. Reshape the entire agent behavior without forking. ([hook events](core/jaiclaw-core/src/main/java/io/jaiclaw/core/hook/event/))
 - **MCP server hosting** — expose JaiClaw tools to Claude Desktop, Cursor, or any MCP client. `McpToolProvider` SPI dogfooded by 22 in-repo implementations. ([details](core/jaiclaw-core/src/main/java/io/jaiclaw/core/mcp/))
 - **Observability built in** — Spring Boot Actuator with custom endpoints (`/actuator/pipelines`, `/actuator/kanban`, `/actuator/agentmind-tendencies`), Micrometer instrumentation throughout, `AuditLogger` + `TranscriptStore` SPIs.
+- **GDPR + HIPAA compliance substrate** (0.9.4+) — one property (`jaiclaw.compliance.profile={gdpr|hipaa|both}`) turns on retention enforcement, LLM-call auditing with recipient tracking, BAA-eligible provider warnings, HTTPS startup guard, PHI redaction, and a REST surface at `/api/gdpr/*` for Art. 15/17/20 subject requests. 12 `@Stable` SPIs covering data-subject erasure + export, consent, prompt redaction, field encryption, chain-of-hashes audit, privacy notice, RoPA generation. Zero code loads when profile=none. ([compliance guide](docs/user/COMPLIANCE.md))
 - **GOAP multi-agent planning** — [Embabel](https://github.com/embabel/embabel-agent) integration. Deterministic action sequences computed by A* search, with automatic parallelism detection and typed intermediate results.
 - **11 channels, 11 LLM providers, 43 runnable examples** — the same agent code runs across Telegram, Slack, Discord, Email, SMS, Signal, Teams, WhatsApp, Google Chat, LINE, Matrix; the same code targets Anthropic, OpenAI, Gemini, Ollama, Bedrock, Azure OpenAI, DeepSeek, Mistral, MiniMax, Vertex AI, OCI GenAI.
 
@@ -110,7 +111,7 @@ Surface-level evidence that this is a serious framework, not a demo:
 ```
 core/                11 modules — pure-Java domain model (jaiclaw-core has no Spring dep)
 channels/             7 modules — one per messaging platform
-extensions/          41 modules — opt-in capabilities (voice, browser, identity, pipeline, …)
+extensions/          43 modules — opt-in capabilities (voice, browser, identity, pipeline, compliance, …)
 apps/                 5 modules — runnable Spring Boot apps (gateway, shell, CLI)
 jaiclaw-starters/    31 modules — Spring Boot starters for downstream consumers
 jaiclaw-examples/    43 modules — runnable example applications
@@ -528,6 +529,9 @@ Multi-arch (`linux/amd64` + `linux/arm64`) images use `eclipse-temurin:21-jre` b
 | [Architecture](docs/dev/ARCHITECTURE.md) | Module graph, message flow, deployment patterns |
 | [Operations Guide](docs/user/OPERATIONS.md) | Running, configuring, deploying, full env var reference |
 | [Production Deployment](docs/user/PRODUCTION-DEPLOYMENT.md) | Kubernetes, JKube, Helm, secrets, observability, security hardening |
+| [Compliance Guide](docs/user/COMPLIANCE.md) | GDPR + HIPAA reference: profile → flag orchestration, per-tenant metadata, BAA-eligible provider catalog, Tier 1/2/3 SPIs |
+| [Compliance How-To](docs/user/COMPLIANCE-HOWTO.md) | Task-oriented playbook: how to make a deployment GDPR-ready / HIPAA-ready / both |
+| [Migration 0.9.4](docs/MIGRATION-0.9.4.md) | 7-step adopter guide for opting into the compliance surface |
 | [From Personal to Enterprise](docs/user/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md) | Five-level spectrum from personal assistant to multi-tenant SaaS |
 | [Agentic Workflow](docs/dev/AGENTIC-WORKFLOW.md) | Tool loop, human-in-the-loop, context compaction, memory |
 | [Project Scaffolder](tools/jaiclaw-project-scaffolder/README.md) | Generate new JaiClaw projects from a YAML manifest |

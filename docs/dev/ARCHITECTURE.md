@@ -699,3 +699,152 @@ spring:
     ollama:
       base-url: http://ollama.infra:11434
 ```
+
+## Compliance Orchestration
+
+The `jaiclaw-compliance` extension (shipped in 0.9.4) layers GDPR + HIPAA orchestration on top of the security-hardened profile. The full adopter-facing guide is at `docs/user/COMPLIANCE.md`; this section covers the internal architecture.
+
+### Profile → effective-flag translation
+
+`ComplianceEnvironmentPostProcessor` runs at the earliest environment stage (registered via `META-INF/spring.factories`) and translates one operator-facing property into a bundle of individual flags:
+
+```
+jaiclaw.compliance.profile={none|gdpr|hipaa|both}
+        │
+        ▼
+ComplianceEnvironmentPostProcessor
+        │
+        ├──▶ jaiclaw.compliance.effective.require-https
+        ├──▶ jaiclaw.compliance.effective.retention-enforcement
+        ├──▶ jaiclaw.compliance.effective.audit-chat-client
+        ├──▶ jaiclaw.compliance.effective.baa-warnings
+        └──▶ jaiclaw.compliance.effective.prompt-redaction
+```
+
+Individual flags at `jaiclaw.compliance.<flag>` override the profile default in either direction — an operator can run `profile: hipaa` with `require-https: false` on a bench deployment behind a private TLS-terminating proxy. Effective flags are inspectable via `/actuator/env`.
+
+Cross-subsystem propagation: `ComplianceEnvironmentPostProcessor` also sets `jaiclaw.security.require-https` (unless already explicitly set) so the `RequireHttpsStartupGuard` in `jaiclaw-security` picks up the profile decision.
+
+**Profile `none` (default) loads zero compliance beans.** Every `@Bean` in `JaiClawComplianceAutoConfiguration` is gated on a `@ConditionalOnProperty` matching an effective flag — no wiring, no scheduled tasks, no bean-post-processing until an adopter opts in. The module is safe to keep on the classpath at zero cost.
+
+### SPI layout
+
+Tier 1 metadata + Tier 2/3 SPIs live under `jaiclaw-core`:
+
+```
+io.jaiclaw.core.gdpr/
+  DataSubjectErasureSpi         (T2-1 — cascade delete)
+  DataSubjectExportService      (T2-2 — Art. 15/20 export)
+  PromptRedactor                (T2-3 — pre-LLM PHI masking)
+  ConsentManager                (T2-5 — Art. 6/7)
+  PrivacyNoticeService          (T2-7 — Art. 13/14)
+  RopaGenerator                 (T3-1 — Art. 30 RoPA)
+  ObjectionService              (T3-2 — Art. 21)
+  AnomalyDetector               (T3-3 — mass-read / bulk-export / off-hours)
+  ProcessorMetadataExporter     (T3-4 — DPA metadata)
+
+io.jaiclaw.core.encryption/
+  FieldEncryptor                (T2-4 — AES-GCM SPI)
+
+io.jaiclaw.core.data/
+  RetentionPolicy               (T1-6 — TTL record + Action enum)
+```
+
+All 12 marked `@Stable`. Reference impls all in `io.jaiclaw.compliance.*` under `jaiclaw-compliance`:
+
+```
+io.jaiclaw.compliance/
+  ComplianceProfile              (enum: NONE, GDPR, HIPAA, BOTH)
+  ComplianceProperties           (record — profile + 5 nullable Boolean flags)
+  ComplianceEnvironmentPostProcessor
+  JaiClawComplianceAutoConfiguration
+
+io.jaiclaw.compliance.audit/
+  AuditingChatModel                        (T1-3 ChatModel decorator)
+  AuditingChatModelBeanPostProcessor       (idempotent wrap)
+  BaaWarningChatModelDecorator             (T1-4 non-BAA warn on PHI tenant)
+  HashChainedAuditLogger                   (T2-6 tamper-evident chain)
+
+io.jaiclaw.compliance.encryption/
+  AesGcmFieldEncryptor                     (32-byte key, per-call nonce)
+  EncryptedTranscriptStore                 (decorator)
+  EncryptedAuditLogger                     (decorator)
+
+io.jaiclaw.compliance.gdpr/
+  AggregateDataSubjectErasureSpi           (fans out over TranscriptStore + AuditLogger)
+  AggregateDataSubjectExportService        (JSON, JSON-LD, CSV_BUNDLE)
+  GdprController                           (REST at /api/gdpr/*)
+  RegexPromptRedactor                      (SSN, MRN, phone, email, DOB, credit card)
+  InMemoryConsentManager
+  DefaultPrivacyNoticeService
+  AuditBasedRopaGenerator                  (reconstructs RoPA from audit trail)
+  InMemoryObjectionService
+  MassReadDetector                         (distinct-subject-read threshold detector)
+  DefaultProcessorMetadataExporter         (sub-processors from ModelsProperties + BAA catalog)
+```
+
+### AuditingChatModel bean-post-processing pattern
+
+When `jaiclaw.compliance.effective.audit-chat-client=true`, `AuditingChatModelBeanPostProcessor` wraps every Spring AI `ChatModel` bean the context produces:
+
+```
+Bean context startup
+    │
+    ▼
+Spring AI ChatModel created (Anthropic / OpenAI / Bedrock / Ollama)
+    │
+    ▼
+AuditingChatModelBeanPostProcessor.postProcessAfterInitialization
+    │
+    ├─▶ if already AuditingChatModel → return as-is (idempotent)
+    └─▶ else → wrap in AuditingChatModel(delegate, auditLogger)
+    │
+    ▼
+Downstream consumer sees ChatModel (interface) — doesn't know it's wrapped
+
+Runtime:
+    call() / stream() → emit AuditEvent(action=model.inference.request,
+                                        recipient=<providerName from class>,
+                                        dataCategories=<from message roles>,
+                                        lawfulBasis=<from TenantContext>,
+                                        retentionDays=<from TenantContext>,
+                                        consentToken=<from TenantContext>)
+                     → invoke delegate.call() / stream()
+```
+
+Recipient derivation extracts the provider name from the delegate `ChatModel`'s simple class name (e.g. `OpenAiChatModel` → `openai`, `AnthropicChatModel` → `anthropic`). Adopters needing region-tagged recipients (`bedrock-us-east-1`) wrap `AuditingChatModel` again with their own region-aware layer.
+
+Audit failure is swallowed inside `AuditingChatModel` — a broken `AuditLogger` never breaks the LLM request path.
+
+### GDPR REST surface
+
+`GdprController` at `/api/gdpr/*` exposes the Art. 15/17/20 request surface:
+
+```
+GET    /api/gdpr/export/{dataSubjectId}?format={json|json_ld|csv_bundle}
+DELETE /api/gdpr/subject/{dataSubjectId}?reason={ART_17_REQUEST|CONSENT_WITHDRAWAL|OPERATOR_INITIATED}
+```
+
+Tenant scope resolved from `TenantContextHolder` — requests without tenant context get **403**. The controller does **no role-based authorization** and **no rate-limiting**. **Adopters MUST front the controller** with a rate-limiter (Cloudflare / ALB / `jaiclaw.security.rate-limit`) + role auth (`gdpr.operator` on the calling principal).
+
+### Chain-of-hashes audit
+
+`HashChainedAuditLogger` decorates any `AuditLogger` and stamps every event with `details.prevHash` + `details.chainHash`:
+
+```
+chainHash = SHA-256( previousChainHash || canonical(currentEvent) )
+```
+
+Chains are per-tenant so a tenant-specific audit dump can be verified in isolation. `GENESIS` seeds each tenant's chain.
+
+`verifyChain(tenantId)` replays the tenant's stored events in insertion order and returns an `IntegrityReport(valid, brokenAt, offendingEventId, reason)`. On a break it also emits an `audit.integrity_violation` event so ops can alert without polling verify status.
+
+Canonicalization excludes the chain fields themselves during recomputation (via an `excludeChain` flag) so the stored hash isn't part of its own input.
+
+### Cross-references
+
+- Adopter-facing guide: `docs/user/COMPLIANCE.md`
+- Deployment: `docs/user/PRODUCTION-DEPLOYMENT.md` § 9.1 Compliance-aware deployment
+- Migration: `docs/MIGRATION-0.9.4.md`
+- Plan: `docs/dev/COMPLIANCE-IMPLEMENTATION-PLAN.md`
+- Release notes: `releases/release-0.9.4.md`

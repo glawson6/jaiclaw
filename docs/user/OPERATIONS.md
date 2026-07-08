@@ -1009,6 +1009,107 @@ via a `SecurityFilterChain` override if your deployment needs it.
 
 ---
 
+## Compliance (GDPR + HIPAA)
+
+The `jaiclaw-compliance` extension (0.9.4+) layers GDPR + HIPAA orchestration on top of `security-hardened`. Everything is opt-in via one property:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: hipaa    # one of: none | gdpr | hipaa | both  (default: none)
+```
+
+When `profile: none` (the default), zero compliance beans load — the module is safe to keep on the classpath at zero cost.
+
+### Profile → flag mapping
+
+| Flag | `none` | `gdpr` | `hipaa` | `both` |
+|---|---|---|---|---|
+| `jaiclaw.compliance.require-https` | off | on | on | on |
+| `jaiclaw.compliance.retention-enforcement` | off | on | on | on |
+| `jaiclaw.compliance.audit-chat-client` | off | on | on | on |
+| `jaiclaw.compliance.baa-warnings` | off | off | on | on |
+| `jaiclaw.compliance.prompt-redaction` | off | off | on | on |
+
+Individual flags override the profile default in either direction. Example — run the HIPAA profile on a bench deployment behind a private TLS-terminating proxy:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: hipaa
+    require-https: false     # override — you MUST have TLS terminating upstream
+```
+
+### Inspecting effective flags at runtime
+
+The `ComplianceEnvironmentPostProcessor` writes the resolved flags to `jaiclaw.compliance.effective.*`. Check via `/actuator/env` (requires the actuator to be exposed):
+
+```bash
+curl http://localhost:8888/actuator/env/jaiclaw.compliance.effective.profile
+curl http://localhost:8888/actuator/env/jaiclaw.compliance.effective.audit-chat-client
+```
+
+Or scan the startup log:
+
+```
+INFO ... ComplianceEnvironmentPostProcessor -- Compliance profile 'HIPAA' active — effective flags: httpsGuard=true, retention=true, chatAudit=true, baaWarn=true, promptRedact=true
+```
+
+### Per-tenant compliance metadata
+
+Some behavior is per-tenant, driven by `TenantContext.getMetadata()`:
+
+| Metadata key | Purpose |
+|---|---|
+| `gdpr.lawful_basis` | Written to every `AuditEvent.lawfulBasis` |
+| `data.retention_days` | Retention TTL — enforced by `RetentionEnforcementService` |
+| `data.restriction_flags` | GDPR Art. 18 processing restrictions |
+| `data.residency_required` | Required residency for routing / storage |
+| `hipaa.phi_processing` | Drives BAA-eligible-provider enforcement + `PromptRedactor` |
+| `gdpr.consent_token` | Reference into a `ConsentManager` record |
+
+### Retention enforcement runbook
+
+When `retention-enforcement=true`, `RetentionEnforcementService` runs on a scheduled tick and purges every registered `TranscriptStore` + `AuditLogger` whose events are past their per-tenant TTL. Each pass emits a `data.retention_purge` audit event with counts.
+
+- The default TranscriptStore / AuditLogger implementations do a **linear-scan purge** — fine for modest volumes, but store impls with a real index (Lucene, SQLite FTS5, Postgres partition drop) should override `purgeOlderThan` for O(1) purges.
+- Budget the background task CPU accordingly. Purges are tenant-scoped — a purge for tenant `acme` never touches tenant `beta`.
+- HIPAA §164.316(b)(2) requires audit ≥ 6 years (2190 days). Set `data.retention_days` per tenant to at least this value for HIPAA workloads.
+
+### GDPR REST surface
+
+`GdprController` (wired when profile ≠ none) exposes Art. 15 / 17 / 20 endpoints:
+
+```
+GET    /api/gdpr/export/{dataSubjectId}?format={json|json_ld|csv_bundle}
+DELETE /api/gdpr/subject/{dataSubjectId}?reason={ART_17_REQUEST|CONSENT_WITHDRAWAL|OPERATOR_INITIATED}
+```
+
+**Adopters MUST front the controller with:**
+- **Rate-limiting** (Cloudflare, ALB, or `jaiclaw.security.rate-limit.enabled=true`)
+- **Role-guarded auth** — the controller resolves tenant scope from `TenantContextHolder` (rejects with 403 if unset) but does **no** role check. Require `gdpr.operator` (or your equivalent) at your reverse proxy or Spring Security config.
+
+### At-rest encryption (T2-4)
+
+Not auto-wired — supply the 32-byte key from a `SecretsProvider` and decorate your `TranscriptStore` / `AuditLogger`:
+
+```java
+@Bean
+FieldEncryptor fieldEncryptor(SecretsResolver secrets) {
+    return new AesGcmFieldEncryptor(secrets.get("JAICLAW_ENCRYPTION_KEY").getBytes(StandardCharsets.UTF_8));
+}
+```
+
+**Losing the key means losing the ciphertext.** Maintain a key-rotation runbook + backup-encryption-key pattern before enabling in production.
+
+### Full reference
+
+- **How-to playbook** for making a deployment GDPR / HIPAA / both ready: **[docs/user/COMPLIANCE-HOWTO.md](./COMPLIANCE-HOWTO.md)**.
+- Article-to-capability mapping, BAA-eligible provider catalog, per-tenant metadata reference, and Tier 2/3 SPI reference: **[docs/user/COMPLIANCE.md](./COMPLIANCE.md)**.
+- Migration guide from 0.9.3: **[docs/MIGRATION-0.9.4.md](../MIGRATION-0.9.4.md)**.
+
+---
+
 ## Skills Configuration
 
 JaiClaw ships with a library of bundled skills — Markdown-based behavioral instructions loaded into the LLM's system prompt. By default, **all bundled skills are loaded** (`jaiclaw.skills.allow-bundled: ["*"]`).
