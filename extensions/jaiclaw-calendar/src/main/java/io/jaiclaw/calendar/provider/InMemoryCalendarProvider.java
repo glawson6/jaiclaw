@@ -1,6 +1,8 @@
 package io.jaiclaw.calendar.provider;
 
 import io.jaiclaw.calendar.model.*;
+import io.jaiclaw.core.tenant.TenantContext;
+import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +202,14 @@ public class InMemoryCalendarProvider implements CalendarProvider {
 
     @Override
     public Flux<TimeSlot> getAvailableSlots(Instant startDate, Instant endDate, long durationSeconds) {
-        return listEvents(null, null, startDate, endDate, null)
+        // SEV-004 fix: getAvailableSlots previously passed null tenantId to
+        // listEvents, which means in multi-tenant mode every tenant's events
+        // were considered busy — leaking one tenant's occupancy to another's
+        // availability query. Resolve the caller's tenant from the thread-local
+        // when we have one, so the busy-time computation stays scoped.
+        TenantContext ctx = TenantContextHolder.get();
+        String callerTenantId = ctx != null ? ctx.getTenantId() : null;
+        return listEvents(callerTenantId, null, startDate, endDate, null)
                 .collectList()
                 .flatMapMany(busyEvents -> {
                     List<TimeSlot> availableSlots = new ArrayList<>();
