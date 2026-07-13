@@ -11,7 +11,7 @@
 
 ## Phase 0 — Boot-3-compatible prep (do now; no Boot 4 anywhere)
 
-**STATUS: NOT STARTED**
+**STATUS: IN PROGRESS — steps 0.1, 0.2, 0.3, 0.5 DONE 2026-07-13; step 0.4 NOT STARTED (24-file RestTemplate → RestClient migration is next); step 0.6 (optional 0.9.5 pilot release) DEFERRED to the release manager.**
 **Preconditions:** none. Everything here lands on Boot 3.5 and is releasable even if the Boot-4 gate drags.
 
 | # | Step | Verify |
@@ -22,6 +22,23 @@
 | 0.4 | **RestTemplate → RestClient** (38 files; RestClient exists since Framework 6.1). Do it here so behavior diffs are attributable to the client swap, not Boot 4. Keep SsrfGuard wiring intact on web-fetch paths | per-module specs; channel-adapter integration smoke (telegram/slack webhook echo) |
 | 0.5 | Audit + fix stragglers cheaply fixable on 3.5: `spring.factories` `EnvironmentPostProcessor` FQNs (can adopt new-style once on 4.x only — just inventory here), spring-retry usage inventory, jjwt/Jackson-3 support check, Testcontainers usage inventory, `HttpMessageConverters`/`ListenableFuture`/`AntPathRequestMatcher` greps ([03](03-spring-boot-4-core-changes.md)) | grep outputs recorded below in "Phase 0 findings" |
 | 0.6 | Optional-but-smart: release these as **0.9.5** so pilots get them under Boot 3.5 | release checklist per releases/ convention |
+
+**Phase 0.4 site inventory (24 production files, recorded 2026-07-13):**
+
+Kept as-is (public strategy or public constructor signature — swap without renaming would be a breaking API change; revisit post-1.0):
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/RestTemplateTelegramHttpClient.java` — this is one of three impls selected by `TelegramHttpClientType.REST_TEMPLATE`; the class name IS the API.
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/TelegramHttpClientType.java` — keep the enum value; deprecate in a later release.
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/JdkHttpClientTelegramHttpClient.java` — uses `java.net.http.HttpClient`, not RestTemplate (grep false positive on the enum reference).
+- `extensions/jaiclaw-subscription-telegram/src/main/java/io/jaiclaw/subscription/telegram/TelegramGroupManager.java` — public constructor `(RestTemplate)`.
+- `extensions/jaiclaw-discord-tools/src/main/java/io/jaiclaw/discord/mcp/DiscordMcpToolProvider.java` — public constructor `(RestTemplate, ...)`.
+- `extensions/jaiclaw-slack-tools/src/main/java/io/jaiclaw/slack/mcp/SlackMcpToolProvider.java` — public constructor `(RestTemplate, ...)`.
+
+Migrate to RestClient (18 files):
+- **TRIVIAL** (single-line swap): `apps/jaiclaw-shell-commands` validators — `LlmConnectivityTester`, `SlackTokenValidator`, `DiscordTokenValidator`, `TelegramTokenValidator`; `apps/jaiclaw-shell-commands/.../setup/OnboardConfig.java` (rewrite bean provider to `RestClient` from `RestClient.Builder`).
+- **MODERATE** (custom headers + error handling): `extensions/jaiclaw-voice-call/.../TwilioApiClient`, `extensions/jaiclaw-voice/.../OpenAiTtsProvider` (byte[]), `extensions/jaiclaw-voice/.../OpenAiSttProvider` (multipart), `channels/jaiclaw-channel-discord/.../DiscordAdapter`, `channels/jaiclaw-channel-slack/.../SlackAdapter`, `channels/jaiclaw-channel-signal/.../SignalAdapter`, `channels/jaiclaw-channel-sms/.../SmsAdapter`, `channels/jaiclaw-channel-teams/.../TeamsAdapter`, `channels/jaiclaw-channel-teams/.../TeamsJwtValidator`, `channels/jaiclaw-channel-teams/.../TeamsTokenManager`.
+- **HAIRY** (custom factory or auto-config bean): `extensions/jaiclaw-discord-tools/.../JaiClawDiscordToolsAutoConfiguration` (creates `new RestTemplate()`), `extensions/jaiclaw-slack-tools/.../JaiClawSlackToolsAutoConfiguration` (creates `new RestTemplate()`).
+
+Public-API breaking-change classes (`TelegramGroupManager`, `DiscordMcpToolProvider`, `SlackMcpToolProvider`) are candidates for a later `(RestClient, ...)` constructor overload with `@Deprecated` on the `(RestTemplate, ...)` one — leave for Phase 6 cleanup after Boot 4 is on the classpath. Auto-configs that create ad-hoc `new RestTemplate()` should switch to `RestClient` and pass either a wrapped view or a companion `RestClient` bean.
 
 **Phase 0 findings (recorded during execution 2026-07-13):**
 - **spring-retry users**: **0** — no `spring-retry` deps, `@Retryable`, `RetryTemplate`, or `@EnableRetry` usage anywhere in the repo. **Nothing to pin in Phase 1.**
