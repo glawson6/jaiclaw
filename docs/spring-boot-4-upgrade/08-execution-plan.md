@@ -23,10 +23,17 @@
 | 0.5 | Audit + fix stragglers cheaply fixable on 3.5: `spring.factories` `EnvironmentPostProcessor` FQNs (can adopt new-style once on 4.x only — just inventory here), spring-retry usage inventory, jjwt/Jackson-3 support check, Testcontainers usage inventory, `HttpMessageConverters`/`ListenableFuture`/`AntPathRequestMatcher` greps ([03](03-spring-boot-4-core-changes.md)) | grep outputs recorded below in "Phase 0 findings" |
 | 0.6 | Optional-but-smart: release these as **0.9.5** so pilots get them under Boot 3.5 | release checklist per releases/ convention |
 
-**Phase 0 findings (fill in during execution):**
-- spring-retry users: _tbd_
-- jjwt Jackson-3 status: _tbd_
-- Testcontainers usage: _tbd_
+**Phase 0 findings (recorded during execution 2026-07-13):**
+- **spring-retry users**: **0** — no `spring-retry` deps, `@Retryable`, `RetryTemplate`, or `@EnableRetry` usage anywhere in the repo. **Nothing to pin in Phase 1.**
+- **jjwt Jackson-3 status**: jjwt **0.12.6** used in `core/jaiclaw-security` (BOM-managed) and `extensions/jaiclaw-tools-security` (explicit `<jjwt.version>0.12.6</jjwt.version>`) — 3 modules × `jjwt-api`/`jjwt-impl`/`jjwt-jackson`. **Verify 0.12.6 compatibility with Jackson 3 in Phase 2**; if incompatible, bump to a jjwt release that ships a Jackson-3 variant (or swap the `jjwt-jackson` bridge module).
+- **Testcontainers usage**: only `extensions/jaiclaw-tasks` — `org.testcontainers:testcontainers` + `com.redis:testcontainers-redis` + `PostgreSQLContainer`. Specs: `RedisTaskStoreContractSpec`, `JdbcPostgresTaskStoreContractSpec`, `RedisTaskStoreProviderSpec`. **Phase 7 must handle Testcontainers 2.x module renames** (`org.testcontainers:mysql` → `org.testcontainers:testcontainers-mysql` pattern) if we adopt 2.x with Boot 4.
+- **`ListenableFuture` / `HttpMessageConverters` / `AntPathRequestMatcher` / `antMatchers`**: **0 hits each** — Framework 7 API removals are non-issues for this repo.
+- **`EnvironmentPostProcessor` old-package FQN**: 3 files use `org.springframework.boot.env.EnvironmentPostProcessor` — must move to `org.springframework.boot.EnvironmentPostProcessor` in Phase 1.4:
+  - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/ComplianceEnvironmentPostProcessor.java`
+  - `jaiclaw-spring-boot-starter/src/main/java/io/jaiclaw/autoconfigure/JaiClawBannerEnvironmentPostProcessor.java`
+  - `jaiclaw-spring-boot-starter/src/main/java/io/jaiclaw/autoconfigure/secrets/SecretsEnvironmentPostProcessor.java`
+  Plus their `META-INF/spring.factories` registrations (2 files: `jaiclaw-spring-boot-starter/src/main/resources/META-INF/spring.factories`, `extensions/jaiclaw-compliance/src/main/resources/META-INF/spring.factories`) — the `spring.factories` key name is the interface FQN, so it also changes.
+- **JSpecify `@Nullable` on actuator endpoints (Phase 6b preview)**: `PipelineActuatorEndpoint` already uses `org.jspecify.annotations.Nullable` ✅. `KanbanActuatorEndpoint` and `TendenciesActuatorEndpoint` have no nullable `@Selector`/params — nothing to convert.
 
 ## Phase 1 — Boot 4.1 version wave (branch goes red, then green module-by-module)
 
