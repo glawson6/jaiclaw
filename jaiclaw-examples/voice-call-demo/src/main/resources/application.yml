@@ -61,8 +61,7 @@ spring:
       enabled: ${ANTHROPIC_ENABLED:true}
       api-key: ${ANTHROPIC_API_KEY:not-set}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
     openai:
       enabled: ${OPENAI_ENABLED:false}
       api-key: ${OPENAI_API_KEY:not-set}
@@ -74,5 +73,4 @@ spring:
       api-key: ${MINIMAX_API_KEY:not-set}
       base-url: ${MINIMAX_BASE_URL:https://api.minimax.chat}
       chat:
-        options:
-          model: ${MINIMAX_MODEL:M2-her}
+        model: ${MINIMAX_MODEL:M2-her}

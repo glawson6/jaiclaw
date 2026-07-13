@@ -16,7 +16,7 @@
     <description>JaiClaw starter for declarative multi-stage pipeline orchestration</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

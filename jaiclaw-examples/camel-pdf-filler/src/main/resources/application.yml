@@ -42,6 +42,5 @@ spring:
       api-key: ${ANTHROPIC_API_KEY:not-set}
       base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
-          max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}
+        model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
+        max-tokens: ${ANTHROPIC_MAX_TOKENS:4096}

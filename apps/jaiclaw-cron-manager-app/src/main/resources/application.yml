@@ -58,8 +58,7 @@ spring:
       enabled: ${ANTHROPIC_ENABLED:true}
       api-key: ${ANTHROPIC_API_KEY:not-set}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
     ollama:
       enabled: ${OLLAMA_ENABLED:false}
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}

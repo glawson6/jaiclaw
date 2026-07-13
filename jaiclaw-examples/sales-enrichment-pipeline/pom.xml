@@ -15,7 +15,7 @@
     <description>Nightly batch enrichment + outreach drafting for new CRM leads (CRON trigger, lead repository)</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

@@ -15,7 +15,7 @@
     <description>Declarative multi-stage pipeline orchestration with dual DSL (YAML + Java code), configurable transport, and auditing</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

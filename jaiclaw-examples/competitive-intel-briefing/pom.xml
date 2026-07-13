@@ -15,7 +15,7 @@
     <description>Scheduled competitive-intelligence briefing pipeline (CRON trigger, signal-cache diffing)</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

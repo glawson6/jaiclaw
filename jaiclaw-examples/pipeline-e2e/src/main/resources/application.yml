@@ -62,8 +62,7 @@ spring:
       api-key: ${ANTHROPIC_API_KEY:not-set}
       base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
     # Embabel's bundled agent-application.properties references
     # spring.ai.openai.api-key — guard the boot with a harmless fallback so we
     # don't need OPENAI_API_KEY in the environment.
