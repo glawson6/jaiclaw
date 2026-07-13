@@ -112,58 +112,72 @@ public class RedisTaskStore implements TaskStore {
         // contention case cleanly. A single attempt is enough for the
         // contract tests; the loop keeps the implementation honest under
         // real concurrent load.
+        //
+        // Spring Data Redis 4 (Boot 4) tightened MULTI/EXEC bookkeeping in
+        // TransactionResultConverter — it requires the response array length
+        // to match the queued command count exactly. The prior RedisCallback
+        // implementation issued commands conditionally which broke that
+        // invariant under Jedis. Route the whole cycle through SessionCallback
+        // (which is what save() uses) so WATCH/GET/MULTI/EXEC share one
+        // connection binding and command bookkeeping is consistent.
         for (int attempt = 0; attempt < 3; attempt++) {
-            List<Object> txResult = template.execute((RedisCallback<List<Object>>) connection -> {
-                connection.watch(key.getBytes(StandardCharsets.UTF_8));
-                byte[] currentBytes = connection.stringCommands()
-                        .get(key.getBytes(StandardCharsets.UTF_8));
-                long stored = 0L;
-                if (currentBytes != null) {
-                    try {
-                        TaskRecord current = json.readValue(currentBytes, TaskRecord.class);
-                        stored = current.version();
-                    } catch (Exception e) {
-                        connection.unwatch();
-                        throw new IllegalStateException(
-                                "Failed to decode existing record at " + key, e);
-                    }
-                }
-                if (stored != expected) {
-                    connection.unwatch();
-                    return null; // version mismatch — caller sees Optional.empty
-                }
-                TaskRecord toSave = task.withVersion(next);
-                byte[] payload;
-                try {
-                    payload = json.writeValueAsBytes(toSave);
-                } catch (Exception e) {
-                    connection.unwatch();
-                    throw new IllegalStateException("Failed to encode " + toSave, e);
-                }
-                connection.multi();
-                connection.stringCommands().set(key.getBytes(StandardCharsets.UTF_8), payload);
-                connection.setCommands().sAdd(
-                        allKey(tenantId).getBytes(StandardCharsets.UTF_8),
-                        task.id().getBytes(StandardCharsets.UTF_8));
-                connection.setCommands().sAdd(
-                        statusKey(tenantId, task.status()).getBytes(StandardCharsets.UTF_8),
-                        task.id().getBytes(StandardCharsets.UTF_8));
-                if (task.boardId() != null) {
-                    connection.setCommands().sAdd(
-                            boardStateKey(tenantId, task.boardId(), task.state())
-                                    .getBytes(StandardCharsets.UTF_8),
-                            task.id().getBytes(StandardCharsets.UTF_8));
-                }
-                return connection.exec();
-            });
-            if (txResult == null) return Optional.empty();
-            if (!txResult.isEmpty()) {
-                return Optional.of(task.withVersion(next));
+            @SuppressWarnings("unchecked")
+            Optional<TaskRecord> result = (Optional<TaskRecord>) template.execute(
+                    new SessionCallback<Optional<TaskRecord>>() {
+                        @Override
+                        public <K, V> Optional<TaskRecord> execute(RedisOperations<K, V> ops) {
+                            @SuppressWarnings("unchecked")
+                            RedisOperations<String, String> sops = (RedisOperations<String, String>) ops;
+                            sops.watch(key);
+                            String currentStr = sops.opsForValue().get(key);
+                            long stored = 0L;
+                            if (currentStr != null) {
+                                try {
+                                    TaskRecord current = json.readValue(
+                                            currentStr.getBytes(StandardCharsets.UTF_8),
+                                            TaskRecord.class);
+                                    stored = current.version();
+                                } catch (Exception e) {
+                                    sops.unwatch();
+                                    throw new IllegalStateException(
+                                            "Failed to decode existing record at " + key, e);
+                                }
+                            }
+                            if (stored != expected) {
+                                sops.unwatch();
+                                return Optional.empty();
+                            }
+                            TaskRecord toSave = task.withVersion(next);
+                            String payload;
+                            try {
+                                payload = new String(json.writeValueAsBytes(toSave),
+                                        StandardCharsets.UTF_8);
+                            } catch (Exception e) {
+                                sops.unwatch();
+                                throw new IllegalStateException("Failed to encode " + toSave, e);
+                            }
+                            sops.multi();
+                            sops.opsForValue().set(key, payload);
+                            sops.opsForSet().add(allKey(tenantId), task.id());
+                            sops.opsForSet().add(statusKey(tenantId, task.status()), task.id());
+                            if (task.boardId() != null) {
+                                sops.opsForSet().add(boardStateKey(tenantId,
+                                        task.boardId(), task.state()), task.id());
+                            }
+                            List<Object> execResult = sops.exec();
+                            if (execResult == null || execResult.isEmpty()) {
+                                // EXEC returned null/empty → another writer modified the key
+                                // between our WATCH and EXEC. Signal retry via sentinel.
+                                return null;
+                            }
+                            return Optional.of(toSave);
+                        }
+                    });
+            if (result == null) {
+                // WATCH-conflict retry
+                continue;
             }
-            // EXEC returned empty → another writer modified the key between
-            // our WATCH and EXEC. Loop and retry (we re-read the version
-            // each time, so a real version drift surfaces as
-            // Optional.empty).
+            return result;
         }
         return Optional.empty();
     }

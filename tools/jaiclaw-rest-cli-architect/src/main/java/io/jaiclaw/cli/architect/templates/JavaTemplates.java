@@ -233,8 +233,9 @@ import org.springframework.stereotype.Component;
                         return formatOutput(raw, format);
                     }
                 """.formatted(
+                prefix, commandKey,
                 escapeJava(ep.summary() != null ? ep.summary() : commandKey),
-                prefix, commandKey, methodName, paramDecls, clientCall);
+                methodName, paramDecls, clientCall);
     }
 
     private static String toolInnerClass(String prefix, String nameCapitalized, String commandsClass, EndpointSpec ep) {
@@ -314,8 +315,9 @@ import org.springframework.stereotype.Component;
                             }
                         }
                 """.formatted(
+                prefix, commandKey,
                 escapeJava(ep.summary() != null ? ep.summary() : commandKey),
-                prefix, commandKey, methodName, paramDecls, clientCall);
+                methodName, paramDecls, clientCall);
     }
 
     private static void buildMethodParams(EndpointSpec ep, StringBuilder paramDecls, StringBuilder callArgs) {

@@ -1,7 +1,8 @@
 package io.jaiclaw.kanban.loader;
 
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 import io.jaiclaw.kanban.model.BoardDefinition;
 
 import java.io.IOException;
@@ -14,7 +15,11 @@ import java.util.Map;
  */
 public final class BoardYamlParser {
 
-    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
+    // Jackson 3 flipped FAIL_ON_NULL_FOR_PRIMITIVES to true by default; board YAMLs
+    // historically expect null → false for absent boolean fields (e.g. terminal).
+    private static final ObjectMapper YAML = YAMLMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .build();
 
     private BoardYamlParser() {}
 

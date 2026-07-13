@@ -62,7 +62,8 @@ class PomGeneratorSpec extends Specification {
 
         then:
         pom.contains("<artifactId>jaiclaw-embabel-delegate</artifactId>")
-        pom.contains("<artifactId>spring-ai-starter-model-vertex-ai</artifactId>")
+        // Vertex-AI was renamed to google-genai at Spring AI 2.0 GA.
+        pom.contains("<artifactId>spring-ai-starter-model-google-genai</artifactId>")
     }
 
     def "generates POM for comprehensive archetype with multiple providers"() {

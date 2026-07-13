@@ -109,6 +109,12 @@
             <artifactId>spring-boot-resttestclient</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- TestRestTemplate's auto-config needs RestTemplateBuilder from spring-boot-restclient. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Required by KanbanBoardControllerSpec — boots a real RANDOM_PORT
              Tomcat to exercise the REST controller end-to-end. -->
         <dependency>

@@ -23,9 +23,13 @@ import java.io.InputStream;
  */
 final class PipelineYamlParser {
 
-    /** Shared mapper; jackson ObjectMapper is thread-safe after configuration. */
+    /** Shared mapper; jackson ObjectMapper is thread-safe after configuration.
+     *  Jackson 3 flipped FAIL_ON_NULL_FOR_PRIMITIVES to true by default; pipelines
+     *  historically expected null → 0/false for absent int/boolean fields so we
+     *  restore Jackson-2 behavior explicitly. */
     private static final ObjectMapper MAPPER = tools.jackson.dataformat.yaml.YAMLMapper.builder()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
             .build();
 
     private PipelineYamlParser() {}

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.resttestclient.TestRestTemplate
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -28,6 +29,7 @@ import java.util.function.Function
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         classes = [PipelineHttpIntegrationSpec.TestApp]
 )
+@AutoConfigureTestRestTemplate
 @TestPropertySource(properties = [
         "management.endpoints.web.exposure.include=pipelines,health",
         "jaiclaw.skills.allow-bundled=",
