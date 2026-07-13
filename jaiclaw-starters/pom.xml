@@ -21,12 +21,13 @@
         <module>jaiclaw-starter-ollama</module>
         <module>jaiclaw-starter-gemini</module>
         <module>jaiclaw-starter-bedrock</module>
-        <module>jaiclaw-starter-azure-openai</module>
+        <!-- azure-openai / oci-genai / minimax / vertex-ai starters removed at 1.0.0:
+             Spring AI 2.0 GA dropped those provider starters; azure/oci/minimax have no
+             direct Spring AI 2.0 replacement (route via anthropic/openai with base-url
+             overrides); vertex-ai was renamed to spring-ai-starter-model-google-genai
+             (already covered by jaiclaw-starter-gemini). -->
         <module>jaiclaw-starter-deepseek</module>
         <module>jaiclaw-starter-mistral</module>
-        <module>jaiclaw-starter-minimax</module>
-        <module>jaiclaw-starter-vertex-ai</module>
-        <module>jaiclaw-starter-oci-genai</module>
         <module>jaiclaw-starter-gateway</module>
         <module>jaiclaw-starter-shell</module>
         <module>jaiclaw-starter-embabel</module>

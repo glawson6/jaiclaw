@@ -198,11 +198,11 @@
             <artifactId>spring-ai-starter-model-bedrock-converse</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-azure-openai</artifactId>
-            <optional>true</optional>
-        </dependency>
+        <!-- Azure OpenAI, MiniMax, and OCI GenAI native starters were removed
+             in Spring AI 2.0 (last releases were 2.0.0-M4/M8). Adopters should
+             route via the anthropic or openai starter with a base-url override
+             (e.g. api.minimax.io/anthropic) — see CLAUDE.md § Embabel LLM
+             Model Configuration for the three-layer routing pattern. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-deepseek</artifactId>
@@ -213,19 +213,10 @@
             <artifactId>spring-ai-starter-model-mistral-ai</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Google Vertex AI Gemini was renamed to google-genai in Spring AI 2.0. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-minimax</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-oci-genai</artifactId>
+            <artifactId>spring-ai-starter-model-google-genai</artifactId>
             <optional>true</optional>
         </dependency>
         <!-- Test dependencies -->

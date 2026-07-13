@@ -111,7 +111,7 @@
              Tomcat to exercise the REST controller end-to-end. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Required by KanbanSurfacesE2ESpec to hit /actuator/kanban. -->

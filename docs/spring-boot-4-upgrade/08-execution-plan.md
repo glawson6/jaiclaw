@@ -61,8 +61,34 @@ Public-API breaking-change classes (`TelegramGroupManager`, `DiscordMcpToolProvi
 
 ## Phase 1 — Boot 4.1 version wave (branch goes red, then green module-by-module)
 
-**STATUS: NOT STARTED**
-**Preconditions:** Phase 0 done. Read [01](01-dependency-matrix.md) + [03](03-spring-boot-4-core-changes.md). Accept that the reactor will not fully compile until Phases 2–5 land — drive it green in dependency order: `jaiclaw-core → channel-api → config → tools → agent/skills/plugin-sdk/memory/security → gateway → channels → extensions → starter(s) → apps → examples`.
+**STATUS: DONE 2026-07-13 for the pom + package-move + Spring AI 2.0 starter-catalog reconciliation. Verification criterion met (`./mvnw compile -pl :jaiclaw-core,:jaiclaw-channel-api,:jaiclaw-config -am` green). Reactor is now red at Shell / Batch / Jackson / Spring AI sites as expected — worklist recorded below feeds Phases 2, 3, 5.**
+
+Root pom pins now:
+- `spring-boot.version` 4.1.0
+- `spring-ai.version` 2.0.0
+- `embabel-agent.version` 2.0.0-SNAPSHOT (Boot-4 line, published to `repo.embabel.com/artifactory/libs-snapshot` — verified 2026-07-13 15:01Z)
+- `spring-shell.version` 4.0.2, `spring-cloud.version` 2025.1.2
+- `spock.version` 2.4-groovy-5.0, `groovy.version` 5.0.7, `gmavenplus-plugin.version` 5.1.0
+- `jkube.version` 1.19.0
+- Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11); Netty pin retained pending post-upgrade CVE re-scan.
+
+Spring AI 2.0 provider-starter reconciliation (executed in Phase 1, ahead of Phase 3):
+- `spring-ai-starter-model-azure-openai` — removed at 2.0 GA (last 2.0.0-M4). Deleted from `jaiclaw-spring-boot-starter/pom.xml`; deleted the `jaiclaw-starter-azure-openai` wrapper module + its entry in the aggregator. Adopters route Azure OpenAI through the openai starter with `spring.ai.openai.base-url` override.
+- `spring-ai-starter-model-oci-genai` — removed at 2.0 GA (last 2.0.0-M4). Deleted the `jaiclaw-starter-oci-genai` wrapper module + aggregator entry.
+- `spring-ai-starter-model-minimax` — removed at 2.0 GA (last 2.0.0-M8). Deleted from `jaiclaw-spring-boot-starter/pom.xml`, from 22 example poms, and the `jaiclaw-starter-minimax` wrapper module + aggregator entry. Adopters route MiniMax through the anthropic starter with `spring.ai.anthropic.base-url=https://api.minimax.io/anthropic` (CLAUDE.md § Embabel LLM Model Configuration).
+- `spring-ai-starter-model-vertex-ai-gemini` — renamed to `spring-ai-starter-model-google-genai` at 2.0 GA. Updated `jaiclaw-spring-boot-starter/pom.xml`; deleted the `jaiclaw-starter-vertex-ai` wrapper module + aggregator entry (`jaiclaw-starter-gemini` already covers the Google Gemini route).
+
+Boot-4-specific class-move fixes (Phase 1.4):
+- `org.springframework.boot.env.EnvironmentPostProcessor` → `org.springframework.boot.EnvironmentPostProcessor` in the 3 EPP classes (Banner, Secrets, Compliance) + both `spring.factories` key names.
+- `org.springframework.boot.web.client.RestClientCustomizer` → `org.springframework.boot.restclient.RestClientCustomizer` in `JaiClawHttpAutoConfiguration`.
+
+Starter renames (Phase 1.3): `spring-boot-starter-web` → `spring-boot-starter-webmvc` across 42 poms.
+
+Remaining reactor-red worklist (feeds Phases 2, 3, 5):
+- **Shell 4** (~35 files, Phase 5): `org.springframework.shell.standard.*` removed. Every `@ShellComponent`/`@ShellMethod`/`@ShellOption` site fails — `apps/jaiclaw-shell-commands` (25 files), `apps/jaiclaw-cli`, `apps/jaiclaw-cron-manager-app`, 5 `tools/*` modules, 8 examples. Plus `org.springframework.shell.jline` — `JaiClawPromptProvider` and `JaiClawShellPromptAutoConfiguration` in shell-commands. `org.jline.reader` / `org.jline.utils` — must audit whether jline is now a required explicit dep in Shell 4.
+- **Spring Batch 6** (Phase 3 or 6): `extensions/jaiclaw-cron-manager` — `org.springframework.batch.core.Job/JobBuilder/StepBuilder/JobExecution` and `org.springframework.batch.repeat` package-move / API renames.
+- **Spring AI 2.0** (Phase 3, ~37 files + 46 ymls): tool-calling, ChatModel decorators, MCP hosting API changes, `spring.ai.*.options.*` property renames.
+- **Jackson 3** (Phase 2, 225 files): `com.fasterxml.jackson.*` → `tools.jackson.*` guarded rewrite.
 
 | # | Step |
 |---|---|
