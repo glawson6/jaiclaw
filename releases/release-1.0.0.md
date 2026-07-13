@@ -186,18 +186,6 @@ The mechanical rewrites JaiClaw applied to its own code (Jackson namespace, Shel
 
 - **Onboarding wizard** — Shell 4 rebuild on the new component model. Currently
   quarantined as no-op stubs; `start.sh` / `bin/jaiclaw` non-wizard paths work.
-- **Channel-adapter RestClient constructors** — 5 channel adapters (Signal, SMS,
-  Discord, Slack, Teams + 2 Teams support classes) still expose public
-  `(config, ..., RestTemplate)` constructors. The MCP tool providers
-  (DiscordMcpToolProvider, SlackMcpToolProvider, TelegramGroupManager) and the
-  supporting auto-configs migrated to primary `(RestClient, ...)` constructors
-  with `@Deprecated` `(RestTemplate, ...)` overloads for 1.0.0. The 5
-  channel-adapter migrations are deferred because their specs relied on
-  `Mock(RestTemplate)` and the polling-thread pattern of these adapters
-  doesn't cleanly migrate to `MockRestServiceServer` per-test isolation.
-  A follow-up will (a) extract an internal HTTP-abstraction interface the
-  tests can mock, or (b) run these tests against a Testcontainers HTTP
-  stub, then complete the migration.
 - **Redis TaskStore CAS** — Spring Data Redis 4 tightened MULTI/EXEC
   bookkeeping in `TransactionResultConverter`; our Jedis-backed CAS loop
   now trips a false `Expected 4 Actual 3` counting mismatch even on valid
@@ -208,6 +196,26 @@ The mechanical rewrites JaiClaw applied to its own code (Jackson namespace, Shel
   full rebuild against Spring AI 2.0's OpenAI path (`OpenAIOkHttpClient`
   from `openai-java-client-okhttp`; the 1.x `OpenAiApi.builder()` shape
   is gone at 2.0 GA).
+
+## Migration highlights (completed in 1.0.0)
+
+- **All channel-adapter + MCP-tool-provider RestClient constructors** — every
+  public `(RestTemplate, ...)` constructor in Signal / SMS / Discord / Slack /
+  Teams adapters + TeamsTokenManager + TeamsJwtValidator +
+  DiscordMcpToolProvider + SlackMcpToolProvider + TelegramGroupManager now
+  has a primary constructor that takes a per-channel HTTP-abstraction
+  interface (`SignalHttpClient`, `SlackHttpClient`, `DiscordHttpClient`,
+  `TeamsHttpClient`, etc.) with a `RestClient`-backed reference impl
+  (`RestClient*HttpClient`), plus a convenience `(config, ..., RestClient)`
+  constructor. The legacy `(config, ..., RestTemplate)` constructor is
+  `@Deprecated(since="1.0.0", forRemoval=true)` — it wraps `RestClient.create()`
+  and ignores the RestTemplate argument. Specs mock the interface directly.
+- **ExplicitToolLoop / Spring AI 2.0 tool-calling model** — Spring AI 2.0
+  removed `ToolCallingChatOptions.internalToolExecutionEnabled(false)`.
+  In 2.0, `ChatModel.call()` no longer auto-executes tools unless a
+  caller-supplied `ToolCallingManager` is wired in; JaiClaw's
+  `ExplicitToolLoop` runs each `ToolCallback.call()` itself with hook +
+  approval + accounting instrumentation, so no rewire was needed.
 
 ## Acknowledgements
 
