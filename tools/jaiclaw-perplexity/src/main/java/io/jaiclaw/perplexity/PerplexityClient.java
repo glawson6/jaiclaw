@@ -1,6 +1,6 @@
 package io.jaiclaw.perplexity;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.PropertyNamingStrategies;
@@ -94,7 +94,7 @@ public class PerplexityClient {
                                 }
                             }
                             return "";
-                        } catch (JsonProcessingException e) {
+                        } catch (JacksonException e) {
                             log.warn("Failed to parse SSE chunk: {}", data, e);
                             return "";
                         }
@@ -183,7 +183,7 @@ public class PerplexityClient {
     private String serialize(Object obj) {
         try {
             return mapper.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize request", e);
         }
     }
@@ -191,7 +191,7 @@ public class PerplexityClient {
     private <T> T parse(String json, Class<T> type) {
         try {
             return mapper.readValue(json, type);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new PerplexityApiException(0, "Failed to parse response: " + e.getMessage(), json);
         }
     }

@@ -1,7 +1,7 @@
 package io.jaiclaw.audit;
 
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +36,7 @@ public class FileAuditLogger implements AuditLogger {
 
     private static final Logger log = LoggerFactory.getLogger(FileAuditLogger.class);
     private static final String DEFAULT_TENANT_DIR = "_default";
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
     private final Path storeDir;
     private final TenantGuard tenantGuard;

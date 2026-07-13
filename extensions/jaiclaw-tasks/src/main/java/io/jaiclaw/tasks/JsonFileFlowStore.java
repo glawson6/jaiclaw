@@ -30,7 +30,7 @@ public class JsonFileFlowStore implements FlowStore {
         this.storePath = storagePath.resolve("flows.json");
         this.mapper = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
         loadFromDisk();
     }
 

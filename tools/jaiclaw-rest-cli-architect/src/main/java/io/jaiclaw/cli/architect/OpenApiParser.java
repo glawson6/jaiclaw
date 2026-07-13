@@ -56,9 +56,7 @@ public final class OpenApiParser {
         JsonNode schemes = root.path("components").path("securitySchemes");
         if (schemes.isMissingNode() || !schemes.isObject()) return AuthConfig.NONE;
 
-        Iterator<Map.Entry<String, JsonNode>> fields = schemes.fields();
-        while (fields.hasNext()) {
-            var entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : schemes.properties()) {
             JsonNode scheme = entry.getValue();
             String type = scheme.path("type").asText("");
 
@@ -111,9 +109,7 @@ public final class OpenApiParser {
         JsonNode defs = root.path("securityDefinitions");
         if (defs.isMissingNode() || !defs.isObject()) return AuthConfig.NONE;
 
-        Iterator<Map.Entry<String, JsonNode>> fields = defs.fields();
-        while (fields.hasNext()) {
-            var entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : defs.properties()) {
             JsonNode def = entry.getValue();
             String type = def.path("type").asText("");
 
@@ -146,9 +142,7 @@ public final class OpenApiParser {
         JsonNode paths = root.path("paths");
         if (!paths.isObject()) return endpoints;
 
-        Iterator<Map.Entry<String, JsonNode>> pathEntries = paths.fields();
-        while (pathEntries.hasNext()) {
-            var pathEntry = pathEntries.next();
+        for (Map.Entry<String, JsonNode> pathEntry : paths.properties()) {
             String path = pathEntry.getKey();
             JsonNode methods = pathEntry.getValue();
 

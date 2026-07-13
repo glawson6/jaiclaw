@@ -1,6 +1,6 @@
 package io.jaiclaw.voicecall.mcp;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
@@ -188,7 +188,7 @@ public class VoiceCallMcpToolProvider implements McpToolProvider {
         return (value != null && !value.toString().isBlank()) ? value.toString() : defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

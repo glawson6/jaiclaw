@@ -1,6 +1,6 @@
 package io.jaiclaw.messaging.mcp;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.*;
@@ -100,7 +100,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
 
     // ── Raw channel tools ──
 
-    private McpToolResult handleListChannels(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleListChannels(Map<String, Object> args) throws JacksonException {
         List<Map<String, Object>> channels = channelRegistry.all().stream()
                 .map(adapter -> Map.<String, Object>of(
                         "channelId", adapter.channelId(),
@@ -112,7 +112,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("channels", channels, "count", channels.size())));
     }
 
-    private McpToolResult handleSendMessage(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleSendMessage(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String peerId = requireString(args, "peerId");
         String content = requireString(args, "content");
@@ -141,7 +141,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         };
     }
 
-    private McpToolResult handleGetChannelStatus(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleGetChannelStatus(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
 
         Optional<ChannelAdapter> adapter = channelRegistry.get(channelId);
@@ -158,7 +158,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         )));
     }
 
-    private McpToolResult handleListSessions(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleListSessions(Map<String, Object> args) throws JacksonException {
         boolean activeOnly = Boolean.parseBoolean(stringOrDefault(args, "activeOnly", "false"));
         int limit = intOrDefault(args, "limit", 50);
 
@@ -181,7 +181,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("sessions", result, "count", result.size())));
     }
 
-    private McpToolResult handleGetConversation(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleGetConversation(Map<String, Object> args) throws JacksonException {
         String sessionKey = requireString(args, "sessionKey");
         int limit = intOrDefault(args, "limit", 100);
 
@@ -208,7 +208,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         )));
     }
 
-    private McpToolResult handleBroadcastMessage(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleBroadcastMessage(Map<String, Object> args) throws JacksonException {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> recipients = (List<Map<String, Object>>) args.get("recipients");
         if (recipients == null || recipients.isEmpty()) {
@@ -277,7 +277,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
 
     // ── Agent-routed tools ──
 
-    private McpToolResult handleAgentChat(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleAgentChat(Map<String, Object> args) throws JacksonException {
         String content = requireString(args, "content");
         String channelId = stringOrDefault(args, "channelId", "mcp");
         String peerId = stringOrDefault(args, "peerId", "mcp-client");
@@ -298,7 +298,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         )));
     }
 
-    private McpToolResult handleAgentChatAsync(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleAgentChatAsync(Map<String, Object> args) throws JacksonException {
         String content = requireString(args, "content");
         String channelId = requireString(args, "channelId");
         String peerId = requireString(args, "peerId");
@@ -353,7 +353,7 @@ public class MessagingMcpToolProvider implements McpToolProvider {
         return defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

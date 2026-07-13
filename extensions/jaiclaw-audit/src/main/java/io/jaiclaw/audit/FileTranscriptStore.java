@@ -2,6 +2,7 @@ package io.jaiclaw.audit;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +33,9 @@ public class FileTranscriptStore implements TranscriptStore {
 
     private static final Logger log = LoggerFactory.getLogger(FileTranscriptStore.class);
     private static final String DEFAULT_TENANT_DIR = "_default";
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .build();
 
     private final Path storeDir;
 

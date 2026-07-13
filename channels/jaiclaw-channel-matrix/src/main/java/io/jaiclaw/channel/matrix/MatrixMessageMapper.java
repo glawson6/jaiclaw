@@ -30,9 +30,7 @@ final class MatrixMessageMapper {
         JsonNode rooms = syncResponse.path("rooms").path("join");
         if (rooms.isMissingNode()) return messages;
 
-        var roomFields = rooms.fields();
-        while (roomFields.hasNext()) {
-            var roomEntry = roomFields.next();
+        for (var roomEntry : rooms.properties()) {
             String roomId = roomEntry.getKey();
             JsonNode timeline = roomEntry.getValue().path("timeline").path("events");
 

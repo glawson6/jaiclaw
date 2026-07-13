@@ -63,7 +63,7 @@ public class RedisTaskStore implements TaskStore {
         this.prefix = (prefix == null || prefix.isBlank()) ? "jaiclaw:tasks" : prefix;
         this.json = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
     }
 
     @Override

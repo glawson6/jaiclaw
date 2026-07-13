@@ -27,7 +27,7 @@ class MessagingMcpToolProviderSpec extends Specification {
     def setup() {
         objectMapper = new ObjectMapper()
         objectMapper
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        objectMapper
     }
 
     private MessagingMcpToolProvider createProvider(MessagingMcpProperties props = null) {

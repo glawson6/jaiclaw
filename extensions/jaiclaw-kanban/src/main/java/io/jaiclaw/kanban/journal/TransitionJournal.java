@@ -57,7 +57,7 @@ public class TransitionJournal implements SmartLifecycle {
         this.replayLimit = Math.max(1, replayLimit);
         this.json = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
     }
 
     /**

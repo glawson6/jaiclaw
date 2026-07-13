@@ -37,7 +37,7 @@ public class MessagingServerApplication {
             McpToolProvider provider = ctx.getBean("messagingMcpToolProvider", McpToolProvider.class);
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper;
-            objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            objectMapper;
 
             McpStdioBridge bridge = new McpStdioBridge(provider, objectMapper);
             bridge.run();

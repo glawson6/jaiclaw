@@ -1,6 +1,6 @@
 package io.jaiclaw.kanban.tool;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tool.ToolContext;
@@ -34,7 +34,7 @@ public class BoardShowTool extends AbstractBuiltinTool {
 
     private static final ObjectMapper JSON = new ObjectMapper()
             
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            ;
 
     private final BoardSnapshotService snapshotService;
 
@@ -47,7 +47,7 @@ public class BoardShowTool extends AbstractBuiltinTool {
 
     @Override
     protected ToolResult doExecute(Map<String, Object> parameters, ToolContext context)
-            throws JsonProcessingException {
+            throws JacksonException {
         String boardId = requireParam(parameters, "boardId");
         Optional<BoardSnapshot> snapshot = snapshotService.snapshot(boardId);
         if (snapshot.isEmpty()) {

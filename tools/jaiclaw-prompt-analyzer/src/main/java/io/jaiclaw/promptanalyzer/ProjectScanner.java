@@ -145,7 +145,7 @@ public class ProjectScanner {
         // Check first agent's tool profile; fall back to "full"
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.fields();
+            var fields = agents.properties();
             if (fields.hasNext()) {
                 JsonNode firstAgent = fields.next().getValue();
                 JsonNode profile = navigatePath(firstAgent, "tools", "profile");
@@ -188,7 +188,7 @@ public class ProjectScanner {
         // Check for additional system prompt content
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.fields();
+            var fields = agents.properties();
             if (fields.hasNext()) {
                 JsonNode firstAgent = fields.next().getValue();
 

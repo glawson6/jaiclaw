@@ -1,6 +1,6 @@
 package io.jaiclaw.discord.mcp;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
@@ -100,7 +100,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     // ── Tool handlers ──
 
-    private McpToolResult handleSend(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleSend(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String message = requireString(args, "message");
         boolean silent = Boolean.parseBoolean(stringOrDefault(args, "silent", "false"));
@@ -118,7 +118,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "channelId", channelId)));
     }
 
-    private McpToolResult handleRead(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleRead(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         int limit = intOrDefault(args, "limit", 20);
         limit = Math.min(limit, 100);
@@ -141,7 +141,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("messages", messages, "count", messages.size())));
     }
 
-    private McpToolResult handleReact(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleReact(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String emoji = requireString(args, "emoji");
@@ -158,7 +158,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "emoji", emoji)));
     }
 
-    private McpToolResult handleEdit(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleEdit(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String message = requireString(args, "message");
@@ -172,7 +172,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleDelete(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleDelete(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -184,7 +184,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handlePin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handlePin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -196,7 +196,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleUnpin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleUnpin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -208,7 +208,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleThreadCreate(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleThreadCreate(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String threadName = requireString(args, "threadName");
@@ -223,7 +223,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "threadName", threadName)));
     }
 
-    private McpToolResult handlePoll(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handlePoll(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String question = requireString(args, "question");
 
@@ -345,7 +345,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
         return defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

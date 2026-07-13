@@ -64,7 +64,7 @@ public class JsonFileTaskStore implements TaskStore {
         this.ignoreCorrupt = ignoreCorrupt;
         this.mapper = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
         loadFromDisk();
     }
 

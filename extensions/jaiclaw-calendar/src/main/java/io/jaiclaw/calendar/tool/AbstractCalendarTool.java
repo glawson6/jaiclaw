@@ -1,6 +1,6 @@
 package io.jaiclaw.calendar.tool;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.config.CalendarProperties;
 import io.jaiclaw.calendar.service.CalendarService;
@@ -44,14 +44,14 @@ public abstract class AbstractCalendarTool extends AbstractBuiltinTool {
         return properties.defaultCalendarName();
     }
 
-    protected String toJson(Object value) throws JsonProcessingException {
+    protected String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 
     protected ToolResult jsonSuccess(Map<String, Object> data) {
         try {
             return new ToolResult.Success(toJson(data));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return new ToolResult.Error("JSON serialization failed: " + e.getMessage());
         }
     }

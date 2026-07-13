@@ -98,7 +98,7 @@ public class IdentityLinkStore {
                 linksByChannelKey.put(channelKey(link.channel(), link.channelUserId(), link.tenantId()), link);
             }
             log.info("Loaded {} identity links from {}", linksByChannelKey.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load identity links: {}", e.getMessage());
         }
     }

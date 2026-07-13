@@ -33,7 +33,6 @@ public class JsonFileCronJobStore implements CronJobStore {
         this.storePath = storePath;
         this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper();
-        this.mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         load();
     }
 
@@ -101,7 +100,7 @@ public class JsonFileCronJobStore implements CronJobStore {
                 jobs.put(job.id(), job);
             }
             log.info("Loaded {} cron jobs from {}", jobs.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load cron jobs from {}: {}", storePath, e.getMessage());
         }
     }

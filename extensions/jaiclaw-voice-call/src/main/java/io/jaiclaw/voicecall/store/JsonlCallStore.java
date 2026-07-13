@@ -63,7 +63,6 @@ public class JsonlCallStore implements CallStore {
         }
         this.baseDir = resolvedBase;
         this.objectMapper = new ObjectMapper();
-        this.objectMapper;
         this.writeExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "jsonl-call-store-writer");
             t.setDaemon(true);

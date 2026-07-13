@@ -1,6 +1,6 @@
 package io.jaiclaw.asciirender.factory;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.asciirender.api.ICanvas;
@@ -121,8 +121,8 @@ public final class AsciiSceneFactory {
         Map<String, Object> raw;
         try {
             raw = JSON.readValue(json, MAP_TYPE);
-        } catch (JsonProcessingException e) {
-            throw SceneSpecException.canvas("Malformed scene JSON: " + e.getOriginalMessage(), e);
+        } catch (JacksonException e) {
+            throw SceneSpecException.canvas("Malformed scene JSON: " + e.getMessage(), e);
         }
         return fromMap(raw);
     }

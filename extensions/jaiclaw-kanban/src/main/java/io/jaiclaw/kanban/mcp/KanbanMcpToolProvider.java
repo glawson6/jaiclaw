@@ -1,6 +1,6 @@
 package io.jaiclaw.kanban.mcp;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.mcp.McpToolDefinition;
@@ -53,7 +53,7 @@ public class KanbanMcpToolProvider implements McpToolProvider {
 
     private static final ObjectMapper JSON = new ObjectMapper()
             
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            ;
 
     private final KanbanBoardService boardService;
     private final BoardSnapshotService snapshotService;
@@ -117,7 +117,7 @@ public class KanbanMcpToolProvider implements McpToolProvider {
 
     // ── handlers ────────────────────────────────────────────────────
 
-    private McpToolResult handleBoardList(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleBoardList(Map<String, Object> args) throws JacksonException {
         List<Map<String, Object>> summaries = boardService.list().stream()
                 .map(this::boardSummary)
                 .collect(Collectors.toList());
@@ -137,7 +137,7 @@ public class KanbanMcpToolProvider implements McpToolProvider {
         return m;
     }
 
-    private McpToolResult handleBoardShow(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleBoardShow(Map<String, Object> args) throws JacksonException {
         String boardId = requireString(args, "boardId");
         Optional<BoardSnapshot> snapshot = snapshotService.snapshot(boardId);
         if (snapshot.isEmpty()) {
@@ -161,7 +161,7 @@ public class KanbanMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(renderer.render(snapshot.get(), options));
     }
 
-    private McpToolResult handleTaskMove(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleTaskMove(Map<String, Object> args) throws JacksonException {
         String taskId = requireString(args, "taskId");
         String event = requireString(args, "event");
         String actor = stringOrDefault(args, "actor", null);
@@ -182,7 +182,7 @@ public class KanbanMcpToolProvider implements McpToolProvider {
         }
     }
 
-    private McpToolResult handleTaskClaim(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleTaskClaim(Map<String, Object> args) throws JacksonException {
         String taskId = requireString(args, "taskId");
         String assignee = stringOrDefault(args, "assignee", null);
         if (assignee != null && assignee.isBlank()) assignee = null;

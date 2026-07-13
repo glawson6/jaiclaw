@@ -8,7 +8,8 @@ import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ValueSerializer;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.SerializerProvider;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.module.SimpleModule;
 import tools.jackson.databind.node.ObjectNode;
 import io.jaiclaw.core.auth.*;
@@ -40,12 +41,10 @@ public final class AuthProfileStoreSerializer {
     private AuthProfileStoreSerializer() {}
 
     private static ObjectMapper createMapper() {
-        ObjectMapper mapper = new ObjectMapper();
         SimpleModule module = new SimpleModule("AuthProfileStore");
         module.addDeserializer(AuthProfileCredential.class, new CredentialDeserializer());
         module.addSerializer(AuthProfileCredential.class, new CredentialSerializer());
-        mapper.registerModule(module);
-        return mapper;
+        return JsonMapper.builder().addModule(module).build();
     }
 
     /** Returns the shared ObjectMapper configured for auth profile serialization. */
@@ -85,9 +84,7 @@ public final class AuthProfileStoreSerializer {
         Map<String, AuthProfileCredential> profiles = new LinkedHashMap<>();
         JsonNode profilesNode = root.get("profiles");
         if (profilesNode != null && profilesNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fields = profilesNode.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
+            for (Map.Entry<String, JsonNode> entry : profilesNode.properties()) {
                 try {
                     AuthProfileCredential cred = parseCredential(entry.getValue());
                     if (cred != null) {
@@ -216,9 +213,7 @@ public final class AuthProfileStoreSerializer {
     private static Map<String, List<String>> parseOrder(JsonNode node) {
         if (node == null || !node.isObject()) return Map.of();
         Map<String, List<String>> result = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : node.properties()) {
             if (entry.getValue().isArray()) {
                 List<String> ids = new ArrayList<>();
                 for (JsonNode item : entry.getValue()) {
@@ -237,9 +232,7 @@ public final class AuthProfileStoreSerializer {
     private static Map<String, String> parseStringMap(JsonNode node) {
         if (node == null || !node.isObject()) return Map.of();
         Map<String, String> result = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : node.properties()) {
             if (entry.getValue().isTextual()) {
                 result.put(entry.getKey(), entry.getValue().asText());
             }
@@ -250,9 +243,7 @@ public final class AuthProfileStoreSerializer {
     private static Map<String, String> parseStringMetadata(JsonNode node) {
         if (node == null || !node.isObject()) return Map.of();
         Map<String, String> result = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : node.properties()) {
             result.put(entry.getKey(), entry.getValue().asText());
         }
         return result;
@@ -261,9 +252,7 @@ public final class AuthProfileStoreSerializer {
     private static Map<String, ProfileUsageStats> parseUsageStats(JsonNode node) {
         if (node == null || !node.isObject()) return Map.of();
         Map<String, ProfileUsageStats> result = new LinkedHashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        for (Map.Entry<String, JsonNode> entry : node.properties()) {
             try {
                 ProfileUsageStats stats = parseStats(entry.getValue());
                 if (stats != null) {
@@ -292,9 +281,7 @@ public final class AuthProfileStoreSerializer {
         Map<AuthProfileFailureReason, Integer> failureCounts = new LinkedHashMap<>();
         JsonNode fcNode = node.get("failureCounts");
         if (fcNode != null && fcNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fcFields = fcNode.fields();
-            while (fcFields.hasNext()) {
-                Map.Entry<String, JsonNode> fcEntry = fcFields.next();
+            for (Map.Entry<String, JsonNode> fcEntry : fcNode.properties()) {
                 try {
                     AuthProfileFailureReason reason = AuthProfileFailureReason.valueOf(
                             fcEntry.getKey().toUpperCase());
@@ -346,8 +333,8 @@ public final class AuthProfileStoreSerializer {
      */
     private static class CredentialDeserializer extends ValueDeserializer<AuthProfileCredential> {
         @Override
-        public AuthProfileCredential deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            JsonNode node = p.getCodec().readTree(p);
+        public AuthProfileCredential deserialize(JsonParser p, DeserializationContext ctxt) {
+            JsonNode node = ctxt.readTree(p);
             return parseCredential(node);
         }
     }
@@ -357,48 +344,48 @@ public final class AuthProfileStoreSerializer {
      */
     private static class CredentialSerializer extends ValueSerializer<AuthProfileCredential> {
         @Override
-        public void serialize(AuthProfileCredential cred, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+        public void serialize(AuthProfileCredential cred, JsonGenerator gen, SerializationContext serializers) {
             gen.writeStartObject();
             switch (cred) {
                 case ApiKeyCredential c -> {
-                    gen.writeStringField("type", "api_key");
-                    gen.writeStringField("provider", c.provider());
-                    if (c.key() != null) gen.writeStringField("key", c.key());
+                    gen.writeStringProperty("type", "api_key");
+                    gen.writeStringProperty("provider", c.provider());
+                    if (c.key() != null) gen.writeStringProperty("key", c.key());
                     if (c.keyRef() != null) writeSecretRef(gen, "keyRef", c.keyRef());
-                    if (c.email() != null) gen.writeStringField("email", c.email());
+                    if (c.email() != null) gen.writeStringProperty("email", c.email());
                     if (c.metadata() != null && !c.metadata().isEmpty()) {
-                        gen.writeObjectField("metadata", c.metadata());
+                        gen.writePOJOProperty("metadata", c.metadata());
                     }
                 }
                 case TokenCredential c -> {
-                    gen.writeStringField("type", "token");
-                    gen.writeStringField("provider", c.provider());
-                    if (c.token() != null) gen.writeStringField("token", c.token());
+                    gen.writeStringProperty("type", "token");
+                    gen.writeStringProperty("provider", c.provider());
+                    if (c.token() != null) gen.writeStringProperty("token", c.token());
                     if (c.tokenRef() != null) writeSecretRef(gen, "tokenRef", c.tokenRef());
-                    if (c.expires() != null) gen.writeNumberField("expires", c.expires());
-                    if (c.email() != null) gen.writeStringField("email", c.email());
+                    if (c.expires() != null) gen.writeNumberProperty("expires", c.expires());
+                    if (c.email() != null) gen.writeStringProperty("email", c.email());
                 }
                 case OAuthCredential c -> {
-                    gen.writeStringField("type", "oauth");
-                    gen.writeStringField("provider", c.provider());
-                    if (c.access() != null) gen.writeStringField("access", c.access());
-                    if (c.refresh() != null) gen.writeStringField("refresh", c.refresh());
-                    gen.writeNumberField("expires", c.expires());
-                    if (c.email() != null) gen.writeStringField("email", c.email());
-                    if (c.clientId() != null) gen.writeStringField("clientId", c.clientId());
-                    if (c.accountId() != null) gen.writeStringField("accountId", c.accountId());
-                    if (c.projectId() != null) gen.writeStringField("projectId", c.projectId());
-                    if (c.enterpriseUrl() != null) gen.writeStringField("enterpriseUrl", c.enterpriseUrl());
+                    gen.writeStringProperty("type", "oauth");
+                    gen.writeStringProperty("provider", c.provider());
+                    if (c.access() != null) gen.writeStringProperty("access", c.access());
+                    if (c.refresh() != null) gen.writeStringProperty("refresh", c.refresh());
+                    gen.writeNumberProperty("expires", c.expires());
+                    if (c.email() != null) gen.writeStringProperty("email", c.email());
+                    if (c.clientId() != null) gen.writeStringProperty("clientId", c.clientId());
+                    if (c.accountId() != null) gen.writeStringProperty("accountId", c.accountId());
+                    if (c.projectId() != null) gen.writeStringProperty("projectId", c.projectId());
+                    if (c.enterpriseUrl() != null) gen.writeStringProperty("enterpriseUrl", c.enterpriseUrl());
                 }
             }
             gen.writeEndObject();
         }
 
-        private void writeSecretRef(JsonGenerator gen, String fieldName, SecretRef ref) throws IOException {
-            gen.writeObjectFieldStart(fieldName);
-            gen.writeStringField("source", ref.source().name());
-            gen.writeStringField("provider", ref.provider());
-            gen.writeStringField("id", ref.id());
+        private void writeSecretRef(JsonGenerator gen, String fieldName, SecretRef ref) {
+            gen.writeObjectPropertyStart(fieldName);
+            gen.writeStringProperty("source", ref.source().name());
+            gen.writeStringProperty("provider", ref.provider());
+            gen.writeStringProperty("id", ref.id());
             gen.writeEndObject();
         }
     }

@@ -39,9 +39,6 @@ public class JsonAgentMindStoreProvider implements AgentMindStoreProvider {
     }
 
     private static ObjectMapper defaultMapper() {
-        ObjectMapper m = new ObjectMapper();
-        m;
-        m.configure(tools.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        return m;
+        return tools.jackson.databind.json.JsonMapper.builder().build();
     }
 }

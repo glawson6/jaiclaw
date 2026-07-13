@@ -42,7 +42,7 @@ public class JaiClawMessagingAutoConfiguration {
             MessagingMcpProperties properties) {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper;
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper;
         log.info("Registering Messaging MCP tool provider");
         return new MessagingMcpToolProvider(channelRegistry, gatewayService, sessionManager, properties, objectMapper);
     }

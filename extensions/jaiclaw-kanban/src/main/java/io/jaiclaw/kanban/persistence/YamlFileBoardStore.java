@@ -45,7 +45,7 @@ public class YamlFileBoardStore implements BoardStore {
                 .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
                 .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
         try {
             Files.createDirectories(boardsDir);
         } catch (IOException e) {

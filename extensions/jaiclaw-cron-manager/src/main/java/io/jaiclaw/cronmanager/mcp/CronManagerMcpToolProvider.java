@@ -1,6 +1,6 @@
 package io.jaiclaw.cronmanager.mcp;
 
-import tools.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.mcp.McpToolDefinition;
@@ -35,8 +35,6 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
     public CronManagerMcpToolProvider(CronJobManagerService managerService) {
         this.managerService = managerService;
         this.objectMapper = new ObjectMapper();
-        this.objectMapper;
-        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     @Override
@@ -99,7 +97,7 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
         }
     }
 
-    private McpToolResult handleCreateJob(Map<String, Object> args, TenantContext tenant) throws JsonProcessingException {
+    private McpToolResult handleCreateJob(Map<String, Object> args, TenantContext tenant) throws JacksonException {
         String name = (String) args.getOrDefault("name", "Unnamed Job");
         String schedule = (String) args.get("schedule");
         String prompt = (String) args.get("prompt");
@@ -133,18 +131,18 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(created));
     }
 
-    private McpToolResult handleListJobs() throws JsonProcessingException {
+    private McpToolResult handleListJobs() throws JacksonException {
         List<CronJobDefinition> jobs = managerService.listJobs();
         return McpToolResult.success(toJson(jobs));
     }
 
-    private McpToolResult handleGetJob(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleGetJob(Map<String, Object> args) throws JacksonException {
         String jobId = requireString(args, "jobId");
         return managerService.getJob(jobId)
                 .map(def -> {
                     try {
                         return McpToolResult.success(toJson(def));
-                    } catch (JsonProcessingException e) {
+                    } catch (JacksonException e) {
                         return McpToolResult.error("Serialization failed: " + e.getMessage());
                     }
                 })
@@ -165,7 +163,7 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
         return McpToolResult.success("{\"launched\": true, \"jobId\": \"" + jobId + "\", \"runId\": \"" + runId + "\"}");
     }
 
-    private McpToolResult handleGetJobHistory(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleGetJobHistory(Map<String, Object> args) throws JacksonException {
         String jobId = requireString(args, "jobId");
         int limit = args.containsKey("limit") ? ((Number) args.get("limit")).intValue() : 20;
         List<CronExecutionRecord> history = managerService.getJobHistory(jobId, limit);
@@ -194,7 +192,7 @@ public class CronManagerMcpToolProvider implements McpToolProvider {
         return value.toString();
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

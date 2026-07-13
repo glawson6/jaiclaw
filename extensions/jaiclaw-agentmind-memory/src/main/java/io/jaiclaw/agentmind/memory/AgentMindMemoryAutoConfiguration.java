@@ -85,7 +85,7 @@ public class AgentMindMemoryAutoConfiguration {
     public ObjectMapper agentmindMemoryObjectMapper() {
         ObjectMapper m = new ObjectMapper();
         m;
-        m.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        m.configure(false);
         return m;
     }
 

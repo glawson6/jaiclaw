@@ -40,7 +40,7 @@ public class EffectLedger {
         this.journalPath = storageDir.resolve("effects.jsonl");
         this.json = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
         try {
             Files.createDirectories(storageDir);
         } catch (IOException e) {

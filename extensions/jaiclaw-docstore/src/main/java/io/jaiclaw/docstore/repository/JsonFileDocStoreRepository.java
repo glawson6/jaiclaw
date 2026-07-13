@@ -39,7 +39,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
         this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
         this.mapper = new ObjectMapper()
                 
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                ;
         loadFromDisk();
     }
 
