@@ -103,6 +103,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- TestRestTemplate moved to its own module in Boot 4. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Required by KanbanBoardControllerSpec — boots a real RANDOM_PORT
              Tomcat to exercise the REST controller end-to-end. -->
         <dependency>

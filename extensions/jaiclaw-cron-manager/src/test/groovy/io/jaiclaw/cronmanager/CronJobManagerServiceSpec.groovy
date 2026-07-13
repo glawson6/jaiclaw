@@ -7,8 +7,8 @@ import io.jaiclaw.cronmanager.model.CronExecutionRecord
 import io.jaiclaw.cronmanager.model.CronJobDefinition
 import io.jaiclaw.cronmanager.persistence.CronExecutionStore
 import io.jaiclaw.cronmanager.persistence.CronJobDefinitionStore
-import org.springframework.batch.core.Job
-import org.springframework.batch.core.JobExecution
+import org.springframework.batch.core.job.Job
+import org.springframework.batch.core.job.JobExecution
 import org.springframework.batch.core.launch.JobLauncher
 import spock.lang.Specification
 

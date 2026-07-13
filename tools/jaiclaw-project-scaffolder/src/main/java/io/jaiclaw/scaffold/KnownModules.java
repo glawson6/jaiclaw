@@ -52,13 +52,11 @@ public final class KnownModules {
             case "anthropic" -> "spring-ai-starter-model-anthropic";
             case "openai" -> "spring-ai-starter-model-openai";
             case "ollama" -> "spring-ai-starter-model-ollama";
-            case "gemini", "vertex-ai" -> "spring-ai-starter-model-vertex-ai";
+            case "gemini", "vertex-ai" -> "spring-ai-starter-model-google-genai";
             case "bedrock" -> "spring-ai-starter-model-bedrock-ai";
-            case "azure-openai" -> "spring-ai-starter-model-azure-openai";
             case "deepseek" -> "spring-ai-starter-model-openai"; // DeepSeek uses OpenAI-compatible API
             case "mistral" -> "spring-ai-starter-model-mistral-ai";
-            case "minimax" -> "spring-ai-starter-model-minimax";
-            case "oci-genai" -> "spring-ai-starter-model-oci-genai";
+            case "azure-openai", "minimax", "oci-genai" -> "spring-ai-starter-model-openai"; // Removed at Spring AI 2.0; use openai starter + base-url override
             default -> throw new IllegalArgumentException("Unknown AI provider: " + provider);
         };
     }
