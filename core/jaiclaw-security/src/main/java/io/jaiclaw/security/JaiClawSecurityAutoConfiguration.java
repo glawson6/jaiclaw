@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -91,6 +92,7 @@ public class JaiClawSecurityAutoConfiguration {
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(name = "jaiclaw.security.mode", havingValue = "api-key", matchIfMissing = true)
+    @EnableWebSecurity
     static class ApiKeySecurityConfiguration {
 
         @Bean
@@ -138,6 +140,7 @@ public class JaiClawSecurityAutoConfiguration {
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(name = "jaiclaw.security.mode", havingValue = "jwt")
+    @EnableWebSecurity
     static class JwtSecurityConfiguration {
 
         @Bean
@@ -204,6 +207,7 @@ public class JaiClawSecurityAutoConfiguration {
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(name = "jaiclaw.security.mode", havingValue = "none")
+    @EnableWebSecurity
     static class NoneSecurityConfiguration {
 
         private static final Logger log = LoggerFactory.getLogger(NoneSecurityConfiguration.class);

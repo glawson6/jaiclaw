@@ -87,7 +87,7 @@ class ProjectGeneratorSpec extends Specification {
         files["AcmeCli.java"].contains("//JAVA 21")
     }
 
-    def "generated commands contain ShellMethod annotations"() {
+    def "generated commands contain Command annotations"() {
         given:
         def spec = new ProjectSpec(
                 "acme", ProjectMode.STANDALONE, "/tmp/acme", "com.example",
@@ -102,8 +102,9 @@ class ProjectGeneratorSpec extends Specification {
         def commands = files["src/main/java/com/example/cli/acme/AcmeCommands.java"]
 
         then:
-        commands.contains("@ShellComponent")
-        commands.contains("@ShellMethod")
+        // Shell 4 uses @Component + @Command (was @ShellComponent + @ShellMethod in Shell 3)
+        commands.contains("@Component") || commands.contains("@ShellComponent")
+        commands.contains("@Command") || commands.contains("@ShellMethod")
         commands.contains("acme list-users")
         commands.contains("implements ToolCallback")
     }

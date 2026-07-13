@@ -26,7 +26,7 @@ class AsciiBoxToolSpec extends Specification {
         then:
         parsed.type == "object"
         parsed.required == ["content"]
-        parsed.properties.content.type == "string"
+        parsed.get("properties").get("content").get("type") == "string"
     }
 
     def "single-line border wraps short content"() {
