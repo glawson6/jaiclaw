@@ -6,16 +6,13 @@ import io.jaiclaw.channel.ChannelMessage
 import io.jaiclaw.channel.ChannelMessageHandler
 import io.jaiclaw.channel.DeliveryResult
 import io.jaiclaw.channel.process.CliProcessBridge
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.web.client.RestTemplate
 import spock.lang.Specification
 
 class SignalAdapterSpec extends Specification {
 
     static final ObjectMapper MAPPER = new ObjectMapper()
 
-    RestTemplate mockRestTemplate = Mock(RestTemplate)
+    SignalHttpClient mockHttpClient = Mock(SignalHttpClient)
 
     // HTTP_CLIENT mode config
     SignalConfig httpConfig = new SignalConfig(
@@ -23,7 +20,7 @@ class SignalAdapterSpec extends Specification {
             "http://localhost:8080", 2, "signal-cli", 7583, Set.of()
     )
 
-    SignalAdapter httpAdapter = new SignalAdapter(httpConfig, mockRestTemplate)
+    SignalAdapter httpAdapter = new SignalAdapter(httpConfig, mockHttpClient)
 
     def "channelId is signal"() {
         expect:
@@ -73,7 +70,7 @@ class SignalAdapterSpec extends Specification {
                 }
             }
         ]''')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(responseJson, HttpStatus.OK)
+        mockHttpClient.getJson(_) >> responseJson
 
         when:
         httpAdapter.pollMessages()
@@ -96,7 +93,7 @@ class SignalAdapterSpec extends Specification {
         httpAdapter.start(handler)
 
         def emptyResponse = MAPPER.readTree('[]')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(emptyResponse, HttpStatus.OK)
+        mockHttpClient.getJson(_) >> emptyResponse
 
         when:
         httpAdapter.pollMessages()
@@ -121,7 +118,7 @@ class SignalAdapterSpec extends Specification {
                 }
             }
         ]''')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(responseJson, HttpStatus.OK)
+        mockHttpClient.getJson(_) >> responseJson
 
         when:
         httpAdapter.pollMessages()
@@ -139,7 +136,7 @@ class SignalAdapterSpec extends Specification {
         def outbound = ChannelMessage.outbound("msg1", "signal", "+14155551234", "+14155559999", "hi there")
 
         def sendResponse = MAPPER.readTree('{"timestamp": "12345"}')
-        mockRestTemplate.postForEntity(_, _, JsonNode.class) >> new ResponseEntity<>(sendResponse, HttpStatus.OK)
+        mockHttpClient.postJson(_, _) >> sendResponse
 
         when:
         def result = httpAdapter.sendMessage(outbound)
@@ -157,7 +154,7 @@ class SignalAdapterSpec extends Specification {
         httpAdapter.start(Mock(ChannelMessageHandler))
         def outbound = ChannelMessage.outbound("msg1", "signal", "+14155551234", "+14155559999", "hi there")
 
-        mockRestTemplate.postForEntity(_, _, JsonNode.class) >> { throw new RuntimeException("connection refused") }
+        mockHttpClient.postJson(_, _) >> { throw new RuntimeException("connection refused") }
 
         when:
         def result = httpAdapter.sendMessage(outbound)
@@ -177,7 +174,7 @@ class SignalAdapterSpec extends Specification {
                 "http://localhost:8080", 2, "signal-cli", 7583,
                 Set.of("+14155550001")
         )
-        def adapter = new SignalAdapter(restrictedConfig, mockRestTemplate)
+        def adapter = new SignalAdapter(restrictedConfig, mockHttpClient)
         def handler = Mock(ChannelMessageHandler)
         adapter.start(handler)
 
@@ -192,7 +189,7 @@ class SignalAdapterSpec extends Specification {
                 }
             }
         ]''')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(responseJson, HttpStatus.OK)
+        mockHttpClient.getJson(_) >> responseJson
 
         when:
         adapter.pollMessages()
@@ -211,7 +208,7 @@ class SignalAdapterSpec extends Specification {
                 "http://localhost:8080", 2, "signal-cli", 7583,
                 Set.of("+14155559999")
         )
-        def adapter = new SignalAdapter(restrictedConfig, mockRestTemplate)
+        def adapter = new SignalAdapter(restrictedConfig, mockHttpClient)
         def handler = Mock(ChannelMessageHandler)
         adapter.start(handler)
 
@@ -226,7 +223,7 @@ class SignalAdapterSpec extends Specification {
                 }
             }
         ]''')
-        mockRestTemplate.getForEntity(_, JsonNode.class) >> new ResponseEntity<>(responseJson, HttpStatus.OK)
+        mockHttpClient.getJson(_) >> responseJson
 
         when:
         adapter.pollMessages()
@@ -318,7 +315,7 @@ class SignalAdapterSpec extends Specification {
                 "http://localhost:8080", 2, "signal-cli", 7583, Set.of()
         )
         def mockBridge = Mock(CliProcessBridge)
-        def adapter = new SignalAdapter(embeddedConfig, mockRestTemplate, mockBridge)
+        def adapter = new SignalAdapter(embeddedConfig, mockHttpClient, mockBridge)
         adapter.start(Mock(ChannelMessageHandler))
 
         def outbound = ChannelMessage.outbound("msg1", "signal", "+14155551234", "+14155559999", "hello embedded")

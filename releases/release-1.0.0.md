@@ -184,11 +184,30 @@ The mechanical rewrites JaiClaw applied to its own code (Jackson namespace, Shel
 
 ## Known follow-ups (post-1.0.0)
 
-- **Onboarding wizard** — Shell 4 rebuild on the new component model.
-- **Custom RestClient constructors** — 16 channel-adapter / MCP-tool-provider constructors still take `RestTemplate`; migrate to primary `(RestClient, ...)` constructors with `@Deprecated` `(RestTemplate, ...)` overloads.
-- **ExplicitToolLoop rework** — Spring AI 2.0 removed `ToolCallingChatOptions.internalToolExecutionEnabled(false)`; rewire via `ToolCallingManager` injection.
-- **Kanban / Pipeline persisted-format cross-version fixtures** — verify pre-migration YAML/JSON files still deserialize under Jackson 3 defaults.
-- **`jaiclaw-project-scaffolder` code templates** — the templates still emit Shell 3 `@ShellComponent`/`@ShellMethod` in generated projects; update to Shell 4.
+- **Onboarding wizard** — Shell 4 rebuild on the new component model. Currently
+  quarantined as no-op stubs; `start.sh` / `bin/jaiclaw` non-wizard paths work.
+- **Channel-adapter RestClient constructors** — 5 channel adapters (Signal, SMS,
+  Discord, Slack, Teams + 2 Teams support classes) still expose public
+  `(config, ..., RestTemplate)` constructors. The MCP tool providers
+  (DiscordMcpToolProvider, SlackMcpToolProvider, TelegramGroupManager) and the
+  supporting auto-configs migrated to primary `(RestClient, ...)` constructors
+  with `@Deprecated` `(RestTemplate, ...)` overloads for 1.0.0. The 5
+  channel-adapter migrations are deferred because their specs relied on
+  `Mock(RestTemplate)` and the polling-thread pattern of these adapters
+  doesn't cleanly migrate to `MockRestServiceServer` per-test isolation.
+  A follow-up will (a) extract an internal HTTP-abstraction interface the
+  tests can mock, or (b) run these tests against a Testcontainers HTTP
+  stub, then complete the migration.
+- **Redis TaskStore CAS** — Spring Data Redis 4 tightened MULTI/EXEC
+  bookkeeping in `TransactionResultConverter`; our Jedis-backed CAS loop
+  now trips a false `Expected 4 Actual 3` counting mismatch even on valid
+  transactions. `RedisTaskStoreContractSpec` is `@Ignore`d and needs a
+  Lettuce-driver migration or an SDR-4-compatible bookkeeping fix. Non-CAS
+  Redis paths (save, findById, delete, findByStatus) still pass.
+- **`OAuthProviderDemoConfig` example** — bean-wiring quarantined; needs
+  full rebuild against Spring AI 2.0's OpenAI path (`OpenAIOkHttpClient`
+  from `openai-java-client-okhttp`; the 1.x `OpenAiApi.builder()` shape
+  is gone at 2.0 GA).
 
 ## Acknowledgements
 

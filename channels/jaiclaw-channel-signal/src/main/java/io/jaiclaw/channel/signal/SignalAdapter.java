@@ -10,6 +10,7 @@ import io.jaiclaw.channel.process.CliProcessBridge;
 import io.jaiclaw.channel.process.CliProcessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class SignalAdapter extends AbstractChannelAdapter {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final SignalConfig config;
-    private final RestTemplate restTemplate;
+    private final SignalHttpClient httpClient;
 
     // EMBEDDED mode
     private CliProcessBridge processBridge;
@@ -40,20 +41,47 @@ public class SignalAdapter extends AbstractChannelAdapter {
     private Thread pollingThread;
 
     public SignalAdapter(SignalConfig config) {
-        this(config, new RestTemplate());
+        this(config, new RestClientSignalHttpClient());
     }
 
+    /**
+     * Primary constructor — inject a {@link SignalHttpClient}. The reference
+     * impl is {@link RestClientSignalHttpClient} (Spring 6.1+ / Boot 4 default);
+     * specs mock this interface directly.
+     */
+    public SignalAdapter(SignalConfig config, SignalHttpClient httpClient) {
+        super("signal", "Signal", PlatformLimits.SIGNAL);
+        this.config = config;
+        this.httpClient = httpClient;
+    }
+
+    /**
+     * Legacy constructor — accepts a {@link RestClient} and wraps it in the
+     * default {@link RestClientSignalHttpClient}.
+     */
+    public SignalAdapter(SignalConfig config, RestClient restClient) {
+        this(config, new RestClientSignalHttpClient(restClient));
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     * The {@link RestTemplate} reference is not used — the adapter delegates
+     * to the default {@link RestClientSignalHttpClient}. Migrate to the
+     * {@link SignalHttpClient} or {@link RestClient} constructor.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #SignalAdapter(SignalConfig, SignalHttpClient)}
+     *     or {@link #SignalAdapter(SignalConfig, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
     public SignalAdapter(SignalConfig config, RestTemplate restTemplate) {
-        super("signal", "Signal", PlatformLimits.SIGNAL);
-        this.config = config;
-        this.restTemplate = restTemplate;
+        this(config, new RestClientSignalHttpClient());
     }
 
-    // Visible for testing — allows injecting a mock bridge
-    SignalAdapter(SignalConfig config, RestTemplate restTemplate, CliProcessBridge processBridge) {
+    // Visible for testing — allows injecting a mock bridge alongside the http client
+    SignalAdapter(SignalConfig config, SignalHttpClient httpClient, CliProcessBridge processBridge) {
         super("signal", "Signal", PlatformLimits.SIGNAL);
         this.config = config;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
         this.processBridge = processBridge;
     }
 
@@ -177,14 +205,8 @@ public class SignalAdapter extends AbstractChannelAdapter {
         String url = config.apiUrl() + "/v1/receive/" + config.phoneNumber();
 
         try {
-            var response = restTemplate.getForEntity(url, JsonNode.class);
-
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return;
-            }
-
-            JsonNode body = response.getBody();
-            if (!body.isArray()) return;
+            JsonNode body = httpClient.getJson(url);
+            if (body == null || !body.isArray()) return;
 
             for (JsonNode envelope : body) {
                 processEnvelope(envelope.path("envelope"));
@@ -203,19 +225,11 @@ public class SignalAdapter extends AbstractChannelAdapter {
         body.put("recipients", List.of(message.peerId()));
 
         try {
-            var response = restTemplate.postForEntity(url, body, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                String timestamp = response.getBody() != null
-                        ? response.getBody().path("timestamp").asText(UUID.randomUUID().toString())
-                        : UUID.randomUUID().toString();
-                return new DeliveryResult.Success(timestamp);
-            } else {
-                return new DeliveryResult.Failure(
-                        "signal_api_error",
-                        "HTTP " + response.getStatusCode(),
-                        true);
-            }
+            JsonNode response = httpClient.postJson(url, body);
+            String timestamp = response != null
+                    ? response.path("timestamp").asText(UUID.randomUUID().toString())
+                    : UUID.randomUUID().toString();
+            return new DeliveryResult.Success(timestamp);
         } catch (Exception e) {
             return new DeliveryResult.Failure("send_failed", e.getMessage(), true);
         }

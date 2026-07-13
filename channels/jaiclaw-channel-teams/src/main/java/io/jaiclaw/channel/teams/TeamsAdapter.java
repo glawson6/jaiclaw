@@ -10,6 +10,7 @@ import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -32,23 +33,49 @@ public class TeamsAdapter extends AbstractChannelAdapter {
 
     private final TeamsConfig config;
     private final WebhookDispatcher webhookDispatcher;
-    private final RestTemplate restTemplate;
+    private final TeamsHttpClient httpClient;
     private final TeamsTokenManager tokenManager;
     private final TeamsJwtValidator jwtValidator;
     private final Map<String, String> serviceUrlCache = new ConcurrentHashMap<>();
 
     public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher) {
-        this(config, webhookDispatcher, new RestTemplate());
+        this(config, webhookDispatcher, new RestClientTeamsHttpClient());
     }
 
+    /**
+     * Primary constructor — inject a {@link TeamsHttpClient}. Specs mock this
+     * interface directly for send + token + JWKS paths.
+     */
     public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher,
-                        RestTemplate restTemplate) {
+                        TeamsHttpClient httpClient) {
         super("teams", "Microsoft Teams", PlatformLimits.TEAMS);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
-        this.restTemplate = restTemplate;
-        this.tokenManager = new TeamsTokenManager(config.appId(), config.appSecret(), restTemplate);
-        this.jwtValidator = new TeamsJwtValidator(config.appId(), restTemplate);
+        this.httpClient = httpClient;
+        this.tokenManager = new TeamsTokenManager(config.appId(), config.appSecret(), httpClient);
+        this.jwtValidator = new TeamsJwtValidator(config.appId(), httpClient);
+    }
+
+    /**
+     * Convenience constructor — wraps the given {@link RestClient} in the
+     * default {@link RestClientTeamsHttpClient}.
+     */
+    public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher,
+                        RestClient restClient) {
+        this(config, webhookDispatcher, new RestClientTeamsHttpClient(restClient));
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #TeamsAdapter(TeamsConfig,
+     *     WebhookDispatcher, TeamsHttpClient)} or {@link #TeamsAdapter(
+     *     TeamsConfig, WebhookDispatcher, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
+    public TeamsAdapter(TeamsConfig config, WebhookDispatcher webhookDispatcher,
+                        RestTemplate restTemplate) {
+        this(config, webhookDispatcher, new RestClientTeamsHttpClient());
     }
 
     @Override
@@ -92,27 +119,20 @@ public class TeamsAdapter extends AbstractChannelAdapter {
 
             String token = tokenManager.getAccessToken();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(token);
-
             Map<String, Object> activity = Map.of(
                     "type", "message",
                     "text", message.content()
             );
 
-            var request = new HttpEntity<>(activity, headers);
-            var response = restTemplate.postForEntity(url, request, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String activityId = response.getBody().path("id").asText("");
+            JsonNode response = httpClient.postJson(url, token, activity);
+            if (response != null) {
+                String activityId = response.path("id").asText("");
                 return new DeliveryResult.Success(activityId, Map.of("activityId", activityId));
-            } else {
-                return new DeliveryResult.Failure(
-                        "teams_api_error",
-                        "HTTP " + response.getStatusCode(),
-                        true);
             }
+            return new DeliveryResult.Failure(
+                    "teams_api_error",
+                    "Teams response empty",
+                    true);
         } catch (Exception e) {
             log.error("Failed to send Teams message to {}", message.peerId(), e);
             return new DeliveryResult.Failure("send_failed", e.getMessage(), true);
@@ -258,7 +278,7 @@ public class TeamsAdapter extends AbstractChannelAdapter {
                 String downloadUrl = att.path("content").path("downloadUrl").asText("");
                 if (!downloadUrl.isEmpty()) {
                     try {
-                        byte[] data = restTemplate.getForObject(downloadUrl, byte[].class);
+                        byte[] data = httpClient.getBytes(downloadUrl, null);
                         result.add(new ChannelMessage.Attachment(name, contentType, downloadUrl, data));
                     } catch (Exception e) {
                         log.warn("Failed to download Teams attachment {}: {}", name, e.getMessage());

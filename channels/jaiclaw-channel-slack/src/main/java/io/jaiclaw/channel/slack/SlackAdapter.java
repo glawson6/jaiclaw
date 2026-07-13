@@ -11,6 +11,7 @@ import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -42,20 +43,46 @@ public class SlackAdapter extends AbstractChannelAdapter {
 
     private final SlackConfig config;
     private final WebhookDispatcher webhookDispatcher;
-    private final RestTemplate restTemplate;
+    private final SlackHttpClient httpClient;
     private final AtomicReference<WebSocket> socketModeWs = new AtomicReference<>();
     private Thread socketModeReconnectThread;
 
     public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher) {
-        this(config, webhookDispatcher, new RestTemplate());
+        this(config, webhookDispatcher, new RestClientSlackHttpClient());
     }
 
+    /**
+     * Primary constructor — inject a {@link SlackHttpClient}. Specs mock this
+     * interface directly.
+     */
     public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher,
-                        RestTemplate restTemplate) {
+                        SlackHttpClient httpClient) {
         super("slack", "Slack", PlatformLimits.SLACK);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
+    }
+
+    /**
+     * Convenience constructor — wraps the given {@link RestClient} in the
+     * default {@link RestClientSlackHttpClient}.
+     */
+    public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher,
+                        RestClient restClient) {
+        this(config, webhookDispatcher, new RestClientSlackHttpClient(restClient));
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #SlackAdapter(SlackConfig,
+     *     WebhookDispatcher, SlackHttpClient)} or {@link #SlackAdapter(
+     *     SlackConfig, WebhookDispatcher, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
+    public SlackAdapter(SlackConfig config, WebhookDispatcher webhookDispatcher,
+                        RestTemplate restTemplate) {
+        this(config, webhookDispatcher, new RestClientSlackHttpClient());
     }
 
     @Override
@@ -74,20 +101,13 @@ public class SlackAdapter extends AbstractChannelAdapter {
         try {
             String url = SLACK_API_BASE + "chat.postMessage";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(config.botToken());
-
             Map<String, Object> body = Map.of(
                     "channel", message.peerId(),
                     "text", message.content()
             );
 
-            var request = new HttpEntity<>(body, headers);
-            var response = restTemplate.postForEntity(url, request, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                JsonNode responseBody = response.getBody();
+            JsonNode responseBody = httpClient.postJson(url, config.botToken(), body);
+            if (responseBody != null) {
                 if (responseBody.path("ok").asBoolean()) {
                     String ts = responseBody.path("ts").asText();
                     return new DeliveryResult.Success(ts, Map.of("ts", ts));
@@ -99,7 +119,7 @@ public class SlackAdapter extends AbstractChannelAdapter {
             } else {
                 return new DeliveryResult.Failure(
                         "slack_api_error",
-                        "HTTP " + response.getStatusCode(),
+                        "Slack response empty",
                         true);
             }
         } catch (Exception e) {
@@ -203,16 +223,9 @@ public class SlackAdapter extends AbstractChannelAdapter {
     String openSocketModeConnection() {
         try {
             String url = SLACK_API_BASE + "apps.connections.open";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBearerAuth(config.appToken());
-
-            var request = new HttpEntity<>("", headers);
-            var response = restTemplate.postForEntity(url, request, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                JsonNode body = response.getBody();
+            JsonNode body = httpClient.post(url, config.appToken(),
+                    MediaType.APPLICATION_FORM_URLENCODED, "");
+            if (body != null) {
                 if (body.path("ok").asBoolean()) {
                     return body.path("url").asText();
                 } else {

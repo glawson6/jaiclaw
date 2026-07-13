@@ -10,6 +10,7 @@ import io.jaiclaw.gateway.WebhookDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -42,7 +43,7 @@ public class DiscordAdapter extends AbstractChannelAdapter {
 
     private final DiscordConfig config;
     private final WebhookDispatcher webhookDispatcher;
-    private final RestTemplate restTemplate;
+    private final DiscordHttpClient httpClient;
     private final AtomicReference<WebSocket> gatewayWs = new AtomicReference<>();
     private final AtomicReference<String> sessionId = new AtomicReference<>();
     private final AtomicReference<Integer> lastSequence = new AtomicReference<>(null);
@@ -50,15 +51,41 @@ public class DiscordAdapter extends AbstractChannelAdapter {
     private ScheduledExecutorService heartbeatExecutor;
 
     public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher) {
-        this(config, webhookDispatcher, new RestTemplate());
+        this(config, webhookDispatcher, new RestClientDiscordHttpClient());
     }
 
+    /**
+     * Primary constructor — inject a {@link DiscordHttpClient}. Specs mock
+     * this interface directly.
+     */
     public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher,
-                          RestTemplate restTemplate) {
+                          DiscordHttpClient httpClient) {
         super("discord", "Discord", PlatformLimits.DISCORD);
         this.config = config;
         this.webhookDispatcher = webhookDispatcher;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
+    }
+
+    /**
+     * Convenience constructor — wraps the given {@link RestClient} in the
+     * default {@link RestClientDiscordHttpClient}.
+     */
+    public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher,
+                          RestClient restClient) {
+        this(config, webhookDispatcher, new RestClientDiscordHttpClient(restClient));
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #DiscordAdapter(DiscordConfig,
+     *     WebhookDispatcher, DiscordHttpClient)} or {@link #DiscordAdapter(
+     *     DiscordConfig, WebhookDispatcher, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
+    public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher,
+                          RestTemplate restTemplate) {
+        this(config, webhookDispatcher, new RestClientDiscordHttpClient());
     }
 
     @Override
@@ -76,25 +103,15 @@ public class DiscordAdapter extends AbstractChannelAdapter {
     protected DeliveryResult doSend(ChannelMessage message) {
         try {
             String url = DISCORD_API_BASE + "channels/" + message.peerId() + "/messages";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bot " + config.botToken());
-
             Map<String, Object> body = Map.of("content", message.content());
 
-            var request = new HttpEntity<>(body, headers);
-            var response = restTemplate.postForEntity(url, request, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String messageId = response.getBody().path("id").asText();
+            JsonNode response = httpClient.postJson(url, config.botToken(), body);
+            if (response != null) {
+                String messageId = response.path("id").asText();
                 return new DeliveryResult.Success(messageId);
-            } else {
-                return new DeliveryResult.Failure(
-                        "discord_api_error",
-                        "HTTP " + response.getStatusCode(),
-                        true);
             }
+            return new DeliveryResult.Failure("discord_api_error",
+                    "Discord response empty", true);
         } catch (Exception e) {
             log.error("Failed to send Discord message to channel {}", message.peerId(), e);
             return new DeliveryResult.Failure("send_failed", e.getMessage(), true);
@@ -200,15 +217,9 @@ public class DiscordAdapter extends AbstractChannelAdapter {
     String fetchGatewayUrl() {
         try {
             String url = DISCORD_API_BASE + "gateway/bot";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bot " + config.botToken());
-
-            var request = new HttpEntity<>(headers);
-            var response = restTemplate.exchange(url, HttpMethod.GET, request, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody().path("url").asText();
+            JsonNode response = httpClient.getJson(url, config.botToken());
+            if (response != null) {
+                return response.path("url").asText();
             }
         } catch (Exception e) {
             log.error("Failed to fetch Discord Gateway URL: {}", e.getMessage());

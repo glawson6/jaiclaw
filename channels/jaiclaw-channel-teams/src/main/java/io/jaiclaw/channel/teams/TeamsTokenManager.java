@@ -4,10 +4,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,16 +27,16 @@ class TeamsTokenManager {
 
     private final String appId;
     private final String appSecret;
-    private final RestTemplate restTemplate;
+    private final TeamsHttpClient httpClient;
     private final ReentrantLock lock = new ReentrantLock();
 
     private String cachedToken;
     private Instant expiresAt = Instant.EPOCH;
 
-    TeamsTokenManager(String appId, String appSecret, RestTemplate restTemplate) {
+    TeamsTokenManager(String appId, String appSecret, TeamsHttpClient httpClient) {
         this.appId = appId;
         this.appSecret = appSecret;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
     }
 
     /**
@@ -62,28 +61,21 @@ class TeamsTokenManager {
 
     private String refreshToken() {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            String formBody = "grant_type=client_credentials"
+                    + "&client_id=" + URLEncoder.encode(appId, StandardCharsets.UTF_8)
+                    + "&client_secret=" + URLEncoder.encode(appSecret, StandardCharsets.UTF_8)
+                    + "&scope=" + URLEncoder.encode("https://api.botframework.com/.default", StandardCharsets.UTF_8);
 
-            var form = new LinkedMultiValueMap<String, String>();
-            form.add("grant_type", "client_credentials");
-            form.add("client_id", appId);
-            form.add("client_secret", appSecret);
-            form.add("scope", "https://api.botframework.com/.default");
-
-            var request = new HttpEntity<>(form, headers);
-            var response = restTemplate.postForEntity(TOKEN_URL, request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                JsonNode body = MAPPER.readTree(response.getBody());
-                cachedToken = body.path("access_token").asText();
-                long expiresIn = body.path("expires_in").asLong(3600);
-                expiresAt = Instant.now().plusSeconds(expiresIn);
-                log.debug("Teams OAuth token refreshed, expires in {}s", expiresIn);
-                return cachedToken;
-            } else {
-                throw new IllegalStateException("Token request failed: HTTP " + response.getStatusCode());
+            String responseBody = httpClient.postForm(TOKEN_URL, formBody);
+            if (responseBody == null || responseBody.isBlank()) {
+                throw new IllegalStateException("Token request returned empty response");
             }
+            JsonNode body = MAPPER.readTree(responseBody);
+            cachedToken = body.path("access_token").asText();
+            long expiresIn = body.path("expires_in").asLong(3600);
+            expiresAt = Instant.now().plusSeconds(expiresIn);
+            log.debug("Teams OAuth token refreshed, expires in {}s", expiresIn);
+            return cachedToken;
         } catch (Exception e) {
             log.error("Failed to refresh Teams OAuth token: {}", e.getMessage());
             throw new RuntimeException("Failed to obtain Teams access token", e);

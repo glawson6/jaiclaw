@@ -4,7 +4,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -33,15 +32,15 @@ class TeamsJwtValidator {
     private static final long CLOCK_SKEW_SECONDS = 300; // 5 minutes
 
     private final String expectedAudience;
-    private final RestTemplate restTemplate;
+    private final TeamsHttpClient httpClient;
 
     private final Map<String, RSAPublicKey> keyCache = new ConcurrentHashMap<>();
     private volatile Instant keyCacheExpiry = Instant.EPOCH;
     private volatile String jwksUri;
 
-    TeamsJwtValidator(String expectedAudience, RestTemplate restTemplate) {
+    TeamsJwtValidator(String expectedAudience, TeamsHttpClient httpClient) {
         this.expectedAudience = expectedAudience;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
     }
 
     /**
@@ -136,14 +135,14 @@ class TeamsJwtValidator {
         try {
             // Step 1: Get JWKS URI from OpenID configuration
             if (jwksUri == null) {
-                String configJson = restTemplate.getForObject(OPENID_CONFIG_URL, String.class);
+                String configJson = httpClient.getString(OPENID_CONFIG_URL);
                 JsonNode config = MAPPER.readTree(configJson);
                 jwksUri = config.path("jwks_uri").asText();
                 log.debug("Teams JWKS URI: {}", jwksUri);
             }
 
             // Step 2: Fetch JWKS keys
-            String jwksJson = restTemplate.getForObject(jwksUri, String.class);
+            String jwksJson = httpClient.getString(jwksUri);
             JsonNode jwks = MAPPER.readTree(jwksJson);
             JsonNode keys = jwks.path("keys");
 
