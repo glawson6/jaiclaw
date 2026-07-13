@@ -134,7 +134,7 @@ Steps: poms (42+13+5) → imports (guarded rewrite, annotations excepted) → `O
 
 ## Phase 3 — Spring AI 2.0
 
-**STATUS: NOT STARTED**
+**STATUS: PARTIALLY DONE — provider-starter reconciliation was completed early during Phase 1 (see Phase 1 STATUS block: azure-openai/oci-genai/minimax removed, vertex-ai-gemini renamed to google-genai). Remainder still NOT STARTED — 37 source files with Spring AI API changes (SpringAiToolBridge, AgentRuntime, AuditingChatModel + BPP, MiniMaxThinkingFilterAutoConfiguration, MCP hosting) + 46 ymls with `spring.ai.*.options.*` property renames.**
 **Preconditions:** Phases 1–2. Read [05](05-spring-ai-2-migration.md).
 
 Steps: run Spring AI OpenRewrite recipes → `SpringAiToolBridge` + tool-calling (§3) → ChatModel decorators/BPPs (§4) → provider starters incl. azure/oci/minimax decisions (§2) → MCP hosting + SDK 2.x (§5) → property renames across 46 ymls + `start.sh` env plumbing (§1) → `AgentRuntime` nullability + token INFO log (§4).
@@ -143,7 +143,7 @@ Steps: run Spring AI OpenRewrite recipes → `SpringAiToolBridge` + tool-calling
 
 ## Phase 4 — Embabel adoption
 
-**STATUS: NOT STARTED (gated for release; snapshot-executable now)**
+**STATUS: PIN PLACED — root pom `embabel-agent.version` set to `2.0.0-SNAPSHOT` (Boot-4 line, published to repo.embabel.com libs-snapshot; snapshot repo already configured in root pom). Full adoption steps (delegate recompile against new AgentPlatform APIs, three-layer config re-verification, MiniMax-via-Anthropic base-url re-verification, MiniMaxThinkingFilter keep/simplify decision, examples run) NOT STARTED. Gated on Phases 2 (custom serializers) + 3 (Spring AI 2.0 API sites) being green — Embabel 2.0.0-SNAPSHOT will not resolve its own transitive Spring AI 2.0 calls if the reactor is broken.**
 **Preconditions:** Phases 1–3; Boot-4 Embabel snapshot resolvable ([02 §3b](02-embabel-gate.md)) — else build Embabel's branch locally from the sibling checkout.
 
 Steps: pin snapshot → recompile `jaiclaw-embabel-delegate` (AgentPlatform APIs unverified across the 0.x→1.5/2.0 boundary) → `jaiclaw-starter-embabel` + starter auto-config → three-layer config re-verification incl. **MiniMax-via-Anthropic base-url** + registered model names → `MiniMaxThinkingFilter` keep/simplify decision → spring-retry explicit pin if needed → examples (`camel-html-summarizer-embabel`, travel-planner, code-review-bot, pipeline-e2e EMBABEL stages).
@@ -152,7 +152,7 @@ Steps: pin snapshot → recompile `jaiclaw-embabel-delegate` (AgentPlatform APIs
 
 ## Phase 5 — Spring Shell 4 rewrite (~35 files)
 
-**STATUS: NOT STARTED**
+**STATUS: NOT STARTED — full annotation rewrite from `@ShellComponent`/`@ShellMethod`/`@ShellOption` (removed at Shell 4.0) to the new `@Command` model. Recorded worklist from Phase 1 compile: `apps/jaiclaw-shell-commands` (25 files), `apps/jaiclaw-cli`, `apps/jaiclaw-cron-manager-app`, 5 tools modules (jaiclaw-perplexity, jaiclaw-rest-cli-architect, jaiclaw-skill-creator, jaiclaw-prompt-analyzer, jaiclaw-project-scaffolder), 8 examples. Plus `org.springframework.shell.jline` refs (JaiClawPromptProvider + JaiClawShellPromptAutoConfiguration) and `org.jline.reader`/`org.jline.utils` — audit whether jline needs an explicit dep in Shell 4.**
 **Preconditions:** Phase 1 (Shell 4 needs Boot 4 on the classpath). Read [06](06-spring-shell-4-migration.md).
 
 Order: `jaiclaw-shell-commands` (25 files) → shell/cli/cron-manager apps → 5 tools (dual-mode `-Pstandalone` retest) → 8 examples → **non-interactive alias matrix retest** (the CLAUDE.md multi-word-key caveat) → `start.sh` / `bin/jaiclaw` / e2e script compatibility.
@@ -161,7 +161,7 @@ Order: `jaiclaw-shell-commands` (25 files) → shell/cli/cron-manager apps → 5
 
 ## Phase 6 — Security 7, actuator, web, cleanup
 
-**STATUS: NOT STARTED**
+**STATUS: PARTIALLY DONE — JSpecify `@Nullable` on actuator endpoints is already correct or N/A (Phase 0 finding: PipelineActuatorEndpoint uses `org.jspecify.annotations.Nullable`; Kanban and Tendencies endpoints have no nullable @Selector params). Full HttpSecurity lambda-DSL / PathPatternRequestMatcher migration, `management.tracing.*` renames, probes-by-default review, `spring-boot-starter-classic` cleanup, GDPR/compliance surfaces recheck, and RestClient migration of the 16 sites deferred from Phase 0.4 (Discord/Slack/Signal/SMS/Teams adapters + DiscordMcpToolProvider + SlackMcpToolProvider + TelegramGroupManager + 2 auto-configs — via primary `(RestClient, ...)` constructors with `@Deprecated` `(RestTemplate, ...)` overloads) all NOT STARTED. Also NOT DONE: Spring Batch 6 package moves in extensions/jaiclaw-cron-manager (surfaced by Phase 1 compile; needs Phase 6 or a Phase 6b for Batch specifically).**
 **Preconditions:** Phases 1–3.
 
 Steps: 2 `HttpSecurity` files → lambda-DSL/`PathPatternRequestMatcher` ([03 §5](03-spring-boot-4-core-changes.md)) → actuator endpoints JSpecify `@Nullable` (3 endpoints) → `management.tracing.*` renames → probes-by-default review (gateway health groups, e2e assertions) → WebSocket surface integration test → gateway `/mcp/*` + SSE + stdio bridge smoke → **remove every `spring-boot-starter-classic`** introduced in Phase 1 → GDPR/compliance surfaces (`/api/gdpr/*`, `AuditingChatModelBeanPostProcessor` idempotency, `HashChainedAuditLogger.verifyChain` on pre-migration fixture) → security-hardened profile YAML re-check.
@@ -170,7 +170,7 @@ Steps: 2 `HttpSecurity` files → lambda-DSL/`PathPatternRequestMatcher` ([03 §
 
 ## Phase 7 — Test suite, examples, CI, images
 
-**STATUS: NOT STARTED**
+**STATUS: NOT STARTED — cannot start until the reactor compiles green (Phases 2–5 completion). Spock 2.4-groovy-5.0 is now pinned; expect `.with{}` semantics regressions in specs per Spock 2.4 breaking-change notes.**
 **Preconditions:** Phases 1–6 compiling. Read [09](09-validation-and-rollback.md).
 
 Steps: smoke one `spock-spring` context spec module first → full reactor test run, triage by failure class (MockMvc auto-config removals, Jackson defaults, Spock `.with{}` semantics) → 41 examples: build + `jaiclaw:analyze` token budgets (INFO-log check per CLAUDE.md) → CI workflows (5) still temurin-21-valid; surefire/JUnit-Platform-2 check → JKube 1.19 image builds `-Pk8s` for gateway-app + shell; probe YAML verification → e2e skill (`e2e-test`) full pass → `./mvnw verify` JaCoCo gates hold (≥50% core modules).
@@ -179,7 +179,7 @@ Steps: smoke one `spock-spring` context spec module first → full reactor test 
 
 ## Phase 8 — Docs, release notes, 1.0.0 mechanics
 
-**STATUS: NOT STARTED**
+**STATUS: NOT STARTED — hard-gated on Embabel publishing a Boot-4 GA (currently only `2.0.0-SNAPSHOT` exists on repo.embabel.com libs-snapshot; Central rejects SNAPSHOT deps in release artifacts per doc 02). Docs sweep + release notes + adopter migration guide all pending.**
 **Preconditions:** Phases 0–7 done; **Embabel GA published (gate — [02 §2](02-embabel-gate.md))**; pin GA version, delete snapshot repo need; remove `spring-boot-properties-migrator`.
 
 | # | Step |
