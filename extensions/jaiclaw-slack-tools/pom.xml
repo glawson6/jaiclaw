@@ -47,7 +47,12 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Test: Spock + Groovy -->
+        <!-- Test: spring-test for MockRestServiceServer + Spock + Groovy -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.groovy</groupId>
             <artifactId>groovy</artifactId>

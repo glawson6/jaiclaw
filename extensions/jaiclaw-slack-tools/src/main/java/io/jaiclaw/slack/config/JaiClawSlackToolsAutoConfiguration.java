@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 @AutoConfiguration
 @AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration")
@@ -40,6 +40,6 @@ public class JaiClawSlackToolsAutoConfiguration {
         String botToken = environment.getProperty("jaiclaw.channels.slack.bot-token", "");
         ObjectMapper objectMapper = new ObjectMapper();
         log.info("Registering Slack tools MCP provider");
-        return new SlackMcpToolProvider(botToken, properties, new RestTemplate(), objectMapper);
+        return new SlackMcpToolProvider(botToken, properties, RestClient.create(), objectMapper);
     }
 }

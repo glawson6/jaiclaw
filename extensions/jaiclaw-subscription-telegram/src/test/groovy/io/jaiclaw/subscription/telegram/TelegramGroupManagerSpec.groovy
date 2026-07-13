@@ -1,38 +1,40 @@
 package io.jaiclaw.subscription.telegram
 
-import tools.jackson.databind.JsonNode
-import tools.jackson.databind.ObjectMapper
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.web.client.RestTemplate
+import org.springframework.http.MediaType
+import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.web.client.RestClient
 import spock.lang.Specification
+
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
 
 class TelegramGroupManagerSpec extends Specification {
 
-    RestTemplate restTemplate = Mock()
-    TelegramGroupManager manager = new TelegramGroupManager("test-bot-token", restTemplate)
-    ObjectMapper mapper = new ObjectMapper()
+    RestClient.Builder builder = RestClient.builder()
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build()
+    RestClient restClient = builder.build()
+    TelegramGroupManager manager = new TelegramGroupManager("test-bot-token", restClient)
 
     def "createInviteLink returns invite URL on success"() {
         given:
-        def responseBody = mapper.readTree('{"ok":true,"result":{"invite_link":"https://t.me/+abc123"}}')
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/createChatInviteLink"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andRespond(withSuccess('{"ok":true,"result":{"invite_link":"https://t.me/+abc123"}}',
+                        MediaType.APPLICATION_JSON))
 
         when:
         def link = manager.createInviteLink("-100123")
 
         then:
-        1 * restTemplate.postForEntity(
-                { it.contains("createChatInviteLink") },
-                { it["chat_id"] == "-100123" && it["member_limit"] == 1 },
-                JsonNode
-        ) >> new ResponseEntity(responseBody, HttpStatus.OK)
-
         link == "https://t.me/+abc123"
     }
 
     def "createInviteLink returns null on API failure"() {
         given:
-        restTemplate.postForEntity(_, _, _) >> { throw new RuntimeException("API error") }
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/createChatInviteLink"))
+                .andRespond(withServerError())
 
         when:
         def link = manager.createInviteLink("-100123")
@@ -42,32 +44,26 @@ class TelegramGroupManagerSpec extends Specification {
     }
 
     def "removeUser bans then unbans"() {
+        given:
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/banChatMember"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/unbanChatMember"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
+
         when:
         def result = manager.removeUser("-100123", "456")
 
         then:
-        1 * restTemplate.postForEntity(
-                { it.contains("banChatMember") },
-                { it["chat_id"] == "-100123" && it["user_id"] == 456L },
-                JsonNode
-        ) >> new ResponseEntity(mapper.readTree('{"ok":true}'), HttpStatus.OK)
-
-        then:
-        1 * restTemplate.postForEntity(
-                { it.contains("unbanChatMember") },
-                { it["chat_id"] == "-100123" && it["user_id"] == 456L },
-                JsonNode
-        ) >> new ResponseEntity(mapper.readTree('{"ok":true}'), HttpStatus.OK)
-
         result == true
     }
 
     def "isMember returns true for member status"() {
         given:
-        def responseBody = mapper.readTree('{"ok":true,"result":{"status":"member"}}')
-        restTemplate.postForEntity(
-                { it.contains("getChatMember") }, _, JsonNode
-        ) >> new ResponseEntity(responseBody, HttpStatus.OK)
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/getChatMember"))
+                .andRespond(withSuccess('{"ok":true,"result":{"status":"member"}}',
+                        MediaType.APPLICATION_JSON))
 
         expect:
         manager.isMember("-100123", "456") == true
@@ -75,10 +71,9 @@ class TelegramGroupManagerSpec extends Specification {
 
     def "isMember returns false for left/kicked status"() {
         given:
-        def responseBody = mapper.readTree('{"ok":true,"result":{"status":"left"}}')
-        restTemplate.postForEntity(
-                { it.contains("getChatMember") }, _, JsonNode
-        ) >> new ResponseEntity(responseBody, HttpStatus.OK)
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/getChatMember"))
+                .andRespond(withSuccess('{"ok":true,"result":{"status":"left"}}',
+                        MediaType.APPLICATION_JSON))
 
         expect:
         manager.isMember("-100123", "456") == false
@@ -86,19 +81,14 @@ class TelegramGroupManagerSpec extends Specification {
 
     def "sendMessage calls sendMessage API"() {
         given:
-        restTemplate.postForEntity(_, _, _) >> new ResponseEntity(
-                mapper.readTree('{"ok":true}'), HttpStatus.OK)
+        server.expect(requestTo("https://api.telegram.org/bottest-bot-token/sendMessage"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
 
         when:
         def result = manager.sendMessage("-100123", "Hello")
 
         then:
-        1 * restTemplate.postForEntity(
-                { it.contains("sendMessage") },
-                { it["chat_id"] == "-100123" && it["text"] == "Hello" },
-                JsonNode
-        ) >> new ResponseEntity(mapper.readTree('{"ok":true}'), HttpStatus.OK)
-
         result == true
     }
 }

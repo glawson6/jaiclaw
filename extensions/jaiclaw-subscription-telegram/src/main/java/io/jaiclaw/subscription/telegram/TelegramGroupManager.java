@@ -3,6 +3,7 @@ package io.jaiclaw.subscription.telegram;
 import tools.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -16,15 +17,28 @@ public class TelegramGroupManager {
     private static final String API_BASE = "https://api.telegram.org/bot";
 
     private final String botToken;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
     public TelegramGroupManager(String botToken) {
-        this(botToken, new RestTemplate());
+        this(botToken, RestClient.create());
     }
 
-    public TelegramGroupManager(String botToken, RestTemplate restTemplate) {
+    /**
+     * Primary constructor — use {@link RestClient} (Spring 6.1+; the Boot 4 default).
+     */
+    public TelegramGroupManager(String botToken, RestClient restClient) {
         this.botToken = botToken;
-        this.restTemplate = restTemplate;
+        this.restClient = restClient;
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #TelegramGroupManager(String, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
+    public TelegramGroupManager(String botToken, RestTemplate restTemplate) {
+        this(botToken, RestClient.create());
     }
 
     /**
@@ -40,11 +54,13 @@ public class TelegramGroupManager {
                     "member_limit", 1,
                     "creates_join_request", false
             );
-            var response = restTemplate.postForEntity(
-                    apiUrl("createChatInviteLink"), body, JsonNode.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String link = response.getBody().path("result").path("invite_link").asText();
+            JsonNode result = restClient.post()
+                    .uri(apiUrl("createChatInviteLink"))
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (result != null) {
+                String link = result.path("result").path("invite_link").asText();
                 log.info("Created invite link for chat {}", chatId);
                 return link;
             }
@@ -62,7 +78,11 @@ public class TelegramGroupManager {
         try {
             // Ban (kicks the user)
             var banBody = Map.of("chat_id", chatId, "user_id", Long.parseLong(userId));
-            restTemplate.postForEntity(apiUrl("banChatMember"), banBody, JsonNode.class);
+            restClient.post()
+                    .uri(apiUrl("banChatMember"))
+                    .body(banBody)
+                    .retrieve()
+                    .toBodilessEntity();
 
             // Immediately unban so they can rejoin with a new invite
             var unbanBody = Map.of(
@@ -70,7 +90,11 @@ public class TelegramGroupManager {
                     "user_id", Long.parseLong(userId),
                     "only_if_banned", true
             );
-            restTemplate.postForEntity(apiUrl("unbanChatMember"), unbanBody, JsonNode.class);
+            restClient.post()
+                    .uri(apiUrl("unbanChatMember"))
+                    .body(unbanBody)
+                    .retrieve()
+                    .toBodilessEntity();
 
             log.info("Removed user {} from chat {}", userId, chatId);
             return true;
@@ -88,11 +112,14 @@ public class TelegramGroupManager {
     public boolean isMember(String chatId, String userId) {
         try {
             var body = Map.of("chat_id", chatId, "user_id", Long.parseLong(userId));
-            var response = restTemplate.postForEntity(
-                    apiUrl("getChatMember"), body, JsonNode.class);
+            JsonNode result = restClient.post()
+                    .uri(apiUrl("getChatMember"))
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String status = response.getBody().path("result").path("status").asText();
+            if (result != null) {
+                String status = result.path("result").path("status").asText();
                 return "member".equals(status) || "administrator".equals(status) || "creator".equals(status);
             }
         } catch (Exception e) {
@@ -111,8 +138,12 @@ public class TelegramGroupManager {
                     "text", text,
                     "parse_mode", "Markdown"
             );
-            var response = restTemplate.postForEntity(apiUrl("sendMessage"), body, JsonNode.class);
-            return response.getStatusCode().is2xxSuccessful();
+            restClient.post()
+                    .uri(apiUrl("sendMessage"))
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
         } catch (Exception e) {
             log.error("Failed to send message to {}: {}", chatId, e.getMessage());
             return false;
@@ -135,8 +166,12 @@ public class TelegramGroupManager {
                     "currency", currency,
                     "prices", new Object[]{Map.of("label", title, "amount", amount)}
             );
-            var response = restTemplate.postForEntity(apiUrl("sendInvoice"), body, JsonNode.class);
-            return response.getStatusCode().is2xxSuccessful();
+            restClient.post()
+                    .uri(apiUrl("sendInvoice"))
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
         } catch (Exception e) {
             log.error("Failed to send invoice to {}: {}", chatId, e.getMessage());
             return false;

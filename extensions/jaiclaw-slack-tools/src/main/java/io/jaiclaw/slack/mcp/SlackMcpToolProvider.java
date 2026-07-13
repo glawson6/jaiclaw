@@ -11,8 +11,9 @@ import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.slack.config.SlackToolsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -34,17 +35,34 @@ public class SlackMcpToolProvider implements McpToolProvider {
 
     private final String botToken;
     private final SlackToolsProperties properties;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Primary constructor — use {@link RestClient} (Spring 6.1+; the Boot 4 default).
+     */
+    public SlackMcpToolProvider(String botToken,
+                                SlackToolsProperties properties,
+                                RestClient restClient,
+                                ObjectMapper objectMapper) {
+        this.botToken = botToken;
+        this.properties = properties;
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #SlackMcpToolProvider(String,
+     *     SlackToolsProperties, RestClient, ObjectMapper)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
     public SlackMcpToolProvider(String botToken,
                                 SlackToolsProperties properties,
                                 RestTemplate restTemplate,
                                 ObjectMapper objectMapper) {
-        this.botToken = botToken;
-        this.properties = properties;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+        this(botToken, properties, RestClient.create(), objectMapper);
     }
 
     @Override
@@ -298,18 +316,16 @@ public class SlackMcpToolProvider implements McpToolProvider {
 
     // ── Slack REST helpers ──
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(botToken);
-        return headers;
-    }
-
     private JsonNode slackPost(String method, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            var response = restTemplate.postForEntity(SLACK_API + method, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.post()
+                    .uri(SLACK_API + method)
+                    .header("Authorization", "Bearer " + botToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Slack API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
@@ -322,15 +338,13 @@ public class SlackMcpToolProvider implements McpToolProvider {
             params.forEach((k, v) -> url.append(k).append("=").append(v).append("&"));
             url.setLength(url.length() - 1); // remove trailing &
         }
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(botToken);
-        var request = new HttpEntity<>(headers);
-
         try {
-            var response = restTemplate.exchange(
-                    url.toString(), HttpMethod.GET, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.get()
+                    .uri(url.toString())
+                    .header("Authorization", "Bearer " + botToken)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Slack API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }

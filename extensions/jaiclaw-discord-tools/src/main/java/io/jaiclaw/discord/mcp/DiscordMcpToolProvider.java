@@ -11,8 +11,10 @@ import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.discord.config.DiscordToolsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -34,17 +36,37 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     private final String botToken;
     private final DiscordToolsProperties properties;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Primary constructor — use {@link RestClient} (Spring 6.1+; the Boot 4 default).
+     */
+    public DiscordMcpToolProvider(String botToken,
+                                  DiscordToolsProperties properties,
+                                  RestClient restClient,
+                                  ObjectMapper objectMapper) {
+        this.botToken = botToken;
+        this.properties = properties;
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters that
+     * still wire a {@link RestTemplate}. The RestTemplate reference is not used
+     * (all requests go through the equivalent {@link RestClient} adapter);
+     * migrate call-sites to the {@link RestClient} constructor.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #DiscordMcpToolProvider(String,
+     *     DiscordToolsProperties, RestClient, ObjectMapper)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
     public DiscordMcpToolProvider(String botToken,
                                   DiscordToolsProperties properties,
                                   RestTemplate restTemplate,
                                   ObjectMapper objectMapper) {
-        this.botToken = botToken;
-        this.properties = properties;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+        this(botToken, properties, RestClient.create(), objectMapper);
     }
 
     @Override
@@ -263,59 +285,70 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     // ── Discord REST helpers ──
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bot " + botToken);
-        return headers;
-    }
+    private String authHeader() { return "Bot " + botToken; }
 
     private JsonNode discordPost(String path, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            var response = restTemplate.postForEntity(DISCORD_API + path, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.post()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private JsonNode discordGet(String path) {
-        var request = new HttpEntity<>(authHeaders());
         try {
-            var response = restTemplate.exchange(
-                    DISCORD_API + path, HttpMethod.GET, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.get()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordPut(String path) {
-        var headers = authHeaders();
-        headers.setContentLength(0);
-        var request = new HttpEntity<>(null, headers);
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.PUT, request, Void.class);
+            restClient.put()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .header("Content-Length", "0")
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordPatch(String path, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.PATCH, request, JsonNode.class);
+            restClient.method(HttpMethod.PATCH)
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordDelete(String path) {
-        var headers = authHeaders();
-        var request = new HttpEntity<>(null, headers);
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.DELETE, request, Void.class);
+            restClient.delete()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }

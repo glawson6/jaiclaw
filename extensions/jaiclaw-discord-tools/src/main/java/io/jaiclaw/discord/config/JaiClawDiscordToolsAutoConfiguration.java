@@ -13,7 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 @AutoConfiguration
 @AutoConfigureAfter(name = "io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration")
@@ -41,6 +41,6 @@ public class JaiClawDiscordToolsAutoConfiguration {
         String botToken = environment.getProperty("jaiclaw.channels.discord.bot-token", "");
         ObjectMapper objectMapper = new ObjectMapper();
         log.info("Registering Discord tools MCP provider");
-        return new DiscordMcpToolProvider(botToken, properties, new RestTemplate(), objectMapper);
+        return new DiscordMcpToolProvider(botToken, properties, RestClient.create(), objectMapper);
     }
 }
