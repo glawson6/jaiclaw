@@ -164,6 +164,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
         </dependency>
+        <!-- Boot 4 split RestClient/RestTemplate builders into their own tech
+             module. JaiClawHttpAutoConfiguration wires RestClientCustomizer
+             from here — required to satisfy the auto-config introspection. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
 
         <!-- Embabel starter — optional; pulled transitively only by jaiclaw-starter-embabel -->
         <dependency>
