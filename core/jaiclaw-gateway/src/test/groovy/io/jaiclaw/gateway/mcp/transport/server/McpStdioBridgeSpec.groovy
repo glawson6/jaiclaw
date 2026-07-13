@@ -1,6 +1,6 @@
 package io.jaiclaw.gateway.mcp.transport.server
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.mcp.McpToolDefinition
 import io.jaiclaw.core.mcp.McpToolProvider
 import io.jaiclaw.core.mcp.McpToolResult

@@ -3,7 +3,7 @@ package io.jaiclaw.embabel.delegate;
 import com.embabel.agent.core.Agent;
 import com.embabel.agent.core.AgentPlatform;
 import com.embabel.agent.core.AgentProcess;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.delegate.AgentLoopDelegate;
 import io.jaiclaw.agent.delegate.AgentLoopDelegateContext;
 import io.jaiclaw.agent.delegate.AgentLoopDelegateResult;

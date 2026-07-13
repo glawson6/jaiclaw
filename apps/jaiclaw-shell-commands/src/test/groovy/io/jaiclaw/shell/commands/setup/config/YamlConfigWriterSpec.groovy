@@ -1,6 +1,6 @@
 package io.jaiclaw.shell.commands.setup.config
 
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper
+import tools.jackson.dataformat.yaml.YAMLMapper
 import io.jaiclaw.config.JaiClawProperties
 import io.jaiclaw.config.ModelsProperties
 import io.jaiclaw.config.ModelsProperties.ModelProviderConfig

@@ -1,7 +1,7 @@
 package io.jaiclaw.maven;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 import io.jaiclaw.scaffold.ProjectGenerator;
 import io.jaiclaw.scaffold.ProjectManifest;
 import org.apache.maven.plugin.AbstractMojo;

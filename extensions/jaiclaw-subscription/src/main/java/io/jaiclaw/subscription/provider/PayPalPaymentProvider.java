@@ -1,7 +1,7 @@
 package io.jaiclaw.subscription.provider;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.subscription.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

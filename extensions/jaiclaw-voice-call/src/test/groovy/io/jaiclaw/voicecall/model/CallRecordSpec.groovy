@@ -1,12 +1,11 @@
 package io.jaiclaw.voicecall.model
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import spock.lang.Specification
 
 class CallRecordSpec extends Specification {
 
-    ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper objectMapper = new ObjectMapper()
 
     def "CallRecord Jackson round-trip serialization"() {
         given:

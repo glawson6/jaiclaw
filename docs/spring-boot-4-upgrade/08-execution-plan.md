@@ -104,7 +104,28 @@ Remaining reactor-red worklist (feeds Phases 2, 3, 5):
 
 ## Phase 2 — Jackson 3 (225 files)
 
-**STATUS: NOT STARTED**
+**STATUS: IN PROGRESS 2026-07-13. Mechanical sweep done (217 source files, 45 poms). Manual surgical work remains on custom `ValueSerializer`/`ValueDeserializer` implementations (~7 files across jaiclaw-identity, jaiclaw-audit, jaiclaw-ascii-render, jaiclaw-channel-matrix, jaiclaw-cron, jaiclaw-voice-call).**
+
+Mechanical sweep completed:
+- 217 source files rewritten `com.fasterxml.jackson.<x>` → `tools.jackson.<x>` for x ∈ {core, databind, dataformat, datatype, module, util} — annotations (`com.fasterxml.jackson.annotation.*`) intentionally preserved per Boot 4 rule.
+- 45 poms: rewrote `<groupId>com.fasterxml.jackson.<x></groupId>` → `<groupId>tools.jackson.<x></groupId>` (annotations groupId reverted where the artifactId is `jackson-annotations`); removed all `jackson-datatype-jsr310` dependency blocks (Jackson 3 has JavaTime built into core).
+- `JsonSerializer`/`JsonDeserializer` renamed to `ValueSerializer`/`ValueDeserializer` (Jackson 3 rename) across all sites.
+- `import tools.jackson.datatype.jsr310.JavaTimeModule;` removed everywhere.
+- `.registerModule(new JavaTimeModule())` calls stripped.
+- Dangling `this.mapper;` statement fragments from stripped registrations cleaned up.
+
+Verification criterion (`jaiclaw-core` + `channel-api` + `config` compile) MET. Full reactor still red at custom-serializer files:
+- `extensions/jaiclaw-identity/.../AuthProfileStoreSerializer.java` — largest remaining case (40+ errors) — `SerializerProvider` → `SerializationContext`, `ValueSerializer.serialize(T, JsonGenerator, SerializationContext)` signature change, plus JsonNode.fields() → JsonNode.properties() rename.
+- `extensions/jaiclaw-audit/.../FileAuditLogger.java` + `FileTranscriptStore.java` — SerializerProvider references.
+- `core/jaiclaw-ascii-render/.../AsciiSceneFactory.java` — `TypeReference` FQN check.
+- `channels/jaiclaw-channel-matrix/.../MatrixMessageMapper.java` — one symbol lookup.
+- `extensions/jaiclaw-cron/.../JsonFileCronJobStore.java` (`SerializationFeature.WRITE_DATES_AS_TIMESTAMPS` — moved).
+- `extensions/jaiclaw-voice-call/.../JsonlCallStore.java` — same pattern.
+
+Also NOT YET DONE (needs a fresh session):
+- **§6 persisted-format hotspot fixtures**: cross-version test fixtures for `HashChainedAuditLogger.verifyChain()` (chain hashes are computed over serialized JSON), `TranscriptStore`, cron JSON persistence, identity JSON persistence, kanban `EffectLedger`/jsonl journal, docstore metadata. Prove pre-migration files still deserialize under Jackson 3.
+- **§4 `spring.jackson.use-jackson2-defaults` decision** — recommend `false` after fixture verification; record as decision D7.
+
 **Preconditions:** Phase 1. Read [04](04-jackson-3-migration.md) fully — especially the §2.6 persisted-format hotspots and the §4 defaults decision.
 
 Steps: poms (42+13+5) → imports (guarded rewrite, annotations excepted) → `ObjectMapper`→`JsonMapper.builder()` sites → delete JavaTime registrations → exception-type fixes → **cross-version fixtures for audit chain / transcripts / cron / identity / kanban ledger** → decide `use-jackson2-defaults` (record in README decision log as D7).

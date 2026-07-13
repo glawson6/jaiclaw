@@ -1,9 +1,8 @@
 package io.jaiclaw.tasks;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import org.slf4j.Logger;
@@ -64,7 +63,7 @@ public class JsonFileTaskStore implements TaskStore {
         this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
         this.ignoreCorrupt = ignoreCorrupt;
         this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+                
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
     }

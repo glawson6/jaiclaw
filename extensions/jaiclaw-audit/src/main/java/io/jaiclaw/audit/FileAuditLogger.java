@@ -1,8 +1,7 @@
 package io.jaiclaw.audit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +37,7 @@ public class FileAuditLogger implements AuditLogger {
     private static final Logger log = LoggerFactory.getLogger(FileAuditLogger.class);
     private static final String DEFAULT_TENANT_DIR = "_default";
     private static final ObjectMapper MAPPER = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
+            
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private final Path storeDir;

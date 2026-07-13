@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.googlechat;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.jaiclaw.channel.ChannelMessage;
 
 import java.util.Map;

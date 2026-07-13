@@ -89,7 +89,7 @@
 
         <!-- Required: jackson-yaml parses per-file pipeline YAML resources. -->
         <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <groupId>tools.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
 

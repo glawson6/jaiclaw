@@ -6,7 +6,7 @@ import com.embabel.agent.core.AgentProcess
 import com.embabel.agent.core.AgentProcessStatusCode
 import com.embabel.agent.core.Blackboard
 import com.embabel.agent.core.ProcessOptions
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.tools.bridge.embabel.OrchestrationResult
 import io.jaiclaw.tools.bridge.embabel.WorkflowDescriptor
 import spock.lang.Specification

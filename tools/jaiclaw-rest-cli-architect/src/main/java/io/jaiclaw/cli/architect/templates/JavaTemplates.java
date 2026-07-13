@@ -106,7 +106,7 @@ public final class JavaTemplates {
         return """
                 package %s;
 
-                import com.fasterxml.jackson.databind.ObjectMapper;
+                import tools.jackson.databind.ObjectMapper;
                 import io.jaiclaw.core.tool.ToolCallback;
                 import io.jaiclaw.core.tool.ToolContext;
                 import io.jaiclaw.core.tool.ToolDefinition;
@@ -172,7 +172,7 @@ public final class JavaTemplates {
                 import org.springframework.shell.standard.ShellOption;
                 import org.springframework.stereotype.Component;
                 import org.springframework.web.client.RestClient;
-                import com.fasterxml.jackson.databind.ObjectMapper;
+                import tools.jackson.databind.ObjectMapper;
 
                 @SpringBootApplication
                 public class %sCli {

@@ -1,6 +1,6 @@
 package io.jaiclaw.rules.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.rules.engine.config.DroolsConfig;
 import io.jaiclaw.rules.engine.config.DroolsProperties;

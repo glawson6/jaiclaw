@@ -179,7 +179,7 @@ public class NegotiateSessionTool extends AbstractSecurityTool {
         String serverResponse = httpClient.post("/negotiate", payload);
 
         // Parse server response to get server public key and handshake ID
-        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var mapper = new tools.jackson.databind.ObjectMapper();
         var responseNode = mapper.readTree(serverResponse);
         String serverPublicKeyEncoded = responseNode.get("serverPublicKey").asText();
         String handshakeId = responseNode.get("handshakeId").asText();

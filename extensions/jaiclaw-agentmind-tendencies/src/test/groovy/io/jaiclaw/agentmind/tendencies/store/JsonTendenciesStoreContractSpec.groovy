@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.tendencies.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.agent.TendenciesStoreProvider
 import io.jaiclaw.core.tenant.TenantGuard
 import spock.lang.TempDir
@@ -22,7 +21,7 @@ class JsonTendenciesStoreContractSpec extends TendenciesStoreContractSpec {
     @TempDir
     Path tmp
 
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     TenantGuard multiTenant() {
         // The contract requires cross-tenant isolation, so the JSON backend

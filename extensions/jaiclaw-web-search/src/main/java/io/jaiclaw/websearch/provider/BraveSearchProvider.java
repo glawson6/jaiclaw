@@ -1,7 +1,7 @@
 package io.jaiclaw.websearch.provider;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.http.ProxyAwareHttpClientFactory;
 import io.jaiclaw.websearch.WebSearchProvider;
 import io.jaiclaw.websearch.WebSearchResult;

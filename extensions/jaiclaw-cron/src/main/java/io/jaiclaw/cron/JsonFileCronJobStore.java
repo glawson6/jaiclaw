@@ -1,8 +1,7 @@
 package io.jaiclaw.cron;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.model.CronJob;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
@@ -34,7 +33,6 @@ public class JsonFileCronJobStore implements CronJobStore {
         this.storePath = storePath;
         this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper();
-        this.mapper.registerModule(new JavaTimeModule());
         this.mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         load();
     }

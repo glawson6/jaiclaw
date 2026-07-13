@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.telegram;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Callback for delivering raw Telegram update JSON to the adapter.

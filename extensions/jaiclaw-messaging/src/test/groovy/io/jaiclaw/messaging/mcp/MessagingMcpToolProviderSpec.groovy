@@ -1,8 +1,7 @@
 package io.jaiclaw.messaging.mcp
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.SerializationFeature
 import io.jaiclaw.agent.session.SessionManager
 import io.jaiclaw.channel.*
 import io.jaiclaw.core.model.AssistantMessage
@@ -27,7 +26,7 @@ class MessagingMcpToolProviderSpec extends Specification {
 
     def setup() {
         objectMapper = new ObjectMapper()
-        objectMapper.registerModule(new JavaTimeModule())
+        objectMapper
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     }
 

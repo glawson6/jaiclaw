@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.memory.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.model.MemoryDocument
 import io.jaiclaw.core.model.MemoryScope
 import io.jaiclaw.core.tenant.TenantGuard
@@ -22,7 +21,7 @@ class MemoryThreeScopeIsolationSpec extends Specification {
     Path tmp
 
     TenantGuard multiTenant = Mock() { isMultiTenant() >> true }
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     BoundedBlobMemoryStore provider = new BoundedBlobMemoryStore(tmp, multiTenant, mapper)
 

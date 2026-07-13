@@ -1,9 +1,8 @@
 package io.jaiclaw.tasks;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,7 @@ public class JsonFileFlowStore implements FlowStore {
     public JsonFileFlowStore(Path storagePath) {
         this.storePath = storagePath.resolve("flows.json");
         this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+                
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
     }

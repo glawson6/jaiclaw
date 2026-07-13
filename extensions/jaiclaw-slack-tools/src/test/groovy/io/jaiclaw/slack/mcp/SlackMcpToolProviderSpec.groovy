@@ -1,7 +1,7 @@
 package io.jaiclaw.slack.mcp
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.slack.config.SlackToolsProperties
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus

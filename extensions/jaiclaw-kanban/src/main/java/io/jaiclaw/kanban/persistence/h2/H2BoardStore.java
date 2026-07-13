@@ -1,8 +1,7 @@
 package io.jaiclaw.kanban.persistence.h2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.kanban.model.BoardDefinition;
 import io.jaiclaw.kanban.persistence.BoardStore;
 import org.slf4j.Logger;
@@ -34,7 +33,7 @@ public class H2BoardStore implements BoardStore {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
+            
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     private final RowMapper<BoardDefinition> rowMapper = new BoardRowMapper();
 

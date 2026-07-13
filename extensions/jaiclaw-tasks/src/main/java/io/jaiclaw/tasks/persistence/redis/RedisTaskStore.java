@@ -1,8 +1,7 @@
 package io.jaiclaw.tasks.persistence.redis;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.tasks.TaskRecord;
@@ -63,7 +62,7 @@ public class RedisTaskStore implements TaskStore {
                 : new TenantGuard(TenantProperties.DEFAULT);
         this.prefix = (prefix == null || prefix.isBlank()) ? "jaiclaw:tasks" : prefix;
         this.json = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+                
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 

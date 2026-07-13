@@ -1,6 +1,6 @@
 package io.jaiclaw.email.tool;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolResult;

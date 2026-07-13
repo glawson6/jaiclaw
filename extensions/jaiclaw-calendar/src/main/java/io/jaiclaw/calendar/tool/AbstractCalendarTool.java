@@ -1,7 +1,7 @@
 package io.jaiclaw.calendar.tool;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.config.CalendarProperties;
 import io.jaiclaw.calendar.service.CalendarService;
 import io.jaiclaw.core.tool.ToolContext;

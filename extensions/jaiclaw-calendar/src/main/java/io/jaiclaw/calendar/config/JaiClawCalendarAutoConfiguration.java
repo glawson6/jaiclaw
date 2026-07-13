@@ -1,6 +1,6 @@
 package io.jaiclaw.calendar.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.mcp.CalendarMcpToolProvider;
 import io.jaiclaw.calendar.provider.CalendarProvider;
 import io.jaiclaw.calendar.provider.InMemoryCalendarProvider;

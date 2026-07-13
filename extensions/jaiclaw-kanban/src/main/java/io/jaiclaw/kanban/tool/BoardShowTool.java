@@ -1,9 +1,8 @@
 package io.jaiclaw.kanban.tool;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
@@ -34,7 +33,7 @@ public class BoardShowTool extends AbstractBuiltinTool {
             }""";
 
     private static final ObjectMapper JSON = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
+            
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private final BoardSnapshotService snapshotService;

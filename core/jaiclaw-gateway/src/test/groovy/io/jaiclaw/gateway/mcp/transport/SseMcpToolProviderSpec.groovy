@@ -1,6 +1,6 @@
 package io.jaiclaw.gateway.mcp.transport
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import spock.lang.Specification
 
 class SseMcpToolProviderSpec extends Specification {

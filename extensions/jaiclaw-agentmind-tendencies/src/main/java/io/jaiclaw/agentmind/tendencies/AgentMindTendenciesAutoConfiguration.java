@@ -1,8 +1,7 @@
 package io.jaiclaw.agentmind.tendencies;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.agentmind.tendencies.cadence.TendenciesCadenceGate;
 import io.jaiclaw.agentmind.tendencies.cadence.TimeAndTurnCadenceGate;
 import io.jaiclaw.agentmind.tendencies.actuator.TendenciesActuatorEndpoint;
@@ -87,7 +86,7 @@ public class AgentMindTendenciesAutoConfiguration {
     @ConditionalOnMissingBean
     public ObjectMapper agentmindTendenciesObjectMapper() {
         ObjectMapper m = new ObjectMapper();
-        m.registerModule(new JavaTimeModule());
+        m;
         m.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         return m;
     }

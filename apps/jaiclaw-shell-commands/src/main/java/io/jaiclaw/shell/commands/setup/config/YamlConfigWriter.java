@@ -1,9 +1,9 @@
 package io.jaiclaw.shell.commands.setup.config;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLGenerator;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.config.ModelsProperties.ModelProviderConfig;
 import io.jaiclaw.shell.commands.setup.OnboardResult;

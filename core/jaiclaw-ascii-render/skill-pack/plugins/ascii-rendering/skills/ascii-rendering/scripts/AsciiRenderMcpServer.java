@@ -1,13 +1,13 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //JAVA 21
 //DEPS io.jaiclaw:jaiclaw-ascii-render:0.8.1-SNAPSHOT
-//DEPS com.fasterxml.jackson.core:jackson-databind:2.18.2
+//DEPS tools.jackson.core:jackson-databind:2.18.2
 //REPOS taptech=https://tooling.taptech.net/repository/maven-public/
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import io.jaiclaw.asciirender.factory.AsciiBox;
 import io.jaiclaw.asciirender.factory.AsciiSceneFactory;
 import io.jaiclaw.asciirender.factory.SceneSpec;

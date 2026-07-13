@@ -1,6 +1,6 @@
 package io.jaiclaw.agent.loop;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.LlmTraceLogger;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.hook.event.ToolCallEndedEvent;

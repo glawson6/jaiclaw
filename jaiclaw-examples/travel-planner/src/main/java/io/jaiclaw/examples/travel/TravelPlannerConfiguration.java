@@ -1,6 +1,6 @@
 package io.jaiclaw.examples.travel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.examples.travel.api.StubTravelDataProvider;
 import io.jaiclaw.examples.travel.api.TravelDataProvider;
 import org.springframework.context.annotation.Bean;

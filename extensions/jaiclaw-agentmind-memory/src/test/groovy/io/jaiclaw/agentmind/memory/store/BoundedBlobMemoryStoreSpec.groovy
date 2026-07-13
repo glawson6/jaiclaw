@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.memory.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.agent.MemoryOverflowException
 import io.jaiclaw.core.agent.StaleMemoryVersionException
 import io.jaiclaw.core.model.MemoryDocument
@@ -20,7 +19,7 @@ class BoundedBlobMemoryStoreSpec extends Specification {
 
     TenantGuard singleTenant = Mock() { isMultiTenant() >> false }
     TenantGuard multiTenant = Mock() { isMultiTenant() >> true }
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     BoundedBlobMemoryStore single() { new BoundedBlobMemoryStore(tmp, singleTenant, mapper) }
     BoundedBlobMemoryStore multi() { new BoundedBlobMemoryStore(tmp, multiTenant, mapper) }

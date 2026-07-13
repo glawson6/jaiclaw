@@ -124,7 +124,7 @@ public class VerifyIdentityTool extends AbstractSecurityTool {
 
         // Parse server response
         try {
-            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            var mapper = new tools.jackson.databind.ObjectMapper();
             var node = mapper.readTree(response);
             boolean verified = node.get("verified").asBoolean();
 

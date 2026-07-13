@@ -1,6 +1,6 @@
 package io.jaiclaw.calendar.provider
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.calendar.config.CalendarProperties
 import io.jaiclaw.calendar.model.*
 import io.jaiclaw.calendar.tool.CalendarTools

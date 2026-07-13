@@ -1,6 +1,6 @@
 package io.jaiclaw.video
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.tool.ToolContext
 import io.jaiclaw.core.tool.ToolResult
 import spock.lang.Specification

@@ -1,6 +1,6 @@
 package io.jaiclaw.voicecall.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.voicecall.manager.CallManager;

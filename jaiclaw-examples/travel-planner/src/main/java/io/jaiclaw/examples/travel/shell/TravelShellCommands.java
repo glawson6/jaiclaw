@@ -1,6 +1,6 @@
 package io.jaiclaw.examples.travel.shell;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.AgentRuntime;
 import io.jaiclaw.agent.AgentRuntimeContext;
 import io.jaiclaw.agent.session.SessionManager;

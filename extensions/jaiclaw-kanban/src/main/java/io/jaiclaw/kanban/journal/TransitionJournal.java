@@ -1,9 +1,8 @@
 package io.jaiclaw.kanban.journal;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.kanban.events.TaskStateChanged;
 import io.jaiclaw.kanban.model.TransitionRecord;
 import io.jaiclaw.kanban.service.TransitionHistory;
@@ -57,7 +56,7 @@ public class TransitionJournal implements SmartLifecycle {
         this.history = history;
         this.replayLimit = Math.max(1, replayLimit);
         this.json = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+                
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 

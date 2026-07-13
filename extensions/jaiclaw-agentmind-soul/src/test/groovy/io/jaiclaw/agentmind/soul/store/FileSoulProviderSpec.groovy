@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.soul.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.agent.StaleSoulVersionException
 import io.jaiclaw.core.model.Soul
 import io.jaiclaw.core.model.SoulScope
@@ -25,7 +24,7 @@ class FileSoulProviderSpec extends Specification {
         isMultiTenant() >> true
     }
 
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     FileSoulProvider singleProvider() { new FileSoulProvider(tmp, singleTenant, mapper) }
     FileSoulProvider multiProvider() { new FileSoulProvider(tmp, multiTenant, mapper) }

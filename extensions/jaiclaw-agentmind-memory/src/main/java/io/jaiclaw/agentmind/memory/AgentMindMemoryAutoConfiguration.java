@@ -1,8 +1,7 @@
 package io.jaiclaw.agentmind.memory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.agent.AgentMindMemoryProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.agentmind.memory.hook.MemoryPromptInjector;
@@ -85,7 +84,7 @@ public class AgentMindMemoryAutoConfiguration {
     @ConditionalOnMissingBean
     public ObjectMapper agentmindMemoryObjectMapper() {
         ObjectMapper m = new ObjectMapper();
-        m.registerModule(new JavaTimeModule());
+        m;
         m.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         return m;
     }

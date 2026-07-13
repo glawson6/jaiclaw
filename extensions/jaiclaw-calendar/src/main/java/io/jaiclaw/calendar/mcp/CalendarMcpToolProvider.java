@@ -1,7 +1,7 @@
 package io.jaiclaw.calendar.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.config.CalendarProperties;
 import io.jaiclaw.calendar.model.AppointmentRequest;
 import io.jaiclaw.calendar.model.CalendarEvent;

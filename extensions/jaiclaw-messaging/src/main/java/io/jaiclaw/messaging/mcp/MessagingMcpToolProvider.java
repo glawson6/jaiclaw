@@ -1,7 +1,7 @@
 package io.jaiclaw.messaging.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.*;
 import io.jaiclaw.core.mcp.McpToolDefinition;

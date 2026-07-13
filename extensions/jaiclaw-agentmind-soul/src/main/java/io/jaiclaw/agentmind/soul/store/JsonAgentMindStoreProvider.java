@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.soul.store;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.agent.SoulProvider;
 import io.jaiclaw.core.tenant.TenantGuard;
 
@@ -41,8 +40,8 @@ public class JsonAgentMindStoreProvider implements AgentMindStoreProvider {
 
     private static ObjectMapper defaultMapper() {
         ObjectMapper m = new ObjectMapper();
-        m.registerModule(new JavaTimeModule());
-        m.configure(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        m;
+        m.configure(tools.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         return m;
     }
 }

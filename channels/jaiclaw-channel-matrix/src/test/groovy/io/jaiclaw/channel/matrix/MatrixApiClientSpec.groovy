@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.matrix
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import spock.lang.Specification
 
 import java.net.http.HttpClient

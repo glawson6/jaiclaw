@@ -1,6 +1,6 @@
 package io.jaiclaw.discord.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.discord.DiscordConfig;
 import io.jaiclaw.discord.mcp.DiscordMcpToolProvider;
 import org.slf4j.Logger;

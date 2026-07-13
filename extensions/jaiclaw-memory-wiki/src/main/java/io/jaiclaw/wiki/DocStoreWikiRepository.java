@@ -1,7 +1,7 @@
 package io.jaiclaw.wiki;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import io.jaiclaw.docstore.repository.DocStoreRepository;
 import org.slf4j.Logger;

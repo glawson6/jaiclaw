@@ -1,6 +1,6 @@
 package io.jaiclaw.slack.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.slack.mcp.SlackMcpToolProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

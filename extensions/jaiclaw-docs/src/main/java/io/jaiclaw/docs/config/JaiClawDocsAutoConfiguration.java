@@ -1,6 +1,6 @@
 package io.jaiclaw.docs.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.docs.DocsMcpResourceProvider;
 import io.jaiclaw.docs.DocsMcpToolProvider;
 import io.jaiclaw.docs.DocsRepository;

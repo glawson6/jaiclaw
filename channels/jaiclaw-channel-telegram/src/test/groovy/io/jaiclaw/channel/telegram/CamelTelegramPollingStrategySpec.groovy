@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.telegram
 
-import com.fasterxml.jackson.databind.JsonNode
+import tools.jackson.databind.JsonNode
 import org.apache.camel.CamelContext
 import org.apache.camel.RoutesBuilder
 import org.apache.camel.spi.RouteController

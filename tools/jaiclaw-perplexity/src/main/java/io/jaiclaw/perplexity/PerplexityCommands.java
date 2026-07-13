@@ -1,7 +1,7 @@
 package io.jaiclaw.perplexity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.perplexity.model.*;
 import io.jaiclaw.perplexity.render.TerminalImageRenderer;
 import org.jline.reader.LineReader;

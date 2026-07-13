@@ -1,7 +1,7 @@
 package io.jaiclaw.calendar.provider;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.model.*;
 import io.jaiclaw.calendar.util.CalendarEventValidator;
 import org.slf4j.Logger;

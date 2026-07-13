@@ -1,6 +1,6 @@
 package io.jaiclaw.voicecall.mcp
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.voicecall.manager.CallManager
 import io.jaiclaw.voicecall.model.*
 import spock.lang.Specification

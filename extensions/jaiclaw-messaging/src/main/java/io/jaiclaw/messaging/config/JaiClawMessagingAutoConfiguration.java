@@ -1,8 +1,7 @@
 package io.jaiclaw.messaging.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.agent.session.SessionManager;
 import io.jaiclaw.channel.ChannelRegistry;
 import io.jaiclaw.gateway.GatewayService;
@@ -42,7 +41,7 @@ public class JaiClawMessagingAutoConfiguration {
             SessionManager sessionManager,
             MessagingMcpProperties properties) {
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper;
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         log.info("Registering Messaging MCP tool provider");
         return new MessagingMcpToolProvider(channelRegistry, gatewayService, sessionManager, properties, objectMapper);

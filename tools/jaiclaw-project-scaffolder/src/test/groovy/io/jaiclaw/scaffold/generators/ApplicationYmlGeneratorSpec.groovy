@@ -1,8 +1,8 @@
 package io.jaiclaw.scaffold.generators
 
 import io.jaiclaw.scaffold.ProjectManifest
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.dataformat.yaml.YAMLFactory
 import spock.lang.Specification
 
 class ApplicationYmlGeneratorSpec extends Specification {

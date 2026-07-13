@@ -106,7 +106,7 @@ public class EstablishContextTool extends AbstractSecurityTool {
 
         // Parse and store token
         try {
-            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            var mapper = new tools.jackson.databind.ObjectMapper();
             var node = mapper.readTree(response);
             String sessionToken = node.get("sessionToken").asText();
             session.setSessionToken(sessionToken);

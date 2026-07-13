@@ -1,6 +1,6 @@
 package io.jaiclaw.voicecall.telephony.twilio;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.jaiclaw.voicecall.config.VoiceCallProperties;
 import io.jaiclaw.voicecall.model.*;
 import io.jaiclaw.voicecall.telephony.TelephonyProvider;

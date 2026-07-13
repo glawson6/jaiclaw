@@ -1,9 +1,8 @@
 package io.jaiclaw.docstore.repository;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.docstore.model.DocStoreEntry;
@@ -39,7 +38,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
         this.storePath = storagePath.resolve("docstore.json");
         this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
         this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+                
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         loadFromDisk();
     }

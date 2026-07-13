@@ -1,6 +1,6 @@
 package io.jaiclaw.cli.architect;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolDefinition;

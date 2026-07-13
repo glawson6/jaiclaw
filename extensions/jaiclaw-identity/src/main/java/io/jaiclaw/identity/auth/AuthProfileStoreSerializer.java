@@ -1,16 +1,16 @@
 package io.jaiclaw.identity.auth;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializerProvider;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.node.ObjectNode;
 import io.jaiclaw.core.auth.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -344,7 +344,7 @@ public final class AuthProfileStoreSerializer {
     /**
      * Custom deserializer that handles the sealed interface dispatch and OpenClaw aliases.
      */
-    private static class CredentialDeserializer extends JsonDeserializer<AuthProfileCredential> {
+    private static class CredentialDeserializer extends ValueDeserializer<AuthProfileCredential> {
         @Override
         public AuthProfileCredential deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
             JsonNode node = p.getCodec().readTree(p);
@@ -355,7 +355,7 @@ public final class AuthProfileStoreSerializer {
     /**
      * Custom serializer that includes the "type" discriminator field for round-trip compatibility.
      */
-    private static class CredentialSerializer extends JsonSerializer<AuthProfileCredential> {
+    private static class CredentialSerializer extends ValueSerializer<AuthProfileCredential> {
         @Override
         public void serialize(AuthProfileCredential cred, JsonGenerator gen, SerializerProvider serializers) throws IOException {
             gen.writeStartObject();
