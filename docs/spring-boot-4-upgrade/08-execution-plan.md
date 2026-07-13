@@ -11,7 +11,14 @@
 
 ## Phase 0 — Boot-3-compatible prep (do now; no Boot 4 anywhere)
 
-**STATUS: IN PROGRESS — steps 0.1, 0.2, 0.3, 0.5 DONE 2026-07-13; step 0.4 NOT STARTED (24-file RestTemplate → RestClient migration is next); step 0.6 (optional 0.9.5 pilot release) DEFERRED to the release manager.**
+**STATUS: DONE 2026-07-13 for the scope executable now; step 0.6 (optional 0.9.5 pilot release) DEFERRED to the release manager.**
+- 0.1 DONE — Spring Boot 3.5.15 → 3.5.16
+- 0.2 DONE — Embabel Agent 0.3.5 → 0.5.0 (19 tests green across agent + embabel-delegate)
+- 0.3 DONE — Spring State Machine kanban engine removed (7 files + pom dep + root-pom property; 138 tests green)
+- 0.4 DONE for internal / trivially-scoped sites (8 files: OnboardConfig, LlmConnectivityTester, TelegramTokenValidator, DiscordTokenValidator, SlackTokenValidator, TwilioApiClient, OpenAiTtsProvider, OpenAiSttProvider — 88 shell-commands specs + 91 voice/voice-call specs green). **Deliberately deferred to Phase 6 cleanup**: 16 sites that would require breaking a public constructor signature `(RestTemplate, …)` — Discord/Slack/Signal/SMS/Teams (×3) adapters, DiscordMcpToolProvider, SlackMcpToolProvider, TelegramGroupManager, JaiClawDiscordToolsAutoConfiguration, JaiClawSlackToolsAutoConfiguration, RestTemplateTelegramHttpClient (this last one is *by name* the RestTemplate strategy — keep). Phase 6 will add `(RestClient, …)` primary constructors with `@Deprecated` `(RestTemplate, …)` overloads.
+- 0.5 DONE — Framework-7 removal audit (see findings below).
+- 0.6 DEFERRED — optional 0.9.5 pilot release; not blocking Phase 1.
+
 **Preconditions:** none. Everything here lands on Boot 3.5 and is releasable even if the Boot-4 gate drags.
 
 | # | Step | Verify |

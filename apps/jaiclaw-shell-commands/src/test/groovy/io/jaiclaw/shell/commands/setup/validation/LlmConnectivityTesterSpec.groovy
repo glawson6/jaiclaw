@@ -1,23 +1,28 @@
 package io.jaiclaw.shell.commands.setup.validation
 
-import org.springframework.http.HttpEntity
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.web.client.HttpClientErrorException
-import org.springframework.web.client.RestTemplate
+import org.springframework.http.MediaType
+import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.web.client.RestClient
 import spock.lang.Specification
+
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 
 class LlmConnectivityTesterSpec extends Specification {
 
-    RestTemplate restTemplate = Mock()
-    LlmConnectivityTester tester = new LlmConnectivityTester(restTemplate)
+    RestClient.Builder builder = RestClient.builder()
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build()
+    RestClient restClient = builder.build()
+    LlmConnectivityTester tester = new LlmConnectivityTester(restClient)
 
     def "test OpenAI returns success on 200"() {
         given:
-        restTemplate.postForEntity(
-                "https://api.openai.com/v1/chat/completions",
-                _ as HttpEntity,
-                String) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        server.expect(requestTo("https://api.openai.com/v1/chat/completions"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
 
         when:
         def result = tester.test("openai", "sk-test", "gpt-4o", null)
@@ -29,10 +34,8 @@ class LlmConnectivityTesterSpec extends Specification {
 
     def "test OpenAI returns failure on HTTP error"() {
         given:
-        restTemplate.postForEntity(
-                "https://api.openai.com/v1/chat/completions",
-                _ as HttpEntity,
-                String) >> { throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "Unauthorized") }
+        server.expect(requestTo("https://api.openai.com/v1/chat/completions"))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED))
 
         when:
         def result = tester.test("openai", "bad-key", "gpt-4o", null)
@@ -44,10 +47,8 @@ class LlmConnectivityTesterSpec extends Specification {
 
     def "test Anthropic returns success on 200"() {
         given:
-        restTemplate.postForEntity(
-                "https://api.anthropic.com/v1/messages",
-                _ as HttpEntity,
-                String) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        server.expect(requestTo("https://api.anthropic.com/v1/messages"))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
 
         when:
         def result = tester.test("anthropic", "sk-ant-test", "claude-sonnet-4-6", null)
@@ -58,10 +59,8 @@ class LlmConnectivityTesterSpec extends Specification {
 
     def "test Ollama calls correct URL"() {
         given:
-        restTemplate.postForEntity(
-                "http://myhost:11434/api/chat",
-                _ as HttpEntity,
-                String) >> new ResponseEntity<>("ok", HttpStatus.OK)
+        server.expect(requestTo("http://myhost:11434/api/chat"))
+                .andRespond(withSuccess('{"ok":true}', MediaType.APPLICATION_JSON))
 
         when:
         def result = tester.test("ollama", null, "llama3", "http://myhost:11434")

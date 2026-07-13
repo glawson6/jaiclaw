@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -23,13 +23,13 @@ public class TwilioApiClient {
 
     private final String accountSid;
     private final String authToken;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
     public TwilioApiClient(String accountSid, String authToken) {
         this.accountSid = accountSid;
         this.authToken = authToken;
-        this.restTemplate = new RestTemplate();
+        this.restClient = RestClient.create();
         this.objectMapper = new ObjectMapper();
     }
 
@@ -72,13 +72,12 @@ public class TwilioApiClient {
     public JsonNode getCallStatus(String callSid) {
         String url = baseUrl() + "/Calls/" + callSid + ".json";
 
-        HttpHeaders headers = authHeaders();
-        HttpEntity<Void> request = new HttpEntity<>(headers);
-
         try {
-            ResponseEntity<JsonNode> response = restTemplate.exchange(
-                    url, HttpMethod.GET, request, JsonNode.class);
-            return response.getBody();
+            return restClient.get()
+                    .uri(url)
+                    .header("Authorization", authHeader())
+                    .retrieve()
+                    .body(JsonNode.class);
         } catch (HttpClientErrorException e) {
             log.error("Twilio API error fetching call {}: {} {}", callSid,
                     e.getStatusCode(), e.getResponseBodyAsString());
@@ -87,26 +86,25 @@ public class TwilioApiClient {
     }
 
     private JsonNode postForm(String url, MultiValueMap<String, String> body) {
-        HttpHeaders headers = authHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
         try {
-            ResponseEntity<JsonNode> response = restTemplate.postForEntity(url, request, JsonNode.class);
-            return response.getBody();
+            return restClient.post()
+                    .uri(url)
+                    .header("Authorization", authHeader())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
         } catch (HttpClientErrorException e) {
             log.error("Twilio API error: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new RuntimeException("Twilio API error: " + e.getStatusCode());
         }
     }
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
+    private String authHeader() {
         String credentials = accountSid + ":" + authToken;
         String encoded = Base64.getEncoder().encodeToString(
                 credentials.getBytes(StandardCharsets.UTF_8));
-        headers.set("Authorization", "Basic " + encoded);
-        return headers;
+        return "Basic " + encoded;
     }
 
     private String baseUrl() {

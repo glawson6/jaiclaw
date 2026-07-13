@@ -1,21 +1,27 @@
 package io.jaiclaw.shell.commands.setup.validation
 
-import org.springframework.web.client.HttpClientErrorException
-import org.springframework.http.HttpStatus
-import org.springframework.web.client.RestTemplate
+import org.springframework.http.MediaType
+import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.web.client.RestClient
 import spock.lang.Specification
+
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 
 class TelegramTokenValidatorSpec extends Specification {
 
-    RestTemplate restTemplate = Mock()
-    TelegramTokenValidator validator = new TelegramTokenValidator(restTemplate)
+    RestClient.Builder builder = RestClient.builder()
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build()
+    RestClient restClient = builder.build()
+    TelegramTokenValidator validator = new TelegramTokenValidator(restClient)
 
     def "returns valid result with bot username on success"() {
         given:
-        restTemplate.getForObject(
-                "https://api.telegram.org/bot{token}/getMe",
-                Map,
-                "123:ABC") >> [ok: true, result: [username: "my_test_bot"]]
+        server.expect(requestTo("https://api.telegram.org/bot123%3AABC/getMe"))
+                .andExpect(method(org.springframework.http.HttpMethod.GET))
+                .andRespond(withSuccess('{"ok":true,"result":{"username":"my_test_bot"}}', MediaType.APPLICATION_JSON))
 
         when:
         def result = validator.validate("123:ABC")
@@ -28,10 +34,8 @@ class TelegramTokenValidatorSpec extends Specification {
 
     def "returns invalid result when API returns ok=false"() {
         given:
-        restTemplate.getForObject(
-                "https://api.telegram.org/bot{token}/getMe",
-                Map,
-                "bad-token") >> [ok: false]
+        server.expect(requestTo("https://api.telegram.org/botbad-token/getMe"))
+                .andRespond(withSuccess('{"ok":false}', MediaType.APPLICATION_JSON))
 
         when:
         def result = validator.validate("bad-token")
@@ -43,10 +47,8 @@ class TelegramTokenValidatorSpec extends Specification {
 
     def "returns invalid result on HTTP error"() {
         given:
-        restTemplate.getForObject(
-                "https://api.telegram.org/bot{token}/getMe",
-                Map,
-                "bad-token") >> { throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED) }
+        server.expect(requestTo("https://api.telegram.org/botbad-token/getMe"))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.UNAUTHORIZED))
 
         when:
         def result = validator.validate("bad-token")

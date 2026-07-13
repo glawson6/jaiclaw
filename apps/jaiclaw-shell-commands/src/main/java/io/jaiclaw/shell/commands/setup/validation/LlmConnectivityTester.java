@@ -1,11 +1,8 @@
 package io.jaiclaw.shell.commands.setup.validation;
 
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.Map;
@@ -13,10 +10,10 @@ import java.util.Map;
 @Component
 public class LlmConnectivityTester {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
-    public LlmConnectivityTester(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public LlmConnectivityTester(RestClient restClient) {
+        this.restClient = restClient;
     }
 
     public record TestResult(boolean success, String message) {}
@@ -35,50 +32,50 @@ public class LlmConnectivityTester {
     }
 
     private TestResult testOpenAi(String apiKey, String model) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(apiKey);
-
         Map<String, Object> body = Map.of(
                 "model", model,
                 "messages", List.of(Map.of("role", "user", "content", "ping")),
                 "max_tokens", 5
         );
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        restTemplate.postForEntity("https://api.openai.com/v1/chat/completions", request, String.class);
+        restClient.post()
+                .uri("https://api.openai.com/v1/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
         return new TestResult(true, "Connection successful");
     }
 
     private TestResult testAnthropic(String apiKey, String model) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-api-key", apiKey);
-        headers.set("anthropic-version", "2023-06-01");
-
         Map<String, Object> body = Map.of(
                 "model", model,
                 "messages", List.of(Map.of("role", "user", "content", "ping")),
                 "max_tokens", 5
         );
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        restTemplate.postForEntity("https://api.anthropic.com/v1/messages", request, String.class);
+        restClient.post()
+                .uri("https://api.anthropic.com/v1/messages")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-key", apiKey)
+                .header("anthropic-version", "2023-06-01")
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
         return new TestResult(true, "Connection successful");
     }
 
     private TestResult testOllama(String baseUrl, String model) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         Map<String, Object> body = Map.of(
                 "model", model,
                 "messages", List.of(Map.of("role", "user", "content", "ping")),
                 "stream", false
         );
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        restTemplate.postForEntity(baseUrl + "/api/chat", request, String.class);
+        restClient.post()
+                .uri(baseUrl + "/api/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
         return new TestResult(true, "Connection successful");
     }
 }

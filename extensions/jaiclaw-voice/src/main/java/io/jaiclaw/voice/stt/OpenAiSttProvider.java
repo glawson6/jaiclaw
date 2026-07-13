@@ -3,10 +3,12 @@ package io.jaiclaw.voice.stt;
 import io.jaiclaw.core.model.TranscriptionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 /**
  * OpenAI Whisper STT provider using the /v1/audio/transcriptions endpoint.
@@ -18,12 +20,12 @@ public class OpenAiSttProvider implements SttProvider {
 
     private final String apiKey;
     private final String model;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
     public OpenAiSttProvider(String apiKey, String model) {
         this.apiKey = apiKey;
         this.model = model != null ? model : "whisper-1";
-        this.restTemplate = new RestTemplate();
+        this.restClient = RestClient.create();
     }
 
     @Override
@@ -34,10 +36,6 @@ public class OpenAiSttProvider implements SttProvider {
     @Override
     public TranscriptionResult transcribe(byte[] audioBytes, String mimeType) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            headers.setBearerAuth(apiKey);
-
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("model", model);
 
@@ -47,15 +45,19 @@ public class OpenAiSttProvider implements SttProvider {
             fileHeaders.setContentDispositionFormData("file", "audio" + extension);
             body.add("file", new HttpEntity<>(audioBytes, fileHeaders));
 
-            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    API_URL, HttpMethod.POST, request, String.class);
+            String responseBody = restClient.post()
+                    .uri(API_URL)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String text = extractText(response.getBody());
+            if (responseBody != null && !responseBody.isBlank()) {
+                String text = extractText(responseBody);
                 return new TranscriptionResult(text, "en", 1.0);
             }
-            throw new RuntimeException("STT API returned " + response.getStatusCode());
+            throw new RuntimeException("STT API returned empty body");
         } catch (Exception e) {
             log.error("OpenAI STT failed: {}", e.getMessage());
             throw new RuntimeException("OpenAI STT transcription failed", e);
