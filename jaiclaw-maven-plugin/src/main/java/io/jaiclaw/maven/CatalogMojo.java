@@ -86,7 +86,9 @@ public class CatalogMojo extends AbstractMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("Cannot create output dir " + outputDir, e);
         }
-        ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+        ObjectMapper mapper = tools.jackson.databind.json.JsonMapper.builder()
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .build();
 
         int skills = writeCatalog("skills-catalog.json",
                 collectSkills(skillsDir.toPath()), mapper);
@@ -105,7 +107,7 @@ public class CatalogMojo extends AbstractMojo {
         Path out = outputDir.toPath().resolve(filename);
         try {
             mapper.writeValue(out.toFile(), root);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new MojoExecutionException("Failed to write " + out, e);
         }
         return entries.size();

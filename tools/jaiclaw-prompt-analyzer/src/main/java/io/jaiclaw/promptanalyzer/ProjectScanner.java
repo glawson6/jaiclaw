@@ -145,9 +145,9 @@ public class ProjectScanner {
         // Check first agent's tool profile; fall back to "full"
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.properties();
-            if (fields.hasNext()) {
-                JsonNode firstAgent = fields.next().getValue();
+            var it = agents.properties().iterator();
+            if (it.hasNext()) {
+                JsonNode firstAgent = it.next().getValue();
                 JsonNode profile = navigatePath(firstAgent, "tools", "profile");
                 if (profile != null && profile.isTextual()) {
                     return profile.asText();
@@ -188,9 +188,9 @@ public class ProjectScanner {
         // Check for additional system prompt content
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.properties();
-            if (fields.hasNext()) {
-                JsonNode firstAgent = fields.next().getValue();
+            var it = agents.properties().iterator();
+            if (it.hasNext()) {
+                JsonNode firstAgent = it.next().getValue();
 
                 // Nested config: system-prompt.content / system-prompt.source
                 JsonNode spConfig = navigatePath(firstAgent, "system-prompt");

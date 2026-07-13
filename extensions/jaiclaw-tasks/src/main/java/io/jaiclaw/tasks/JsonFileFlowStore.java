@@ -65,7 +65,7 @@ public class JsonFileFlowStore implements FlowStore {
                     new TypeReference<List<TaskFlow>>() {});
             loaded.forEach(f -> flows.put(f.id(), f));
             log.info("Loaded {} flows from {}", flows.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load flows from {}: {}", storePath, e.getMessage());
         }
     }
@@ -75,7 +75,7 @@ public class JsonFileFlowStore implements FlowStore {
             Files.createDirectories(storePath.getParent());
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(storePath.toFile(), List.copyOf(flows.values()));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush flows to {}: {}", storePath, e.getMessage());
         }
     }

@@ -1,46 +1,12 @@
 package io.jaiclaw.shell.commands.setup.steps;
 
-import io.jaiclaw.shell.commands.setup.OnboardResult;
-import io.jaiclaw.shell.commands.setup.WizardStep;
-import org.springframework.shell.component.flow.ComponentFlow;
-
-public final class WelcomeStep implements WizardStep {
-
-    private final ComponentFlow.Builder flowBuilder;
-
-    public WelcomeStep(ComponentFlow.Builder flowBuilder) {
-        this.flowBuilder = flowBuilder;
-    }
-
-    @Override
-    public String name() {
-        return "Welcome";
-    }
-
-    @Override
-    public boolean execute(OnboardResult result) {
-        System.out.println("""
-
-                ╔══════════════════════════════════════════════╗
-                ║           Welcome to JaiClaw Setup             ║
-                ╚══════════════════════════════════════════════╝
-
-                This wizard will help you configure:
-                  • LLM provider (OpenAI, Anthropic, or Ollama)
-                  • Messaging channels (Telegram, Slack, Discord)
-                  • Gateway and server settings
-                """);
-
-        ComponentFlow flow = flowBuilder.clone().reset()
-                .withConfirmationInput("security-ack")
-                    .name("JaiClaw will store API keys in a local .env file. " +
-                          "Never commit this file to version control. Continue?")
-                    .defaultValue(true)
-                    .and()
-                .build();
-
-        ComponentFlow.ComponentFlowResult flowResult = flow.run();
-        Boolean confirmed = WizardStep.getOrNull(flowResult.getContext(), "security-ack", Boolean.class);
-        return Boolean.TRUE.equals(confirmed);
-    }
+/**
+ * TODO(spring-shell-4-migration): This class used the Spring Shell 3
+ * ComponentFlow / PromptProvider APIs, which were removed in Spring Shell 4.
+ * The interactive onboarding wizard needs to be rebuilt using Shell 4's new
+ * component model. Quarantined during the Boot 4 upgrade to unblock the reactor.
+ * See docs/spring-boot-4-upgrade/06-spring-shell-4-migration.md.
+ */
+public class WelcomeStep {
+    // Body removed during Spring Boot 4 upgrade — see class javadoc.
 }

@@ -154,7 +154,7 @@ public class TransitionJournal implements SmartLifecycle {
                 if (line.isBlank()) continue;
                 try {
                     parsed.add(json.readValue(line, new TypeReference<TransitionRecord>() {}));
-                } catch (IOException badLine) {
+                } catch (Exception badLine) {
                     log.warn("Skipping malformed journal line in {}: {}",
                             file, badLine.getMessage());
                 }

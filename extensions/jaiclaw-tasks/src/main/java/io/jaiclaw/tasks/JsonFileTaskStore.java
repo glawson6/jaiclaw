@@ -164,12 +164,12 @@ public class JsonFileTaskStore implements TaskStore {
                     new TypeReference<List<TaskRecord>>() {});
             loaded.forEach(t -> tasks.put(storageKey(t), t));
             log.info("Loaded {} tasks from {}", tasks.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             handleCorruptFile(e);
         }
     }
 
-    private void handleCorruptFile(IOException cause) {
+    private void handleCorruptFile(Exception cause) {
         Path quarantine = storePath.resolveSibling(
                 storePath.getFileName().toString() + ".corrupt-" + Instant.now().toEpochMilli());
         try {
@@ -196,7 +196,7 @@ public class JsonFileTaskStore implements TaskStore {
                     .writeValue(tmpPath.toFile(), List.copyOf(tasks.values()));
             Files.move(tmpPath, storePath,
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush tasks to {}: {}", storePath, e.getMessage());
             throw new IllegalStateException("Failed to flush task store: " + storePath, e);
         }

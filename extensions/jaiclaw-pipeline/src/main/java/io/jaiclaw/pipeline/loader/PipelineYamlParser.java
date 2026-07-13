@@ -24,8 +24,9 @@ import java.io.InputStream;
 final class PipelineYamlParser {
 
     /** Shared mapper; jackson ObjectMapper is thread-safe after configuration. */
-    private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final ObjectMapper MAPPER = tools.jackson.dataformat.yaml.YAMLMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
     private PipelineYamlParser() {}
 
@@ -46,7 +47,7 @@ final class PipelineYamlParser {
         JsonNode root;
         try {
             root = MAPPER.readTree(in);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new PipelineLoadException(
                     "Failed to parse pipeline file '" + resourceName + "': " + e.getMessage(), e);
         }
@@ -76,7 +77,7 @@ final class PipelineYamlParser {
 
         try {
             return MAPPER.treeToValue(objectRoot, PipelineDefinition.class);
-        } catch (IllegalArgumentException | IOException e) {
+        } catch (Exception e) {
             throw new PipelineLoadException(
                     "Failed to bind pipeline definition from '" + resourceName + "': " + e.getMessage(), e);
         }

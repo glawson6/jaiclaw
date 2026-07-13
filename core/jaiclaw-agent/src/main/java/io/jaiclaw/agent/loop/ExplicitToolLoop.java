@@ -87,8 +87,14 @@ public class ExplicitToolLoop {
         long loopStartNanos = System.nanoTime();
 
         for (int i = 0; i < config.maxIterations(); i++) {
+            // TODO(spring-ai-2.0): internalToolExecutionEnabled(false) was removed. In 2.0,
+            // callers wanting to run their own tool loop must inject a custom ToolCallingManager
+            // or return null from a ToolExecutionExceptionProcessor to defer execution.
+            // The current wiring lets Spring AI's default manager run tools eagerly — this
+            // module's hook points (LlmTraceLogger, tool history, per-iteration accounting)
+            // now only observe the final response. See docs/spring-boot-4-upgrade/05-spring-ai-2-migration.md
+            // Phase 3 rework needed.
             var options = ToolCallingChatOptions.builder()
-                    .internalToolExecutionEnabled(false)
                     .toolCallbacks(new ArrayList<>(toolsByName.values()))
                     .build();
 

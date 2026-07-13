@@ -85,10 +85,7 @@ public class AgentMindTendenciesAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ObjectMapper agentmindTendenciesObjectMapper() {
-        ObjectMapper m = new ObjectMapper();
-        m;
-        m.configure(false);
-        return m;
+        return tools.jackson.databind.json.JsonMapper.builder().build();
     }
 
     @Bean

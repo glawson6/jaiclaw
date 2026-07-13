@@ -28,7 +28,7 @@ public final class BoardYamlParser {
             }
             raw.computeIfAbsent("id", k -> fallbackId);
             return YAML.convertValue(raw, BoardDefinition.class);
-        } catch (IOException | IllegalArgumentException e) {
+        } catch (Exception e) {
             throw new BoardLoadException(
                     "failed to parse board YAML at " + sourceUri + ": " + e.getMessage(), e);
         }

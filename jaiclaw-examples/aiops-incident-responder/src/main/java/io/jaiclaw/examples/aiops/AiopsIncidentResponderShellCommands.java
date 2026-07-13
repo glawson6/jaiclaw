@@ -4,15 +4,15 @@ import io.jaiclaw.pipeline.gateway.PipelineExecutionHandle;
 import io.jaiclaw.pipeline.gateway.PipelineGateway;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionSummary;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
 
-@ShellComponent
+@Component
 public class AiopsIncidentResponderShellCommands {
 
     private final PipelineGateway gateway;
@@ -23,8 +23,8 @@ public class AiopsIncidentResponderShellCommands {
         this.tracker = tracker;
     }
 
-    @ShellMethod(key = {"incident", "alert"}, value = "Fire a simulated incident through the pipeline.")
-    public String incident(@ShellOption(arity = Integer.MAX_VALUE) String[] words) {
+    @Command(name = "incident", alias = "alert", description = "Fire a simulated incident through the pipeline.")
+    public String incident(@Option String[] words) {
         String text = (words == null || words.length == 0)
                 ? "P2 alert: api-service 5xx rate at 12.4% for last 5 minutes (was 0.1%)."
                 : String.join(" ", words);
@@ -32,9 +32,8 @@ public class AiopsIncidentResponderShellCommands {
         return "Submitted executionId=" + handle.executionId() + ". Run `executions` or `last-result`.";
     }
 
-    @ShellMethod(key = {"replay"},
-            value = "Replay a previous execution by re-firing its original input.")
-    public String replay(@ShellOption String executionId) {
+    @Command(name = "replay", description = "Replay a previous execution by re-firing its original input.")
+    public String replay(@Option String executionId) {
         Optional<PipelineExecutionSummary> prior = tracker.byId(executionId);
         if (prior.isEmpty()) {
             return "Unknown executionId: " + executionId;
@@ -46,7 +45,7 @@ public class AiopsIncidentResponderShellCommands {
         return "Re-fired as executionId=" + handle.executionId();
     }
 
-    @ShellMethod(key = {"executions", "ph"}, value = "Show recent pipeline executions.")
+    @Command(name = "executions", alias = "ph", description = "Show recent pipeline executions.")
     public String executions() {
         List<PipelineExecutionSummary> recent = tracker.recent(AiopsIncidentPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {
@@ -62,7 +61,7 @@ public class AiopsIncidentResponderShellCommands {
         return sj.toString();
     }
 
-    @ShellMethod(key = {"last-result"}, value = "Print the most recent execution's final output.")
+    @Command(name = "last-result", description = "Print the most recent execution's final output.")
     public String lastResult() {
         List<PipelineExecutionSummary> recent = tracker.recent(AiopsIncidentPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {

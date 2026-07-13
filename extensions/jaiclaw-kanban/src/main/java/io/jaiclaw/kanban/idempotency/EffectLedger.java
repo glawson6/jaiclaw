@@ -43,7 +43,7 @@ public class EffectLedger {
                 ;
         try {
             Files.createDirectories(storageDir);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new IllegalStateException("Cannot create effects journal dir: " + storageDir, e);
         }
         loadFromDisk();
@@ -71,7 +71,7 @@ public class EffectLedger {
             String line = json.writeValueAsString(new Entry(key, result, Instant.now()));
             Files.writeString(journalPath, line + "\n", StandardCharsets.UTF_8,
                     new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.APPEND});
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to append effect-ledger entry for {}: {}", key, e.getMessage());
             throw new IllegalStateException("Effect ledger append failed", e);
         }
@@ -91,12 +91,12 @@ public class EffectLedger {
                     if (entry.key() != null) {
                         entries.put(entry.key(), entry.result() == null ? "" : entry.result());
                     }
-                } catch (IOException parseError) {
+                } catch (Exception parseError) {
                     log.warn("Skipping malformed effect-ledger line: {}", parseError.getMessage());
                 }
             }
             log.info("Loaded {} effect-ledger entries from {}", entries.size(), journalPath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to read effect ledger at {}: {}", journalPath, e.getMessage());
         }
     }

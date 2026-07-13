@@ -35,9 +35,7 @@ public class MessagingServerApplication {
 
         try (ConfigurableApplicationContext ctx = app.run(args)) {
             McpToolProvider provider = ctx.getBean("messagingMcpToolProvider", McpToolProvider.class);
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper;
-            objectMapper;
+            ObjectMapper objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
 
             McpStdioBridge bridge = new McpStdioBridge(provider, objectMapper);
             bridge.run();

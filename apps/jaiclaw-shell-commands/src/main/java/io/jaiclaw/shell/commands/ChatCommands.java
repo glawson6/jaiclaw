@@ -10,14 +10,14 @@ import io.jaiclaw.core.model.Session;
 import io.jaiclaw.core.model.UserMessage;
 
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-@ShellComponent
+@Component
 public class ChatCommands {
 
     private static final DateTimeFormatter TIME_FMT =
@@ -36,8 +36,8 @@ public class ChatCommands {
         this.properties = properties;
     }
 
-    @ShellMethod(key = "chat", value = "Send a message to the agent")
-    public String chat(@ShellOption(help = "Your message") String message) {
+    @Command(name = "chat", description = "Send a message to the agent")
+    public String chat(@Option(description = "Your message") String message) {
         AgentRuntime agentRuntime = agentRuntimeProvider.getIfAvailable();
         if (agentRuntime == null) {
             return "No LLM configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, configure AWS Bedrock, or enable Ollama.";
@@ -55,14 +55,14 @@ public class ChatCommands {
         }
     }
 
-    @ShellMethod(key = "new-session", value = "Start a new chat session")
+    @Command(name = "new-session", description = "Start a new chat session")
     public String newSession() {
         sessionManager.reset(currentSessionKey);
         currentSessionKey = "session-" + System.currentTimeMillis();
         return "New session started: " + currentSessionKey;
     }
 
-    @ShellMethod(key = "sessions", value = "List all chat sessions")
+    @Command(name = "sessions", description = "List all chat sessions")
     public String sessions() {
         var allSessions = sessionManager.listSessions();
         if (allSessions.isEmpty()) {
@@ -84,9 +84,9 @@ public class ChatCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "session-history", value = "Show messages in a session")
+    @Command(name = "session-history", description = "Show messages in a session")
     public String sessionHistory(
-            @ShellOption(defaultValue = "", help = "Session key (defaults to current)") String sessionKey) {
+            @Option(defaultValue = "") String sessionKey) {
         var key = sessionKey.isBlank() ? currentSessionKey : sessionKey;
         var sessionOpt = sessionManager.get(key);
         if (sessionOpt.isEmpty()) {

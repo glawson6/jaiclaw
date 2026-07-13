@@ -161,7 +161,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
                     new TypeReference<List<DocStoreEntry>>() {});
             loaded.forEach(e -> entries.put(storageKey(e), e));
             log.info("Loaded {} DocStore entries from {}", entries.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load DocStore from {}: {}", storePath, e.getMessage());
         }
     }
@@ -171,7 +171,7 @@ public class JsonFileDocStoreRepository implements DocStoreRepository {
             Files.createDirectories(storePath.getParent());
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(storePath.toFile(), List.copyOf(entries.values()));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush DocStore to {}: {}", storePath, e.getMessage());
         }
     }

@@ -7,10 +7,10 @@ import io.jaiclaw.skills.SkillLoader;
 import io.jaiclaw.skills.SkillPromptBuilder;
 import io.jaiclaw.tools.ToolRegistry;
 
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
 
-@ShellComponent
+@Component
 public class StatusCommands {
 
     private final JaiClawProperties properties;
@@ -30,7 +30,7 @@ public class StatusCommands {
         this.skillLoader = skillLoader;
     }
 
-    @ShellMethod(key = "status", value = "Show system status")
+    @Command(name = "status", description = "Show system status")
     public String status() {
         return """
                 JaiClaw Status
@@ -49,7 +49,7 @@ public class StatusCommands {
         );
     }
 
-    @ShellMethod(key = "tools", value = "List available tools")
+    @Command(name = "tools", description = "List available tools")
     public String tools() {
         var tools = toolRegistry.resolveAll();
         if (tools.isEmpty()) {
@@ -62,7 +62,7 @@ public class StatusCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "plugins", value = "List loaded plugins")
+    @Command(name = "plugins", description = "List loaded plugins")
     public String plugins() {
         var plugins = pluginRegistry.plugins();
         if (plugins.isEmpty()) {
@@ -75,7 +75,7 @@ public class StatusCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "skills", value = "List loaded skills")
+    @Command(name = "skills", description = "List loaded skills")
     public String skills() {
         var skills = skillLoader.loadBundled();
         if (skills.isEmpty()) {
@@ -86,7 +86,7 @@ public class StatusCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "config", value = "Show current JaiClaw configuration")
+    @Command(name = "config", description = "Show current JaiClaw configuration")
     public String config() {
         var identity = properties.identity();
         var agent = properties.agent();
@@ -119,7 +119,7 @@ public class StatusCommands {
         );
     }
 
-    @ShellMethod(key = "models", value = "Show configured LLM providers")
+    @Command(name = "models", description = "Show configured LLM providers")
     public String models() {
         var sb = new StringBuilder("LLM Providers:\n");
         sb.append("─────────────────────────\n");

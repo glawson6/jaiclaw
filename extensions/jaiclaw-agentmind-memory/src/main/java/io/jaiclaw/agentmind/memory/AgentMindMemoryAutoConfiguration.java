@@ -83,10 +83,7 @@ public class AgentMindMemoryAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ObjectMapper agentmindMemoryObjectMapper() {
-        ObjectMapper m = new ObjectMapper();
-        m;
-        m.configure(false);
-        return m;
+        return tools.jackson.databind.json.JsonMapper.builder().build();
     }
 
     /**

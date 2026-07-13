@@ -40,9 +40,10 @@ public class PerplexityClient {
     PerplexityClient(String apiKey, HttpClient httpClient) {
         this.apiKey = apiKey;
         this.httpClient = httpClient;
-        this.mapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        this.mapper = tools.jackson.databind.json.JsonMapper.builder()
+                .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .build();
     }
 
     ObjectMapper mapper() {

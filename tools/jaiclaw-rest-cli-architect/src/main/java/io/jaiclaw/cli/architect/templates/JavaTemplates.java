@@ -111,15 +111,16 @@ public final class JavaTemplates {
                 import io.jaiclaw.core.tool.ToolContext;
                 import io.jaiclaw.core.tool.ToolDefinition;
                 import io.jaiclaw.core.tool.ToolResult;
-                import org.springframework.shell.standard.ShellComponent;
-                import org.springframework.shell.standard.ShellMethod;
-                import org.springframework.shell.standard.ShellOption;
+                import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+                import org.springframework.shell.core.command.annotation.Command;
+                import org.springframework.shell.core.command.annotation.Option;
                 import org.springframework.stereotype.Component;
 
                 import java.util.Map;
                 import java.util.Set;
 
-                @ShellComponent
+                @Component
                 public class %s {
 
                     private final %s client;
@@ -167,9 +168,10 @@ public final class JavaTemplates {
                 import org.springframework.boot.SpringApplication;
                 import org.springframework.boot.autoconfigure.SpringBootApplication;
                 import org.springframework.beans.factory.annotation.Value;
-                import org.springframework.shell.standard.ShellComponent;
-                import org.springframework.shell.standard.ShellMethod;
-                import org.springframework.shell.standard.ShellOption;
+                import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+                import org.springframework.shell.core.command.annotation.Command;
+                import org.springframework.shell.core.command.annotation.Option;
                 import org.springframework.stereotype.Component;
                 import org.springframework.web.client.RestClient;
                 import tools.jackson.databind.ObjectMapper;
@@ -197,7 +199,7 @@ public final class JavaTemplates {
                         }
                     }
 
-                    @ShellComponent
+                    @Component
                     static class Commands {
                         private final ApiClient client;
                         private final ObjectMapper objectMapper = new ObjectMapper();
@@ -224,9 +226,9 @@ public final class JavaTemplates {
 
         return """
 
-                    @ShellMethod(value = "%s", key = "%s %s")
+                    @Command(name = "%s %s", description = "%s")
                     public String %s(
-                            %s@ShellOption(value = "--format", defaultValue = "json") String format) {
+                            %s@Option(longName = "format", defaultValue = "json") String format) {
                         String raw = %s;
                         return formatOutput(raw, format);
                     }
@@ -301,8 +303,8 @@ public final class JavaTemplates {
 
         return """
 
-                        @ShellMethod(value = "%s", key = "%s %s")
-                        String %s(%s@ShellOption(value = "--format", defaultValue = "json") String format) {
+                        @Command(name = "%s %s", description = "%s")
+                        String %s(%s@Option(longName = "format", defaultValue = "json") String format) {
                             try {
                                 String raw = %s;
                                 Object parsed = objectMapper.readValue(raw, Object.class);
@@ -323,11 +325,11 @@ public final class JavaTemplates {
                 String javaType = javaType(param.type());
                 if (param.required()) {
                     paramDecls.append("""
-                            @ShellOption("%s") %s %s,
+                            @Option %s %s,
                             """.formatted("--" + param.name(), javaType, param.name()).indent(8).stripTrailing() + "\n");
                 } else {
                     paramDecls.append("""
-                            @ShellOption(value = "%s", defaultValue = ShellOption.NULL) %s %s,
+                            @Option(longName = "%s") %s %s,
                             """.formatted("--" + param.name(), javaType, param.name()).indent(8).stripTrailing() + "\n");
                 }
                 callArgs.append(param.name()).append(", ");

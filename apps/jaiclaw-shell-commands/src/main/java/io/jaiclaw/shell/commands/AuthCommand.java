@@ -3,9 +3,9 @@ package io.jaiclaw.shell.commands;
 import io.jaiclaw.core.auth.*;
 import io.jaiclaw.identity.auth.*;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Shell commands for auth profile status, rotation, and session pinning.
  */
-@ShellComponent
+@Component
 public class AuthCommand {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -32,7 +32,7 @@ public class AuthCommand {
         this.sessionResolverProvider = sessionResolverProvider;
     }
 
-    @ShellMethod(key = {"auth status", "auth-status"}, value = "Show all auth profiles with expiry state")
+    @Command(name = "auth status", alias = "auth-status", description = "Show all auth profiles with expiry state")
     public String status() {
         AuthProfileStoreManager storeManager = storeManagerProvider.getIfAvailable();
         if (storeManager == null) return "Auth profile store is not configured.";
@@ -91,9 +91,9 @@ public class AuthCommand {
         return sb.toString();
     }
 
-    @ShellMethod(key = {"auth rotate", "auth-rotate"}, value = "Set rotation order for a provider")
-    public String rotate(@ShellOption String provider,
-                          @ShellOption(defaultValue = "") String profileIds) {
+    @Command(name = "auth rotate", alias = "auth-rotate", description = "Set rotation order for a provider")
+    public String rotate(@Option String provider,
+                          @Option(defaultValue = "") String profileIds) {
         AuthProfileStoreManager storeManager = storeManagerProvider.getIfAvailable();
         if (storeManager == null) return "Auth profile store is not configured.";
 
@@ -112,12 +112,12 @@ public class AuthCommand {
         return "Set rotation order for " + provider + ": " + String.join(" → ", order);
     }
 
-    @ShellMethod(key = {"auth pin", "auth-pin"}, value = "Pin a profile for the current session")
-    public String pin(@ShellOption String profileId) {
+    @Command(name = "auth pin", alias = "auth-pin", description = "Pin a profile for the current session")
+    public String pin(@Option String profileId) {
         return "Pinned auth profile: " + profileId + " (source: user)";
     }
 
-    @ShellMethod(key = {"auth unpin", "auth-unpin"}, value = "Clear session profile override")
+    @Command(name = "auth unpin", alias = "auth-unpin", description = "Clear session profile override")
     public String unpin() {
         return "Cleared session auth profile override.";
     }

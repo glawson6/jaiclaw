@@ -203,7 +203,7 @@ public class PayPalPaymentProvider implements PaymentProvider {
                     Instant.now(),
                     Map.of("paypal_event_type", eventType)
             ));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to parse PayPal webhook: {}", e.getMessage());
             return Optional.empty();
         }

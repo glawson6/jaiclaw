@@ -1,8 +1,8 @@
 package io.jaiclaw.cli.commands;
 
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,12 +14,12 @@ import java.util.stream.Stream;
  * Each profile is an isolated directory under ~/.jaiclaw/profiles/ containing
  * its own application-local.yml and .env file.
  */
-@ShellComponent
+@Component
 public class ProfileCommand {
 
     private static final String DEFAULT_PROFILE = "default";
 
-    @ShellMethod(key = {"profile list", "profile-list", "profiles"}, value = "List available profiles")
+    @Command(name = "profile list", alias = "profile-list", description = "List available profiles")
     public String list() {
         Path profilesDir = profilesDir();
         if (!Files.isDirectory(profilesDir)) {
@@ -50,8 +50,8 @@ public class ProfileCommand {
         return sb.toString();
     }
 
-    @ShellMethod(key = {"profile create", "profile-create"}, value = "Create a new profile")
-    public String create(@ShellOption(help = "Profile name") String name) {
+    @Command(name = "profile create", alias = "profile-create", description = "Create a new profile")
+    public String create(@Option(description = "Profile name") String name) {
         Path profileDir = profilesDir().resolve(name);
         if (Files.exists(profileDir)) {
             return "Profile already exists: " + name;
@@ -97,8 +97,8 @@ public class ProfileCommand {
         }
     }
 
-    @ShellMethod(key = {"profile switch", "profile-switch"}, value = "Switch to a different profile")
-    public String switchProfile(@ShellOption(help = "Profile name") String name) {
+    @Command(name = "profile switch", alias = "profile-switch", description = "Switch to a different profile")
+    public String switchProfile(@Option(description = "Profile name") String name) {
         Path profileDir = profilesDir().resolve(name);
         if (!Files.isDirectory(profileDir)) {
             return "Profile not found: " + name + ". Use 'profile create " + name + "' first.";
@@ -115,7 +115,7 @@ public class ProfileCommand {
         }
     }
 
-    @ShellMethod(key = {"profile show", "profile-show"}, value = "Show the current active profile")
+    @Command(name = "profile show", alias = "profile-show", description = "Show the current active profile")
     public String show() {
         String active = activeProfile();
         Path profileDir = profilesDir().resolve(active);

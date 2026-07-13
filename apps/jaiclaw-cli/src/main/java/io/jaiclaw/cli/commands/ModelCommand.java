@@ -3,9 +3,9 @@ package io.jaiclaw.cli.commands;
 import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.config.ModelsProperties.ModelProviderConfig;
 
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * Model management commands — list providers and available models.
  */
-@ShellComponent
+@Component
 public class ModelCommand {
 
     private final JaiClawProperties properties;
@@ -22,7 +22,7 @@ public class ModelCommand {
         this.properties = properties;
     }
 
-    @ShellMethod(key = {"model list", "model-list"}, value = "List configured LLM providers and models")
+    @Command(name = "model list", alias = "model-list", description = "List configured LLM providers and models")
     public String list() {
         Map<String, ModelProviderConfig> providers = properties.models().providers();
         if (providers.isEmpty()) {
@@ -62,7 +62,7 @@ public class ModelCommand {
         return sb.toString();
     }
 
-    @ShellMethod(key = {"model show", "model-show"}, value = "Show the currently active model configuration")
+    @Command(name = "model show", alias = "model-show", description = "Show the currently active model configuration")
     public String show() {
         String provider = System.getenv("AI_PROVIDER");
         if (provider == null || provider.isBlank()) {

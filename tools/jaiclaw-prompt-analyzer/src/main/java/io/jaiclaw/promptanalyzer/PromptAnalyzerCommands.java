@@ -1,23 +1,22 @@
 package io.jaiclaw.promptanalyzer;
 
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.nio.file.Path;
 
 /**
  * Spring Shell commands for analyzing JaiClaw project prompt token usage.
  */
-@ShellComponent
+@Component
 public class PromptAnalyzerCommands {
 
     private final ProjectScanner scanner = new ProjectScanner();
 
-    @ShellMethod(value = "Analyze a JaiClaw project and estimate input token usage",
-                 key = {"prompt-analyze", "prompt analyze"})
+    @Command(name = "prompt-analyze", alias = "prompt analyze", description = "Analyze a JaiClaw project and estimate input token usage")
     public String analyze(
-            @ShellOption(value = "--path", defaultValue = ".") String projectPath
+            @Option(longName = "path", defaultValue = ".") String projectPath
     ) {
         try {
             AnalysisReport report = scanner.analyze(Path.of(projectPath).toAbsolutePath());
@@ -27,11 +26,10 @@ public class PromptAnalyzerCommands {
         }
     }
 
-    @ShellMethod(value = "Check if estimated token usage is below a threshold",
-                 key = {"prompt-check", "prompt check"})
+    @Command(name = "prompt-check", alias = "prompt check", description = "Check if estimated token usage is below a threshold")
     public String check(
-            @ShellOption(value = "--path", defaultValue = ".") String projectPath,
-            @ShellOption(value = "--threshold", defaultValue = "5000") int threshold
+            @Option(longName = "path", defaultValue = ".") String projectPath,
+            @Option(longName = "threshold", defaultValue = "5000") int threshold
     ) {
         try {
             AnalysisReport report = scanner.analyze(Path.of(projectPath).toAbsolutePath());

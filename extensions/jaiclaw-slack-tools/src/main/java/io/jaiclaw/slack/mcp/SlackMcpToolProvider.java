@@ -291,7 +291,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
         }
 
         Map<String, String> emoji = new LinkedHashMap<>();
-        response.path("emoji").properties().forEachRemaining(entry ->
+        response.path("emoji").properties().forEach(entry ->
                 emoji.put(entry.getKey(), entry.getValue().asText()));
         return McpToolResult.success(toJson(Map.of("emoji", emoji, "count", emoji.size())));
     }

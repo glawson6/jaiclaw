@@ -40,9 +40,7 @@ public class JaiClawMessagingAutoConfiguration {
             GatewayService gatewayService,
             SessionManager sessionManager,
             MessagingMcpProperties properties) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper;
-        objectMapper;
+        ObjectMapper objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
         log.info("Registering Messaging MCP tool provider");
         return new MessagingMcpToolProvider(channelRegistry, gatewayService, sessionManager, properties, objectMapper);
     }

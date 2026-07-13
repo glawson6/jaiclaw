@@ -10,9 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -20,7 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-@ShellComponent
+@Component
 public class SkillCreatorCommands {
 
     private static final Logger log = LoggerFactory.getLogger(SkillCreatorCommands.class);
@@ -44,12 +44,10 @@ public class SkillCreatorCommands {
         this.lineReaderProvider = lineReaderProvider;
     }
 
-    @ShellMethod(value = "Interactively create a new JaiClaw skill", key = {"skill-create", "skill create"})
+    @Command(name = "skill-create", alias = "skill create", description = "Interactively create a new JaiClaw skill")
     public String create(
-            @ShellOption(value = "--output-dir", defaultValue = ShellOption.NULL,
-                    help = "Directory to write the skill to") String outputDir,
-            @ShellOption(value = "--name", defaultValue = ShellOption.NULL,
-                    help = "Skill name (optional — LLM will ask if not provided)") String name) {
+            @Option(longName = "output-dir", description = "Directory to write the skill to") String outputDir,
+            @Option(longName = "name") String name) {
 
         AgentRuntime runtime = agentRuntimeProvider.getIfAvailable();
         if (runtime == null) {
@@ -125,11 +123,10 @@ public class SkillCreatorCommands {
         return "Skill creation ended.";
     }
 
-    @ShellMethod(value = "Generate a skill from a YAML spec file", key = {"skill-generate", "skill generate"})
+    @Command(name = "skill-generate", alias = "skill generate", description = "Generate a skill from a YAML spec file")
     public String generate(
-            @ShellOption(value = "--spec", help = "Path to YAML spec file") String specPath,
-            @ShellOption(value = "--output-dir", defaultValue = ShellOption.NULL,
-                    help = "Directory to write the skill to") String outputDir) {
+            @Option(longName = "spec", description = "Path to YAML spec file") String specPath,
+            @Option(longName = "output-dir", description = "Directory to write the skill to") String outputDir) {
 
         AgentRuntime runtime = agentRuntimeProvider.getIfAvailable();
         if (runtime == null) {

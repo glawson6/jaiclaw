@@ -1,39 +1,12 @@
 package io.jaiclaw.shell.commands.setup.steps;
 
-import io.jaiclaw.shell.commands.setup.OnboardResult;
-import io.jaiclaw.shell.commands.setup.OnboardResult.FlowMode;
-import io.jaiclaw.shell.commands.setup.WizardStep;
-import org.springframework.shell.component.flow.ComponentFlow;
-
-public final class FlowModeStep implements WizardStep {
-
-    private final ComponentFlow.Builder flowBuilder;
-
-    public FlowModeStep(ComponentFlow.Builder flowBuilder) {
-        this.flowBuilder = flowBuilder;
-    }
-
-    @Override
-    public String name() {
-        return "Flow Mode";
-    }
-
-    @Override
-    public boolean execute(OnboardResult result) {
-        ComponentFlow flow = flowBuilder.clone().reset()
-                .withSingleItemSelector("flow-mode")
-                    .name("Choose setup mode:")
-                    .selectItem("quickstart", "QuickStart — LLM + optional Telegram, sensible defaults")
-                    .selectItem("manual", "Manual — Full control over all settings")
-                    .and()
-                .build();
-
-        ComponentFlow.ComponentFlowResult flowResult = flow.run();
-        String selected = WizardStep.getOrNull(flowResult.getContext(), "flow-mode", String.class);
-        if (selected == null) {
-            return false;
-        }
-        result.setFlowMode("manual".equals(selected) ? FlowMode.MANUAL : FlowMode.QUICKSTART);
-        return true;
-    }
+/**
+ * TODO(spring-shell-4-migration): This class used the Spring Shell 3
+ * ComponentFlow / PromptProvider APIs, which were removed in Spring Shell 4.
+ * The interactive onboarding wizard needs to be rebuilt using Shell 4's new
+ * component model. Quarantined during the Boot 4 upgrade to unblock the reactor.
+ * See docs/spring-boot-4-upgrade/06-spring-shell-4-migration.md.
+ */
+public class FlowModeStep {
+    // Body removed during Spring Boot 4 upgrade — see class javadoc.
 }

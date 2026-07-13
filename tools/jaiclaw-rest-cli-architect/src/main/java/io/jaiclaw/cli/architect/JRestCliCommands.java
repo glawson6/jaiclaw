@@ -3,9 +3,9 @@ package io.jaiclaw.cli.architect;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,16 +21,16 @@ import java.util.Map;
  * Spring Shell commands for the REST CLI Architect.
  * Provides scaffold, validate, from-openapi, and interactive commands.
  */
-@ShellComponent
+@Component
 public class JRestCliCommands {
 
     private static final Logger log = LoggerFactory.getLogger(JRestCliCommands.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @ShellMethod(value = "Generate a CLI project from a JSON spec file", key = "scaffold")
+    @Command(name = "scaffold", description = "Generate a CLI project from a JSON spec file")
     public String scaffold(
-            @ShellOption("--spec") String specPath,
-            @ShellOption(value = "--fill", defaultValue = "false") boolean fill) throws IOException {
+            @Option String specPath,
+            @Option(longName = "fill", defaultValue = "false") boolean fill) throws IOException {
 
         String json = Files.readString(Path.of(specPath));
         ProjectSpec spec = MAPPER.readValue(json, ProjectSpec.class);
@@ -75,8 +75,8 @@ public class JRestCliCommands {
         return "Generated %d files in %s".formatted(files.size(), outputPath.toAbsolutePath());
     }
 
-    @ShellMethod(value = "Validate a JSON spec file and report issues", key = "validate")
-    public String validate(@ShellOption("--spec") String specPath) throws IOException {
+    @Command(name = "validate", description = "Validate a JSON spec file and report issues")
+    public String validate(@Option String specPath) throws IOException {
         String json = Files.readString(Path.of(specPath));
         ProjectSpec spec = MAPPER.readValue(json, ProjectSpec.class);
 
@@ -98,10 +98,10 @@ public class JRestCliCommands {
         return sb.toString().stripTrailing();
     }
 
-    @ShellMethod(value = "Parse an OpenAPI spec and generate a spec JSON template", key = "from-openapi")
+    @Command(name = "from-openapi", description = "Parse an OpenAPI spec and generate a spec JSON template")
     public String fromOpenapi(
-            @ShellOption("--url") String url,
-            @ShellOption(value = "--output", defaultValue = ShellOption.NULL) String output) throws IOException {
+            @Option String url,
+            @Option(longName = "output") String output) throws IOException {
 
         String openapiJson = fetchOrRead(url);
         var result = OpenApiParser.parse(openapiJson);
@@ -128,7 +128,7 @@ public class JRestCliCommands {
         return specJson;
     }
 
-    @ShellMethod(value = "Interactive LLM-driven project generation (requires AI model)", key = "interactive")
+    @Command(name = "interactive", description = "Interactive LLM-driven project generation (requires AI model)")
     public String interactive() {
         return "Interactive mode requires an AI model. Start with -Pstandalone and configure spring.ai.anthropic.api-key.";
     }

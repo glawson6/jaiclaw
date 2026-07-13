@@ -4,8 +4,8 @@ import io.jaiclaw.config.JaiClawProperties;
 import io.jaiclaw.tools.ToolRegistry;
 
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,7 +14,7 @@ import java.nio.file.Path;
 /**
  * Diagnostic command that checks JaiClaw's runtime environment.
  */
-@ShellComponent
+@Component
 public class DoctorCommand {
 
     private final JaiClawProperties properties;
@@ -26,7 +26,7 @@ public class DoctorCommand {
         this.toolRegistryProvider = toolRegistryProvider;
     }
 
-    @ShellMethod(key = {"doctor", "doc"}, value = "Diagnose JaiClaw configuration and environment")
+    @Command(name = "doctor", alias = "doc", description = "Diagnose JaiClaw configuration and environment")
     public String doctor() {
         StringBuilder sb = new StringBuilder();
         sb.append("JaiClaw Doctor\n");

@@ -2,6 +2,7 @@ package io.jaiclaw.perplexity;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import io.jaiclaw.perplexity.model.*;
 import io.jaiclaw.perplexity.render.TerminalImageRenderer;
 import org.jline.reader.LineReader;
@@ -9,19 +10,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.shell.core.command.annotation.Option;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@ShellComponent
+@Component
 public class PerplexityCommands {
 
     private static final Logger log = LoggerFactory.getLogger(PerplexityCommands.class);
-    private static final ObjectMapper JSON = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper JSON = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
 
     private final ObjectProvider<LineReader> lineReaderProvider;
     private final TerminalImageRenderer imageRenderer = new TerminalImageRenderer();
@@ -48,14 +49,14 @@ public class PerplexityCommands {
         this.lineReaderProvider = lineReaderProvider;
     }
 
-    @ShellMethod(value = "Query Perplexity AI with a one-shot question", key = {"pplx ask", "pplx-ask"})
+    @Command(name = "ask", alias = "pplx-ask", description = "Query Perplexity AI with a one-shot question")
     public String ask(
-            @ShellOption(defaultValue = ShellOption.NULL) String query,
-            @ShellOption(value = "--model", defaultValue = ShellOption.NULL) String model,
-            @ShellOption(value = "--domains", defaultValue = ShellOption.NULL) String domains,
-            @ShellOption(value = "--recency", defaultValue = ShellOption.NULL) String recency,
-            @ShellOption(value = "--images", defaultValue = "false") boolean images,
-            @ShellOption(value = "--format", defaultValue = "text") String format) {
+            @Option(longName = "query") String query,
+            @Option(longName = "model") String model,
+            @Option(longName = "domains") String domains,
+            @Option(longName = "recency") String recency,
+            @Option(longName = "images", defaultValue = "false") boolean images,
+            @Option(longName = "format", defaultValue = "text") String format) {
 
         if (query == null || query.isBlank()) return "Usage: pplx ask <query> [--model ...] [--domains ...] [--recency ...] [--images] [--format json|text]";
 
@@ -80,12 +81,12 @@ public class PerplexityCommands {
         return formatSonarResponse(response, images || imagesEnabled);
     }
 
-    @ShellMethod(value = "Raw web search via Perplexity Search API", key = {"pplx search", "pplx-search"})
+    @Command(name = "search", alias = "pplx-search", description = "Raw web search via Perplexity Search API")
     public String search(
-            @ShellOption(defaultValue = ShellOption.NULL) String query,
-            @ShellOption(value = "--num-results", defaultValue = "10") int numResults,
-            @ShellOption(value = "--recency", defaultValue = ShellOption.NULL) String recency,
-            @ShellOption(value = "--domains", defaultValue = ShellOption.NULL) String domains) {
+            @Option(longName = "query") String query,
+            @Option(longName = "num-results", defaultValue = "10") int numResults,
+            @Option(longName = "recency") String recency,
+            @Option(longName = "domains") String domains) {
 
         if (query == null || query.isBlank()) return "Usage: pplx search <query> [--num-results ...] [--recency ...] [--domains ...]";
 
@@ -96,11 +97,11 @@ public class PerplexityCommands {
         return formatSearchResponse(response);
     }
 
-    @ShellMethod(value = "Deep research via Perplexity Agent API", key = {"pplx research", "pplx-research"})
+    @Command(name = "research", alias = "pplx-research", description = "Deep research via Perplexity Agent API")
     public String research(
-            @ShellOption(defaultValue = ShellOption.NULL) String query,
-            @ShellOption(value = "--preset", defaultValue = ShellOption.NULL) String preset,
-            @ShellOption(value = "--model", defaultValue = ShellOption.NULL) String model) {
+            @Option(longName = "query") String query,
+            @Option(longName = "preset") String preset,
+            @Option(longName = "model") String model) {
 
         if (query == null || query.isBlank()) return "Usage: pplx research <query> [--preset fast|pro|deep|advanced] [--model ...]";
 
@@ -117,10 +118,10 @@ public class PerplexityCommands {
         return formatAgentResponse(response);
     }
 
-    @ShellMethod(value = "Enter interactive multi-turn chat mode", key = {"pplx chat", "pplx-chat"})
+    @Command(name = "chat", alias = "pplx-chat", description = "Enter interactive multi-turn chat mode")
     public String chat(
-            @ShellOption(value = "--model", defaultValue = ShellOption.NULL) String model,
-            @ShellOption(value = "--system", defaultValue = ShellOption.NULL) String systemPrompt) {
+            @Option(longName = "model") String model,
+            @Option(longName = "system") String systemPrompt) {
 
         LineReader reader = lineReaderProvider.getIfAvailable();
         if (reader == null) {
@@ -200,7 +201,7 @@ public class PerplexityCommands {
         return "Chat ended.";
     }
 
-    @ShellMethod(value = "List available Perplexity models and presets", key = {"pplx models", "pplx-models"})
+    @Command(name = "models", alias = "pplx-models", description = "List available Perplexity models and presets")
     public String models() {
         return """
                 Sonar Models (chat/completions):
@@ -217,7 +218,7 @@ public class PerplexityCommands {
                 """;
     }
 
-    @ShellMethod(value = "Show current Perplexity configuration", key = {"pplx config", "pplx-config"})
+    @Command(name = "config", alias = "pplx-config", description = "Show current Perplexity configuration")
     public String config() {
         return """
                 Perplexity Configuration:

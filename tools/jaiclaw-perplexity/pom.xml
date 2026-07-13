@@ -34,6 +34,13 @@
             <groupId>org.springframework.shell</groupId>
             <artifactId>spring-shell-starter</artifactId>
         </dependency>
+        <!-- jline is required for interactive REPL (LineReader). Spring Shell 4 no longer
+             transitively brings jline-reader as a first-class dep; declare explicitly. -->
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline-reader</artifactId>
+            <version>3.30.6</version>
+        </dependency>
 
         <!-- Jackson -->
         <dependency>

@@ -108,7 +108,7 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
                     new TypeReference<List<Subscription>>() {});
             loaded.forEach(s -> subscriptions.put(s.id(), s));
             log.info("Loaded {} subscriptions from {}", subscriptions.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load subscriptions from {}: {}", storePath, e.getMessage());
         }
     }
@@ -118,7 +118,7 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
             Files.createDirectories(storePath.getParent());
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(storePath.toFile(), List.copyOf(subscriptions.values()));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush subscriptions to {}: {}", storePath, e.getMessage());
         }
     }
