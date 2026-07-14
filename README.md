@@ -58,6 +58,52 @@ For Java teams building their own AI agent product on top of a proven foundation
 </dependencyManagement>
 ```
 
+#### Spring Boot 4 preview — `1.0.0-SNAPSHOT`
+
+An in-progress Spring Boot 4.1 line is published as `1.0.0-SNAPSHOT` to
+TapTech's internal Nexus. The stack targets **Spring Boot 4.1.0 + Spring
+AI 2.0.0 + Spring Shell 4.0.2 + Embabel Agent 2.0.0-SNAPSHOT +
+Apache Camel 4.21.0 + Jackson 3 (`tools.jackson.*`) + Groovy 5 + Spock
+2.4-groovy-5.0**. Consumers who want to pilot Boot 4 early can point
+at the snapshot repo:
+
+```xml
+<repositories>
+    <repository>
+        <id>taptech-snapshots</id>
+        <url>https://tooling.taptech.net/repository/maven-snapshots/</url>
+        <snapshots><enabled>true</enabled></snapshots>
+        <releases><enabled>false</enabled></releases>
+    </repository>
+    <!-- Embabel 2.0.0-SNAPSHOT ships from repo.embabel.com; add it too
+         so the transitive dep resolves without the taptech proxy. -->
+    <repository>
+        <id>embabel-snapshots</id>
+        <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+        <snapshots><enabled>true</enabled></snapshots>
+        <releases><enabled>false</enabled></releases>
+    </repository>
+</repositories>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-bom</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+`1.0.0-SNAPSHOT` is **pilot-only** — the GA tag is gated on Embabel
+publishing a non-SNAPSHOT Boot-4-compatible release (see
+[docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md)).
+Production consumers should stay on the last stable Maven Central
+release (`0.9.x`).
+
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 
 [Stable SPIs](core/jaiclaw-core/src/main/java/io/jaiclaw/core/api/) for `ChannelAdapter`, `ToolCallback`, `MemoryProvider`, `SoulProvider`, `SecretsProvider`, `AuditLogger`, `TranscriptStore`, `ArtifactStore`, `McpToolProvider`, and more — each marked `@Stable`, `@Experimental`, or `@Internal` so you know what you're building against.

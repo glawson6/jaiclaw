@@ -124,6 +124,50 @@ Then write a minimal application. The
 ~30-line shape end-to-end (Application class + one tool +
 `application.yml`).
 
+#### Piloting Spring Boot 4 — `1.0.0-SNAPSHOT`
+
+A Boot 4.1 preview line is published as `1.0.0-SNAPSHOT` to TapTech's
+internal Nexus for early adopters. Stack: Spring Boot 4.1.0, Spring AI
+2.0.0, Spring Shell 4.0.2, Embabel Agent 2.0.0-SNAPSHOT, Apache Camel
+4.21.0, Jackson 3 (`tools.jackson.*`), Groovy 5, Spock 2.4-groovy-5.0.
+
+Add the snapshot repos alongside the BOM import:
+
+```xml
+<repositories>
+  <repository>
+    <id>taptech-snapshots</id>
+    <url>https://tooling.taptech.net/repository/maven-snapshots/</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+  <repository>
+    <id>embabel-snapshots</id>
+    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.jaiclaw</groupId>
+      <artifactId>jaiclaw-bom</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+`1.0.0-SNAPSHOT` is **pilot-only** — GA is gated on Embabel cutting a
+non-SNAPSHOT Boot-4 release (see
+[docs/spring-boot-4-upgrade/02-embabel-gate.md](../spring-boot-4-upgrade/02-embabel-gate.md)).
+Production users stay on the latest Maven Central release
+(`0.9.x`).
+
 ## What to do once it's up
 
 Three concrete next steps, pick the one that matches your interest:

@@ -2,6 +2,90 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 1.0.0-SNAPSHOT (pilot preview)
+
+Published to TapTech's internal Nexus at
+`https://tooling.taptech.net/repository/maven-snapshots/`. **Not on
+Maven Central** — GA is gated on Embabel cutting a non-SNAPSHOT Boot-4
+release (see
+[docs/spring-boot-4-upgrade/02-embabel-gate.md](../spring-boot-4-upgrade/02-embabel-gate.md)).
+
+Pilots wire two snapshot repos alongside the BOM import:
+
+```xml
+<repositories>
+  <repository>
+    <id>taptech-snapshots</id>
+    <url>https://tooling.taptech.net/repository/maven-snapshots/</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+  <repository>
+    <id>embabel-snapshots</id>
+    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.jaiclaw</groupId>
+      <artifactId>jaiclaw-bom</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+### Stack upgrade
+
+| Component | 0.9.x | 1.0.0-SNAPSHOT |
+|---|---|---|
+| Spring Boot | 3.5.16 | **4.1.0** |
+| Spring Framework | 6.2.x | **7.0.8** |
+| Spring AI | 1.1.7 | **2.0.0** |
+| Spring Shell | 3.4.2 | **4.0.2** |
+| Spring Cloud | 2024.x | **2025.1.2** |
+| Embabel Agent | 0.5.0 | **2.0.0-SNAPSHOT** |
+| Apache Camel | 4.18.2 | **4.21.0** |
+| Jackson | `com.fasterxml.jackson.*` 2.x | **`tools.jackson.*` 3.x** |
+| Groovy (tests) | 4.0.x | **5.0.7** |
+| Spock | 2.3-groovy-4.0 | **2.4-groovy-5.0** |
+| JKube | 1.18.x | **1.19.0** |
+| Tomcat | 10.1 pin | **11 (Boot 4 default)** |
+| Java | 21 | 21 |
+
+### Breaking changes (Boot 4 stack)
+
+- **Spring AI 2.0 property renames** — `spring.ai.*.chat.options.model` → `spring.ai.*.chat.model` (44 YAML files rewritten). The `.options.` segment is gone across all Spring AI providers.
+- **Jackson 3 namespace** — every `com.fasterxml.jackson.*` import moves to `tools.jackson.*`. Custom serializers ported. `FAIL_ON_NULL_FOR_PRIMITIVES` default flipped and must be explicitly disabled where old behavior is required (fixed in `PipelineYamlParser`).
+- **Spring Shell 4 rewrite** — `@ShellComponent` / `@ShellMethod` / `@ShellOption` were removed at 4.0. Migrated to `@Command` / `@Option` across ~35 files. `jline-reader` is no longer a transitive dep — added explicitly in `jaiclaw-perplexity` + `jaiclaw-skill-creator`. Quarantined pending Shell-4 component-model re-implementation: `OnboardWizardOrchestrator` + 16 wizard step classes, `PromptCommands`, `JaiClawPromptProvider`, `JaiClawShellPromptAutoConfiguration`, `YamlConfigWriter`.
+- **`RestTemplate` → `RestClient` across channel adapters** — Discord, Slack, Signal, SMS, Teams adapters now take an HTTP-abstraction interface primary constructor (`SignalHttpClient`, `SmsHttpClient`, `DiscordHttpClient`, `SlackHttpClient`, `TeamsHttpClient`). Legacy `(…, RestTemplate)` constructors kept with `@Deprecated(since="1.0.0", forRemoval=true)` — they'll be removed at 1.1.
+- **Spring Boot starter renames** — `spring-boot-starter-web` → `spring-boot-starter-webmvc` across 42 poms per Boot 4.
+- **`EnvironmentPostProcessor` package move** — `org.springframework.boot.env.EnvironmentPostProcessor` → `org.springframework.boot.EnvironmentPostProcessor` in the 3 EPP classes (Banner, Secrets, Compliance) + both `spring.factories` key names.
+- **`RestClientCustomizer` package move** — `org.springframework.boot.web.client.RestClientCustomizer` → `org.springframework.boot.restclient.RestClientCustomizer` in `JaiClawHttpAutoConfiguration`. `jaiclaw-spring-boot-starter` picks up `spring-boot-restclient` runtime.
+- **Removed Spring AI starters** — `spring-ai-starter-model-oci-genai` (removed at 2.0 GA), `spring-ai-starter-model-minimax` (removed at 2.0 GA). `spring-ai-starter-model-vertex-ai-gemini` renamed to `spring-ai-starter-model-google-genai`. The `jaiclaw-starter-oci-genai`, `jaiclaw-starter-minimax`, and `jaiclaw-starter-vertex-ai` wrapper modules were deleted. MiniMax adopters route via the anthropic starter with `spring.ai.anthropic.base-url=https://api.minimax.io/anthropic`.
+- **Spring State Machine kanban engine removed** — `jaiclaw-kanban` now ships only the default `TaskStateEngine` graph engine (7 files + pom dep dropped). SPI is unchanged.
+- **`commons-logging` explicit dep** — Boot 4 / Spring 7 removed the `spring-jcl` drop-in. `jaiclaw-cli` and any fat-JAR consumer now needs `commons-logging` on the runtime classpath (bumped to 1.3.5).
+
+### New / verified
+
+- Full channel-adapter migration to `RestClient` with per-channel HTTP-abstraction interfaces (spec-mockable via Spock).
+- Embabel `2.0.0-SNAPSHOT` (Boot-4 line) resolves from `repo.embabel.com/libs-snapshot`; `jaiclaw-embabel-delegate` recompiles clean, 19 tests green.
+- JKube 1.19 image builds green for `jaiclaw-gateway-app` + `jaiclaw-shell`.
+- Docker/agentmind/kanban/CLI/pipeline e2e suites green on the Boot-4 stack (pipeline-e2e `broken` YAML fixture triggers Boot 4's stricter property binding *before* `PipelineValidator` fires — framework validator still catches misconfiguration; fixture needs a rework to keep validator as the failure surface).
+
+### Known limitations
+
+- `1.0.0-SNAPSHOT` is **not on Maven Central**. Central rejects SNAPSHOT deps in release artifacts, so the GA tag waits on Embabel `1.5.0` or `2.0.0` (release-2.0 label on [issue #1052](https://github.com/embabel/embabel-agent/issues/1052)).
+- Production consumers should stay on the latest `0.9.x` Maven Central release.
+
+---
+
 ## 0.4.0
 
 Released 2026-05-18.
