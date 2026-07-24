@@ -14,6 +14,7 @@ public record ProjectManifest(
         String javaPackage,
         String version,
         String jaiclawVersion,
+        String springBootVersion,
         ParentMode parentMode,
         Archetype archetype,
         AiProvider aiProvider,
@@ -77,7 +78,16 @@ public record ProjectManifest(
      */
     public ProjectManifest withJaiclawVersion(String newVersion) {
         return new ProjectManifest(name, description, groupId, javaPackage, version,
-                newVersion, parentMode, archetype, aiProvider, extensions, channels,
+                newVersion, springBootVersion, parentMode, archetype, aiProvider, extensions, channels,
+                agent, skills, security, customTools, camel, embabel, server, docker, readme);
+    }
+
+    /**
+     * Returns a copy of this manifest with the given Spring Boot parent version.
+     */
+    public ProjectManifest withSpringBootVersion(String newVersion) {
+        return new ProjectManifest(name, description, groupId, javaPackage, version,
+                jaiclawVersion, newVersion, parentMode, archetype, aiProvider, extensions, channels,
                 agent, skills, security, customTools, camel, embabel, server, docker, readme);
     }
 
@@ -104,7 +114,11 @@ public record ProjectManifest(
         String groupId = stringOrDefault(map, "group-id", "com.example");
         String javaPackage = stringOrDefault(map, "java-package", null);
         String version = stringOrDefault(map, "version", "0.1.0-SNAPSHOT");
-        String jaiclawVersion = stringOrDefault(map, "jaiclaw-version", "0.6.0-SNAPSHOT");
+        // Default to null so ScaffoldMojo's ${project.version} substitution wins
+        // when the manifest omits jaiclaw-version. validate() enforces non-null
+        // post-override, so stale defaults can't leak through silently.
+        String jaiclawVersion = stringOrDefault(map, "jaiclaw-version", null);
+        String springBootVersion = stringOrDefault(map, "spring-boot-version", null);
         ParentMode parentMode = ParentMode.fromString(stringOrDefault(map, "parent", "standalone"));
         Archetype archetype = Archetype.fromString(stringOrDefault(map, "archetype", "gateway"));
 
@@ -222,7 +236,7 @@ public record ProjectManifest(
         }
 
         return new ProjectManifest(name, description, groupId, javaPackage, version,
-                jaiclawVersion, parentMode, archetype, aiProvider, extensions, channels, agent,
+                jaiclawVersion, springBootVersion, parentMode, archetype, aiProvider, extensions, channels, agent,
                 skills, security, customTools, camel, embabel, server, docker, readme);
     }
 
@@ -278,6 +292,24 @@ public record ProjectManifest(
         if (archetype == Archetype.EMBABEL && embabel == null) {
             throw new IllegalArgumentException("Archetype 'embabel' requires an 'embabel' configuration section");
         }
+        // Version validation runs last so pre-existing manifest-shape errors
+        // (name / description / unknown enum values) still fire first — the
+        // mojo's default-value substitution normally fills these two, so
+        // hitting these paths means an operator invoked the mojo without a
+        // Maven-managed default and without an explicit -D override.
+        if (jaiclawVersion == null || jaiclawVersion.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Manifest is missing required field: jaiclaw-version. "
+                            + "Set it in the manifest YAML, or pass -Djaiclaw.scaffold.jaiclawVersion=<version> "
+                            + "to the scaffold mojo. When run inside the JaiClaw reactor the mojo "
+                            + "auto-substitutes ${project.version}.");
+        }
+        if (springBootVersion == null || springBootVersion.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Manifest is missing required field: spring-boot-version. "
+                            + "Set it in the manifest YAML, or pass -Djaiclaw.scaffold.springBootVersion=<version> "
+                            + "to the scaffold mojo. The mojo defaults to the framework's target Boot version.");
+        }
     }
 
     // --- Builder ---
@@ -290,7 +322,8 @@ public record ProjectManifest(
         private String groupId = "com.example";
         private String javaPackage;
         private String version = "0.1.0-SNAPSHOT";
-        private String jaiclawVersion = "0.6.0-SNAPSHOT";
+        private String jaiclawVersion;
+        private String springBootVersion;
         private ParentMode parentMode = ParentMode.STANDALONE;
         private Archetype archetype = Archetype.GATEWAY;
         private AiProvider aiProvider = new AiProvider("anthropic", List.of());
@@ -312,6 +345,7 @@ public record ProjectManifest(
         public Builder javaPackage(String javaPackage) { this.javaPackage = javaPackage; return this; }
         public Builder version(String version) { this.version = version; return this; }
         public Builder jaiclawVersion(String jaiclawVersion) { this.jaiclawVersion = jaiclawVersion; return this; }
+        public Builder springBootVersion(String springBootVersion) { this.springBootVersion = springBootVersion; return this; }
         public Builder parentMode(ParentMode parentMode) { this.parentMode = parentMode; return this; }
         public Builder archetype(Archetype archetype) { this.archetype = archetype; return this; }
         public Builder aiProvider(AiProvider aiProvider) { this.aiProvider = aiProvider; return this; }
@@ -336,7 +370,7 @@ public record ProjectManifest(
                         new SystemPromptConfig("none", null, null));
             }
             return new ProjectManifest(name, description, groupId, pkg, version,
-                    jaiclawVersion, parentMode, archetype, aiProvider, extensions, channels,
+                    jaiclawVersion, springBootVersion, parentMode, archetype, aiProvider, extensions, channels,
                     agent, skills, security, customTools, camel, embabel, server, docker, readme);
         }
     }

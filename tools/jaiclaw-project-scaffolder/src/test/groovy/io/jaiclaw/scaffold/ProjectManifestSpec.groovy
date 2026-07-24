@@ -293,15 +293,30 @@ class ProjectManifestSpec extends Specification {
     }
 
     def "valid manifest passes validation"() {
-        given:
+        given: "manifest fields plus mojo-supplied version defaults"
         def yaml = loadManifest("helpdesk.yml")
         def manifest = ProjectManifest.fromYamlMap(yaml)
+                .withJaiclawVersion("1.0.0-SNAPSHOT")
+                .withSpringBootVersion("4.1.0")
 
         when:
         manifest.validate()
 
         then:
         noExceptionThrown()
+    }
+
+    def "validate() rejects a manifest that never received version defaults"() {
+        given: "fromYamlMap default is null when the YAML omits jaiclaw-version"
+        def yaml = loadManifest("helpdesk.yml")
+        def manifest = ProjectManifest.fromYamlMap(yaml)  // no wither calls — versions null
+
+        when:
+        manifest.validate()
+
+        then: "targeted error — surfaces the fix instead of emitting <version>null</version>"
+        def e = thrown(IllegalArgumentException)
+        e.message.contains("jaiclaw-version") || e.message.contains("spring-boot-version")
     }
 
     private Map<String, Object> loadManifest(String name) {

@@ -112,6 +112,7 @@ public final class ApplicationYmlGenerator {
                 sb.append("    anthropic:\n");
                 sb.append("      enabled: ${ANTHROPIC_ENABLED:").append(enabledStr).append("}\n");
                 sb.append("      api-key: ${ANTHROPIC_API_KEY:not-set}\n");
+                sb.append("      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}\n");
                 sb.append("      chat:\n");
                 sb.append("        options:\n");
                 sb.append("          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}\n");
@@ -120,6 +121,7 @@ public final class ApplicationYmlGenerator {
                 sb.append("    openai:\n");
                 sb.append("      enabled: ${OPENAI_ENABLED:").append(enabledStr).append("}\n");
                 sb.append("      api-key: ${OPENAI_API_KEY:not-set}\n");
+                sb.append("      base-url: ${OPENAI_BASE_URL:https://api.openai.com}\n");
             }
             case "ollama" -> {
                 sb.append("    ollama:\n");

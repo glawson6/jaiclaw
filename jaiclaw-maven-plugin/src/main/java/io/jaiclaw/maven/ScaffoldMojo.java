@@ -41,11 +41,21 @@ public class ScaffoldMojo extends AbstractMojo {
 
     /**
      * JaiClaw BOM version to use in generated projects.
-     * Defaults to the current Maven project version when run inside the JaiClaw build,
-     * or can be set explicitly via {@code -Djaiclaw.scaffold.jaiclawVersion=...}.
+     * Defaults to {@code ${project.version}} — inside the JaiClaw reactor Maven
+     * substitutes the framework's own version. Override with
+     * {@code -Djaiclaw.scaffold.jaiclawVersion=...}.
      */
-    @Parameter(property = "jaiclaw.scaffold.jaiclawVersion")
+    @Parameter(property = "jaiclaw.scaffold.jaiclawVersion", defaultValue = "${project.version}")
     private String jaiclawVersion;
+
+    /**
+     * Spring Boot parent version to use in generated projects.
+     * Defaults to the version the JaiClaw framework itself targets. Bump this
+     * default when the framework moves to a new Boot line. Override with
+     * {@code -Djaiclaw.scaffold.springBootVersion=...}.
+     */
+    @Parameter(property = "jaiclaw.scaffold.springBootVersion", defaultValue = "4.1.0")
+    private String springBootVersion;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -59,9 +69,14 @@ public class ScaffoldMojo extends AbstractMojo {
             Map<String, Object> yamlMap = yamlMapper.readValue(manifest, Map.class);
 
             ProjectManifest projectManifest = ProjectManifest.fromYamlMap(yamlMap);
-            // Override jaiclaw version from Maven if manifest didn't specify one
+            // Override versions from Maven parameters if manifest didn't specify them.
+            // Manifest field wins over the mojo default so an adopter can pin a
+            // specific version even when scaffolding inside the reactor.
             if (!yamlMap.containsKey("jaiclaw-version") && jaiclawVersion != null) {
                 projectManifest = projectManifest.withJaiclawVersion(jaiclawVersion);
+            }
+            if (!yamlMap.containsKey("spring-boot-version") && springBootVersion != null) {
+                projectManifest = projectManifest.withSpringBootVersion(springBootVersion);
             }
             projectManifest.validate();
 
