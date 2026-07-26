@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-examples</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-example-sales-enrichment-pipeline</artifactId>
@@ -15,7 +15,7 @@
     <description>Nightly batch enrichment + outreach drafting for new CRM leads (CRON trigger, lead repository)</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

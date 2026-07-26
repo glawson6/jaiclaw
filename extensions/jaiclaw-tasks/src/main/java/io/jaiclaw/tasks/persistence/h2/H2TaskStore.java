@@ -1,7 +1,7 @@
 package io.jaiclaw.tasks.persistence.h2;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import io.jaiclaw.tasks.TaskDeliveryState;

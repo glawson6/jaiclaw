@@ -1,17 +1,17 @@
 package io.jaiclaw.shell.commands.setup.validation;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
 @Component
 public class TelegramTokenValidator {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
-    public TelegramTokenValidator(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public TelegramTokenValidator(RestClient restClient) {
+        this.restClient = restClient;
     }
 
     public record ValidationResult(boolean valid, String botUsername, String message) {}
@@ -19,10 +19,10 @@ public class TelegramTokenValidator {
     @SuppressWarnings("unchecked")
     public ValidationResult validate(String botToken) {
         try {
-            Map<String, Object> response = restTemplate.getForObject(
-                    "https://api.telegram.org/bot{token}/getMe",
-                    Map.class,
-                    botToken);
+            Map<String, Object> response = restClient.get()
+                    .uri("https://api.telegram.org/bot{token}/getMe", botToken)
+                    .retrieve()
+                    .body(Map.class);
             if (response != null && Boolean.TRUE.equals(response.get("ok"))) {
                 Map<String, Object> resultMap = (Map<String, Object>) response.get("result");
                 String username = (String) resultMap.get("username");

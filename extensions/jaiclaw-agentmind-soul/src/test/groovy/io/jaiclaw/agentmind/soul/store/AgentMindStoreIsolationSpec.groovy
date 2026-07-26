@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.soul.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.model.Soul
 import io.jaiclaw.core.model.SoulScope
 import io.jaiclaw.core.tenant.TenantGuard
@@ -23,7 +22,7 @@ class AgentMindStoreIsolationSpec extends Specification {
     Path tmp
 
     TenantGuard multiTenant = Mock() { isMultiTenant() >> true }
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     FileSoulProvider provider = new FileSoulProvider(tmp, multiTenant, mapper)
 

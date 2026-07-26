@@ -46,11 +46,12 @@ import java.util.function.Function
  *       processor consults it.</li>
  * </ol>
  *
- * <p>Engine-swap scenario: the default graph engine and the optional
- * Spring State Machine engine produce identical accept/reject decisions
- * on the same fixture board. The unit-level
- * {@code SpringStateMachineEngineSpec} pins that contract; this E2E
- * adds a Spring-context cross-check via property flip.
+ * <p>Engine-swap scenario: the default graph engine is the only bundled
+ * {@link io.jaiclaw.kanban.spi.TaskStateEngine} implementation after the
+ * Spring Boot 4 upgrade removed the optional Spring State Machine engine
+ * (upstream declined to support Boot 4; adopters can bring their own
+ * engine via {@code @ConditionalOnMissingBean}). This E2E holds the
+ * Spring-context wiring contract.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.NONE,

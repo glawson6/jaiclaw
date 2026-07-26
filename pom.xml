@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-parent</artifactId>
-    <version>0.9.4-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw</name>
@@ -55,35 +55,41 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- Aligned with Embabel 0.3.5 compatibility -->
-        <spring-boot.version>3.5.15</spring-boot.version>
-        <spring-ai.version>1.1.7</spring-ai.version>
-        <embabel-agent.version>0.3.5</embabel-agent.version>
-        <spring-shell.version>3.4.2</spring-shell.version>
-        <spring-cloud.version>2025.0.2</spring-cloud.version>
+        <!-- Spring Boot 4.1 / Spring Framework 7 / Spring AI 2.0 stack.
+             Embabel is pinned to a Boot-4 SNAPSHOT — Phase 8 pins it to a GA once released
+             (docs/spring-boot-4-upgrade/02-embabel-gate.md). -->
+        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-ai.version>2.0.0</spring-ai.version>
+        <embabel-agent.version>2.0.0-SNAPSHOT</embabel-agent.version>
+        <spring-shell.version>4.0.2</spring-shell.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <!-- GitHub Copilot Java SDK — the official com.github:copilot-sdk-java
+             artifact on Maven Central. Consumed by extensions/jaiclaw-github-copilot
+             to expose the Copilot backend as a Spring AI ChatModel. The
+             underlying auth is delegated to the local `gh copilot` CLI (see
+             docs/user/COPILOT-INTEGRATION.md). Bytecode target is Java 17;
+             works cleanly against JaiClaw's JDK 21 baseline. -->
+        <copilot-sdk.version>1.0.5-01</copilot-sdk.version>
 
-        <!-- CVE version overrides (Spring Boot 3.5.14 BOM manages older vulnerable versions) -->
-        <tomcat.version>10.1.55</tomcat.version>
+        <!-- CVE version overrides — Boot 4.1 BOM re-evaluation:
+             Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11).
+             Netty pin re-evaluate against Boot 4.1 BOM's managed line in a follow-up CVE scan. -->
         <netty.version>4.1.135.Final</netty.version>
         <log4j2.version>2.26.0</log4j2.version>
 
-        <!-- Testing -->
-        <spock.version>2.4-groovy-4.0</spock.version>
-        <groovy.version>4.0.30</groovy.version>
-        <gmavenplus-plugin.version>4.0.1</gmavenplus-plugin.version>
+        <!-- Testing (Spock support restored in Boot 4.1 via Groovy 5) -->
+        <spock.version>2.4-groovy-5.0</spock.version>
+        <groovy.version>5.0.7</groovy.version>
+        <gmavenplus-plugin.version>5.1.0</gmavenplus-plugin.version>
 
         <!-- Third-party libraries -->
         <github-api.version>1.330</github-api.version>
         <okhttp.version>4.12.0</okhttp.version>
         <line-bot-sdk.version>9.15.0</line-bot-sdk.version>
-        <!-- Spring State Machine — kanban Phase 3 optional engine.
-             4.0.x targets Spring 6 / Boot 3.x. -->
-        <spring-statemachine.version>4.0.1</spring-statemachine.version>
-
         <!-- Plugins -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
-        <jkube.version>1.17.0</jkube.version>
+        <jkube.version>1.19.0</jkube.version>
         <dependency-check.version>12.1.0</dependency-check.version>
         <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
         <!--
@@ -282,6 +288,46 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-github-copilot</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-mvc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-webflux</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-session-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-dashboard</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-authoring</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-docs</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -411,6 +457,12 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-github-copilot</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-personal-assistant</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -441,12 +493,6 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-azure-openai</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-deepseek</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -459,24 +505,6 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-minimax</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-vertex-ai</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-oci-genai</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-email</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -484,6 +512,11 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-cron-manager-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-studio</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -625,12 +658,12 @@
 
             <!--
                 CVE overrides — these MUST come before the Spring Boot BOM
-                import. Maven dependencyManagement uses first-match-wins,
-                so importing netty-bom / pinning tomcat-embed-core here
-                outranks Spring Boot 3.5.14's BOM which would otherwise
-                pin Netty to 4.1.132.Final and Tomcat to 10.1.54 — both
-                vulnerable per the 2026-06-15 dependency CVE scan
-                (DEP-001, DEP-002). See security-report-2026-06-15.md.
+                import. Maven dependencyManagement uses first-match-wins.
+                Tomcat 10.1.55 pin from the 0.9.x line was REMOVED at the
+                Spring Boot 4 upgrade — Boot 4 manages Tomcat 11 in its BOM.
+                Netty pin retained pending re-evaluation vs Boot 4.1's
+                managed Netty line — flagged in the next CVE scan post-upgrade.
+                See security-report-2026-06-15.md.
             -->
             <dependency>
                 <groupId>io.netty</groupId>
@@ -638,26 +671,6 @@
                 <version>${netty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>${tomcat.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-el</artifactId>
-                <version>${tomcat.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-websocket</artifactId>
-                <version>${tomcat.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat</groupId>
-                <artifactId>tomcat-annotations-api</artifactId>
-                <version>${tomcat.version}</version>
             </dependency>
 
             <!-- Spring Boot BOM -->
@@ -694,6 +707,13 @@
                 <version>${embabel-agent.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- GitHub Copilot Java SDK -->
+            <dependency>
+                <groupId>com.github</groupId>
+                <artifactId>copilot-sdk-java</artifactId>
+                <version>${copilot-sdk.version}</version>
             </dependency>
 
             <!-- Spring Shell -->

@@ -1,9 +1,8 @@
 package io.jaiclaw.subscription.repository;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.subscription.Subscription;
 import io.jaiclaw.subscription.SubscriptionRepository;
@@ -42,8 +41,8 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
         this.storePath = storagePath.resolve("subscriptions.json");
         this.tenantGuard = tenantGuard;
         this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                
+                ;
         loadFromDisk();
     }
 
@@ -109,7 +108,7 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
                     new TypeReference<List<Subscription>>() {});
             loaded.forEach(s -> subscriptions.put(s.id(), s));
             log.info("Loaded {} subscriptions from {}", subscriptions.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load subscriptions from {}: {}", storePath, e.getMessage());
         }
     }
@@ -119,7 +118,7 @@ public class JsonFileSubscriptionRepository implements SubscriptionRepository {
             Files.createDirectories(storePath.getParent());
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(storePath.toFile(), List.copyOf(subscriptions.values()));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush subscriptions to {}: {}", storePath, e.getMessage());
         }
     }

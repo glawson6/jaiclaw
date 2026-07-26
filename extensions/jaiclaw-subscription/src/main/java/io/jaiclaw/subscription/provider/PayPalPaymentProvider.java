@@ -1,7 +1,7 @@
 package io.jaiclaw.subscription.provider;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.subscription.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,7 +203,7 @@ public class PayPalPaymentProvider implements PaymentProvider {
                     Instant.now(),
                     Map.of("paypal_event_type", eventType)
             ));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to parse PayPal webhook: {}", e.getMessage());
             return Optional.empty();
         }

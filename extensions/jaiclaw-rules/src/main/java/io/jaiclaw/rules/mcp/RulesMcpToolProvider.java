@@ -1,7 +1,7 @@
 package io.jaiclaw.rules.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.core.mcp.McpToolResult;
@@ -65,7 +65,7 @@ public class RulesMcpToolProvider implements McpToolProvider {
     }
 
     @SuppressWarnings("unchecked")
-    private McpToolResult handleExecuteRule(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleExecuteRule(Map<String, Object> args) throws JacksonException {
         String ruleName = requireString(args, "ruleName");
         Map<String, Object> facts = (Map<String, Object>) args.get("facts");
         if (facts == null) {
@@ -92,13 +92,13 @@ public class RulesMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(RuleResponseFormatter.formatAsSimpleString(response));
     }
 
-    private McpToolResult handleListRules() throws JsonProcessingException {
+    private McpToolResult handleListRules() throws JacksonException {
         List<String> rules = ruleExecutionService.listAvailableRules();
         return McpToolResult.success(objectMapper.writeValueAsString(
                 Map.of("rules", rules, "count", rules.size())));
     }
 
-    private McpToolResult handleCheckRule(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleCheckRule(Map<String, Object> args) throws JacksonException {
         String ruleName = requireString(args, "ruleName");
         boolean available = ruleExecutionService.isRuleAvailable(ruleName);
         return McpToolResult.success(objectMapper.writeValueAsString(

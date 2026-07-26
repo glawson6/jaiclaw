@@ -38,6 +38,23 @@ reference for anyone running, configuring, or building on JaiClaw. The
   applications
 - [CLI-REFERENCE.md](user/CLI-REFERENCE.md) — `bin/jaiclaw` commands
 - [TELEGRAM-SETUP.md](user/TELEGRAM-SETUP.md) — channel walkthrough
+- [WEB-ERROR-HANDLING.md](user/WEB-ERROR-HANDLING.md) — framework
+  default `@RestControllerAdvice` / `ErrorWebExceptionHandler` (opt
+  out with `jaiclaw.web.errors.enabled=false`)
+- [SESSION-BACKENDS.md](user/SESSION-BACKENDS.md) — chat-history
+  storage: in-memory default vs `jaiclaw-session-redis` for durable
+  history across pod restarts
+- [**pipeline/**](user/pipeline/) — the four-phase Pipeline Studio guides:
+  - [PIPELINE-DASHBOARD.md](user/pipeline/PIPELINE-DASHBOARD.md) — read-only
+    dashboard at `/pipelines/dashboard` (Phase 0)
+  - [PIPELINE-STUDIO-API.md](user/pipeline/PIPELINE-STUDIO-API.md) — authoring
+    REST surface at `/api/pipeline-studio/*` (Phase 1; Phase 3 adds
+    deploy + test-run + role authz)
+  - [PIPELINE-STUDIO.md](user/pipeline/PIPELINE-STUDIO.md) — React Flow
+    SPA served at `/studio` (Phase 2; Phase 3 adds the DeployToolbar)
+  - [PIPELINE-PROCESSOR-CATALOG.md](user/pipeline/PIPELINE-PROCESSOR-CATALOG.md) —
+    baseline processor pack (Phase 4: ~15 core + 7 AI presets + 6
+    Camel templates + Tool/Memory/Document integrations)
 - [features/](user/features/) — per-feature reference (browser,
   canvas, compaction, cron, group-chat routing, identity, voice,
   voice-call, workspace memory)
@@ -77,10 +94,21 @@ reference for anyone running, configuring, or building on JaiClaw. The
   K8s deployment patterns
 - [AGENTIC-WORKFLOW.md](dev/AGENTIC-WORKFLOW.md) — tool loops, hooks,
   context compaction internals
-- [PIPELINE-STRATEGY.md](dev/PIPELINE-STRATEGY.md) — `jaiclaw-pipeline`
+- [PIPELINE-STRATEGY.md](dev/pipeline/PIPELINE-STRATEGY.md) — `jaiclaw-pipeline`
   design + DSL
-- [PIPELINE_UX_IMPROVEMENTS.md](dev/PIPELINE_UX_IMPROVEMENTS.md) —
+- [PIPELINE-STUDIO-ANALYSIS.md](dev/pipeline/PIPELINE-STUDIO-ANALYSIS.md) —
+  **backlog** — visual pipeline-builder UI: gaps, components, baseline
+  processor catalog
+- [PIPELINE_UX_IMPROVEMENTS.md](dev/pipeline/PIPELINE_UX_IMPROVEMENTS.md) —
   closing notes on the Phase A–F UX overhaul
+- [PIPELINE_HOT_RELOAD.md](dev/pipeline/PIPELINE_HOT_RELOAD.md) —
+  runtime semantics for hot deploy / undeploy / redeploy (Phase 3 of
+  the Pipeline Studio buildout)
+- [PIPELINE-STUDIO-PROCESSORS-SPI.md](dev/pipeline/PIPELINE-STUDIO-PROCESSORS-SPI.md) —
+  `@PipelineProcessor` + `ConfigurableStageProcessor` SPI
+- [TOPICS-PUB-SUB-PLAN.md](dev/TOPICS-PUB-SUB-PLAN.md) —
+  **backlog** — cross-channel pub/sub layer with per-tenant topics +
+  cross-tenant subscribers
 - [CAMEL-INTEGRATION-DESIGN.md](dev/CAMEL-INTEGRATION-DESIGN.md) —
   Apache Camel adapter design
 - [OAUTH-IMPLEMENTATION-PLAN.md](dev/OAUTH-IMPLEMENTATION-PLAN.md) —

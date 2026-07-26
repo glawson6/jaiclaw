@@ -10,8 +10,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties(),
-                false)
+                JaiClawSecurityProperties.RateLimitProperties.defaults(),
+                false, false, JaiClawSecurityProperties.ApiKeyFilterProperties.defaults())
         def provider = Stub(ApiKeyProvider) {
             getMaskedKey() >> "****test-key"
             getSource() >> "property"
@@ -31,8 +31,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties(),
-                false)
+                JaiClawSecurityProperties.RateLimitProperties.defaults(),
+                false, false, JaiClawSecurityProperties.ApiKeyFilterProperties.defaults())
         def logger = new SecurityModeLogger(properties, null)
 
         when:
@@ -48,8 +48,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties(),
-                false)
+                JaiClawSecurityProperties.RateLimitProperties.defaults(),
+                false, false, JaiClawSecurityProperties.ApiKeyFilterProperties.defaults())
         def logger = new SecurityModeLogger(properties, null)
 
         when:
@@ -65,8 +65,8 @@ class SecurityModeLoggerSpec extends Specification {
                 false,
                 new JaiClawSecurityProperties.JwtProperties(),
                 new JaiClawSecurityProperties.RoleMappingProperties(),
-                new JaiClawSecurityProperties.RateLimitProperties(),
-                false)
+                JaiClawSecurityProperties.RateLimitProperties.defaults(),
+                false, false, JaiClawSecurityProperties.ApiKeyFilterProperties.defaults())
         def logger = new SecurityModeLogger(properties, null)
 
         when:

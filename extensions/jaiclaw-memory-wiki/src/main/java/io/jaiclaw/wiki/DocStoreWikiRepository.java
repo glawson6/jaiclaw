@@ -1,7 +1,7 @@
 package io.jaiclaw.wiki;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.docstore.model.DocStoreEntry;
 import io.jaiclaw.docstore.repository.DocStoreRepository;
 import org.slf4j.Logger;
@@ -94,7 +94,7 @@ public class DocStoreWikiRepository implements WikiRepository {
         if (page.frontmatter() != null && !page.frontmatter().isEmpty()) {
             try {
                 frontmatterJson = mapper.writeValueAsString(page.frontmatter());
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 log.warn("Failed to serialize frontmatter for page {}: {}", page.id(), e.getMessage());
             }
         }
@@ -129,7 +129,7 @@ public class DocStoreWikiRepository implements WikiRepository {
                 @SuppressWarnings("unchecked")
                 Map<String, String> parsed = mapper.readValue(entry.channelMessageRef(), Map.class);
                 frontmatter = parsed != null ? parsed : Map.of();
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 log.warn("Failed to deserialize frontmatter for entry {}: {}", entry.id(), e.getMessage());
             }
         }

@@ -1,8 +1,8 @@
 package io.jaiclaw.cli.commands;
 
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -12,13 +12,13 @@ import java.util.List;
 /**
  * Gateway lifecycle commands — start, stop, and status of the JaiClaw gateway server.
  */
-@ShellComponent
+@Component
 public class GatewayCommand {
 
-    @ShellMethod(key = {"gateway start", "gateway-start"}, value = "Start the JaiClaw gateway server")
+    @Command(name = "gateway start", alias = "gateway-start", description = "Start the JaiClaw gateway server")
     public String start(
-            @ShellOption(defaultValue = "8080", help = "Server port") int port,
-            @ShellOption(defaultValue = "false", help = "Run in Docker mode") boolean docker) {
+            @Option(defaultValue = "8080", description = "Server port") int port,
+            @Option(defaultValue = "false", description = "Run in Docker mode") boolean docker) {
 
         if (docker) {
             return startDocker(port);
@@ -26,7 +26,7 @@ public class GatewayCommand {
         return startLocal(port);
     }
 
-    @ShellMethod(key = {"gateway stop", "gateway-stop"}, value = "Stop the JaiClaw gateway server")
+    @Command(name = "gateway stop", alias = "gateway-stop", description = "Stop the JaiClaw gateway server")
     public String stop() {
         try {
             ProcessBuilder pb = new ProcessBuilder("docker", "compose", "down");
@@ -39,7 +39,7 @@ public class GatewayCommand {
         }
     }
 
-    @ShellMethod(key = {"gateway status", "gateway-status"}, value = "Show gateway server status")
+    @Command(name = "gateway status", alias = "gateway-status", description = "Show gateway server status")
     public String status() {
         try {
             ProcessBuilder pb = new ProcessBuilder("curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",

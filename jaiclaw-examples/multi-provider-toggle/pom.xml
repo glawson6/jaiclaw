@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-examples</artifactId>
+        <version>1.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-example-multi-provider-toggle</artifactId>
+    <name>JaiClaw :: Examples :: Multi-Provider Toggle</name>
+    <description>Boot-and-log fixture that ships BOTH the Anthropic + OpenAI Spring AI starters
+        so the LlmProviderBridgeEnvironmentPostProcessor can be exercised end-to-end. Used by
+        the e2e-test skill's Scenario 7 to verify bridge / fail-fast / explicit-override paths
+        under a real Boot 4 process. Not intended for adopters.</description>
+
+    <dependencies>
+        <!-- Pulls jaiclaw-spring-boot-starter → LlmProviderBridgeEnvironmentPostProcessor
+             registers via spring.factories automatically. -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-spring-boot-starter</artifactId>
+        </dependency>
+        <!-- BOTH Spring AI provider starters on the classpath — this is the classpath
+             shape that reproduces the multi-provider-chatmodel-selection bug. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+        <!-- Test scope -->
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <goals><goal>analyze</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,7 +1,7 @@
 package io.jaiclaw.channel.googlechat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.*;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;

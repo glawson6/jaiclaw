@@ -37,10 +37,9 @@ spring:
       enabled: true
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
-        options:
-          model: ${OLLAMA_MODEL:gemma4:e4b}
-          temperature: ${OLLAMA_TEMPERATURE:0.7}
-          num-ctx: ${OLLAMA_NUM_CTX:8192}
+        model: ${OLLAMA_MODEL:gemma4:e4b}
+        temperature: ${OLLAMA_TEMPERATURE:0.7}
+        num-ctx: ${OLLAMA_NUM_CTX:8192}
 
 #logging:
 #  level:

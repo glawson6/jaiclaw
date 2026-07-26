@@ -1,8 +1,7 @@
 package io.jaiclaw.messaging;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.gateway.mcp.transport.server.McpStdioBridge;
 import org.springframework.boot.SpringApplication;
@@ -36,9 +35,7 @@ public class MessagingServerApplication {
 
         try (ConfigurableApplicationContext ctx = app.run(args)) {
             McpToolProvider provider = ctx.getBean("messagingMcpToolProvider", McpToolProvider.class);
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            ObjectMapper objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
 
             McpStdioBridge bridge = new McpStdioBridge(provider, objectMapper);
             bridge.run();

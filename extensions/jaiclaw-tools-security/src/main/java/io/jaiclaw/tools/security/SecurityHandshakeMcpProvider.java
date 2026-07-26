@@ -1,7 +1,7 @@
 package io.jaiclaw.tools.security;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.core.mcp.McpToolResult;
@@ -331,7 +331,7 @@ public class SecurityHandshakeMcpProvider implements McpToolProvider, HandshakeS
     private McpToolResult toResult(Object response) {
         try {
             return McpToolResult.success(objectMapper.writeValueAsString(response));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return McpToolResult.error("Failed to serialize response: " + e.getMessage());
         }
     }

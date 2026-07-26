@@ -61,10 +61,23 @@ public class PipelineExecutionTracker {
         update(ctx.executionId(), s -> s.withStageDuration(stageName, duration));
     }
 
-    /** Mark the execution as successfully complete. */
+    /**
+     * Mark the execution as successfully complete with no explicit result.
+     * Convenience overload of {@link #succeeded(PipelineContext, Duration, String)}.
+     */
     public void succeeded(PipelineContext ctx, Duration totalDuration) {
+        succeeded(ctx, totalDuration, null);
+    }
+
+    /**
+     * Mark the execution as successfully complete, carrying the given
+     * caller-visible result string (nullable). The string lands on
+     * {@code PipelineExecutionSummary.result} and is surfaced via
+     * {@code /api/pipelines/status/{id}} and SSE {@code execution-completed}.
+     */
+    public void succeeded(PipelineContext ctx, Duration totalDuration, String result) {
         if (ctx == null) return;
-        update(ctx.executionId(), s -> s.completedSuccessfully(Instant.now(), totalDuration));
+        update(ctx.executionId(), s -> s.completedSuccessfully(Instant.now(), totalDuration, result));
     }
 
     /** Mark the execution as failed with the given reason. */

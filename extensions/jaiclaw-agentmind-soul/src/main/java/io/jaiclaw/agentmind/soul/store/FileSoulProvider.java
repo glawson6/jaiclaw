@@ -1,6 +1,6 @@
 package io.jaiclaw.agentmind.soul.store;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.agent.SoulProvider;
 import io.jaiclaw.core.agent.StaleSoulVersionException;
 import io.jaiclaw.core.model.Soul;

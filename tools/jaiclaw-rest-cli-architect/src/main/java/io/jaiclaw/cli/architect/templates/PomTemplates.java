@@ -51,7 +51,7 @@ public final class PomTemplates {
                             <scope>provided</scope>
                         </dependency>
                         <dependency>
-                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <groupId>tools.jackson.core</groupId>
                             <artifactId>jackson-databind</artifactId>
                         </dependency>
 
@@ -140,7 +140,7 @@ public final class PomTemplates {
                             <artifactId>spring-boot-starter-web</artifactId>
                         </dependency>
                         <dependency>
-                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <groupId>tools.jackson.core</groupId>
                             <artifactId>jackson-databind</artifactId>
                         </dependency>
                     </dependencies>
@@ -206,7 +206,7 @@ public final class PomTemplates {
                             <artifactId>spring-shell-starter</artifactId>
                         </dependency>
                         <dependency>
-                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <groupId>tools.jackson.core</groupId>
                             <artifactId>jackson-databind</artifactId>
                         </dependency>
                     </dependencies>

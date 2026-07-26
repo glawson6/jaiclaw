@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.line
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.channel.ChannelMessage
 import io.jaiclaw.channel.ChannelMessageHandler
 import io.jaiclaw.channel.DeliveryResult

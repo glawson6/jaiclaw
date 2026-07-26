@@ -1,8 +1,8 @@
 package io.jaiclaw.slack.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.core.mcp.McpToolResult;
@@ -11,8 +11,9 @@ import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.slack.config.SlackToolsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -34,17 +35,34 @@ public class SlackMcpToolProvider implements McpToolProvider {
 
     private final String botToken;
     private final SlackToolsProperties properties;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Primary constructor — use {@link RestClient} (Spring 6.1+; the Boot 4 default).
+     */
+    public SlackMcpToolProvider(String botToken,
+                                SlackToolsProperties properties,
+                                RestClient restClient,
+                                ObjectMapper objectMapper) {
+        this.botToken = botToken;
+        this.properties = properties;
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #SlackMcpToolProvider(String,
+     *     SlackToolsProperties, RestClient, ObjectMapper)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
     public SlackMcpToolProvider(String botToken,
                                 SlackToolsProperties properties,
                                 RestTemplate restTemplate,
                                 ObjectMapper objectMapper) {
-        this.botToken = botToken;
-        this.properties = properties;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+        this(botToken, properties, RestClient.create(), objectMapper);
     }
 
     @Override
@@ -102,7 +120,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
 
     // ── Tool handlers ──
 
-    private McpToolResult handleSend(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleSend(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String content = requireString(args, "content");
 
@@ -120,7 +138,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "channelId", channelId)));
     }
 
-    private McpToolResult handleRead(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleRead(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         int limit = intOrDefault(args, "limit", 20);
         limit = Math.min(limit, 100);
@@ -143,7 +161,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("messages", messages, "count", messages.size())));
     }
 
-    private McpToolResult handleReact(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleReact(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String emoji = requireString(args, "emoji");
@@ -169,7 +187,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "emoji", emoji)));
     }
 
-    private McpToolResult handleEdit(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleEdit(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String content = requireString(args, "content");
@@ -189,7 +207,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleDelete(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleDelete(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -207,7 +225,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handlePin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handlePin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -225,7 +243,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleUnpin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleUnpin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -243,7 +261,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleListPins(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleListPins(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
 
         JsonNode response = slackGet("pins.list", Map.of("channel", channelId));
@@ -263,7 +281,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("pins", pins, "count", pins.size())));
     }
 
-    private McpToolResult handleMemberInfo(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleMemberInfo(Map<String, Object> args) throws JacksonException {
         String userId = requireString(args, "userId");
 
         JsonNode response = slackGet("users.info", Map.of("user", userId));
@@ -284,32 +302,30 @@ public class SlackMcpToolProvider implements McpToolProvider {
         )));
     }
 
-    private McpToolResult handleEmojiList(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleEmojiList(Map<String, Object> args) throws JacksonException {
         JsonNode response = slackGet("emoji.list", Map.of());
         if (!response.path("ok").asBoolean()) {
             return McpToolResult.error("Slack API error: " + response.path("error").asText());
         }
 
         Map<String, String> emoji = new LinkedHashMap<>();
-        response.path("emoji").fields().forEachRemaining(entry ->
+        response.path("emoji").properties().forEach(entry ->
                 emoji.put(entry.getKey(), entry.getValue().asText()));
         return McpToolResult.success(toJson(Map.of("emoji", emoji, "count", emoji.size())));
     }
 
     // ── Slack REST helpers ──
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(botToken);
-        return headers;
-    }
-
     private JsonNode slackPost(String method, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            var response = restTemplate.postForEntity(SLACK_API + method, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.post()
+                    .uri(SLACK_API + method)
+                    .header("Authorization", "Bearer " + botToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Slack API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
@@ -322,15 +338,13 @@ public class SlackMcpToolProvider implements McpToolProvider {
             params.forEach((k, v) -> url.append(k).append("=").append(v).append("&"));
             url.setLength(url.length() - 1); // remove trailing &
         }
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(botToken);
-        var request = new HttpEntity<>(headers);
-
         try {
-            var response = restTemplate.exchange(
-                    url.toString(), HttpMethod.GET, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.get()
+                    .uri(url.toString())
+                    .header("Authorization", "Bearer " + botToken)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Slack API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
@@ -361,7 +375,7 @@ public class SlackMcpToolProvider implements McpToolProvider {
         return defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

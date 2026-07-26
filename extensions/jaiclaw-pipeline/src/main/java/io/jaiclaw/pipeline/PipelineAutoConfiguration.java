@@ -165,8 +165,10 @@ public class PipelineAutoConfiguration {
     }
 
     @Bean
-    public PipelineHookFirer pipelineHookFirer(ObjectProvider<HookRunner> hookRunnerProvider) {
-        return new PipelineHookFirer(hookRunnerProvider.getIfAvailable());
+    public PipelineHookFirer pipelineHookFirer(
+            ObjectProvider<HookRunner> hookRunnerProvider,
+            org.springframework.context.ApplicationEventPublisher publisher) {
+        return new PipelineHookFirer(hookRunnerProvider.getIfAvailable(), publisher);
     }
 
     @Bean
@@ -296,4 +298,78 @@ public class PipelineAutoConfiguration {
             }
         };
     }
+
+    // ── Agent tools + MCP provider ────────────────────────────────────
+
+    /**
+     * Renderer for the ASCII/HTML pipeline views. Consumed by
+     * {@link io.jaiclaw.pipeline.tool.PipelineRenderTool}, the MCP
+     * provider's {@code pipeline_render} tool, the shell {@code pipeline
+     * render} command, and the REST render endpoints.
+     */
+    @Bean
+    @ConditionalOnBean({PipelineRegistry.class, PipelineExecutionTracker.class})
+    public io.jaiclaw.pipeline.render.PipelineRenderService pipelineRenderService(
+            PipelineRegistry registry,
+            PipelineExecutionTracker tracker) {
+        return new io.jaiclaw.pipeline.render.PipelineRenderService(
+                registry, tracker,
+                new io.jaiclaw.pipeline.render.PipelineAsciiRenderer(),
+                new io.jaiclaw.pipeline.render.PipelineHtmlRenderer());
+    }
+
+    /**
+     * Registers the pipeline agent tools ({@code pipeline_list},
+     * {@code pipeline_trigger}, {@code pipeline_status}, plus
+     * {@code pipeline_render} when the render service is present) through
+     * the shared {@link io.jaiclaw.tools.ToolRegistry}. Only fires when a
+     * registry is present in the context — embedded usage without an
+     * agent stack simply omits this.
+     *
+     * <p>Follows the {@code KanbanToolsRegistrar} pattern
+     * ({@code extensions/jaiclaw-kanban/src/main/java/io/jaiclaw/kanban/KanbanAutoConfiguration.java}).
+     */
+    @Bean
+    @ConditionalOnBean({io.jaiclaw.tools.ToolRegistry.class, PipelineGateway.class})
+    public PipelineToolsRegistrar pipelineToolsRegistrar(
+            io.jaiclaw.tools.ToolRegistry toolRegistry,
+            PipelineGateway gateway,
+            PipelineRegistry registry,
+            PipelineExecutionTracker tracker,
+            ObjectProvider<io.jaiclaw.pipeline.render.PipelineRenderService> renderProvider) {
+        io.jaiclaw.pipeline.render.PipelineRenderService renderService = renderProvider.getIfAvailable();
+        io.jaiclaw.pipeline.tool.PipelineTools.registerAll(
+                toolRegistry, gateway, registry, tracker, renderService);
+        String toolList = renderService == null
+                ? "pipeline_list, pipeline_trigger, pipeline_status"
+                : "pipeline_list, pipeline_trigger, pipeline_status, pipeline_render";
+        log.info("Pipeline tools registered: {}", toolList);
+        return new PipelineToolsRegistrar();
+    }
+
+    /**
+     * MCP tool provider — exposes the same trigger/status/list/render
+     * operations to external MCP clients (Claude Desktop, other IDE
+     * agents) at {@code /mcp/pipeline}. Gated on
+     * {@link io.jaiclaw.core.mcp.McpToolProvider} being on the classpath
+     * (lives in {@code jaiclaw-core}, so always on for the embedded path).
+     */
+    @Bean
+    @ConditionalOnClass(name = "io.jaiclaw.core.mcp.McpToolProvider")
+    @ConditionalOnBean(PipelineGateway.class)
+    public io.jaiclaw.pipeline.mcp.PipelineMcpToolProvider pipelineMcpToolProvider(
+            PipelineGateway gateway,
+            PipelineRegistry registry,
+            PipelineExecutionTracker tracker,
+            ObjectProvider<io.jaiclaw.pipeline.render.PipelineRenderService> renderProvider) {
+        return new io.jaiclaw.pipeline.mcp.PipelineMcpToolProvider(
+                gateway, registry, tracker, renderProvider.getIfAvailable());
+    }
+
+    /**
+     * Marker bean returned by the tools registrar so Spring has something
+     * concrete to hold onto. The real work happens in the bean method's
+     * {@code registerAll(...)} call.
+     */
+    public static class PipelineToolsRegistrar {}
 }

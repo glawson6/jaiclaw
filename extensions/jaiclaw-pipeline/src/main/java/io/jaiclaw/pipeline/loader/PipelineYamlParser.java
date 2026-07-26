@@ -1,10 +1,10 @@
 package io.jaiclaw.pipeline.loader;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 import io.jaiclaw.pipeline.PipelineDefinition;
 
 import java.io.IOException;
@@ -23,9 +23,14 @@ import java.io.InputStream;
  */
 final class PipelineYamlParser {
 
-    /** Shared mapper; jackson ObjectMapper is thread-safe after configuration. */
-    private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    /** Shared mapper; jackson ObjectMapper is thread-safe after configuration.
+     *  Jackson 3 flipped FAIL_ON_NULL_FOR_PRIMITIVES to true by default; pipelines
+     *  historically expected null → 0/false for absent int/boolean fields so we
+     *  restore Jackson-2 behavior explicitly. */
+    private static final ObjectMapper MAPPER = tools.jackson.dataformat.yaml.YAMLMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .build();
 
     private PipelineYamlParser() {}
 
@@ -46,7 +51,7 @@ final class PipelineYamlParser {
         JsonNode root;
         try {
             root = MAPPER.readTree(in);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new PipelineLoadException(
                     "Failed to parse pipeline file '" + resourceName + "': " + e.getMessage(), e);
         }
@@ -76,7 +81,7 @@ final class PipelineYamlParser {
 
         try {
             return MAPPER.treeToValue(objectRoot, PipelineDefinition.class);
-        } catch (IllegalArgumentException | IOException e) {
+        } catch (Exception e) {
             throw new PipelineLoadException(
                     "Failed to bind pipeline definition from '" + resourceName + "': " + e.getMessage(), e);
         }

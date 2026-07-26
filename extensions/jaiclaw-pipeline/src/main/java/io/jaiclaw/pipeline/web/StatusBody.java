@@ -17,11 +17,17 @@ import java.time.Instant;
  * @param startedAt     when the execution began
  * @param completedAt   when it finished (nullable while {@code RUNNING})
  * @param failureReason failure message (nullable unless {@code status=FAILED})
+ * @param result        caller-visible result string on {@code SUCCESS}
+ *                      (nullable while running or on failure). Runtime
+ *                      populates from a stage's {@code metadata.__result__},
+ *                      the definition's {@code resultTemplate}, or the
+ *                      fallback {@code "SUCCESS"}. Truncated at 4 KB.
  */
 public record StatusBody(
         String id,
         String status,
         Instant startedAt,
         Instant completedAt,
-        String failureReason
+        String failureReason,
+        String result
 ) {}

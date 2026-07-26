@@ -1,8 +1,7 @@
 package io.jaiclaw.kanban.idempotency;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +39,11 @@ public class EffectLedger {
     public EffectLedger(Path storageDir) {
         this.journalPath = storageDir.resolve("effects.jsonl");
         this.json = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                
+                ;
         try {
             Files.createDirectories(storageDir);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new IllegalStateException("Cannot create effects journal dir: " + storageDir, e);
         }
         loadFromDisk();
@@ -72,7 +71,7 @@ public class EffectLedger {
             String line = json.writeValueAsString(new Entry(key, result, Instant.now()));
             Files.writeString(journalPath, line + "\n", StandardCharsets.UTF_8,
                     new OpenOption[]{StandardOpenOption.CREATE, StandardOpenOption.APPEND});
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to append effect-ledger entry for {}: {}", key, e.getMessage());
             throw new IllegalStateException("Effect ledger append failed", e);
         }
@@ -92,12 +91,12 @@ public class EffectLedger {
                     if (entry.key() != null) {
                         entries.put(entry.key(), entry.result() == null ? "" : entry.result());
                     }
-                } catch (IOException parseError) {
+                } catch (Exception parseError) {
                     log.warn("Skipping malformed effect-ledger line: {}", parseError.getMessage());
                 }
             }
             log.info("Loaded {} effect-ledger entries from {}", entries.size(), journalPath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to read effect ledger at {}: {}", journalPath, e.getMessage());
         }
     }

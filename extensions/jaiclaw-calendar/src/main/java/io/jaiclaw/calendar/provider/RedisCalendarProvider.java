@@ -1,7 +1,7 @@
 package io.jaiclaw.calendar.provider;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.model.*;
 import io.jaiclaw.calendar.util.CalendarEventValidator;
 import org.slf4j.Logger;
@@ -452,7 +452,7 @@ public class RedisCalendarProvider implements CalendarProvider {
     private <T> Mono<T> deserialize(String json, Class<T> type) {
         try {
             return Mono.just(objectMapper.readValue(json, type));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to deserialize {}: {}", type.getSimpleName(), e.getMessage());
             return Mono.error(new RuntimeException("Failed to deserialize " + type.getSimpleName(), e));
         }
@@ -461,7 +461,7 @@ public class RedisCalendarProvider implements CalendarProvider {
     private Mono<String> serialize(Object value) {
         try {
             return Mono.just(objectMapper.writeValueAsString(value));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return Mono.error(new RuntimeException("Failed to serialize " + value.getClass().getSimpleName(), e));
         }
     }

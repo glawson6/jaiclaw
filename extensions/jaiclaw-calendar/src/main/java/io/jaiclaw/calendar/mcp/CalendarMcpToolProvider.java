@@ -1,7 +1,7 @@
 package io.jaiclaw.calendar.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.config.CalendarProperties;
 import io.jaiclaw.calendar.model.AppointmentRequest;
 import io.jaiclaw.calendar.model.CalendarEvent;
@@ -212,7 +212,7 @@ public class CalendarMcpToolProvider implements McpToolProvider {
         return (value != null && !value.toString().isBlank()) ? value.toString() : defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

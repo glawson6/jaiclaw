@@ -1,0 +1,53 @@
+id: pipeline-author
+title: Author a JaiClaw Pipeline
+description: >-
+  Scaffold, validate, and wire a new JaiClaw pipeline from an inline YAML,
+  per-file YAML, or Java DSL definition. Full step-by-step playbook lives
+  in the Claude Code skill at .claude/skills/pipeline-author/SKILL.md.
+category: authoring
+tags: [pipeline, authoring, scaffold]
+promptTemplate: >-
+  Author a JaiClaw pipeline named {pipeline_id} using {source_type}
+  (one of: inline, per-file, java-dsl). Kick off with trigger
+  {trigger_type} and first stage of type {stage_type} pointing at
+  {stage_ref}. Follow the .claude/skills/pipeline-author playbook
+  for the full sequence: scaffold → validate → wire trigger →
+  verify via /actuator/pipelines. Do NOT deploy or trigger the
+  pipeline in this pass — this blueprint is scaffold +
+  static-validation only.
+slots:
+  - key: pipeline_id
+    label: Pipeline id
+    type: TEXT
+    required: true
+    description: "Kebab-case identifier (e.g. 'invoice-processor')."
+  - key: source_type
+    label: Definition source
+    type: CHOICE
+    required: true
+    defaultValue: per-file
+    description: >-
+      One of: inline, per-file, java-dsl. Per-file is the most portable
+      and matches what the Pipeline Studio exports.
+  - key: trigger_type
+    label: Trigger type
+    type: CHOICE
+    required: true
+    defaultValue: MANUAL
+    description: "One of: MANUAL, HTTP, CRON, FILE, CAMEL_URI."
+  - key: stage_type
+    label: First stage type
+    type: CHOICE
+    required: true
+    defaultValue: PROCESSOR
+    description: "One of: AGENT, PROCESSOR, CAMEL."
+  - key: stage_ref
+    label: Stage reference
+    type: TEXT
+    required: true
+    description: >-
+      For AGENT: the agentId. For PROCESSOR: the Spring bean name
+      (bare Function<String,String> or a
+      @PipelineProcessor-annotated ConfigurableStageProcessor).
+      For CAMEL: a Camel URI subject to the security allowlist.
+deepLinkPath: /mcp/pipeline-authoring

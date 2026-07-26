@@ -22,8 +22,8 @@ class AsciiRenderToolProfileSpec extends Specification {
         def parsed = new JsonSlurper().parseText(tool.definition().inputSchema())
 
         then:
-        parsed.properties.profile.type == "string"
-        parsed.properties.padding.type == "integer"
+        parsed.get("properties").get("profile").get("type") == "string"
+        parsed.get("properties").get("padding").get("type") == "integer"
         // width is no longer required at the JSON layer (profile supplies it)
         parsed.required as Set == ["height", "elements"] as Set
     }

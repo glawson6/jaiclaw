@@ -1,6 +1,6 @@
 package io.jaiclaw.calendar.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.calendar.mcp.CalendarMcpToolProvider;
 import io.jaiclaw.calendar.provider.CalendarProvider;
 import io.jaiclaw.calendar.provider.InMemoryCalendarProvider;
@@ -34,7 +34,7 @@ public class JaiClawCalendarAutoConfiguration {
     public CalendarProperties calendarProperties(Environment environment) {
         return Binder.get(environment)
                 .bind("jaiclaw.calendar", CalendarProperties.class)
-                .orElse(new CalendarProperties());
+                .orElse(CalendarProperties.defaults());
     }
 
     @Bean

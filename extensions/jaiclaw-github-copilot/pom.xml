@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-extensions</artifactId>
+        <version>1.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-github-copilot</artifactId>
+    <name>JaiClaw :: GitHub Copilot</name>
+    <description>Spring AI ChatModel adapter over the official GitHub Copilot Java SDK (com.github:copilot-sdk-java). Wraps CopilotClient/CopilotSession into Spring AI's ChatModel + StreamingChatModel contracts, bidirectional tool-definition mapping, and Spring Boot auto-configuration.</description>
+
+    <dependencies>
+        <!-- GitHub Copilot Java SDK — the official com.github:copilot-sdk-java artifact -->
+        <dependency>
+            <groupId>com.github</groupId>
+            <artifactId>copilot-sdk-java</artifactId>
+        </dependency>
+
+        <!-- Spring AI ChatModel + StreamingChatModel + ChatOptions + ToolDefinition contracts -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-model</artifactId>
+        </dependency>
+
+        <!-- Jackson 3 for JSON-Schema string parse/serialize inside CopilotToolMapper.
+             The Copilot SDK bundles its own Jackson 2; we deliberately don't cross
+             that boundary — the mapper's Object <-> Map conversion stays inside
+             this module. -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Spring Boot auto-config (optional so consumers who only want the ChatModel
+             classes don't pull the Boot machinery) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Reactor for the StreamingChatModel Flux/Sinks bridge -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test: Spock + Groovy 5 (matches root pom) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Spock needs byte-buddy + objenesis for concrete-class mocks (CopilotClient
+             is a concrete class in the SDK). -->
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

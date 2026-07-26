@@ -117,6 +117,32 @@ class RateLimitFilterSpec extends Specification {
         1 * chain.doFilter(reqB, respB)
     }
 
+    // --- Configurable skip-paths ---
+
+    def "non-api paths still bypass even when skip-paths is empty"() {
+        given:
+        // Backward-compat: the built-in /api/** whitelist gate is the primary
+        // exclusion; skip-paths only *adds* to it.
+        def filter = new RateLimitFilter(1, 60, 3600)
+
+        expect:
+        filter.shouldNotFilter(mockRequest("/webhook/telegram", "10.0.0.1"))
+        filter.shouldNotFilter(mockRequest("/pipelines/dashboard", "10.0.0.1"))
+        filter.shouldNotFilter(mockRequest("/", "10.0.0.1"))
+        !filter.shouldNotFilter(mockRequest("/api/chat", "10.0.0.1"))
+    }
+
+    def "skip-paths adds exclusions on top of the /api/** whitelist gate"() {
+        given:
+        // With skip-paths=[/api/health], /api/health bypasses the filter even
+        // though it starts with /api/ — that's the whole point of the config.
+        def filter = new RateLimitFilter(1, 60, 3600, ["/api/health"])
+
+        expect:
+        filter.shouldNotFilter(mockRequest("/api/health", "10.0.0.1"))
+        !filter.shouldNotFilter(mockRequest("/api/chat", "10.0.0.1"))
+    }
+
     private HttpServletRequest mockRequest(String uri, String remoteAddr) {
         def request = Mock(HttpServletRequest)
         request.getRequestURI() >> uri

@@ -39,6 +39,11 @@ public sealed interface HookEvent
                 SessionStartedEvent, SessionEndedEvent, BeforeResetEvent,
                 BeforeCompactionEvent, AfterCompactionEvent,
                 TaskStateChangedEvent,
+                PipelineExecutionStartedEvent, PipelineExecutionCompletedEvent,
+                PipelineExecutionFailedEvent,
+                PipelineStageStartedEvent, PipelineStageCompletedEvent,
+                PipelineStageFailedEvent,
+                PipelineDeployedEvent, PipelineUndeployedEvent,
                 SoulUpdatedEvent, MemoryUpdatedEvent, TendenciesUpdatedEvent {
 
     /** The agent id firing this event (e.g. {@code "default"}). Never null. */

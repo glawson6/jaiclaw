@@ -1,0 +1,36 @@
+{
+  "name": "jaiclaw-pipeline-studio",
+  "version": "1.0.0-SNAPSHOT",
+  "private": true,
+  "type": "module",
+  "description": "React Flow SPA for the JaiClaw Pipeline Studio. Built by frontend-maven-plugin; artifact lands under META-INF/resources/studio/ in the parent jar.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rjsf/core": "5.24.0",
+    "@rjsf/utils": "5.24.0",
+    "@rjsf/validator-ajv8": "5.24.0",
+    "@xyflow/react": "12.4.4",
+    "js-yaml": "4.1.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
+    "@testing-library/user-event": "14.5.2",
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "^26.1.1",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "jsdom": "25.0.1",
+    "typescript": "5.6.3",
+    "vite": "6.0.7",
+    "vitest": "2.1.8"
+  }
+}

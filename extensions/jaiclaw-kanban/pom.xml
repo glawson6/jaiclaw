@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-extensions</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-kanban</artifactId>
@@ -42,12 +42,8 @@
 
         <!-- YAML loader for board definitions -->
         <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <groupId>tools.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
         <!-- Spring Boot -->
@@ -82,15 +78,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Phase 3: optional Spring State Machine engine. Activated by
-             jaiclaw.kanban.engine=spring-statemachine AND classpath presence. -->
-        <dependency>
-            <groupId>org.springframework.statemachine</groupId>
-            <artifactId>spring-statemachine-core</artifactId>
-            <version>${spring-statemachine.version}</version>
-            <optional>true</optional>
-        </dependency>
-
         <!-- Phase 4: optional H2-backed BoardStore. Mirrors jaiclaw-tasks'
              H2TaskStore wiring. Activated by jaiclaw.kanban.boards.type=h2. -->
         <dependency>
@@ -116,11 +103,23 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- TestRestTemplate moved to its own module in Boot 4. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- TestRestTemplate's auto-config needs RestTemplateBuilder from spring-boot-restclient. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Required by KanbanBoardControllerSpec — boots a real RANDOM_PORT
              Tomcat to exercise the REST controller end-to-end. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Required by KanbanSurfacesE2ESpec to hit /actuator/kanban. -->

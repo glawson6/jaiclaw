@@ -1,6 +1,6 @@
 package io.jaiclaw.examples.travel;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.plugin.PluginDefinition;
 import io.jaiclaw.core.plugin.PluginKind;
 import io.jaiclaw.core.tool.ToolContext;

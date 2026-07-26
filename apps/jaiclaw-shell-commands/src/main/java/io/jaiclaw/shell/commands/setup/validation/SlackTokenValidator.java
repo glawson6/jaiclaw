@@ -1,20 +1,18 @@
 package io.jaiclaw.shell.commands.setup.validation;
 
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
 @Component
 public class SlackTokenValidator {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
-    public SlackTokenValidator(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public SlackTokenValidator(RestClient restClient) {
+        this.restClient = restClient;
     }
 
     public record ValidationResult(boolean valid, String message) {}
@@ -22,15 +20,12 @@ public class SlackTokenValidator {
     @SuppressWarnings("unchecked")
     public ValidationResult validate(String botToken) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(botToken);
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-            HttpEntity<Void> request = new HttpEntity<>(null, headers);
-            Map<String, Object> response = restTemplate.postForObject(
-                    "https://slack.com/api/auth.test",
-                    request,
-                    Map.class);
+            Map<String, Object> response = restClient.post()
+                    .uri("https://slack.com/api/auth.test")
+                    .header("Authorization", "Bearer " + botToken)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .retrieve()
+                    .body(Map.class);
 
             if (response != null && Boolean.TRUE.equals(response.get("ok"))) {
                 return new ValidationResult(true, "Bot validated: " + response.get("user"));

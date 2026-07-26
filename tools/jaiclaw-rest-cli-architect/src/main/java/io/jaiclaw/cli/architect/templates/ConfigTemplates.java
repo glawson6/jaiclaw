@@ -80,7 +80,7 @@ public final class ConfigTemplates {
                 package %s
 
                 import spock.lang.Specification
-                import com.fasterxml.jackson.databind.ObjectMapper
+                import tools.jackson.databind.ObjectMapper
 
                 class %sSpec extends Specification {
 

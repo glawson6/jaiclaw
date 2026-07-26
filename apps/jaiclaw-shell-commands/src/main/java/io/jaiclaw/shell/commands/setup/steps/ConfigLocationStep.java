@@ -1,47 +1,12 @@
 package io.jaiclaw.shell.commands.setup.steps;
 
-import io.jaiclaw.shell.commands.setup.OnboardResult;
-import io.jaiclaw.shell.commands.setup.WizardStep;
-import io.jaiclaw.shell.commands.setup.config.ConfigLocation;
-import org.springframework.shell.component.flow.ComponentFlow;
-
-import java.nio.file.Path;
-
-public final class ConfigLocationStep implements WizardStep {
-
-    private final ComponentFlow.Builder flowBuilder;
-
-    public ConfigLocationStep(ComponentFlow.Builder flowBuilder) {
-        this.flowBuilder = flowBuilder;
-    }
-
-    @Override
-    public String name() {
-        return "Config Location";
-    }
-
-    @Override
-    public boolean execute(OnboardResult result) {
-        Path defaultDir = ConfigLocation.defaultDir();
-        Path cwd = Path.of("").toAbsolutePath();
-
-        ComponentFlow flow = flowBuilder.clone().reset()
-                .withSingleItemSelector("config-location")
-                    .name("Where should configuration be saved?")
-                    .selectItem("home", defaultDir + " (recommended, persists across projects)")
-                    .selectItem("cwd", cwd + " (current working directory)")
-                    .and()
-                .build();
-
-        ComponentFlow.ComponentFlowResult flowResult = flow.run();
-        String selected = WizardStep.getOrNull(flowResult.getContext(), "config-location", String.class);
-
-        if ("cwd".equals(selected)) {
-            result.setConfigDir(cwd);
-        } else {
-            result.setConfigDir(defaultDir);
-        }
-
-        return true;
-    }
+/**
+ * TODO(spring-shell-4-migration): This class used the Spring Shell 3
+ * ComponentFlow / PromptProvider APIs, which were removed in Spring Shell 4.
+ * The interactive onboarding wizard needs to be rebuilt using Shell 4's new
+ * component model. Quarantined during the Boot 4 upgrade to unblock the reactor.
+ * See docs/spring-boot-4-upgrade/06-spring-shell-4-migration.md.
+ */
+public class ConfigLocationStep {
+    // Body removed during Spring Boot 4 upgrade — see class javadoc.
 }

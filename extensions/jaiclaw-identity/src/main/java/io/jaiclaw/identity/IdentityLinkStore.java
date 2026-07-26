@@ -1,6 +1,6 @@
 package io.jaiclaw.identity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.model.IdentityLink;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
@@ -98,7 +98,7 @@ public class IdentityLinkStore {
                 linksByChannelKey.put(channelKey(link.channel(), link.channelUserId(), link.tenantId()), link);
             }
             log.info("Loaded {} identity links from {}", linksByChannelKey.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Failed to load identity links: {}", e.getMessage());
         }
     }

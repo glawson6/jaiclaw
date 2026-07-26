@@ -3,8 +3,8 @@ package io.jaiclaw.voice.tts;
 import io.jaiclaw.core.model.AudioResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
@@ -18,12 +18,12 @@ public class OpenAiTtsProvider implements TtsProvider {
 
     private final String apiKey;
     private final String model;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
     public OpenAiTtsProvider(String apiKey, String model) {
         this.apiKey = apiKey;
         this.model = model != null ? model : "tts-1";
-        this.restTemplate = new RestTemplate();
+        this.restClient = RestClient.create();
     }
 
     @Override
@@ -34,22 +34,22 @@ public class OpenAiTtsProvider implements TtsProvider {
     @Override
     public AudioResult synthesize(String text, String voice, Map<String, String> options) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
-
             String body = String.format(
                     "{\"model\":\"%s\",\"input\":\"%s\",\"voice\":\"%s\",\"response_format\":\"mp3\"}",
                     model, escapeJson(text), voice != null ? voice : "alloy");
 
-            HttpEntity<String> request = new HttpEntity<>(body, headers);
-            ResponseEntity<byte[]> response = restTemplate.exchange(
-                    API_URL, HttpMethod.POST, request, byte[].class);
+            byte[] audio = restClient.post()
+                    .uri(API_URL)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(byte[].class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return new AudioResult(response.getBody(), "audio/mpeg", 0);
+            if (audio != null && audio.length > 0) {
+                return new AudioResult(audio, "audio/mpeg", 0);
             }
-            throw new RuntimeException("TTS API returned " + response.getStatusCode());
+            throw new RuntimeException("TTS API returned empty body");
         } catch (Exception e) {
             log.error("OpenAI TTS failed: {}", e.getMessage());
             throw new RuntimeException("OpenAI TTS synthesis failed", e);

@@ -236,7 +236,7 @@ curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
 
 # From source: build the CLI jar via `./mvnw` (needs Java 21 + git; 5-15 min cold cache)
 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
-JAICLAW_REF=v0.9.2 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+JAICLAW_REF=v1.0.0 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 ```
 
 All three land at `~/.jaiclaw/` and produce the same `jaiclaw` command on your PATH. See [CLI-REFERENCE § Installation](CLI-REFERENCE.md#installation) for the full flag reference and layout.
@@ -1418,14 +1418,7 @@ When Spring Web is on the classpath:
 
 ### State Engine
 
-Default: lightweight transition-graph engine. Optional Spring State Machine engine when both classpath presence (`spring-statemachine-core:4.0.1`) and property are set:
-
-```yaml
-jaiclaw:
-  kanban:
-    engine:
-      name: spring-statemachine   # default: graph
-```
+Bundled: lightweight transition-graph engine (the default and only bundled implementation as of 1.0.0). The Spring State Machine engine that shipped in earlier releases was removed during the Spring Boot 4 upgrade — upstream declined to support Boot 4 (see [spring-projects/spring-statemachine#1207](https://github.com/spring-projects/spring-statemachine/issues/1207)). The `TaskStateEngine` SPI remains: adopters can register their own engine bean and the default steps aside via `@ConditionalOnMissingBean`.
 
 ### Column Processors (Phase 3)
 

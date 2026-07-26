@@ -30,5 +30,4 @@ spring:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:not-set}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}

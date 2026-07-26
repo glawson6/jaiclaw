@@ -79,10 +79,11 @@ public class KanbanAutoConfiguration {
     }
 
     /**
-     * Default {@link TaskStateEngine}. The Spring State Machine engine
-     * registers via {@link io.jaiclaw.kanban.statemachine.SpringStateMachineConfiguration}
-     * and takes precedence over this bean through
-     * {@code @ConditionalOnMissingBean}.
+     * Default {@link TaskStateEngine}. Adopters can register an alternate
+     * engine bean (Spring Boot's {@code @ConditionalOnMissingBean} will step
+     * this one aside). The bundled Spring State Machine engine was removed
+     * during the Spring Boot 4 upgrade — upstream declined to support Boot 4
+     * (see spring-projects/spring-statemachine#1207).
      */
     @Bean
     @ConditionalOnMissingBean

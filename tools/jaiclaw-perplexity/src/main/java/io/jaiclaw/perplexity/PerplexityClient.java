@@ -1,9 +1,9 @@
 package io.jaiclaw.perplexity;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
 import io.jaiclaw.perplexity.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,9 +40,10 @@ public class PerplexityClient {
     PerplexityClient(String apiKey, HttpClient httpClient) {
         this.apiKey = apiKey;
         this.httpClient = httpClient;
-        this.mapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        this.mapper = tools.jackson.databind.json.JsonMapper.builder()
+                .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .build();
     }
 
     ObjectMapper mapper() {
@@ -94,7 +95,7 @@ public class PerplexityClient {
                                 }
                             }
                             return "";
-                        } catch (JsonProcessingException e) {
+                        } catch (JacksonException e) {
                             log.warn("Failed to parse SSE chunk: {}", data, e);
                             return "";
                         }
@@ -183,7 +184,7 @@ public class PerplexityClient {
     private String serialize(Object obj) {
         try {
             return mapper.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize request", e);
         }
     }
@@ -191,7 +192,7 @@ public class PerplexityClient {
     private <T> T parse(String json, Class<T> type) {
         try {
             return mapper.readValue(json, type);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new PerplexityApiException(0, "Failed to parse response: " + e.getMessage(), json);
         }
     }

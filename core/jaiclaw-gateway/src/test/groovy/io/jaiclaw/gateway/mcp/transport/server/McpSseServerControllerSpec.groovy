@@ -1,7 +1,7 @@
 package io.jaiclaw.gateway.mcp.transport.server
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.mcp.McpResourceContent
 import io.jaiclaw.core.mcp.McpResourceDefinition
 import io.jaiclaw.core.mcp.McpResourceProvider

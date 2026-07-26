@@ -1,6 +1,6 @@
 package io.jaiclaw.agentmind.memory.store;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.agent.AgentMindMemoryProvider;
 import io.jaiclaw.core.agent.MemoryOverflowException;
 import io.jaiclaw.core.agent.StaleMemoryVersionException;

@@ -285,13 +285,11 @@ public class AuthProfileStoreManager {
                 return parsed;
             }
             // Try parsing as flat map
-            com.fasterxml.jackson.databind.JsonNode root =
+            tools.jackson.databind.JsonNode root =
                     AuthProfileStoreSerializer.mapper().readTree(json);
             if (root.isObject() && !root.has("version")) {
                 Map<String, AuthProfileCredential> profiles = new LinkedHashMap<>();
-                Iterator<Map.Entry<String, com.fasterxml.jackson.databind.JsonNode>> fields = root.fields();
-                while (fields.hasNext()) {
-                    Map.Entry<String, com.fasterxml.jackson.databind.JsonNode> entry = fields.next();
+                for (Map.Entry<String, tools.jackson.databind.JsonNode> entry : root.properties()) {
                     String profileId = entry.getKey() + ":default";
                     try {
                         AuthProfileCredential cred =

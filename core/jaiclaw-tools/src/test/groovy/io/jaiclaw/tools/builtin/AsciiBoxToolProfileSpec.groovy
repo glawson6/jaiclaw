@@ -22,8 +22,8 @@ class AsciiBoxToolProfileSpec extends Specification {
         def parsed = new JsonSlurper().parseText(tool.definition().inputSchema())
 
         then:
-        parsed.properties.profile.type == "string"
-        parsed.properties.padding.type == "integer"
+        parsed.get("properties").get("profile").get("type") == "string"
+        parsed.get("properties").get("padding").get("type") == "integer"
     }
 
     def "profile=telegram_mobile yields a narrow box (width 30)"() {

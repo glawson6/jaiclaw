@@ -1,8 +1,8 @@
 package io.jaiclaw.promptanalyzer;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 import io.jaiclaw.core.skill.SkillDefinition;
 import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolProfile;
@@ -145,9 +145,9 @@ public class ProjectScanner {
         // Check first agent's tool profile; fall back to "full"
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.fields();
-            if (fields.hasNext()) {
-                JsonNode firstAgent = fields.next().getValue();
+            var it = agents.properties().iterator();
+            if (it.hasNext()) {
+                JsonNode firstAgent = it.next().getValue();
                 JsonNode profile = navigatePath(firstAgent, "tools", "profile");
                 if (profile != null && profile.isTextual()) {
                     return profile.asText();
@@ -188,9 +188,9 @@ public class ProjectScanner {
         // Check for additional system prompt content
         JsonNode agents = navigateConfigPath(root, "agent", "agents");
         if (agents != null && agents.isObject()) {
-            var fields = agents.fields();
-            if (fields.hasNext()) {
-                JsonNode firstAgent = fields.next().getValue();
+            var it = agents.properties().iterator();
+            if (it.hasNext()) {
+                JsonNode firstAgent = it.next().getValue();
 
                 // Nested config: system-prompt.content / system-prompt.source
                 JsonNode spConfig = navigatePath(firstAgent, "system-prompt");

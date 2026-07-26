@@ -5,9 +5,9 @@ import io.jaiclaw.identity.oauth.OAuthFlowException;
 import io.jaiclaw.identity.oauth.OAuthFlowManager;
 import io.jaiclaw.identity.oauth.OAuthFlowResult;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.PrintWriter;
 import java.nio.file.Path;
@@ -17,7 +17,7 @@ import java.util.Set;
 /**
  * Shell commands for OAuth login and credential management.
  */
-@ShellComponent
+@Component
 public class LoginCommand {
 
     private final ObjectProvider<OAuthFlowManager> flowManagerProvider;
@@ -29,10 +29,10 @@ public class LoginCommand {
         this.storeManagerProvider = storeManagerProvider;
     }
 
-    @ShellMethod(key = {"login"}, value = "Authenticate with an OAuth provider")
+    @Command(name = "login", description = "Authenticate with an OAuth provider")
     public String login(
-            @ShellOption(defaultValue = "") String provider,
-            @ShellOption(value = "--list", defaultValue = "false") boolean listProviders) {
+            @Option(defaultValue = "") String provider,
+            @Option(longName = "list", defaultValue = "false") boolean listProviders) {
 
         OAuthFlowManager flowManager = flowManagerProvider.getIfAvailable();
         if (flowManager == null) {
@@ -82,8 +82,8 @@ public class LoginCommand {
         }
     }
 
-    @ShellMethod(key = {"logout"}, value = "Remove stored credentials for a profile")
-    public String logout(@ShellOption String profileId) {
+    @Command(name = "logout", description = "Remove stored credentials for a profile")
+    public String logout(@Option String profileId) {
         AuthProfileStoreManager storeManager = storeManagerProvider.getIfAvailable();
         if (storeManager == null) {
             return "Auth profile store is not configured.";

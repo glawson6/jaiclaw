@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-spring-boot-starter</artifactId>
@@ -56,6 +56,22 @@
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-security</artifactId>
             <optional>true</optional>
+        </dependency>
+        <!--
+          Default web exception handlers — auto-activate against whichever
+          web stack the consumer already brought in (servlet or reactive)
+          via @ConditionalOnClass, so both are safe to ship. Fixes the
+          "catch-all Throwable → 500 with ex.getMessage()" pattern; opt
+          out with jaiclaw.web.errors.enabled=false. See
+          docs/user/WEB-ERROR-HANDLING.md.
+        -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-web-errors-mvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-web-errors-webflux</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jaiclaw</groupId>
@@ -164,6 +180,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
         </dependency>
+        <!-- Boot 4 split RestClient/RestTemplate builders into their own tech
+             module. JaiClawHttpAutoConfiguration wires RestClientCustomizer
+             from here — required to satisfy the auto-config introspection. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
 
         <!-- Embabel starter — optional; pulled transitively only by jaiclaw-starter-embabel -->
         <dependency>
@@ -198,11 +221,11 @@
             <artifactId>spring-ai-starter-model-bedrock-converse</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-azure-openai</artifactId>
-            <optional>true</optional>
-        </dependency>
+        <!-- Azure OpenAI, MiniMax, and OCI GenAI native starters were removed
+             in Spring AI 2.0 (last releases were 2.0.0-M4/M8). Adopters should
+             route via the anthropic or openai starter with a base-url override
+             (e.g. api.minimax.io/anthropic) — see CLAUDE.md § Embabel LLM
+             Model Configuration for the three-layer routing pattern. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-deepseek</artifactId>
@@ -213,19 +236,10 @@
             <artifactId>spring-ai-starter-model-mistral-ai</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Google Vertex AI Gemini was renamed to google-genai in Spring AI 2.0. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-minimax</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-oci-genai</artifactId>
+            <artifactId>spring-ai-starter-model-google-genai</artifactId>
             <optional>true</optional>
         </dependency>
         <!-- Test dependencies -->

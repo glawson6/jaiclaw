@@ -3,7 +3,7 @@
 //REPOS mavenLocal,mavenCentral
 //DEPS io.jaiclaw:jaiclaw-identity:0.1.0-SNAPSHOT
 //DEPS io.jaiclaw:jaiclaw-core:0.1.0-SNAPSHOT
-//DEPS com.fasterxml.jackson.core:jackson-databind:2.17.2
+//DEPS tools.jackson.core:jackson-databind:2.17.2
 //DEPS org.slf4j:slf4j-simple:2.0.16
 
 import io.jaiclaw.core.auth.*;

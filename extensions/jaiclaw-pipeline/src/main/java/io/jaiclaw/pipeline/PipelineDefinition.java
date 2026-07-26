@@ -17,6 +17,14 @@ import java.util.List;
  * @param stages         ordered list of stage definitions
  * @param output         final output delivery configuration
  * @param security       per-pipeline security overrides (nullable — uses global defaults)
+ * @param resultTemplate template used to produce the caller-visible result
+ *                       string on successful completion (nullable). Supports
+ *                       {@code {{stages.<name>.output}}}, {@code
+ *                       {{stages.<name>.metadata.<key>}}}, {@code {{input}}},
+ *                       and {@code {{pipeline.*}}}. Ignored if a stage bean
+ *                       has already written {@link PipelineResult#RESULT_KEY}
+ *                       to the exchange — stage-write wins. See
+ *                       {@link PipelineResult}.
  */
 public record PipelineDefinition(
         String id,
@@ -30,10 +38,17 @@ public record PipelineDefinition(
         String deadLetterUri,
         List<StageDefinition> stages,
         OutputDefinition output,
-        PipelineSecurityProperties security
+        PipelineSecurityProperties security,
+        String resultTemplate
 ) {
     public PipelineDefinition {
-        if (id == null || id.isBlank()) throw new IllegalArgumentException("Pipeline id must not be blank");
+        // A blank id is a legal *value* — the compact constructor coalesces
+        // nulls to defaults but does not throw, so the record can round-trip
+        // through Jackson for endpoints like POST /api/pipeline-studio/validate
+        // that need to *report* on invalid input rather than crash on it.
+        // "Blank id is not registerable" is enforced at the boundary:
+        // PipelineRegistry.register, PipelineProperties YAML loader, and
+        // PipelineValidator (produces an ID_BLANK ValidationError).
         if (tenantIds == null) tenantIds = List.of();
         else tenantIds = List.copyOf(tenantIds);
         if (trigger == null) trigger = new TriggerDefinition(TriggerType.MANUAL, null, null, null);
@@ -43,5 +58,20 @@ public record PipelineDefinition(
         else stages = List.copyOf(stages);
         if (output == null) output = new OutputDefinition(OutputType.NONE, null, null, null);
         if (security == null) security = PipelineSecurityProperties.DEFAULT;
+    }
+
+    /**
+     * Backward-compatible 12-arg constructor — omits {@code resultTemplate},
+     * which defaults to {@code null}. Retained so existing YAML mapper
+     * fixtures and external callers compile unchanged.
+     */
+    public PipelineDefinition(String id, String name, String description,
+                              List<String> tenantIds, boolean enabled,
+                              TriggerDefinition trigger, ErrorStrategy errorStrategy,
+                              int maxRetries, String deadLetterUri,
+                              List<StageDefinition> stages, OutputDefinition output,
+                              PipelineSecurityProperties security) {
+        this(id, name, description, tenantIds, enabled, trigger, errorStrategy,
+                maxRetries, deadLetterUri, stages, output, security, null);
     }
 }

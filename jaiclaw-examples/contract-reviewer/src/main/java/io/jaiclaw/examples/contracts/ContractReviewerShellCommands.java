@@ -2,9 +2,9 @@ package io.jaiclaw.examples.contracts;
 
 import io.jaiclaw.pipeline.tracking.PipelineExecutionSummary;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
 
-@ShellComponent
+@Component
 public class ContractReviewerShellCommands {
 
     private final PipelineExecutionTracker tracker;
@@ -23,9 +23,8 @@ public class ContractReviewerShellCommands {
         this.tracker = tracker;
     }
 
-    @ShellMethod(key = {"inbox"},
-            value = "Drop a contract text into the watched inbox so the FILE trigger picks it up.")
-    public String inbox(@ShellOption(arity = Integer.MAX_VALUE) String[] words) throws IOException {
+    @Command(name = "inbox", description = "Drop a contract text into the watched inbox so the FILE trigger picks it up.")
+    public String inbox(@Option String[] words) throws IOException {
         String body;
         if (words == null || words.length == 0) {
             body = """
@@ -49,9 +48,8 @@ public class ContractReviewerShellCommands {
                 + "Pipeline should pick it up; run `executions` then `last-result`.";
     }
 
-    @ShellMethod(key = {"show-redlines"},
-            value = "Print the redline-stage output for a given execution.")
-    public String showRedlines(@ShellOption String executionId) {
+    @Command(name = "show-redlines", description = "Print the redline-stage output for a given execution.")
+    public String showRedlines(@Option String executionId) {
         Optional<PipelineExecutionSummary> summary = tracker.byId(executionId);
         if (summary.isEmpty()) {
             return "Unknown executionId: " + executionId;
@@ -60,7 +58,7 @@ public class ContractReviewerShellCommands {
                 + "io.jaiclaw.pipeline.output.contract-reviewer — grep the application log for executionId=" + executionId + ")";
     }
 
-    @ShellMethod(key = {"executions", "ph"}, value = "Show recent pipeline executions.")
+    @Command(name = "executions", alias = "ph", description = "Show recent pipeline executions.")
     public String executions() {
         List<PipelineExecutionSummary> recent = tracker.recent(ContractReviewerPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {
@@ -76,8 +74,7 @@ public class ContractReviewerShellCommands {
         return sj.toString();
     }
 
-    @ShellMethod(key = {"last-result"},
-            value = "Print the most recent execution's final output.")
+    @Command(name = "last-result", description = "Print the most recent execution's final output.")
     public String lastResult() {
         List<PipelineExecutionSummary> recent = tracker.recent(ContractReviewerPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {

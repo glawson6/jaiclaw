@@ -1,10 +1,8 @@
 package io.jaiclaw.kanban.persistence;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 import io.jaiclaw.kanban.loader.BoardYamlParser;
 import io.jaiclaw.kanban.model.BoardDefinition;
 import org.slf4j.Logger;
@@ -42,11 +40,10 @@ public class YamlFileBoardStore implements BoardStore {
 
     public YamlFileBoardStore(Path boardsDir) {
         this.boardsDir = boardsDir;
-        this.yaml = new ObjectMapper(new YAMLFactory()
-                .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
-                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.yaml = tools.jackson.dataformat.yaml.YAMLMapper.builder()
+                .disable(YAMLWriteFeature.WRITE_DOC_START_MARKER)
+                .enable(YAMLWriteFeature.MINIMIZE_QUOTES)
+                .build();
         try {
             Files.createDirectories(boardsDir);
         } catch (IOException e) {

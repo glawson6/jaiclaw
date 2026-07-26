@@ -1,8 +1,8 @@
 package io.jaiclaw.discord.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.core.mcp.McpToolResult;
@@ -11,8 +11,10 @@ import io.jaiclaw.core.tenant.TenantContextHolder;
 import io.jaiclaw.discord.config.DiscordToolsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -34,17 +36,37 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     private final String botToken;
     private final DiscordToolsProperties properties;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Primary constructor — use {@link RestClient} (Spring 6.1+; the Boot 4 default).
+     */
+    public DiscordMcpToolProvider(String botToken,
+                                  DiscordToolsProperties properties,
+                                  RestClient restClient,
+                                  ObjectMapper objectMapper) {
+        this.botToken = botToken;
+        this.properties = properties;
+        this.restClient = restClient;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters that
+     * still wire a {@link RestTemplate}. The RestTemplate reference is not used
+     * (all requests go through the equivalent {@link RestClient} adapter);
+     * migrate call-sites to the {@link RestClient} constructor.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #DiscordMcpToolProvider(String,
+     *     DiscordToolsProperties, RestClient, ObjectMapper)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
     public DiscordMcpToolProvider(String botToken,
                                   DiscordToolsProperties properties,
                                   RestTemplate restTemplate,
                                   ObjectMapper objectMapper) {
-        this.botToken = botToken;
-        this.properties = properties;
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+        this(botToken, properties, RestClient.create(), objectMapper);
     }
 
     @Override
@@ -100,7 +122,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     // ── Tool handlers ──
 
-    private McpToolResult handleSend(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleSend(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String message = requireString(args, "message");
         boolean silent = Boolean.parseBoolean(stringOrDefault(args, "silent", "false"));
@@ -118,7 +140,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "channelId", channelId)));
     }
 
-    private McpToolResult handleRead(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleRead(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         int limit = intOrDefault(args, "limit", 20);
         limit = Math.min(limit, 100);
@@ -141,7 +163,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
         return McpToolResult.success(toJson(Map.of("messages", messages, "count", messages.size())));
     }
 
-    private McpToolResult handleReact(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleReact(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String emoji = requireString(args, "emoji");
@@ -158,7 +180,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "emoji", emoji)));
     }
 
-    private McpToolResult handleEdit(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleEdit(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String message = requireString(args, "message");
@@ -172,7 +194,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleDelete(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleDelete(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -184,7 +206,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handlePin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handlePin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -196,7 +218,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleUnpin(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleUnpin(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
 
@@ -208,7 +230,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "messageId", messageId)));
     }
 
-    private McpToolResult handleThreadCreate(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handleThreadCreate(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String messageId = requireString(args, "messageId");
         String threadName = requireString(args, "threadName");
@@ -223,7 +245,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
                 "threadName", threadName)));
     }
 
-    private McpToolResult handlePoll(Map<String, Object> args) throws JsonProcessingException {
+    private McpToolResult handlePoll(Map<String, Object> args) throws JacksonException {
         String channelId = requireString(args, "channelId");
         String question = requireString(args, "question");
 
@@ -263,59 +285,70 @@ public class DiscordMcpToolProvider implements McpToolProvider {
 
     // ── Discord REST helpers ──
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bot " + botToken);
-        return headers;
-    }
+    private String authHeader() { return "Bot " + botToken; }
 
     private JsonNode discordPost(String path, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            var response = restTemplate.postForEntity(DISCORD_API + path, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.post()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private JsonNode discordGet(String path) {
-        var request = new HttpEntity<>(authHeaders());
         try {
-            var response = restTemplate.exchange(
-                    DISCORD_API + path, HttpMethod.GET, request, JsonNode.class);
-            return response.getBody() != null ? response.getBody() : objectMapper.createObjectNode();
+            JsonNode result = restClient.get()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .retrieve()
+                    .body(JsonNode.class);
+            return result != null ? result : objectMapper.createObjectNode();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordPut(String path) {
-        var headers = authHeaders();
-        headers.setContentLength(0);
-        var request = new HttpEntity<>(null, headers);
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.PUT, request, Void.class);
+            restClient.put()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .header("Content-Length", "0")
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordPatch(String path, Map<String, Object> body) {
-        var request = new HttpEntity<>(body, authHeaders());
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.PATCH, request, JsonNode.class);
+            restClient.method(HttpMethod.PATCH)
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
     }
 
     private void discordDelete(String path) {
-        var headers = authHeaders();
-        var request = new HttpEntity<>(null, headers);
         try {
-            restTemplate.exchange(DISCORD_API + path, HttpMethod.DELETE, request, Void.class);
+            restClient.delete()
+                    .uri(DISCORD_API + path)
+                    .header("Authorization", authHeader())
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (HttpClientErrorException e) {
             throw new RuntimeException("Discord API error: " + e.getStatusCode() + " " + e.getResponseBodyAsString());
         }
@@ -345,7 +378,7 @@ public class DiscordMcpToolProvider implements McpToolProvider {
         return defaultValue;
     }
 
-    private String toJson(Object value) throws JsonProcessingException {
+    private String toJson(Object value) throws JacksonException {
         return objectMapper.writeValueAsString(value);
     }
 

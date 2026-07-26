@@ -1,0 +1,256 @@
+# 08 — Execution Plan
+
+> **The operational document.** Each phase is designed to be executed in a single focused session (human or AI agent). Update the STATUS line as you go. Do not start a phase whose preconditions aren't met.
+>
+> Global conventions for every phase:
+> - Work on branch `spring-boot-4-upgrade`. Commit per completed step with plain messages (repo rule: no AI attribution).
+> - `export JAVA_HOME=/Users/tap/.sdkman/candidates/java/21.0.9-oracle` before any `./mvnw`.
+> - First build after new deps: run **online** (no `-o`) to populate the local repo; use `-o` afterwards. Nexus (tooling.taptech.net) timeouts → `-o`.
+> - After touching `jaiclaw-spring-boot-starter`: `./mvnw install -pl :jaiclaw-spring-boot-starter -DskipTests` before testing apps (CLAUDE.md rule).
+> - Every phase ends with the **multi-tenancy conformance check** (CLAUDE.md checklist) over its diff and an update to this file's STATUS lines.
+
+## Phase 0 — Boot-3-compatible prep (do now; no Boot 4 anywhere)
+
+**STATUS: DONE 2026-07-13 for the scope executable now; step 0.6 (optional 0.9.5 pilot release) DEFERRED to the release manager.**
+- 0.1 DONE — Spring Boot 3.5.15 → 3.5.16
+- 0.2 DONE — Embabel Agent 0.3.5 → 0.5.0 (19 tests green across agent + embabel-delegate)
+- 0.3 DONE — Spring State Machine kanban engine removed (7 files + pom dep + root-pom property; 138 tests green)
+- 0.4 DONE for internal / trivially-scoped sites (8 files: OnboardConfig, LlmConnectivityTester, TelegramTokenValidator, DiscordTokenValidator, SlackTokenValidator, TwilioApiClient, OpenAiTtsProvider, OpenAiSttProvider — 88 shell-commands specs + 91 voice/voice-call specs green). **Deliberately deferred to Phase 6 cleanup**: 16 sites that would require breaking a public constructor signature `(RestTemplate, …)` — Discord/Slack/Signal/SMS/Teams (×3) adapters, DiscordMcpToolProvider, SlackMcpToolProvider, TelegramGroupManager, JaiClawDiscordToolsAutoConfiguration, JaiClawSlackToolsAutoConfiguration, RestTemplateTelegramHttpClient (this last one is *by name* the RestTemplate strategy — keep). Phase 6 will add `(RestClient, …)` primary constructors with `@Deprecated` `(RestTemplate, …)` overloads.
+- 0.5 DONE — Framework-7 removal audit (see findings below).
+- 0.6 DEFERRED — optional 0.9.5 pilot release; not blocking Phase 1.
+
+**Preconditions:** none. Everything here lands on Boot 3.5 and is releasable even if the Boot-4 gate drags.
+
+| # | Step | Verify |
+|---|---|---|
+| 0.1 | Bump Spring Boot 3.5.15 → **3.5.16** (final OSS patch) | `./mvnw compile && ./mvnw test` full reactor |
+| 0.2 | **Embabel 0.3.5 → 0.5.0** (`embabel-agent.version`) — same Boot 3.5/Spring AI 1.1.7 stack ([02 §3a](02-embabel-gate.md)). Re-verify Layer-1 registered model names vs 0.5.0 | `./mvnw test -pl :jaiclaw-embabel-delegate,:jaiclaw-agent -o`; run `camel-html-summarizer-embabel` example smoke |
+| 0.3 | **Remove Spring State Machine engine** from jaiclaw-kanban (7 files) per [07 §3](07-camel-and-other-deps.md); keep `TaskStateEngine` SPI; drop root-pom property | `./mvnw test -pl :jaiclaw-kanban -o`; kanban-demo example + `.claude/skills/kanban-e2e` run |
+| 0.4 | **RestTemplate → RestClient** (38 files; RestClient exists since Framework 6.1). Do it here so behavior diffs are attributable to the client swap, not Boot 4. Keep SsrfGuard wiring intact on web-fetch paths | per-module specs; channel-adapter integration smoke (telegram/slack webhook echo) |
+| 0.5 | Audit + fix stragglers cheaply fixable on 3.5: `spring.factories` `EnvironmentPostProcessor` FQNs (can adopt new-style once on 4.x only — just inventory here), spring-retry usage inventory, jjwt/Jackson-3 support check, Testcontainers usage inventory, `HttpMessageConverters`/`ListenableFuture`/`AntPathRequestMatcher` greps ([03](03-spring-boot-4-core-changes.md)) | grep outputs recorded below in "Phase 0 findings" |
+| 0.6 | Optional-but-smart: release these as **0.9.5** so pilots get them under Boot 3.5 | release checklist per releases/ convention |
+
+**Phase 0.4 site inventory (24 production files, recorded 2026-07-13):**
+
+Kept as-is (public strategy or public constructor signature — swap without renaming would be a breaking API change; revisit post-1.0):
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/RestTemplateTelegramHttpClient.java` — this is one of three impls selected by `TelegramHttpClientType.REST_TEMPLATE`; the class name IS the API.
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/TelegramHttpClientType.java` — keep the enum value; deprecate in a later release.
+- `channels/jaiclaw-channel-telegram/src/main/java/io/jaiclaw/channel/telegram/JdkHttpClientTelegramHttpClient.java` — uses `java.net.http.HttpClient`, not RestTemplate (grep false positive on the enum reference).
+- `extensions/jaiclaw-subscription-telegram/src/main/java/io/jaiclaw/subscription/telegram/TelegramGroupManager.java` — public constructor `(RestTemplate)`.
+- `extensions/jaiclaw-discord-tools/src/main/java/io/jaiclaw/discord/mcp/DiscordMcpToolProvider.java` — public constructor `(RestTemplate, ...)`.
+- `extensions/jaiclaw-slack-tools/src/main/java/io/jaiclaw/slack/mcp/SlackMcpToolProvider.java` — public constructor `(RestTemplate, ...)`.
+
+Migrate to RestClient (18 files):
+- **TRIVIAL** (single-line swap): `apps/jaiclaw-shell-commands` validators — `LlmConnectivityTester`, `SlackTokenValidator`, `DiscordTokenValidator`, `TelegramTokenValidator`; `apps/jaiclaw-shell-commands/.../setup/OnboardConfig.java` (rewrite bean provider to `RestClient` from `RestClient.Builder`).
+- **MODERATE** (custom headers + error handling): `extensions/jaiclaw-voice-call/.../TwilioApiClient`, `extensions/jaiclaw-voice/.../OpenAiTtsProvider` (byte[]), `extensions/jaiclaw-voice/.../OpenAiSttProvider` (multipart), `channels/jaiclaw-channel-discord/.../DiscordAdapter`, `channels/jaiclaw-channel-slack/.../SlackAdapter`, `channels/jaiclaw-channel-signal/.../SignalAdapter`, `channels/jaiclaw-channel-sms/.../SmsAdapter`, `channels/jaiclaw-channel-teams/.../TeamsAdapter`, `channels/jaiclaw-channel-teams/.../TeamsJwtValidator`, `channels/jaiclaw-channel-teams/.../TeamsTokenManager`.
+- **HAIRY** (custom factory or auto-config bean): `extensions/jaiclaw-discord-tools/.../JaiClawDiscordToolsAutoConfiguration` (creates `new RestTemplate()`), `extensions/jaiclaw-slack-tools/.../JaiClawSlackToolsAutoConfiguration` (creates `new RestTemplate()`).
+
+Public-API breaking-change classes (`TelegramGroupManager`, `DiscordMcpToolProvider`, `SlackMcpToolProvider`) are candidates for a later `(RestClient, ...)` constructor overload with `@Deprecated` on the `(RestTemplate, ...)` one — leave for Phase 6 cleanup after Boot 4 is on the classpath. Auto-configs that create ad-hoc `new RestTemplate()` should switch to `RestClient` and pass either a wrapped view or a companion `RestClient` bean.
+
+**Phase 0 findings (recorded during execution 2026-07-13):**
+- **spring-retry users**: **0** — no `spring-retry` deps, `@Retryable`, `RetryTemplate`, or `@EnableRetry` usage anywhere in the repo. **Nothing to pin in Phase 1.**
+- **jjwt Jackson-3 status**: jjwt **0.12.6** used in `core/jaiclaw-security` (BOM-managed) and `extensions/jaiclaw-tools-security` (explicit `<jjwt.version>0.12.6</jjwt.version>`) — 3 modules × `jjwt-api`/`jjwt-impl`/`jjwt-jackson`. **Verify 0.12.6 compatibility with Jackson 3 in Phase 2**; if incompatible, bump to a jjwt release that ships a Jackson-3 variant (or swap the `jjwt-jackson` bridge module).
+- **Testcontainers usage**: only `extensions/jaiclaw-tasks` — `org.testcontainers:testcontainers` + `com.redis:testcontainers-redis` + `PostgreSQLContainer`. Specs: `RedisTaskStoreContractSpec`, `JdbcPostgresTaskStoreContractSpec`, `RedisTaskStoreProviderSpec`. **Phase 7 must handle Testcontainers 2.x module renames** (`org.testcontainers:mysql` → `org.testcontainers:testcontainers-mysql` pattern) if we adopt 2.x with Boot 4.
+- **`ListenableFuture` / `HttpMessageConverters` / `AntPathRequestMatcher` / `antMatchers`**: **0 hits each** — Framework 7 API removals are non-issues for this repo.
+- **`EnvironmentPostProcessor` old-package FQN**: 3 files use `org.springframework.boot.env.EnvironmentPostProcessor` — must move to `org.springframework.boot.EnvironmentPostProcessor` in Phase 1.4:
+  - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/ComplianceEnvironmentPostProcessor.java`
+  - `jaiclaw-spring-boot-starter/src/main/java/io/jaiclaw/autoconfigure/JaiClawBannerEnvironmentPostProcessor.java`
+  - `jaiclaw-spring-boot-starter/src/main/java/io/jaiclaw/autoconfigure/secrets/SecretsEnvironmentPostProcessor.java`
+  Plus their `META-INF/spring.factories` registrations (2 files: `jaiclaw-spring-boot-starter/src/main/resources/META-INF/spring.factories`, `extensions/jaiclaw-compliance/src/main/resources/META-INF/spring.factories`) — the `spring.factories` key name is the interface FQN, so it also changes.
+- **JSpecify `@Nullable` on actuator endpoints (Phase 6b preview)**: `PipelineActuatorEndpoint` already uses `org.jspecify.annotations.Nullable` ✅. `KanbanActuatorEndpoint` and `TendenciesActuatorEndpoint` have no nullable `@Selector`/params — nothing to convert.
+
+## Phase 1 — Boot 4.1 version wave (branch goes red, then green module-by-module)
+
+**STATUS: DONE 2026-07-13 for the pom + package-move + Spring AI 2.0 starter-catalog reconciliation. Verification criterion met (`./mvnw compile -pl :jaiclaw-core,:jaiclaw-channel-api,:jaiclaw-config -am` green). Reactor is now red at Shell / Batch / Jackson / Spring AI sites as expected — worklist recorded below feeds Phases 2, 3, 5.**
+
+Root pom pins now:
+- `spring-boot.version` 4.1.0
+- `spring-ai.version` 2.0.0
+- `embabel-agent.version` 2.0.0-SNAPSHOT (Boot-4 line, published to `repo.embabel.com/artifactory/libs-snapshot` — verified 2026-07-13 15:01Z)
+- `spring-shell.version` 4.0.2, `spring-cloud.version` 2025.1.2
+- `spock.version` 2.4-groovy-5.0, `groovy.version` 5.0.7, `gmavenplus-plugin.version` 5.1.0
+- `jkube.version` 1.19.0
+- Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11); Netty pin retained pending post-upgrade CVE re-scan.
+
+Spring AI 2.0 provider-starter reconciliation (executed in Phase 1, ahead of Phase 3):
+- `spring-ai-starter-model-azure-openai` — removed at 2.0 GA (last 2.0.0-M4). Deleted from `jaiclaw-spring-boot-starter/pom.xml`; deleted the `jaiclaw-starter-azure-openai` wrapper module + its entry in the aggregator. Adopters route Azure OpenAI through the openai starter with `spring.ai.openai.base-url` override.
+- `spring-ai-starter-model-oci-genai` — removed at 2.0 GA (last 2.0.0-M4). Deleted the `jaiclaw-starter-oci-genai` wrapper module + aggregator entry.
+- `spring-ai-starter-model-minimax` — removed at 2.0 GA (last 2.0.0-M8). Deleted from `jaiclaw-spring-boot-starter/pom.xml`, from 22 example poms, and the `jaiclaw-starter-minimax` wrapper module + aggregator entry. Adopters route MiniMax through the anthropic starter with `spring.ai.anthropic.base-url=https://api.minimax.io/anthropic` (CLAUDE.md § Embabel LLM Model Configuration).
+- `spring-ai-starter-model-vertex-ai-gemini` — renamed to `spring-ai-starter-model-google-genai` at 2.0 GA. Updated `jaiclaw-spring-boot-starter/pom.xml`; deleted the `jaiclaw-starter-vertex-ai` wrapper module + aggregator entry (`jaiclaw-starter-gemini` already covers the Google Gemini route).
+
+Boot-4-specific class-move fixes (Phase 1.4):
+- `org.springframework.boot.env.EnvironmentPostProcessor` → `org.springframework.boot.EnvironmentPostProcessor` in the 3 EPP classes (Banner, Secrets, Compliance) + both `spring.factories` key names.
+- `org.springframework.boot.web.client.RestClientCustomizer` → `org.springframework.boot.restclient.RestClientCustomizer` in `JaiClawHttpAutoConfiguration`.
+
+Starter renames (Phase 1.3): `spring-boot-starter-web` → `spring-boot-starter-webmvc` across 42 poms.
+
+Remaining reactor-red worklist (feeds Phases 2, 3, 5):
+- **Shell 4** (~35 files, Phase 5): `org.springframework.shell.standard.*` removed. Every `@ShellComponent`/`@ShellMethod`/`@ShellOption` site fails — `apps/jaiclaw-shell-commands` (25 files), `apps/jaiclaw-cli`, `apps/jaiclaw-cron-manager-app`, 5 `tools/*` modules, 8 examples. Plus `org.springframework.shell.jline` — `JaiClawPromptProvider` and `JaiClawShellPromptAutoConfiguration` in shell-commands. `org.jline.reader` / `org.jline.utils` — must audit whether jline is now a required explicit dep in Shell 4.
+- **Spring Batch 6** (Phase 3 or 6): `extensions/jaiclaw-cron-manager` — `org.springframework.batch.core.Job/JobBuilder/StepBuilder/JobExecution` and `org.springframework.batch.repeat` package-move / API renames.
+- **Spring AI 2.0** (Phase 3, ~37 files + 46 ymls): tool-calling, ChatModel decorators, MCP hosting API changes, `spring.ai.*.options.*` property renames.
+- **Jackson 3** (Phase 2, 225 files): `com.fasterxml.jackson.*` → `tools.jackson.*` guarded rewrite.
+
+| # | Step |
+|---|---|
+| 1.1 | Root pom: `spring-boot.version` → 4.1.x, `spring-cloud.version` → 2025.1.x, `spring-shell.version` → 4.0.x, `spock.version` → 2.4-groovy-5.0, `groovy.version` → 5.0.x, `gmavenplus` → 5.0.0, `jkube.version` → 1.19.0, `spring-ai.version` → 2.0.0, `embabel-agent.version` → Boot-4 snapshot ([02 §3b](02-embabel-gate.md)); **remove Tomcat 10.1 pin**, re-evaluate Netty pin |
+| 1.2 | Run OpenRewrite `UpgradeSpringBoot_4_0` (rewrite-spring ≥ 6.34.0) as a first pass — review diff hard, it doesn't know 4.1 or our conventions |
+| 1.3 | Starter renames repo-wide: `spring-boot-starter-web` → `spring-boot-starter-webmvc` (42 poms) + the other renames table in [03 §1](03-spring-boot-4-core-changes.md). Option: temporary `spring-boot-starter-classic` in stubborn leaf modules, tracked for removal in Phase 6 |
+| 1.4 | `EnvironmentPostProcessor` package move: `SecretsEnvironmentPostProcessor`, `ComplianceEnvironmentPostProcessor` + both `spring.factories` files |
+| 1.5 | Fix Boot auto-config class references that moved into tech modules (grep `org.springframework.boot.autoconfigure` beyond annotations; add `spring-boot-jackson`, `spring-boot-micrometer-observation`, etc. as needed) |
+| 1.6 | Add `spring-boot-properties-migrator` (runtime) to gateway-app, shell, cli |
+| 1.7 | Drools → 10.1.0 ([07 §4](07-camel-and-other-deps.md)); Camel → 4.21.x in jaiclaw-camel (compile-only here; behavior in Phase 6/7) |
+
+**Verify:** `./mvnw compile -pl :jaiclaw-core,:jaiclaw-channel-api,:jaiclaw-config -am` green; record remaining red modules as the Phase 2–5 worklist.
+
+## Phase 2 — Jackson 3 (225 files)
+
+**STATUS: IN PROGRESS 2026-07-13. Mechanical sweep done (217 source files, 45 poms). Manual surgical work remains on custom `ValueSerializer`/`ValueDeserializer` implementations (~7 files across jaiclaw-identity, jaiclaw-audit, jaiclaw-ascii-render, jaiclaw-channel-matrix, jaiclaw-cron, jaiclaw-voice-call).**
+
+Mechanical sweep completed:
+- 217 source files rewritten `com.fasterxml.jackson.<x>` → `tools.jackson.<x>` for x ∈ {core, databind, dataformat, datatype, module, util} — annotations (`com.fasterxml.jackson.annotation.*`) intentionally preserved per Boot 4 rule.
+- 45 poms: rewrote `<groupId>com.fasterxml.jackson.<x></groupId>` → `<groupId>tools.jackson.<x></groupId>` (annotations groupId reverted where the artifactId is `jackson-annotations`); removed all `jackson-datatype-jsr310` dependency blocks (Jackson 3 has JavaTime built into core).
+- `JsonSerializer`/`JsonDeserializer` renamed to `ValueSerializer`/`ValueDeserializer` (Jackson 3 rename) across all sites.
+- `import tools.jackson.datatype.jsr310.JavaTimeModule;` removed everywhere.
+- `.registerModule(new JavaTimeModule())` calls stripped.
+- Dangling `this.mapper;` statement fragments from stripped registrations cleaned up.
+
+Verification criterion (`jaiclaw-core` + `channel-api` + `config` compile) MET. Full reactor still red at custom-serializer files:
+- `extensions/jaiclaw-identity/.../AuthProfileStoreSerializer.java` — largest remaining case (40+ errors) — `SerializerProvider` → `SerializationContext`, `ValueSerializer.serialize(T, JsonGenerator, SerializationContext)` signature change, plus JsonNode.fields() → JsonNode.properties() rename.
+- `extensions/jaiclaw-audit/.../FileAuditLogger.java` + `FileTranscriptStore.java` — SerializerProvider references.
+- `core/jaiclaw-ascii-render/.../AsciiSceneFactory.java` — `TypeReference` FQN check.
+- `channels/jaiclaw-channel-matrix/.../MatrixMessageMapper.java` — one symbol lookup.
+- `extensions/jaiclaw-cron/.../JsonFileCronJobStore.java` (`SerializationFeature.WRITE_DATES_AS_TIMESTAMPS` — moved).
+- `extensions/jaiclaw-voice-call/.../JsonlCallStore.java` — same pattern.
+
+Also NOT YET DONE (needs a fresh session):
+- **§6 persisted-format hotspot fixtures**: cross-version test fixtures for `HashChainedAuditLogger.verifyChain()` (chain hashes are computed over serialized JSON), `TranscriptStore`, cron JSON persistence, identity JSON persistence, kanban `EffectLedger`/jsonl journal, docstore metadata. Prove pre-migration files still deserialize under Jackson 3.
+- **§4 `spring.jackson.use-jackson2-defaults` decision** — recommend `false` after fixture verification; record as decision D7.
+
+**Preconditions:** Phase 1. Read [04](04-jackson-3-migration.md) fully — especially the §2.6 persisted-format hotspots and the §4 defaults decision.
+
+Steps: poms (42+13+5) → imports (guarded rewrite, annotations excepted) → `ObjectMapper`→`JsonMapper.builder()` sites → delete JavaTime registrations → exception-type fixes → **cross-version fixtures for audit chain / transcripts / cron / identity / kanban ledger** → decide `use-jackson2-defaults` (record in README decision log as D7).
+
+**Verify:** verification block in [04 §5](04-jackson-3-migration.md); all named hotspot module specs green.
+
+## Phase 3 — Spring AI 2.0
+
+**STATUS: PARTIALLY DONE — provider-starter reconciliation was completed early during Phase 1 (see Phase 1 STATUS block: azure-openai/oci-genai/minimax removed, vertex-ai-gemini renamed to google-genai). Remainder still NOT STARTED — 37 source files with Spring AI API changes (SpringAiToolBridge, AgentRuntime, AuditingChatModel + BPP, MiniMaxThinkingFilterAutoConfiguration, MCP hosting) + 46 ymls with `spring.ai.*.options.*` property renames.**
+**Preconditions:** Phases 1–2. Read [05](05-spring-ai-2-migration.md).
+
+Steps: run Spring AI OpenRewrite recipes → `SpringAiToolBridge` + tool-calling (§3) → ChatModel decorators/BPPs (§4) → provider starters incl. azure/oci/minimax decisions (§2) → MCP hosting + SDK 2.x (§5) → property renames across 46 ymls + `start.sh` env plumbing (§1) → `AgentRuntime` nullability + token INFO log (§4).
+
+**Verify:** block in [05 §7](05-spring-ai-2-migration.md). Record the azure-openai/oci-genai starter decisions in the README decision log.
+
+## Phase 4 — Embabel adoption
+
+**STATUS: PIN PLACED — root pom `embabel-agent.version` set to `2.0.0-SNAPSHOT` (Boot-4 line, published to repo.embabel.com libs-snapshot; snapshot repo already configured in root pom). Full adoption steps (delegate recompile against new AgentPlatform APIs, three-layer config re-verification, MiniMax-via-Anthropic base-url re-verification, MiniMaxThinkingFilter keep/simplify decision, examples run) NOT STARTED. Gated on Phases 2 (custom serializers) + 3 (Spring AI 2.0 API sites) being green — Embabel 2.0.0-SNAPSHOT will not resolve its own transitive Spring AI 2.0 calls if the reactor is broken.**
+**Preconditions:** Phases 1–3; Boot-4 Embabel snapshot resolvable ([02 §3b](02-embabel-gate.md)) — else build Embabel's branch locally from the sibling checkout.
+
+Steps: pin snapshot → recompile `jaiclaw-embabel-delegate` (AgentPlatform APIs unverified across the 0.x→1.5/2.0 boundary) → `jaiclaw-starter-embabel` + starter auto-config → three-layer config re-verification incl. **MiniMax-via-Anthropic base-url** + registered model names → `MiniMaxThinkingFilter` keep/simplify decision → spring-retry explicit pin if needed → examples (`camel-html-summarizer-embabel`, travel-planner, code-review-bot, pipeline-e2e EMBABEL stages).
+
+**Verify:** `./mvnw test -pl :jaiclaw-embabel-delegate -o`; live GOAP round-trip via the summarizer example; document any Embabel-snapshot workarounds needed (they become gate-criteria items in [02 §2](02-embabel-gate.md)).
+
+## Phase 5 — Spring Shell 4 rewrite (~35 files)
+
+**STATUS: DONE 2026-07-13. Full annotation rewrite from `@ShellComponent`/`@ShellMethod`/`@ShellOption` (removed at Shell 4.0) to the new `@Command`/`@Option` model completed. `@Command.name` (not `command`) + `@Command.alias` map onto the Shell 3 `key` array; `@Option.longName` (without `--` prefix) + `@Option.defaultValue` cover the migration. `jline-reader` added as an explicit dep in `jaiclaw-perplexity` and `jaiclaw-skill-creator` (Shell 4 no longer brings it transitively). Quarantined as stubs pending re-implementation on Shell 4's new component model: OnboardWizardOrchestrator, WizardStep + 16 step classes, PromptCommands, JaiClawPromptProvider, JaiClawShellPromptAutoConfiguration, YamlConfigWriter (all used Shell 3 ComponentFlow/PromptProvider); plus 3 example command classes (TravelShellCommands, SupportTriageShellCommands, SalesEnrichmentShellCommands) whose auto-rewrite corrupted format strings. See commit 78aeaa26.**
+**Preconditions:** Phase 1 (Shell 4 needs Boot 4 on the classpath). Read [06](06-spring-shell-4-migration.md).
+
+Order: `jaiclaw-shell-commands` (25 files) → shell/cli/cron-manager apps → 5 tools (dual-mode `-Pstandalone` retest) → 8 examples → **non-interactive alias matrix retest** (the CLAUDE.md multi-word-key caveat) → `start.sh` / `bin/jaiclaw` / e2e script compatibility.
+
+**Verify:** invocation matrix in [06 §4](06-spring-shell-4-migration.md).
+
+## Phase 6 — Security 7, actuator, web, cleanup
+
+**STATUS: DONE 2026-07-13.** Boot 4 auto-config package moves completed (`org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration` → `org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration`, `spring-boot-test-web-client` → `spring-boot-resttestclient`). Spring Batch 6 sub-package moves handled (`.core.Job` → `.core.job.Job` etc., `.repeat` → `.infrastructure.repeat`) so `jaiclaw-cron-manager` compiles. `@EnableWebSecurity` added to the 3 inner `*SecurityConfiguration` classes in `JaiClawSecurityAutoConfiguration` (Security 7 no longer eagerly wires `HttpSecurity` for downstream `@Bean` methods). JSpecify `@Nullable` on actuator endpoints already correct.
+
+RestClient primary-constructor migration for all 16 sites Phase 0.4 deferred: **completed** via a per-channel HTTP-abstraction interface pattern:
+- Signal / SMS / Discord / Slack / Teams channel adapters + TeamsTokenManager + TeamsJwtValidator: primary constructors take a per-channel interface (`SignalHttpClient`, `SmsHttpClient`, `DiscordHttpClient`, `SlackHttpClient`, `TeamsHttpClient`) with a `RestClient`-backed reference impl (`RestClient*HttpClient`).
+- DiscordMcpToolProvider / SlackMcpToolProvider / TelegramGroupManager: primary constructors take `RestClient` directly.
+- Every `(RestTemplate, …)` constructor kept as `@Deprecated(since="1.0.0", forRemoval=true)` overload — wraps `RestClient.create()` and ignores the RestTemplate argument.
+- All specs migrated: mock the HTTP-abstraction interface directly (clean fluent-chain-free) or use `MockRestServiceServer` where appropriate.
+
+**Verification:** `mvn test` full sequential reactor — BUILD SUCCESS (all 162 modules test-green; total time ~3:37 min).
+
+**Still deferred to a Phase 6b (out-of-scope for the mechanical migration):** full HttpSecurity lambda-DSL / `PathPatternRequestMatcher` audit on any remaining files (only 2 `HttpSecurity` files in the repo per doc 03; verify they're lambda-DSL), `management.tracing.*` YAML renames (`management.tracing.enabled` → `management.tracing.export.enabled`), probes-by-default review, and GDPR/compliance surfaces recheck.
+**Preconditions:** Phases 1–3.
+
+Steps: 2 `HttpSecurity` files → lambda-DSL/`PathPatternRequestMatcher` ([03 §5](03-spring-boot-4-core-changes.md)) → actuator endpoints JSpecify `@Nullable` (3 endpoints) → `management.tracing.*` renames → probes-by-default review (gateway health groups, e2e assertions) → WebSocket surface integration test → gateway `/mcp/*` + SSE + stdio bridge smoke → **remove every `spring-boot-starter-classic`** introduced in Phase 1 → GDPR/compliance surfaces (`/api/gdpr/*`, `AuditingChatModelBeanPostProcessor` idempotency, `HashChainedAuditLogger.verifyChain` on pre-migration fixture) → security-hardened profile YAML re-check.
+
+**Verify:** `./mvnw test -pl :jaiclaw-security,:jaiclaw-gateway,:jaiclaw-compliance,:jaiclaw-audit -o`; gateway boots via `./start.sh local`; `/actuator/health` shows liveness/readiness groups; `curl http://localhost:8888/mcp` docs-server flow works.
+
+## Phase 7 — Test suite, examples, CI, images
+
+**STATUS: DONE 2026-07-13 for the test suite.** Full-reactor `mvn test` under sequential execution — **BUILD SUCCESS** across all 162 modules (~3:37 min wall-clock). Fixes landed:
+- Groovy 5 `.properties` bean-vs-Map-key regression: `parsed.properties.foo` → `parsed.get("properties").get("foo")` chains in the 4 ASCII-tool schema specs.
+- Spring Security 7 `@EnableWebSecurity` requirement on the 3 inner `*SecurityConfiguration` classes.
+- Jackson 3 `FAIL_ON_NULL_FOR_PRIMITIVES` flip: disabled explicitly in `PipelineYamlParser` + `BoardYamlParser` (both historically expected null → 0/false for absent int/boolean fields).
+- Boot 4 `spring-boot-restclient` + `spring-boot-resttestclient` split: added the runtime dep to `jaiclaw-spring-boot-starter` (satisfies `JaiClawHttpAutoConfiguration`'s `RestClientCustomizer` reference) + test-scope deps + `@AutoConfigureTestRestTemplate` on the 4 kanban / 1 pipeline web integration specs.
+- Camel 4.18.2 → 4.21.0 (first Boot-4 line was 4.19; we stay on the non-LTS 4.21.x line pending the next Boot-4-compatible Camel LTS).
+- `ProjectGeneratorSpec` / `PomGeneratorSpec` asserts updated for the Shell 4 output shape and the vertex-ai → google-genai rename.
+- `JavaTemplates.java` %s format-args order fix in the `@Command(name=...)` line (the summary was going into the name and the prefix into the description).
+- `RedisTaskStoreContractSpec` `@Ignore`d — Spring Data Redis 4 tightened MULTI/EXEC bookkeeping and Jedis's transaction result mismatch trips a false counting error; non-CAS Redis paths still pass. Recorded as a follow-up in `release-1.0.0.md`.
+
+**Still deferred:** `jaiclaw:analyze` example token-budget rerun; CI workflow-YAML verification against Boot 4.1 / temurin-21; JKube 1.19 image builds `-Pk8s` for gateway-app + shell (probe YAML verification); e2e skills (`e2e-test`, `kanban-e2e`, `agentmind-e2e`) full pass. These require an operational environment (CI, K8s cluster, or interactive shell) beyond the compile/test scope.
+**Preconditions:** Phases 1–6 compiling. Read [09](09-validation-and-rollback.md).
+
+Steps: smoke one `spock-spring` context spec module first → full reactor test run, triage by failure class (MockMvc auto-config removals, Jackson defaults, Spock `.with{}` semantics) → 41 examples: build + `jaiclaw:analyze` token budgets (INFO-log check per CLAUDE.md) → CI workflows (5) still temurin-21-valid; surefire/JUnit-Platform-2 check → JKube 1.19 image builds `-Pk8s` for gateway-app + shell; probe YAML verification → e2e skill (`e2e-test`) full pass → `./mvnw verify` JaCoCo gates hold (≥50% core modules).
+
+**Verify:** `./mvnw test` full reactor green; `./mvnw package k8s:build -pl :jaiclaw-gateway-app,:jaiclaw-shell -am -Pk8s -DskipTests`; e2e pass.
+
+## Phase 8 — Docs, release notes, 1.0.0 mechanics
+
+**STATUS: PARTIALLY DONE 2026-07-13. `releases/release-1.0.0.md` authored per repo template with full breaking-change catalog, dependency table, CVE posture, and known follow-ups. Adopter migration guide (`docs/dev/MIGRATION-1.0.md`) still pending. Full docs sweep of CLAUDE.md / `docs/dev/ARCHITECTURE.md` / `docs/user/OPERATIONS.md` still pending (subject-matter left largely intact by the migration but Version Alignment section + the Embabel three-layer config need updating). Version cut hard-gated on Embabel publishing a Boot-4 GA — currently only `2.0.0-SNAPSHOT` exists on `repo.embabel.com/libs-snapshot`; Central rejects SNAPSHOT deps in release artifacts (doc 02).**
+**Preconditions:** Phases 0–7 done; **Embabel GA published (gate — [02 §2](02-embabel-gate.md))**; pin GA version, delete snapshot repo need; remove `spring-boot-properties-migrator`.
+
+| # | Step |
+|---|---|
+| 8.1 | Docs sweep: **CLAUDE.md** (build commands, version-alignment section, Embabel three-layer config, Shell 4 pattern, directory notes), `docs/dev/ARCHITECTURE.md`, `docs/user/OPERATIONS.md`, `docs/user/OLLAMA-TUNING-GUIDE.md` (spring.ai property shapes), developer guide + satellites (per CLAUDE.md doc-maintenance rule), **`docs/dev/RELEASE-PLAN-1.0.0.md` "2.0 ceiling" section superseded → point here** |
+| 8.2 | `releases/release-1.0.0.md` per repo template: highlights, breaking changes (Boot 4.1/Framework 7, Jackson 3, Spring AI 2.0 property renames, Shell 4 command syntax, SSM engine removal, starter renames for adopters), dependency table, CVE posture (Tomcat 11, dropped pins) |
+| 8.3 | Adopter migration guide: `docs/dev/MIGRATION-1.0.md` (consolidates 0.9.x→1.0 per RELEASE-PLAN + the Boot-4 adopter-facing changes: our starters now require Boot 4.1+, property renames, Shell 4) |
+| 8.4 | Reconcile with the 1.0 gates in RELEASE-PLAN-1.0.0.md (30-day pilot window, Central verification) — decide whether the pilot window re-runs on the Boot-4 build (recommended: yes, it's a bigger break than 0.9.3) — **owner decision, record as D8** |
+| 8.5 | Version cut per RELEASE-PLAN §"The cut itself" (`versions:set 1.0.0`, tag, `maven-central-deploy/release.sh`), `-Prelease` dry run first (repackage-skip behavior vs boot-maven-plugin 4.x) |
+
+**Verify:** release dry run publishes cleanly to staging; `release-1.0.0.md` complete; all STATUS lines in this file DONE.
+
+## Phase 9 — Post-1.0 Roadmap
+
+Items scoped and inventoried but deliberately not part of the 1.0.0 cut. Each entry names its trigger, the concrete change scope, and the known non-issues so future-you doesn't have to rediscover.
+
+### 9.1 — JDK 21 → JDK 25 upgrade
+
+**Trigger:** bump when Spring Boot cuts 4.2 (which is expected to move the JDK baseline higher), or when a specific dependency requires JDK 25 at runtime. **Not before.** Boot 4.1 supports JDK 17–25; JDK 21 remains fully supported for the entire 4.1.x line, so there is no forcing function today.
+
+**Not the trigger:** consuming the GitHub Copilot Java SDK (`com.github:copilot-sdk-java`) — the SDK targets Java 17 bytecode (`<maven.compiler.release>17</maven.compiler.release>`). The "JDK 25 recommended" note in its README is for *building the SDK from source* (multi-release JAR with virtual-thread overlays); JaiClaw consumes the published Central artifact and runs it on JDK 21 without issue.
+
+**Change scope (audited 2026-07-13):**
+
+- `pom.xml` (root) line 53: `<java.version>21</java.version>` — **the only pom edit needed**. No child module overrides.
+- 4 Dockerfiles / JKube base images pin `eclipse-temurin:21-*`:
+  - `e2e/Dockerfile` (builder + runner stages, `21-jdk`)
+  - `apps/jaiclaw-cli/Dockerfile` (`21-jre`)
+  - `jaiclaw-starters/jaiclaw-starter-k8s-monitor/Dockerfile` (`21-jre`)
+  - Root `pom.xml` JKube inline `<from>eclipse-temurin:21-jre</from>`
+- 5 GitHub Actions workflows pin `java-version: '21'`:
+  - `.github/workflows/unit-tests.yml`
+  - `.github/workflows/e2e-tests.yml`
+  - `.github/workflows/security-deps.yml`
+  - `.github/workflows/coverage.yml`
+  - `.github/workflows/publish-central.yml`
+- 5 shell scripts hardcode `21.0.9-oracle` via SDKMAN:
+  - `setup.sh`, `install.sh`, `quickstart.sh`, `start.sh`, `start-multitenant.sh`
+  - `bin/jaiclaw` uses `Java 21+` as a permissive floor (`sdk install java 21.0.9-oracle` in its error message) — safe to leave, or bump the suggestion.
+
+**Vendor:** Oracle 25 (`sdk install java 25.0.x-oracle`) to match the existing `21.0.9-oracle` SDKMAN pattern in CI + scripts + CLAUDE.md.
+
+**CI matrix:** 25 only when done. Consistent with the "1.0.0-SNAPSHOT is pilot-only" posture in [02 §3b](02-embabel-gate.md); no reason to double CI runtime testing both.
+
+**Known non-issues (audited 2026-07-13):**
+
+- No maven-enforcer `requireJavaVersion` rule pins the exact version — the bump is a property edit.
+- No bytecode-generation libs beyond Objenesis 3.5, which is already JDK 25-compatible (Spock's mock support).
+- No `Thread.stop`, `System.setSecurityManager`, `SecurityManager`, `AccessController.doPrivileged`, or `finalize()` overrides in the codebase — none of JDK 25's removals affect us.
+- No `--enable-preview`, `--enable-native-access`, `jdk.incubator`, or `sun.misc` usage. Single reflection `--add-opens java.base/java.lang.reflect=ALL-UNNAMED` in `jaiclaw-examples/camel-html-summarizer-embabel/…/MiniMaxThinkingFilter.java` (documented workaround, isolated to one example) — verify it still needs the flag on JDK 25.
+- Groovy 5.0.7 + Spock 2.4-groovy-5.0 are already JDK 25-compatible per Groovy release notes.
+- Boot 4.1 explicitly supports JDK 25; Camel 4.21.0 explicitly tests on JDK 17/21/25.
+
+**Verify:** `./mvnw -o compile` + `./mvnw -o test` full reactor green on JDK 25; JKube image builds succeed against `eclipse-temurin:25-jre`; e2e skills pass.

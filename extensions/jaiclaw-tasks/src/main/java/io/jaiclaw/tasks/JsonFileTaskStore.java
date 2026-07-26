@@ -1,9 +1,8 @@
 package io.jaiclaw.tasks;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.core.tenant.TenantProperties;
 import org.slf4j.Logger;
@@ -64,8 +63,8 @@ public class JsonFileTaskStore implements TaskStore {
         this.tenantGuard = tenantGuard != null ? tenantGuard : new TenantGuard(TenantProperties.DEFAULT);
         this.ignoreCorrupt = ignoreCorrupt;
         this.mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                
+                ;
         loadFromDisk();
     }
 
@@ -165,12 +164,12 @@ public class JsonFileTaskStore implements TaskStore {
                     new TypeReference<List<TaskRecord>>() {});
             loaded.forEach(t -> tasks.put(storageKey(t), t));
             log.info("Loaded {} tasks from {}", tasks.size(), storePath);
-        } catch (IOException e) {
+        } catch (Exception e) {
             handleCorruptFile(e);
         }
     }
 
-    private void handleCorruptFile(IOException cause) {
+    private void handleCorruptFile(Exception cause) {
         Path quarantine = storePath.resolveSibling(
                 storePath.getFileName().toString() + ".corrupt-" + Instant.now().toEpochMilli());
         try {
@@ -197,7 +196,7 @@ public class JsonFileTaskStore implements TaskStore {
                     .writeValue(tmpPath.toFile(), List.copyOf(tasks.values()));
             Files.move(tmpPath, storePath,
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to flush tasks to {}: {}", storePath, e.getMessage());
             throw new IllegalStateException("Failed to flush task store: " + storePath, e);
         }

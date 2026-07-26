@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-extensions</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-pipeline</artifactId>
@@ -15,7 +15,7 @@
     <description>Declarative multi-stage pipeline orchestration with dual DSL (YAML + Java code), configurable transport, and auditing</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>
@@ -80,6 +80,15 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Optional: enables PipelineEventController + PipelineEventBroadcaster
+             (server-sent events for live pipeline visualization).
+             SseEmitter lives in spring-webmvc, not spring-web. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Micrometer (optional) -->
         <dependency>
             <groupId>io.micrometer</groupId>
@@ -89,7 +98,7 @@
 
         <!-- Required: jackson-yaml parses per-file pipeline YAML resources. -->
         <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <groupId>tools.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
 
@@ -140,9 +149,21 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- TestRestTemplate moved to its own module in Boot 4. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- TestRestTemplate's auto-config needs RestTemplateBuilder from spring-boot-restclient. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -182,6 +203,15 @@
         <dependency>
             <groupId>org.objenesis</groupId>
             <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- jsoup — parses the HTML renderer's output in
+             PipelineHtmlRendererSpec to enforce the class-name contract
+             and data-attribute contract. Test scope only. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.3</version>
             <scope>test</scope>
         </dependency>
         <!-- Camel test support -->

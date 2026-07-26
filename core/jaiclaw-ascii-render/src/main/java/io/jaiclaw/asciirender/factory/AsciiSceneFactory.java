@@ -1,8 +1,8 @@
 package io.jaiclaw.asciirender.factory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.asciirender.api.ICanvas;
 import io.jaiclaw.asciirender.api.IContext;
 import io.jaiclaw.asciirender.api.IContextBuilder;
@@ -121,8 +121,8 @@ public final class AsciiSceneFactory {
         Map<String, Object> raw;
         try {
             raw = JSON.readValue(json, MAP_TYPE);
-        } catch (JsonProcessingException e) {
-            throw SceneSpecException.canvas("Malformed scene JSON: " + e.getOriginalMessage(), e);
+        } catch (JacksonException e) {
+            throw SceneSpecException.canvas("Malformed scene JSON: " + e.getMessage(), e);
         }
         return fromMap(raw);
     }

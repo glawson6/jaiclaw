@@ -239,7 +239,7 @@ public class JaiClawGatewayAutoConfiguration {
     public io.jaiclaw.gateway.mcp.transport.server.McpSseServerController mcpSseServerController(
             io.jaiclaw.gateway.mcp.McpServerRegistry registry,
             io.jaiclaw.gateway.tenant.CompositeTenantResolver tenantResolver,
-            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+            tools.jackson.databind.ObjectMapper objectMapper) {
         return new io.jaiclaw.gateway.mcp.transport.server.McpSseServerController(registry, tenantResolver, objectMapper);
     }
 

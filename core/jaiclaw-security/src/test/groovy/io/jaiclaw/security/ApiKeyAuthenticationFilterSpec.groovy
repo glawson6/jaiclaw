@@ -183,6 +183,53 @@ class ApiKeyAuthenticationFilterSpec extends Specification {
         0 * chain.doFilter(_, _)
     }
 
+    // --- Configurable skip-paths ---
+
+    def "custom skip-paths override the built-in defaults"() {
+        given:
+        // The custom list replaces the defaults — /webhook/** is no longer skipped.
+        def customFilter = new ApiKeyAuthenticationFilter(provider, null, false,
+                ["/api/health", "/pipelines/dashboard/**"])
+
+        expect:
+        customFilter.shouldNotFilter(mockRequest("/api/health"))
+        customFilter.shouldNotFilter(mockRequest("/pipelines/dashboard"))
+        customFilter.shouldNotFilter(mockRequest("/pipelines/dashboard/executions"))
+        !customFilter.shouldNotFilter(mockRequest("/webhook/telegram"))
+        !customFilter.shouldNotFilter(mockRequest("/api/chat"))
+    }
+
+    def "empty skip-paths list falls back to hard-coded defaults"() {
+        given:
+        // null and empty both mean "use defaults" — same runtime behavior as the
+        // pre-configurable filter.
+        def nullFilter = new ApiKeyAuthenticationFilter(provider, null, false, null)
+        def emptyFilter = new ApiKeyAuthenticationFilter(provider, null, false, [])
+
+        expect:
+        nullFilter.shouldNotFilter(mockRequest("/api/health"))
+        nullFilter.shouldNotFilter(mockRequest("/webhook/slack"))
+        !nullFilter.shouldNotFilter(mockRequest("/api/chat"))
+        emptyFilter.shouldNotFilter(mockRequest("/api/health"))
+        emptyFilter.shouldNotFilter(mockRequest("/webhook/slack"))
+        !emptyFilter.shouldNotFilter(mockRequest("/api/chat"))
+    }
+
+    def "path patterns support both exact-match and prefix wildcards"() {
+        given:
+        def customFilter = new ApiKeyAuthenticationFilter(provider, null, false,
+                ["/exact", "/prefix/**", "/single/*"])
+
+        expect:
+        customFilter.shouldNotFilter(mockRequest("/exact"))
+        !customFilter.shouldNotFilter(mockRequest("/exact/deeper"))
+        customFilter.shouldNotFilter(mockRequest("/prefix/a"))
+        customFilter.shouldNotFilter(mockRequest("/prefix/a/b/c"))
+        customFilter.shouldNotFilter(mockRequest("/single/one"))
+        !customFilter.shouldNotFilter(mockRequest("/single/one/two"))   // ** vs * distinction
+        !customFilter.shouldNotFilter(mockRequest("/other"))
+    }
+
     private HttpServletRequest mockRequest(String uri, String apiKey = null) {
         Mock(HttpServletRequest) {
             getRequestURI() >> uri

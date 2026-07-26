@@ -1,3 +1,4 @@
-org.springframework.boot.env.EnvironmentPostProcessor=\
+org.springframework.boot.EnvironmentPostProcessor=\
   io.jaiclaw.autoconfigure.JaiClawBannerEnvironmentPostProcessor,\
-  io.jaiclaw.autoconfigure.secrets.SecretsEnvironmentPostProcessor
+  io.jaiclaw.autoconfigure.secrets.SecretsEnvironmentPostProcessor,\
+  io.jaiclaw.autoconfigure.LlmProviderBridgeEnvironmentPostProcessor

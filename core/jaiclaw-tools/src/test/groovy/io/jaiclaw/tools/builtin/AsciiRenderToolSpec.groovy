@@ -37,11 +37,11 @@ class AsciiRenderToolSpec extends Specification {
         // width is no longer required at the JSON layer — the profile
         // (or its default fallback) supplies it when the LLM omits it.
         parsed.required as Set == ["height", "elements"] as Set
-        parsed.properties.width.type == "integer"
-        parsed.properties.height.type == "integer"
-        parsed.properties.elements.type == "array"
-        parsed.properties.profile.type == "string"
-        parsed.properties.padding.type == "integer"
+        parsed.get("properties").get("width").get("type") == "integer"
+        parsed.get("properties").get("height").get("type") == "integer"
+        parsed.get("properties").get("elements").get("type") == "array"
+        parsed.get("properties").get("profile").get("type") == "string"
+        parsed.get("properties").get("padding").get("type") == "integer"
     }
 
     def "renders a single rectangle covering the whole canvas"() {

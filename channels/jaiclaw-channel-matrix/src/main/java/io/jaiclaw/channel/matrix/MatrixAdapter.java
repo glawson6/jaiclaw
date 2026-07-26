@@ -1,6 +1,6 @@
 package io.jaiclaw.channel.matrix;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.jaiclaw.channel.AbstractChannelAdapter;
 import io.jaiclaw.channel.ChannelMessage;
 import io.jaiclaw.channel.DeliveryResult;

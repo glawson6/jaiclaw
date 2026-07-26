@@ -14,15 +14,15 @@
 
 <p align="center">
   <a href="https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"><img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white" alt="Java 21"></a>
-  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.15-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 3.5.15"></a>
-  <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-1.1.7-6DB33F?logo=spring&logoColor=white" alt="Spring AI 1.1.7"></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.0"></a>
+  <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.0-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/maven-central/v/io.jaiclaw/jaiclaw-bom.svg?label=Maven%20Central" alt="Maven Central"></a>
+  <a href="https://tooling.taptech.net/repository/maven-releases/io/jaiclaw/jaiclaw-bom/"><img src="https://img.shields.io/badge/TapTech%20Nexus-1.0.0-blueviolet" alt="TapTech Nexus 1.0.0"></a>
 </p>
 
 <p align="center">
-  <a href="#architecture"><img src="https://img.shields.io/badge/Modules-160-informational" alt="160 Modules"></a>
-  <a href="jaiclaw-starters/"><img src="https://img.shields.io/badge/Starters-31-informational" alt="31 Starters"></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/Modules-168-informational" alt="168 Modules"></a>
+  <a href="jaiclaw-starters/"><img src="https://img.shields.io/badge/Starters-32-informational" alt="32 Starters"></a>
   <a href="#channels"><img src="https://img.shields.io/badge/Channels-11-blueviolet" alt="11 Channels"></a>
   <a href="#configuration"><img src="https://img.shields.io/badge/LLM%20Providers-11-green" alt="11 LLM Providers"></a>
   <a href="jaiclaw-examples/"><img src="https://img.shields.io/badge/Examples-43-yellow" alt="43 Examples"></a>
@@ -34,7 +34,9 @@
 
 JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI agents. The same codebase scales from a developer running `curl | bash` on a laptop to a horizontally-scaled multi-tenant SaaS platform serving thousands of users across dozens of organizations.
 
-Built on Java 21, Spring Boot 3.5.15, Spring AI 1.1.7, Embabel Agent 0.3.5, and Apache Camel 4.18 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via Maven Central, compose the starters you need, implement the SPIs your business requires, ship.
+Built on Java 21, Spring Boot 4.1.0, Spring AI 2.0.0, Embabel Agent 2.0.0-SNAPSHOT, Spring Shell 4.0.2, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
+
+**1.0.0 released** to TapTech Nexus (`https://tooling.taptech.net/repository/maven-releases/`) on 2026-07-25. Adopter reads are anonymous — no credentials required. Maven Central publication follows Embabel 2.0.0 GA to Central; see [Distribution](#distribution) for the adopter recipe and the release notes at [releases/release-1.0.0.md](releases/release-1.0.0.md) for the full change catalogue.
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, declarative pipelines, scaffolding tooling, and security hardening that don't exist in the Node.js version.
 
@@ -44,19 +46,40 @@ It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/op
 
 For Java teams building their own AI agent product on top of a proven foundation. Pull JaiClaw via the BOM, compose the [Spring Boot starters](jaiclaw-starters/) you need, implement the SPIs for your business domain. The framework gets out of your way.
 
+#### <a name="distribution"></a>Distribution — 1.0.0 on TapTech Nexus
+
+1.0.0 is published to TapTech Nexus (`https://tooling.taptech.net/repository/maven-releases/`). Adopter reads are anonymous — no `<servers>` block in `~/.m2/settings.xml` needed. The reactor pulls `embabel-agent:2.0.0-SNAPSHOT` transitively, so add both the taptech-releases and embabel-snapshots repos:
+
 ```xml
+<repositories>
+    <repository>
+        <id>taptech-releases</id>
+        <url>https://tooling.taptech.net/repository/maven-releases/</url>
+        <releases><enabled>true</enabled></releases>
+        <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+    <repository>
+        <id>embabel-snapshots</id>
+        <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+        <snapshots><enabled>true</enabled></snapshots>
+        <releases><enabled>false</enabled></releases>
+    </repository>
+</repositories>
+
 <dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-bom</artifactId>
-            <version>0.9.2</version>
+            <version>1.0.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
     </dependencies>
 </dependencyManagement>
 ```
+
+**Maven Central**: not yet. 1.0.0 carries the `embabel-agent:2.0.0-SNAPSHOT` transitive, which Central rejects. First Central publication follows Embabel 2.0.0 GA (see [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md)). Adopters who need a Central-hosted line today should stay on the 0.9.x releases.
 
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 
@@ -100,21 +123,26 @@ Surface-level evidence that this is a serious framework, not a demo:
 - **22 plugin lifecycle hooks** — intercept before/after LLM calls, tool execution, message pipeline, context compaction, session events. Reshape the entire agent behavior without forking. ([hook events](core/jaiclaw-core/src/main/java/io/jaiclaw/core/hook/event/))
 - **MCP server hosting** — expose JaiClaw tools to Claude Desktop, Cursor, or any MCP client. `McpToolProvider` SPI dogfooded by 22 in-repo implementations. ([details](core/jaiclaw-core/src/main/java/io/jaiclaw/core/mcp/))
 - **Observability built in** — Spring Boot Actuator with custom endpoints (`/actuator/pipelines`, `/actuator/kanban`, `/actuator/agentmind-tendencies`), Micrometer instrumentation throughout, `AuditLogger` + `TranscriptStore` SPIs.
-- **GDPR + HIPAA compliance substrate** (0.9.3+) — one property (`jaiclaw.compliance.profile={gdpr|hipaa|both}`) turns on retention enforcement, LLM-call auditing with recipient tracking, BAA-eligible provider warnings, HTTPS startup guard, PHI redaction, and a REST surface at `/api/gdpr/*` for Art. 15/17/20 subject requests. 12 `@Stable` SPIs covering data-subject erasure + export, consent, prompt redaction, field encryption, chain-of-hashes audit, privacy notice, RoPA generation. Zero code loads when profile=none. ([compliance guide](docs/user/COMPLIANCE.md))
+- **GDPR + HIPAA compliance substrate** — one property (`jaiclaw.compliance.profile={gdpr|hipaa|both}`) turns on retention enforcement, LLM-call auditing with recipient tracking, BAA-eligible provider warnings, HTTPS startup guard, PHI redaction, and a REST surface at `/api/gdpr/*` for Art. 15/17/20 subject requests. 12 `@Stable` SPIs covering data-subject erasure + export, consent, prompt redaction, field encryption, chain-of-hashes audit, privacy notice, RoPA generation. Zero code loads when profile=none. ([compliance guide](docs/user/COMPLIANCE.md))
 - **GOAP multi-agent planning** — [Embabel](https://github.com/embabel/embabel-agent) integration. Deterministic action sequences computed by A* search, with automatic parallelism detection and typed intermediate results.
 - **11 channels, 11 LLM providers, 43 runnable examples** — the same agent code runs across Telegram, Slack, Discord, Email, SMS, Signal, Teams, WhatsApp, Google Chat, LINE, Matrix; the same code targets Anthropic, OpenAI, Gemini, Ollama, Bedrock, Azure OpenAI, DeepSeek, Mistral, MiniMax, Vertex AI, OCI GenAI.
 
 ## Architecture
 
-160 Maven modules, organized so consumers can take what they need and leave what they don't:
+168 Maven modules, organized so consumers can take what they need and leave what they don't:
 
 ```
 core/                11 modules — pure-Java domain model (jaiclaw-core has no Spring dep)
-channels/             7 modules — one per messaging platform
-extensions/          43 modules — opt-in capabilities (voice, browser, identity, pipeline, compliance, …)
-apps/                 5 modules — runnable Spring Boot apps (gateway, shell, CLI)
-jaiclaw-starters/    31 modules — Spring Boot starters for downstream consumers
+channels/            11 modules — one per messaging platform (adds line, matrix, googlechat, whatsapp)
+extensions/          50 modules — opt-in capabilities (voice, browser, identity, pipeline, compliance,
+                                  agentmind, kanban, pipeline-authoring, pipeline-studio, session-redis,
+                                  web-errors, github-copilot, …)
+apps/                 7 modules — runnable Spring Boot apps (gateway, shell, CLI, cron-manager,
+                                  pipeline-studio SPA, shared shell-commands)
+jaiclaw-starters/    32 modules — Spring Boot starters for downstream consumers
 jaiclaw-examples/    43 modules — runnable example applications
+tools/                4 modules — CLI-oriented tools (perplexity, project-scaffolder, prompt-analyzer,
+                                  rest-cli-architect)
 ```
 
 The core module graph:
@@ -198,7 +226,7 @@ Same gateway, `jaiclaw.tenant.mode=multi`. JWT-resolved tenant isolation across 
 # values.yaml — minimal helm values for a multi-tenant gateway
 image:
   repository: registry.example.com/io.jaiclaw/jaiclaw-gateway-app
-  tag: "0.9.2"
+  tag: "1.0.0"
 
 replicaCount: 3
 
@@ -531,7 +559,9 @@ Multi-arch (`linux/amd64` + `linux/arm64`) images use `eclipse-temurin:21-jre` b
 | [Production Deployment](docs/user/PRODUCTION-DEPLOYMENT.md) | Kubernetes, JKube, Helm, secrets, observability, security hardening |
 | [Compliance Guide](docs/user/COMPLIANCE.md) | GDPR + HIPAA reference: profile → flag orchestration, per-tenant metadata, BAA-eligible provider catalog, Tier 1/2/3 SPIs |
 | [Compliance How-To](docs/user/COMPLIANCE-HOWTO.md) | Task-oriented playbook: how to make a deployment GDPR-ready / HIPAA-ready / both |
-| [Migration 0.9.3](docs/MIGRATION-0.9.3.md) | 7-step adopter guide for opting into the compliance surface |
+| [Release Notes 1.0.0](releases/release-1.0.0.md) | Spring Boot 4 line-swap release — breaking changes catalogue, dependency table, migration guide, UAT verification |
+| [UAT Sweep 1.0.0](releases/uat-1.0.0.md) | Pre-release verification sweep — reactor test, boot smoke, 7 e2e skills, findings + follow-ups |
+| [Migration 0.9.3](docs/MIGRATION-0.9.3.md) | 7-step adopter guide for opting into the compliance surface (0.9.x line) |
 | [From Personal to Enterprise](docs/user/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md) | Five-level spectrum from personal assistant to multi-tenant SaaS |
 | [Agentic Workflow](docs/dev/AGENTIC-WORKFLOW.md) | Tool loop, human-in-the-loop, context compaction, memory |
 | [Project Scaffolder](tools/jaiclaw-project-scaffolder/README.md) | Generate new JaiClaw projects from a YAML manifest |

@@ -5,11 +5,11 @@ import io.jaiclaw.cronmanager.CronJobManagerService;
 import io.jaiclaw.cronmanager.model.CronExecutionRecord;
 import io.jaiclaw.cronmanager.model.CronJobDefinition;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.command.annotation.Command;
-import org.springframework.shell.command.annotation.Option;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.shell.core.command.annotation.Option;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -21,7 +21,7 @@ import java.util.UUID;
  * Spring Shell commands for cron job management.
  * Uses {@link ObjectProvider} for optional dependency on the manager service.
  */
-@ShellComponent
+@Component
 public class CronJobCommands {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter
@@ -34,7 +34,7 @@ public class CronJobCommands {
         this.managerServiceProvider = managerServiceProvider;
     }
 
-    @ShellMethod(key = "cron-list", value = "List all cron jobs")
+    @Command(name = "cron-list", description = "List all cron jobs")
     public String cronList() {
         CronJobManagerService service = requireService();
         List<CronJobDefinition> jobs = service.listJobs();
@@ -60,22 +60,22 @@ public class CronJobCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "cron-show", value = "Show details of a specific cron job")
-    public String cronShow(@ShellOption String jobId) {
+    @Command(name = "cron-show", description = "Show details of a specific cron job")
+    public String cronShow(@Option String jobId) {
         CronJobManagerService service = requireService();
         return service.getJob(jobId)
                 .map(this::formatJobDetail)
                 .orElse("Job not found: " + jobId);
     }
 
-    @ShellMethod(key = "cron-create", value = "Create a new cron job")
+    @Command(name = "cron-create", description = "Create a new cron job")
     public String cronCreate(
-            @ShellOption String name,
-            @ShellOption String schedule,
-            @ShellOption String prompt,
-            @ShellOption(defaultValue = "default") String agentId,
-            @ShellOption(defaultValue = "UTC") String timezone,
-            @ShellOption(defaultValue = "true") boolean enabled) {
+            @Option String name,
+            @Option String schedule,
+            @Option String prompt,
+            @Option(defaultValue = "default") String agentId,
+            @Option(defaultValue = "UTC") String timezone,
+            @Option(defaultValue = "true") boolean enabled) {
 
         CronJobManagerService service = requireService();
 
@@ -88,15 +88,15 @@ public class CronJobCommands {
         return "Created cron job: " + created.cronJob().name() + " (id=" + created.id() + ")";
     }
 
-    @ShellMethod(key = "cron-delete", value = "Delete a cron job")
-    public String cronDelete(@ShellOption String jobId) {
+    @Command(name = "cron-delete", description = "Delete a cron job")
+    public String cronDelete(@Option String jobId) {
         CronJobManagerService service = requireService();
         boolean deleted = service.deleteJob(jobId);
         return deleted ? "Deleted job: " + jobId : "Job not found: " + jobId;
     }
 
-    @ShellMethod(key = "cron-run", value = "Execute a cron job immediately")
-    public String cronRun(@ShellOption String jobId) {
+    @Command(name = "cron-run", description = "Execute a cron job immediately")
+    public String cronRun(@Option String jobId) {
         CronJobManagerService service = requireService();
         try {
             String runId = service.runNow(jobId);
@@ -106,10 +106,10 @@ public class CronJobCommands {
         }
     }
 
-    @ShellMethod(key = "cron-history", value = "Show execution history for a cron job")
+    @Command(name = "cron-history", description = "Show execution history for a cron job")
     public String cronHistory(
-            @ShellOption String jobId,
-            @ShellOption(defaultValue = "10") int limit) {
+            @Option String jobId,
+            @Option(defaultValue = "10") int limit) {
 
         CronJobManagerService service = requireService();
         List<CronExecutionRecord> history = service.getJobHistory(jobId, limit);
@@ -134,21 +134,21 @@ public class CronJobCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "cron-pause", value = "Pause a cron job")
-    public String cronPause(@ShellOption String jobId) {
+    @Command(name = "cron-pause", description = "Pause a cron job")
+    public String cronPause(@Option String jobId) {
         CronJobManagerService service = requireService();
         boolean paused = service.pauseJob(jobId);
         return paused ? "Paused job: " + jobId : "Job not found: " + jobId;
     }
 
-    @ShellMethod(key = "cron-resume", value = "Resume a paused cron job")
-    public String cronResume(@ShellOption String jobId) {
+    @Command(name = "cron-resume", description = "Resume a paused cron job")
+    public String cronResume(@Option String jobId) {
         CronJobManagerService service = requireService();
         boolean resumed = service.resumeJob(jobId);
         return resumed ? "Resumed job: " + jobId : "Job not found: " + jobId;
     }
 
-    @ShellMethod(key = "cron-status", value = "Show cron manager status summary")
+    @Command(name = "cron-status", description = "Show cron manager status summary")
     public String cronStatus() {
         CronJobManagerService service = requireService();
         List<CronJobDefinition> jobs = service.listJobs();

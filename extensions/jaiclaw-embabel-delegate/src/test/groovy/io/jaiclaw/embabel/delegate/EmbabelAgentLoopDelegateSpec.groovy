@@ -6,7 +6,7 @@ import com.embabel.agent.core.AgentProcess
 import com.embabel.agent.core.AgentProcessStatusCode
 import com.embabel.agent.core.Blackboard
 import com.embabel.agent.core.ProcessOptions
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.agent.delegate.AgentLoopDelegateContext
 import io.jaiclaw.config.AgentLoopDelegateConfig
 import io.jaiclaw.config.TenantAgentConfig

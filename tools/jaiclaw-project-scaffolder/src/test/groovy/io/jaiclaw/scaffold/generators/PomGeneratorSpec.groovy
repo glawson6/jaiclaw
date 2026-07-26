@@ -1,8 +1,8 @@
 package io.jaiclaw.scaffold.generators
 
 import io.jaiclaw.scaffold.ProjectManifest
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.dataformat.yaml.YAMLFactory
 import spock.lang.Specification
 
 class PomGeneratorSpec extends Specification {
@@ -62,7 +62,8 @@ class PomGeneratorSpec extends Specification {
 
         then:
         pom.contains("<artifactId>jaiclaw-embabel-delegate</artifactId>")
-        pom.contains("<artifactId>spring-ai-starter-model-vertex-ai</artifactId>")
+        // Vertex-AI was renamed to google-genai at Spring AI 2.0 GA.
+        pom.contains("<artifactId>spring-ai-starter-model-google-genai</artifactId>")
     }
 
     def "generates POM for comprehensive archetype with multiple providers"() {
@@ -197,9 +198,43 @@ class PomGeneratorSpec extends Specification {
         pom.contains("<artifactId>jaiclaw-channel-slack</artifactId>")
     }
 
+    // --- Version threading (regression lock for scaffolder-boot4-jaiclaw1-refresh) ---
+
+    def "STANDALONE pom threads springBootVersion + jaiclawVersion from the manifest"() {
+        given: "a manifest with both versions overridden"
+        def manifest = loadManifest("minimal.yml")
+                .withSpringBootVersion("4.1.0")
+                .withJaiclawVersion("1.0.0-SNAPSHOT")
+
+        when:
+        def pom = PomGenerator.generate(manifest)
+
+        then: "Boot parent block carries the Boot version"
+        pom.contains("<artifactId>spring-boot-starter-parent</artifactId>")
+        pom.contains("<version>4.1.0</version>")
+
+        and: "BOM import block carries the jaiclaw version"
+        pom.contains("<artifactId>jaiclaw-bom</artifactId>")
+        pom.contains("<version>1.0.0-SNAPSHOT</version>")
+
+        and: "the stale 3.5.14 / 0.6.0-SNAPSHOT defaults never leak"
+        !pom.contains("3.5.14")
+        !pom.contains("0.6.0-SNAPSHOT")
+    }
+
     private ProjectManifest loadManifest(String name) {
         def stream = getClass().getResourceAsStream("/manifests/" + name)
         def map = yamlMapper.readValue(stream, Map)
-        ProjectManifest.fromYamlMap(map)
+        // Mimic ScaffoldMojo's default substitution — real callers always supply
+        // both versions (either via the manifest YAML or as -D properties on the
+        // mojo). Tests would otherwise emit <version>null</version> in the pom.
+        ProjectManifest manifest = ProjectManifest.fromYamlMap(map)
+        if (manifest.jaiclawVersion() == null) {
+            manifest = manifest.withJaiclawVersion("1.0.0-SNAPSHOT")
+        }
+        if (manifest.springBootVersion() == null) {
+            manifest = manifest.withSpringBootVersion("4.1.0")
+        }
+        manifest
     }
 }

@@ -21,3 +21,11 @@ feature-parity-report.md
 # Internal compliance / risk audits — findings not for public consumption.
 # The implementation PLANS they drive DO get committed; the raw AUDITS don't.
 /docs/dev/COMPLIANCE-ANALYSIS-*.md
+
+# Local marketing / non-framework scratch
+docs-local/
+
+# Frontend build artifacts (React SPAs — pipeline-studio, etc.)
+**/node_modules/
+**/dist/
+**/.vite/

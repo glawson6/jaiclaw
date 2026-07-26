@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-examples</artifactId>
@@ -62,5 +62,6 @@
         <module>sales-enrichment-pipeline</module>
         <module>contract-reviewer</module>
         <module>agentmind-demo</module>
+        <module>multi-provider-toggle</module>
     </modules>
 </project>

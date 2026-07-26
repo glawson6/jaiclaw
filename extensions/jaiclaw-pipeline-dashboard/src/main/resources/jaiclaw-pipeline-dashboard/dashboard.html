@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JaiClaw Pipeline Dashboard</title>
+    <link rel="stylesheet" href="/pipelines/dashboard/dashboard.css">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Pipeline Dashboard</h1>
+        <div class="header-right">
+            <span id="tenant-indicator" hidden>Tenant: <strong id="tenant-name">—</strong></span>
+            <span class="connection-status" id="connection-status" title="SSE connection status">●</span>
+        </div>
+    </header>
+
+    <main class="app-body">
+        <aside class="sidebar">
+            <h2>Pipelines</h2>
+            <ul id="pipeline-list" class="pipeline-list">
+                <li class="placeholder">Loading…</li>
+            </ul>
+            <button id="refresh-list" class="secondary-btn" type="button">Refresh</button>
+        </aside>
+
+        <section class="detail" id="detail-panel">
+            <div class="empty-state">
+                <p>Select a pipeline on the left to view its definition, recent executions, and live event stream.</p>
+            </div>
+        </section>
+    </main>
+
+    <template id="pipeline-detail-template">
+        <div class="pipeline-detail">
+            <header class="detail-header">
+                <h2 class="pipeline-name"></h2>
+                <span class="pipeline-id"></span>
+            </header>
+
+            <section class="detail-section">
+                <h3>Flow</h3>
+                <div class="pipeline-flow" data-testid="flow-svg"></div>
+            </section>
+
+            <section class="detail-section">
+                <h3>Trigger</h3>
+                <form class="trigger-form">
+                    <label for="trigger-input">Input payload</label>
+                    <textarea id="trigger-input" name="input" rows="3"
+                              placeholder="Payload passed to the pipeline&#39;s trigger endpoint (alias-based)."></textarea>
+                    <label for="trigger-alias">HTTP alias</label>
+                    <input type="text" id="trigger-alias" name="alias"
+                           placeholder="alias configured via jaiclaw.pipeline.http-trigger.allowed">
+                    <button type="submit" class="primary-btn">Trigger</button>
+                    <span class="trigger-result"></span>
+                </form>
+            </section>
+
+            <section class="detail-section">
+                <h3>Recent executions</h3>
+                <table class="executions-table">
+                    <thead>
+                        <tr>
+                            <th>Execution</th><th>Status</th><th>Started</th><th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody class="executions-body">
+                        <tr class="placeholder"><td colspan="4">—</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="detail-section">
+                <h3>Live events</h3>
+                <ol class="event-log"></ol>
+            </section>
+        </div>
+    </template>
+
+    <script type="module" src="/pipelines/dashboard/dashboard.js"></script>
+</body>
+</html>

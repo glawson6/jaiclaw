@@ -95,12 +95,27 @@ you've set one).
 ### Path 2 — Embed in your own Spring Boot app
 
 ```xml
+<repositories>
+  <repository>
+    <id>taptech-releases</id>
+    <url>https://tooling.taptech.net/repository/maven-releases/</url>
+    <releases><enabled>true</enabled></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+  <repository>
+    <id>embabel-snapshots</id>
+    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+
 <dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.jaiclaw</groupId>
       <artifactId>jaiclaw-bom</artifactId>
-      <version>0.7.0</version>
+      <version>1.0.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -118,6 +133,16 @@ you've set one).
   </dependency>
 </dependencies>
 ```
+
+**Distribution note:** 1.0.0 is published to TapTech Nexus
+(`https://tooling.taptech.net/repository/maven-releases/`) — anonymous
+reads work; no `<servers>` block in `~/.m2/settings.xml` needed. Maven
+Central publication follows Embabel 2.0.0 GA to Central (Embabel
+currently ships `2.0.0-SNAPSHOT`; Central rejects SNAPSHOT deps in
+release artifacts). Adopters who need a Central-hosted line today
+should stay on the 0.9.x releases. See
+[`releases/release-1.0.0.md`](../../releases/release-1.0.0.md) for the
+full release notes.
 
 Then write a minimal application. The
 [hello-world example](../../jaiclaw-examples/hello-world/) shows the

@@ -6,6 +6,7 @@ import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
@@ -32,16 +33,39 @@ public class SmsAdapter extends AbstractChannelAdapter {
     private static final String TWILIO_API_BASE = "https://api.twilio.com/2010-04-01/Accounts/";
 
     private final SmsConfig config;
-    private final RestTemplate restTemplate;
+    private final SmsHttpClient httpClient;
 
     public SmsAdapter(SmsConfig config) {
-        this(config, new RestTemplate());
+        this(config, new RestClientSmsHttpClient());
     }
 
-    public SmsAdapter(SmsConfig config, RestTemplate restTemplate) {
+    /**
+     * Primary constructor — inject an {@link SmsHttpClient}. Specs mock this
+     * interface directly.
+     */
+    public SmsAdapter(SmsConfig config, SmsHttpClient httpClient) {
         super("sms", "SMS", PlatformLimits.SMS);
         this.config = config;
-        this.restTemplate = restTemplate;
+        this.httpClient = httpClient;
+    }
+
+    /**
+     * Convenience constructor — wraps the given {@link RestClient} in the
+     * default {@link RestClientSmsHttpClient}.
+     */
+    public SmsAdapter(SmsConfig config, RestClient restClient) {
+        this(config, new RestClientSmsHttpClient(restClient));
+    }
+
+    /**
+     * Legacy constructor kept for backward compatibility with 0.9.x adopters.
+     *
+     * @deprecated Since 1.0.0. Migrate to {@link #SmsAdapter(SmsConfig, SmsHttpClient)}
+     *     or {@link #SmsAdapter(SmsConfig, RestClient)}.
+     */
+    @Deprecated(since = "1.0.0", forRemoval = true)
+    public SmsAdapter(SmsConfig config, RestTemplate restTemplate) {
+        this(config, new RestClientSmsHttpClient());
     }
 
     @Override
@@ -63,19 +87,13 @@ public class SmsAdapter extends AbstractChannelAdapter {
                     + "&To=" + encode(message.peerId())
                     + "&Body=" + encode(message.content());
 
-            var headers = new org.springframework.http.HttpHeaders();
-            headers.setBasicAuth(config.accountSid(), config.authToken());
-            headers.setContentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED);
-
-            var request = new org.springframework.http.HttpEntity<>(body, headers);
-            var response = restTemplate.postForEntity(url, request, Map.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String sid = String.valueOf(response.getBody().get("sid"));
-                return new DeliveryResult.Success(sid);
+            Map<String, Object> response = httpClient.postForm(url,
+                    config.accountSid(), config.authToken(), body);
+            if (response != null && response.get("sid") != null) {
+                return new DeliveryResult.Success(String.valueOf(response.get("sid")));
             }
             return new DeliveryResult.Failure("sms_send_failed",
-                    "HTTP " + response.getStatusCode(), true);
+                    "Twilio response missing sid", true);
         } catch (Exception e) {
             log.error("Failed to send SMS to {}: {}", message.peerId(), e.getMessage());
             return new DeliveryResult.Failure("sms_send_failed", e.getMessage(), true);

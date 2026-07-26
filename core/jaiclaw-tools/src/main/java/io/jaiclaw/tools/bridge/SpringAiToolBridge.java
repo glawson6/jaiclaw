@@ -1,7 +1,7 @@
 package io.jaiclaw.tools.bridge;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.tool.ToolContext;
 import io.jaiclaw.core.tool.ToolResult;
 import org.slf4j.Logger;

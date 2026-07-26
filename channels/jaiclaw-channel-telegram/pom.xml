@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-channels</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-channel-telegram</artifactId>
@@ -15,7 +15,7 @@
     <description>Telegram Bot API channel adapter</description>
 
     <properties>
-        <camel.version>4.18.2</camel.version>
+        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>
@@ -32,7 +32,7 @@
             <artifactId>jaiclaw-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>

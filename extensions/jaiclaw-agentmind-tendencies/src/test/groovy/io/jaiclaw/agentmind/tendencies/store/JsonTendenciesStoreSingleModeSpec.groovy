@@ -1,7 +1,6 @@
 package io.jaiclaw.agentmind.tendencies.store
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.model.Tendencies
 import io.jaiclaw.core.model.TendenciesScope
 import io.jaiclaw.core.tenant.TenantGuard
@@ -23,7 +22,7 @@ class JsonTendenciesStoreSingleModeSpec extends Specification {
     Path tmp
 
     TenantGuard singleTenant = Mock() { isMultiTenant() >> false }
-    ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule())
+    ObjectMapper mapper = new ObjectMapper()
 
     JsonTendenciesStoreProvider store() {
         new JsonTendenciesStoreProvider(tmp, singleTenant, mapper)

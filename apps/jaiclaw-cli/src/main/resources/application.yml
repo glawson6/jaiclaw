@@ -71,8 +71,7 @@ spring:
       enabled: ${ANTHROPIC_ENABLED:true}
       api-key: ${ANTHROPIC_API_KEY:not-set}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
     ollama:
       enabled: ${OLLAMA_ENABLED:false}
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
@@ -81,14 +80,12 @@ spring:
         enabled: ${GEMINI_ENABLED:false}
         api-key: ${GEMINI_API_KEY:not-set}
         chat:
-          options:
-            model: ${GEMINI_MODEL:gemini-2.0-flash}
+          model: ${GEMINI_MODEL:gemini-2.0-flash}
     bedrock:
       converse:
         enabled: ${BEDROCK_ENABLED:false}
         chat:
-          options:
-            model: ${BEDROCK_MODEL:us.anthropic.claude-3-5-sonnet-20241022-v2:0}
+          model: ${BEDROCK_MODEL:us.anthropic.claude-3-5-sonnet-20241022-v2:0}
       aws:
         region: ${AWS_REGION:us-east-1}
   shell:

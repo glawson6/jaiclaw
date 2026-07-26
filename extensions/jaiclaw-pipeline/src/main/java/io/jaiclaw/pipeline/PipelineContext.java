@@ -75,15 +75,37 @@ public record PipelineContext(
     }
 
     /**
-     * Advance to the next stage, recording the current stage's output.
-     *
-     * @param stageName     name of the completed stage
-     * @param output        output text from the completed stage
-     * @return a new context with incremented stageIndex and appended output
+     * Advance to the next stage, recording the current stage's output
+     * with no stage metadata. Convenience overload of
+     * {@link #nextStage(String, String, Map)}.
      */
     public PipelineContext nextStage(String stageName, String output) {
+        return nextStage(stageName, output, Map.of());
+    }
+
+    /**
+     * Advance to the next stage, recording the current stage's output
+     * and per-stage metadata.
+     *
+     * <p>The metadata map lands on
+     * {@link StageOutput#metadata()} for {@code stageName} and is
+     * available to {@link TemplateResolver} via {@code
+     * {{stages.<stageName>.metadata.<key>}}} placeholders. The runtime
+     * uses this path to persist the
+     * {@link PipelineResult#RESULT_KEY} exchange property produced by a
+     * stage bean so the pipeline-completion path can surface it as the
+     * final result.
+     *
+     * @param stageName name of the completed stage
+     * @param output    output text from the completed stage
+     * @param stageMetadata per-stage metadata (nullable → empty)
+     * @return a new context with incremented stageIndex and appended output
+     */
+    public PipelineContext nextStage(String stageName, String output,
+                                     Map<String, String> stageMetadata) {
         Map<String, StageOutput> newOutputs = new LinkedHashMap<>(stageOutputs);
-        newOutputs.put(stageName, new StageOutput(output, Map.of(), Instant.now()));
+        Map<String, String> safeStageMetadata = stageMetadata == null ? Map.of() : stageMetadata;
+        newOutputs.put(stageName, new StageOutput(output, safeStageMetadata, Instant.now()));
         return new PipelineContext(
                 pipelineId, executionId, tenantId, correlationId,
                 stageIndex + 1, totalStages,

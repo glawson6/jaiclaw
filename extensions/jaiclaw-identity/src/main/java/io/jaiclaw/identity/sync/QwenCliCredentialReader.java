@@ -1,7 +1,7 @@
 package io.jaiclaw.identity.sync;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.auth.AuthProfileConstants;
 import io.jaiclaw.core.auth.OAuthCredential;
 import org.slf4j.Logger;

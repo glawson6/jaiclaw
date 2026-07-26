@@ -2,9 +2,9 @@ package io.jaiclaw.examples.invoice;
 
 import io.jaiclaw.pipeline.tracking.PipelineExecutionSummary;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +13,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.StringJoiner;
 
-@ShellComponent
+@Component
 public class InvoiceProcessorShellCommands {
 
     private final PipelineExecutionTracker tracker;
@@ -26,9 +26,8 @@ public class InvoiceProcessorShellCommands {
      * Drop a synthetic invoice text file into the watched inbox so the FILE
      * trigger picks it up. The file content becomes the pipeline body.
      */
-    @ShellMethod(key = {"inbox"},
-            value = "Write a synthetic invoice file into the watched inbox to trigger the pipeline.")
-    public String inbox(@ShellOption(arity = Integer.MAX_VALUE) String[] words) throws IOException {
+    @Command(name = "inbox", description = "Write a synthetic invoice file into the watched inbox to trigger the pipeline.")
+    public String inbox(@Option String[] words) throws IOException {
         String body;
         if (words == null || words.length == 0) {
             // Default sample lets the user run `inbox` with no args.
@@ -52,8 +51,7 @@ public class InvoiceProcessorShellCommands {
                 + "Pipeline should pick it up within a second; run `executions`.";
     }
 
-    @ShellMethod(key = {"list-approved"},
-            value = "Print the approved-invoices JSONL file.")
+    @Command(name = "list-approved", description = "Print the approved-invoices JSONL file.")
     public String listApproved() throws IOException {
         if (!Files.exists(InvoiceProcessorBeans.APPROVED)) {
             return "(no approvals yet)";
@@ -61,7 +59,7 @@ public class InvoiceProcessorShellCommands {
         return Files.readString(InvoiceProcessorBeans.APPROVED);
     }
 
-    @ShellMethod(key = {"executions", "ph"}, value = "Show recent pipeline executions.")
+    @Command(name = "executions", alias = "ph", description = "Show recent pipeline executions.")
     public String executions() {
         List<PipelineExecutionSummary> recent = tracker.recent(InvoiceProcessorPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {
@@ -78,8 +76,7 @@ public class InvoiceProcessorShellCommands {
         return sj.toString();
     }
 
-    @ShellMethod(key = {"last-result"},
-            value = "Print the most recent execution's final output.")
+    @Command(name = "last-result", description = "Print the most recent execution's final output.")
     public String lastResult() {
         List<PipelineExecutionSummary> recent = tracker.recent(InvoiceProcessorPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {

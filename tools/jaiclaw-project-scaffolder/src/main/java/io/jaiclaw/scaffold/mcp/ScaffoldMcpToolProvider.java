@@ -1,7 +1,7 @@
 package io.jaiclaw.scaffold.mcp;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 import io.jaiclaw.core.mcp.McpToolDefinition;
 import io.jaiclaw.core.mcp.McpToolProvider;
 import io.jaiclaw.core.mcp.McpToolResult;
@@ -34,6 +34,24 @@ public class ScaffoldMcpToolProvider implements McpToolProvider {
     private static final String SCAFFOLD_TOOL = "scaffold_project";
     private static final String VALIDATE_TOOL = "validate_manifest";
     private static final String LIST_OPTIONS_TOOL = "list_options";
+
+    // Default versions applied when the MCP tool's YAML omits them — mirrors
+    // ScaffoldMojo's @Parameter defaults. Bump when the framework itself moves
+    // to a new Boot or JaiClaw line. Not user-configurable at the MCP layer:
+    // adopters who need a pin declare `jaiclaw-version` / `spring-boot-version`
+    // directly in the manifest YAML they submit.
+    private static final String DEFAULT_JAICLAW_VERSION = "1.0.0-SNAPSHOT";
+    private static final String DEFAULT_SPRING_BOOT_VERSION = "4.1.0";
+
+    private static ProjectManifest applyVersionDefaults(ProjectManifest manifest) {
+        if (manifest.jaiclawVersion() == null || manifest.jaiclawVersion().isBlank()) {
+            manifest = manifest.withJaiclawVersion(DEFAULT_JAICLAW_VERSION);
+        }
+        if (manifest.springBootVersion() == null || manifest.springBootVersion().isBlank()) {
+            manifest = manifest.withSpringBootVersion(DEFAULT_SPRING_BOOT_VERSION);
+        }
+        return manifest;
+    }
 
     private static final String SCAFFOLD_SCHEMA = """
             {
@@ -145,7 +163,7 @@ public class ScaffoldMcpToolProvider implements McpToolProvider {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> yamlMap = yamlMapper.readValue(manifestYaml, Map.class);
-            ProjectManifest manifest = ProjectManifest.fromYamlMap(yamlMap);
+            ProjectManifest manifest = applyVersionDefaults(ProjectManifest.fromYamlMap(yamlMap));
             manifest.validate();
 
             Path projectPath = generator.generate(manifest, Path.of(outputDir));
@@ -178,7 +196,7 @@ public class ScaffoldMcpToolProvider implements McpToolProvider {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> yamlMap = yamlMapper.readValue(manifestYaml, Map.class);
-            ProjectManifest manifest = ProjectManifest.fromYamlMap(yamlMap);
+            ProjectManifest manifest = applyVersionDefaults(ProjectManifest.fromYamlMap(yamlMap));
             manifest.validate();
 
             String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(

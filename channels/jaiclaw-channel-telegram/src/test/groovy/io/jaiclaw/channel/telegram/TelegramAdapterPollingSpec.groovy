@@ -1,7 +1,7 @@
 package io.jaiclaw.channel.telegram
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.channel.ChannelMessage
 import io.jaiclaw.channel.ChannelMessageHandler
 import io.jaiclaw.gateway.WebhookDispatcher

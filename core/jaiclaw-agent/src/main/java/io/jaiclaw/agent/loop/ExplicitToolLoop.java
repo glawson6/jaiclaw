@@ -1,6 +1,6 @@
 package io.jaiclaw.agent.loop;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.agent.LlmTraceLogger;
 import io.jaiclaw.core.agent.*;
 import io.jaiclaw.core.hook.event.ToolCallEndedEvent;
@@ -87,8 +87,15 @@ public class ExplicitToolLoop {
         long loopStartNanos = System.nanoTime();
 
         for (int i = 0; i < config.maxIterations(); i++) {
+            // Spring AI 2.0: the internalToolExecutionEnabled(false) flag from 1.x was removed.
+            // Instead, the ChatModel only auto-executes tools when a caller-supplied
+            // ToolCallingManager is wired into the ChatModel's construction. Our
+            // ChatModel beans are built without a manager, so ChatModel.call() returns
+            // the tool-call requests without executing them — which is exactly what this
+            // loop needs. We continue to run each ToolCallback ourselves below, preserving
+            // the BEFORE/AFTER hook points + optional approval gate + per-iteration
+            // accounting that this class exists to provide.
             var options = ToolCallingChatOptions.builder()
-                    .internalToolExecutionEnabled(false)
                     .toolCallbacks(new ArrayList<>(toolsByName.values()))
                     .build();
 

@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-bom</artifactId>
-    <version>0.9.4-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw :: BOM</name>
@@ -50,7 +50,12 @@
     </distributionManagement>
 
     <properties>
-        <spring-ai.version>1.1.7</spring-ai.version>
+        <!-- Align with root pom's spring-ai.version (2.0.0). Prior 1.1.7 pin
+             was a leftover from the Boot 3.5 line and made scaffolded apps
+             fail with NoSuchMethodError: HttpHeaders.addAll(MultiValueMap) —
+             Spring AI 1.1.7 references org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration
+             which no longer exists in Boot 4. -->
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
 
     <profiles>
@@ -212,6 +217,41 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-mvc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-webflux</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-session-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-dashboard</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-authoring</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-documents</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -325,6 +365,11 @@
                 <artifactId>jaiclaw-shell</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-studio</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Starters -->
             <dependency>
@@ -359,12 +404,6 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-azure-openai</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-deepseek</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -372,24 +411,6 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-mistral</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-minimax</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-vertex-ai</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>io.jaiclaw</groupId>
-                <artifactId>jaiclaw-starter-oci-genai</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
@@ -408,6 +429,12 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-embabel</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-github-copilot</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
             </dependency>
@@ -442,6 +469,11 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-embabel-delegate</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-github-copilot</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

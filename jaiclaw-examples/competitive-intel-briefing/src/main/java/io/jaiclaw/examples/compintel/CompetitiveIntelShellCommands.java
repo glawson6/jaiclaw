@@ -4,9 +4,9 @@ import io.jaiclaw.pipeline.gateway.PipelineExecutionHandle;
 import io.jaiclaw.pipeline.gateway.PipelineGateway;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionSummary;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
-@ShellComponent
+@Component
 public class CompetitiveIntelShellCommands {
 
     private final PipelineGateway gateway;
@@ -32,7 +32,7 @@ public class CompetitiveIntelShellCommands {
         this.properties = properties;
     }
 
-    @ShellMethod(key = {"run-now"}, value = "Fire the briefing pipeline immediately, not at the next cron tick.")
+    @Command(name = "run-now", description = "Fire the briefing pipeline immediately, not at the next cron tick.")
     public String runNow() {
         String input = "Generate briefing for competitors: " + String.join(", ", properties.competitors());
         PipelineExecutionHandle handle = gateway.trigger(CompetitiveIntelPipelines.PIPELINE_ID, input);
@@ -40,13 +40,12 @@ public class CompetitiveIntelShellCommands {
                 + ". The next scheduled cron tick will also run. Run `last-briefing` afterwards.";
     }
 
-    @ShellMethod(key = {"competitors"}, value = "List currently tracked competitors.")
+    @Command(name = "competitors", description = "List currently tracked competitors.")
     public String competitors() {
         return String.join("\n", properties.competitors());
     }
 
-    @ShellMethod(key = {"last-briefing"},
-            value = "Print the most recent on-disk briefing markdown.")
+    @Command(name = "last-briefing", description = "Print the most recent on-disk briefing markdown.")
     public String lastBriefing() throws IOException {
         if (!Files.isDirectory(CompetitiveIntelBeans.BRIEFINGS_DIR)) {
             return "(no briefings yet — run `run-now`)";
@@ -63,7 +62,7 @@ public class CompetitiveIntelShellCommands {
         }
     }
 
-    @ShellMethod(key = {"executions", "ph"}, value = "Show recent pipeline executions.")
+    @Command(name = "executions", alias = "ph", description = "Show recent pipeline executions.")
     public String executions() {
         List<PipelineExecutionSummary> recent = tracker.recent(CompetitiveIntelPipelines.PIPELINE_ID);
         if (recent.isEmpty()) {

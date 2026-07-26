@@ -1,6 +1,6 @@
 package io.jaiclaw.documents.tools
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import io.jaiclaw.core.tool.ToolContext
 import io.jaiclaw.core.tool.ToolProfile
 import io.jaiclaw.core.tool.ToolResult

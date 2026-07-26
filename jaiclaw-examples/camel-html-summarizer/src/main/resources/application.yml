@@ -54,5 +54,4 @@ spring:
       api-key: ${ANTHROPIC_API_KEY:not-set}
       base-url: ${ANTHROPIC_BASE_URL:https://api.minimax.io/anthropic}
       chat:
-        options:
-          model: ${ANTHROPIC_MODEL:M2-her}
+        model: ${ANTHROPIC_MODEL:M2-her}

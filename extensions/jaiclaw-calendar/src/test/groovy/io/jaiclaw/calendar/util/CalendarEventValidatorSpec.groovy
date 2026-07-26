@@ -10,7 +10,7 @@ class CalendarEventValidatorSpec extends Specification {
     CalendarEventValidator validator
 
     def setup() {
-        validator = new CalendarEventValidator(new CalendarProperties())
+        validator = new CalendarEventValidator(CalendarProperties.defaults())
     }
 
     def "valid future event passes"() {

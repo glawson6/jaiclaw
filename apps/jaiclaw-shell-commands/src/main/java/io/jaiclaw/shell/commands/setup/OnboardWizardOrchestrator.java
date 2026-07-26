@@ -1,101 +1,12 @@
 package io.jaiclaw.shell.commands.setup;
 
-import io.jaiclaw.config.JaiClawProperties;
-import io.jaiclaw.shell.commands.setup.config.EnvFileWriter;
-import io.jaiclaw.shell.commands.setup.config.OnePasswordTemplateWriter;
-import io.jaiclaw.shell.commands.setup.config.YamlConfigWriter;
-import io.jaiclaw.shell.commands.setup.steps.*;
-import io.jaiclaw.shell.commands.setup.validation.DiscordTokenValidator;
-import io.jaiclaw.shell.commands.setup.validation.LlmConnectivityTester;
-import io.jaiclaw.shell.commands.setup.validation.SlackTokenValidator;
-import io.jaiclaw.shell.commands.setup.validation.TelegramTokenValidator;
-
-import org.springframework.shell.component.flow.ComponentFlow;
-import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
-
-@Component
+/**
+ * TODO(spring-shell-4-migration): This class used the Spring Shell 3
+ * ComponentFlow / PromptProvider APIs, which were removed in Spring Shell 4.
+ * The interactive onboarding wizard needs to be rebuilt using Shell 4's new
+ * component model. Quarantined during the Boot 4 upgrade to unblock the reactor.
+ * See docs/spring-boot-4-upgrade/06-spring-shell-4-migration.md.
+ */
 public class OnboardWizardOrchestrator {
-
-    private final ComponentFlow.Builder flowBuilder;
-    private final LlmConnectivityTester llmTester;
-    private final TelegramTokenValidator telegramValidator;
-    private final SlackTokenValidator slackValidator;
-    private final DiscordTokenValidator discordValidator;
-    private final YamlConfigWriter yamlWriter;
-    private final EnvFileWriter envWriter;
-    private final OnePasswordTemplateWriter onePasswordWriter;
-    private final JaiClawProperties jaiClawProperties;
-
-    public OnboardWizardOrchestrator(ComponentFlow.Builder flowBuilder,
-                                     LlmConnectivityTester llmTester,
-                                     TelegramTokenValidator telegramValidator,
-                                     SlackTokenValidator slackValidator,
-                                     DiscordTokenValidator discordValidator,
-                                     YamlConfigWriter yamlWriter,
-                                     EnvFileWriter envWriter,
-                                     OnePasswordTemplateWriter onePasswordWriter,
-                                     JaiClawProperties jaiClawProperties) {
-        this.flowBuilder = flowBuilder;
-        this.llmTester = llmTester;
-        this.telegramValidator = telegramValidator;
-        this.slackValidator = slackValidator;
-        this.discordValidator = discordValidator;
-        this.yamlWriter = yamlWriter;
-        this.envWriter = envWriter;
-        this.onePasswordWriter = onePasswordWriter;
-        this.jaiClawProperties = jaiClawProperties;
-    }
-
-    public String run() {
-        OnboardResult result = new OnboardResult();
-        for (WizardStep step : buildSteps(result)) {
-            if (!step.execute(result)) {
-                return "Onboarding cancelled.";
-            }
-        }
-        return "Onboarding complete! Restart JaiClaw to apply your new configuration.";
-    }
-
-    List<WizardStep> buildSteps(OnboardResult result) {
-        List<WizardStep> steps = new ArrayList<>();
-        steps.add(new WelcomeStep(flowBuilder));
-        steps.add(new FlowModeStep(flowBuilder));
-        steps.add(new ExistingConfigStep(flowBuilder));
-        steps.add(new LlmProviderStep(flowBuilder, llmTester, jaiClawProperties.models()));
-
-        // Gateway only in manual mode — deferred check in step itself
-        steps.add(new GatewayStep(flowBuilder));
-
-        // Security mode (api-key / jwt / none)
-        steps.add(new SecurityStep(flowBuilder));
-
-        // Channel steps
-        steps.add(new TelegramStep(flowBuilder, telegramValidator));
-        steps.add(new SlackStep(flowBuilder, slackValidator));
-        steps.add(new DiscordStep(flowBuilder, discordValidator));
-
-        // Skills and MCP steps
-        steps.add(new SkillsStep(flowBuilder));
-        steps.add(new McpServersStep(flowBuilder));
-
-        // Optional REPL prompt customization — manual mode only, defaults
-        // to skip. Sits before 1Password because it's pure UX and has no
-        // dependency on the env-var bundle the next step inventories.
-        steps.add(new PromptStep(flowBuilder));
-
-        // 1Password integration — manual mode only, silently skipped
-        // when `op` CLI isn't on PATH. Runs after channels so it can
-        // offer to migrate only the env vars the wizard will actually
-        // emit.
-        steps.add(new OnePasswordStep(flowBuilder));
-
-        // Config location and finalization
-        steps.add(new ConfigLocationStep(flowBuilder));
-        steps.add(new FinalizationStep(flowBuilder, yamlWriter, envWriter, onePasswordWriter));
-
-        return steps;
-    }
+    // Body removed during Spring Boot 4 upgrade — see class javadoc.
 }

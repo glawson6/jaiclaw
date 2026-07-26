@@ -10,9 +10,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.PathContainer;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.pattern.PathPattern;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +26,9 @@ import java.util.List;
  * API key authentication filter. Checks the {@code X-API-Key} header or
  * {@code api_key} query parameter against the resolved key from {@link ApiKeyProvider}.
  * <p>
- * Skips {@code /api/health} and {@code /webhook/**} endpoints.
+ * By default skips {@code /api/health} and {@code /webhook/**} endpoints.
+ * The skip list is configurable via {@code jaiclaw.security.api-key-filter.skip-paths} —
+ * useful for coexisting with browser OIDC flows on the same host.
  */
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
@@ -31,30 +36,54 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String API_KEY_PARAM = "api_key";
     private static final String TENANT_ID_HEADER = "X-Tenant-Id";
+    private static final List<String> DEFAULT_SKIP_PATHS = List.of("/api/health", "/webhook/**");
 
     private final ApiKeyProvider apiKeyProvider;
     private final TenantGuard tenantGuard;
     private final boolean timingSafe;
+    private final List<PathPattern> skipPatterns;
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
-        this(apiKeyProvider, null, false);
+        this(apiKeyProvider, null, false, null);
     }
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard) {
-        this(apiKeyProvider, tenantGuard, false);
+        this(apiKeyProvider, tenantGuard, false, null);
     }
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard,
                                        boolean timingSafe) {
+        this(apiKeyProvider, tenantGuard, timingSafe, null);
+    }
+
+    /**
+     * @param skipPaths request paths that bypass the filter entirely. Each entry
+     *                  is a Spring path pattern ({@link PathPattern} shape —
+     *                  {@code **} for prefix wildcards, {@code *} for a
+     *                  single segment). {@code null} or empty falls back to
+     *                  the hard-coded defaults {@code [/api/health, /webhook/**]}.
+     */
+    public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard,
+                                       boolean timingSafe, List<String> skipPaths) {
         this.apiKeyProvider = apiKeyProvider;
         this.tenantGuard = tenantGuard;
         this.timingSafe = timingSafe;
+        List<String> effective = (skipPaths == null || skipPaths.isEmpty())
+                ? DEFAULT_SKIP_PATHS
+                : skipPaths;
+        PathPatternParser parser = PathPatternParser.defaultInstance;
+        this.skipPatterns = effective.stream()
+                .map(parser::parse)
+                .toList();
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return "/api/health".equals(path) || path.startsWith("/webhook/");
+        PathContainer path = PathContainer.parsePath(request.getRequestURI());
+        for (PathPattern pattern : skipPatterns) {
+            if (pattern.matches(path)) return true;
+        }
+        return false;
     }
 
     @Override

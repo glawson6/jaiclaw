@@ -1,7 +1,7 @@
 package io.jaiclaw.embabel.delegate;
 
 import com.embabel.agent.core.AgentPlatform;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.tools.bridge.embabel.AgentOrchestrationPort;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;

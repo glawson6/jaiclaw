@@ -1,6 +1,6 @@
 package io.jaiclaw.docs
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import spock.lang.Specification
 
 class DocsMcpToolProviderSpec extends Specification {

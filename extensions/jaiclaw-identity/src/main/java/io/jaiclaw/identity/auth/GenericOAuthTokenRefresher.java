@@ -1,7 +1,7 @@
 package io.jaiclaw.identity.auth;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.core.auth.OAuthCredential;
 import io.jaiclaw.identity.oauth.OAuthProviderConfig;
 import org.slf4j.Logger;

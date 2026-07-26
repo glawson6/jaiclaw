@@ -1,8 +1,8 @@
 package io.jaiclaw.scaffold.generators
 
 import io.jaiclaw.scaffold.ProjectManifest
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.dataformat.yaml.YAMLFactory
 import spock.lang.Specification
 
 class ApplicationYmlGeneratorSpec extends Specification {
@@ -115,9 +115,46 @@ class ApplicationYmlGeneratorSpec extends Specification {
         !yml.contains("JAICLAW_SECURITY_MODE")
     }
 
+    // --- ANTHROPIC_BASE_URL / OPENAI_BASE_URL placeholders (regression lock
+    // for scaffolder-boot4-jaiclaw1-refresh). Adopters routing MiniMax or
+    // any Anthropic-compatible proxy shouldn't have to edit the scaffolded
+    // yaml — the env placeholder makes it a boot-time flip.
+
+    def "anthropic provider block emits ANTHROPIC_BASE_URL placeholder"() {
+        given:
+        def manifest = loadManifest("minimal.yml")
+
+        when:
+        def yml = ApplicationYmlGenerator.generate(manifest)
+
+        then:
+        yml.contains('base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}')
+    }
+
+    def "openai provider block emits OPENAI_BASE_URL placeholder"() {
+        given: "the personal-assistant fixture ships both anthropic + openai"
+        def manifest = loadManifest("personal-assistant.yml")
+
+        when:
+        def yml = ApplicationYmlGenerator.generate(manifest)
+
+        then:
+        yml.contains('base-url: ${OPENAI_BASE_URL:https://api.openai.com}')
+    }
+
     private ProjectManifest loadManifest(String name) {
         def stream = getClass().getResourceAsStream("/manifests/" + name)
         def map = yamlMapper.readValue(stream, Map)
-        ProjectManifest.fromYamlMap(map)
+        // Mirror PomGeneratorSpec: mimic ScaffoldMojo's default substitution
+        // so fixture manifests stay minimal but generation never sees null
+        // version fields.
+        ProjectManifest manifest = ProjectManifest.fromYamlMap(map)
+        if (manifest.jaiclawVersion() == null) {
+            manifest = manifest.withJaiclawVersion("1.0.0-SNAPSHOT")
+        }
+        if (manifest.springBootVersion() == null) {
+            manifest = manifest.withSpringBootVersion("4.1.0")
+        }
+        manifest
     }
 }

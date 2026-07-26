@@ -1,7 +1,7 @@
 package io.jaiclaw.security
 
 import org.springframework.boot.autoconfigure.AutoConfigurations
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner
 import spock.lang.Specification
 

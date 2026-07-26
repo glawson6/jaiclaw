@@ -32,7 +32,7 @@ For operators who prefer no local Java. The installer pulls the CLI image and wr
 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
 
 # Or explicit version
-JAICLAW_VERSION=0.9.3-SNAPSHOT curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
+JAICLAW_VERSION=1.0.0 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
 
 # Or from a local clone
 ./install.sh --docker
@@ -62,7 +62,7 @@ For installing a specific git branch, tag, or SHA on a fresh box — useful when
 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 
 # Specific ref (branch, tag, or SHA)
-JAICLAW_REF=v0.9.2 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+JAICLAW_REF=v1.0.0 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 JAICLAW_REF=feat/my-branch curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 
 # Use an existing local checkout (skips the clone)
@@ -129,7 +129,7 @@ Print the JaiClaw version.
 
 ```bash
 jaiclaw version
-# jaiclaw 0.7.1-SNAPSHOT
+# jaiclaw 1.0.0
 ```
 
 Aliases: `--version`, `-v`
@@ -458,7 +458,7 @@ Common formats:
 | `${identity}@${profile}> ` | `JaiClaw@prod> ` |
 | `[${profile}] ${agent}: ` | `[prod] default: ` |
 | `${identity}/${model}> ` | `JaiClaw/claude-sonnet-4-6> ` |
-| `${identity} (${version})> ` | `JaiClaw (0.9.3-SNAPSHOT)> ` |
+| `${identity} (${version})> ` | `JaiClaw (1.0.0)> ` |
 
 Embed raw ANSI escapes for color (e.g. `'[36m${identity}[0m > '`). Persistence is per-profile, so switching profiles via `profile switch <name>` swaps both the config and the prompt visual cue.
 

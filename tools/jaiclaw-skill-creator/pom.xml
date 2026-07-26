@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-tools-cli</artifactId>
-        <version>0.9.4-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>jaiclaw-skill-creator</artifactId>
@@ -20,6 +20,12 @@
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-starter-shell</artifactId>
             <type>pom</type>
+        </dependency>
+        <!-- Interactive REPL requires jline LineReader; Shell 4 no longer brings it transitively. -->
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline-reader</artifactId>
+            <version>3.30.6</version>
         </dependency>
 
         <!-- Test -->

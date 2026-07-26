@@ -13,9 +13,9 @@ import io.jaiclaw.skills.SkillLoader;
 import io.jaiclaw.skills.SkillPromptBuilder;
 import io.jaiclaw.tools.ToolRegistry;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.shell.standard.ShellComponent;
-import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.stereotype.Component;
+import org.springframework.shell.core.command.annotation.Option;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -24,7 +24,7 @@ import java.time.format.DateTimeFormatter;
  * Spring Shell commands for the Gemma 4 local example.
  * Provides chat, session management, and status commands.
  */
-@ShellComponent
+@Component
 public class Gemma4ShellCommands {
 
     private static final DateTimeFormatter TIME_FMT =
@@ -53,8 +53,8 @@ public class Gemma4ShellCommands {
 
     // ── Chat ──────────────────────────────────────────────────────
 
-    @ShellMethod(key = "chat", value = "Send a message to the Gemma 4 agent")
-    public String chat(@ShellOption(help = "Your message") String message) {
+    @Command(name = "chat", description = "Send a message to the Gemma 4 agent")
+    public String chat(@Option(description = "Your message") String message) {
         AgentRuntime agentRuntime = agentRuntimeProvider.getIfAvailable();
         if (agentRuntime == null) {
             return "No LLM configured. Ensure Ollama is running and gemma4 model is pulled.";
@@ -79,14 +79,14 @@ public class Gemma4ShellCommands {
 
     // ── Session management ────────────────────────────────────────
 
-    @ShellMethod(key = "new-session", value = "Start a new chat session")
+    @Command(name = "new-session", description = "Start a new chat session")
     public String newSession() {
         sessionManager.reset(currentSessionKey);
         currentSessionKey = "session-" + System.currentTimeMillis();
         return "New session started: " + currentSessionKey;
     }
 
-    @ShellMethod(key = "sessions", value = "List all chat sessions")
+    @Command(name = "sessions", description = "List all chat sessions")
     public String sessions() {
         var allSessions = sessionManager.listSessions();
         if (allSessions.isEmpty()) {
@@ -108,9 +108,9 @@ public class Gemma4ShellCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "session-history", value = "Show messages in a session")
+    @Command(name = "session-history", description = "Show messages in a session")
     public String sessionHistory(
-            @ShellOption(defaultValue = "", help = "Session key (defaults to current)") String sessionKey) {
+            @Option(defaultValue = "", description = "Session key (defaults to current)") String sessionKey) {
         var key = sessionKey.isBlank() ? currentSessionKey : sessionKey;
         var sessionOpt = sessionManager.get(key);
         if (sessionOpt.isEmpty()) {
@@ -132,7 +132,7 @@ public class Gemma4ShellCommands {
 
     // ── Status ────────────────────────────────────────────────────
 
-    @ShellMethod(key = "status", value = "Show system status")
+    @Command(name = "status", description = "Show system status")
     public String status() {
         return """
                 Gemma 4 Local — Status
@@ -149,7 +149,7 @@ public class Gemma4ShellCommands {
         );
     }
 
-    @ShellMethod(key = "tools", value = "List available tools")
+    @Command(name = "tools", description = "List available tools")
     public String tools() {
         var tools = toolRegistry.resolveAll();
         if (tools.isEmpty()) {
@@ -162,7 +162,7 @@ public class Gemma4ShellCommands {
         return sb.toString();
     }
 
-    @ShellMethod(key = "skills", value = "List loaded skills")
+    @Command(name = "skills", description = "List loaded skills")
     public String skills() {
         var skills = skillLoader.loadBundled();
         if (skills.isEmpty()) {
