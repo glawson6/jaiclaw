@@ -1,10 +1,17 @@
 # Where JaiClaw Fits
 
-> **Status:** 0.8.0. The framework is production-deployable today; the
-> API surface is governed by the stability program in
-> [P3.5](CODEBASE-ANALYSIS-2026-06-10.md) (`@Stable` / `@Experimental` /
-> `@Internal` markers). See [ROAD-TO-1.0.md](./ROAD-TO-1.0.md) for what
-> changes between now and 1.0.
+> **Status:** **1.0.0 shipped 2026-07-25** to TapTech Nexus
+> (`https://tooling.taptech.net/repository/maven-releases/`).
+> Spring Boot 4.1 / Spring AI 2.0 / Spring Shell 4.0 / Java 21. Maven
+> Central publication follows Embabel 2.0.0 GA to Central. See
+> [`releases/release-1.0.0.md`](../releases/release-1.0.0.md) for the
+> release notes and [ROAD-TO-1.0.md](./ROAD-TO-1.0.md) for the
+> shipped-vs-planned scorecard.
+>
+> Older 0.8.0-tense phrasing throughout this document is preserved
+> because the positioning + comparison analysis it captures is unchanged
+> at 1.0; treat any "0.8.0" reference below as "the stability program
+> that shipped in 0.8.0 and is now the 1.0.0 baseline."
 
 This document is for technical decision-makers comparing JaiClaw against
 LangChain4j, Spring AI alone, Embabel by itself, or rolling your own

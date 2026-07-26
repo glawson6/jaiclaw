@@ -651,6 +651,6 @@ One framework. Add modules. Ship.
 
 ---
 
-*JaiClaw — Java 21 / Spring Boot 3.5 / Spring AI 1.1.4*
+*JaiClaw — Java 21 / Spring Boot 4.1 / Spring AI 2.0.0*
 *65 modules. 20 examples. 18 starters. 11 AI providers. 7 channels. 59 skills.*
 *From `./mvnw spring-boot:run` to Kubernetes. Same codebase.*

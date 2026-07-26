@@ -108,7 +108,7 @@ browser OIDC flow (Spring Security `oauth2Login()`) for the
 dashboard need to opt the dashboard's browser-navigation paths
 out of the `ApiKeyAuthenticationFilter` — otherwise the API-key
 filter runs first and returns `401 {"error":"invalid_api_key"}`
-before the OIDC chain can redirect. Since 1.0.0-SNAPSHOT, the
+before the OIDC chain can redirect. Since 1.0.0, the
 skip-list is configurable:
 
 ```yaml

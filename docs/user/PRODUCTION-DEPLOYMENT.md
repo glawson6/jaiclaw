@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-This guide is for operators putting JaiClaw 0.9.3 into a real production
+This guide is for operators putting JaiClaw 1.0.0 into a real production
 environment. It covers container images, Kubernetes manifests, a minimal
 Helm chart, secrets, observability via Spring Boot Actuator + Micrometer,
 health probes, rolling upgrades, and a short operational runbook.
@@ -10,12 +10,15 @@ If you are still evaluating JaiClaw or running it locally, start with
 workflow (`start.sh`, `bin/jaiclaw`, local provider setup). This guide
 assumes you have a working configuration and want to ship it.
 
-> JaiClaw 0.9.3 is pre-1.0. The API/SPI surface is governed by
-> `@Stable` / `@Experimental` / `@Internal` markers
-> ([P3.5](../CODEBASE-ANALYSIS-2026-06-10.md)). Deploying with
-> `@Experimental` features in production is supported — just track them
-> against the [MIGRATION-0.8.md](../MIGRATION-0.8.md) and forthcoming
-> per-release upgrade guides.
+> JaiClaw 1.0.0 is the Spring Boot 4 line-swap release (Spring Boot 4.1
+> / Spring AI 2.0 / Spring Shell 4.0 / Java 21). The API/SPI surface is
+> governed by `@Stable` / `@Experimental` / `@Internal` markers — every
+> `@Stable` marker is a semver-stability commitment. See
+> [`releases/release-1.0.0.md`](../../releases/release-1.0.0.md) for the
+> full release notes + breaking changes catalogue, and
+> [`releases/uat-1.0.0.md`](../../releases/uat-1.0.0.md) for the
+> pre-release UAT verification. Distribution is TapTech Nexus only until
+> Embabel 2.0.0 GAs to Maven Central.
 
 ---
 
@@ -193,7 +196,7 @@ load every key in each Secret as an env var:
 spec:
   containers:
     - name: jaiclaw-gateway
-      image: tooling.taptech.net:5000/jaiclaw-gateway:0.9.2
+      image: tooling.taptech.net:5000/jaiclaw-gateway:1.0.0
       envFrom:
         - secretRef: { name: jaiclaw-gateway-auth }
         - secretRef: { name: jaiclaw-llm-keys }
@@ -423,7 +426,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: registry.example.com/io.jaiclaw/jaiclaw-gateway-app:0.8.0
+          image: registry.example.com/io.jaiclaw/jaiclaw-gateway-app:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -519,7 +522,7 @@ spec:
 ```
 
 The startup-probe budget — 30 failures × 5 s = 150 s — is intentionally
-generous. Spring Boot 3.5 + Spring AI + every JaiClaw auto-config takes
+generous. Spring Boot 4.1 + Spring AI 2.0 + every JaiClaw auto-config takes
 20–60 seconds to start cold on 1 vCPU. Tightening the probe before you've
 measured your actual cold-start with `kubectl logs --previous` will cause
 spurious restart loops.
@@ -535,7 +538,7 @@ Spring Boot app that drops straight into any general-purpose
 ```yaml
 image:
   repository: registry.example.com/io.jaiclaw/jaiclaw-gateway-app
-  tag: "0.8.0"
+  tag: "1.0.0"
 
 replicaCount: 2
 
@@ -671,7 +674,7 @@ A reasonable starting Grafana dashboard tracks:
 
 ## 7. Health probes and rolling upgrades
 
-Spring Boot 3.5 exposes three liveness/readiness states out of the box:
+Spring Boot 4.1 exposes three liveness/readiness states out of the box:
 
 - `/actuator/health/liveness` — JVM is alive
 - `/actuator/health/readiness` — app is ready to serve traffic (depends
@@ -714,7 +717,7 @@ Starting points, tuned later from actual metrics:
 limit; pair it with `-XX:+ExitOnOutOfMemoryError` so Kubernetes restarts
 on OOM rather than thrashing.
 
-> **K8s ≥1000m for reasonable startup.** 250m on Spring Boot 3.5 causes
+> **K8s ≥1000m for reasonable startup.** 250m on Spring Boot 4.1 causes
 > startup probe timeouts. Memory: this is a [memory rule from prior
 > production deploys](../../CLAUDE.md#deploy-best-practices).
 

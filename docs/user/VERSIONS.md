@@ -2,23 +2,26 @@
 
 This document tracks notable changes between JaiClaw releases.
 
-## 1.0.0-SNAPSHOT (pilot preview)
+## 1.0.0 (released 2026-07-25)
 
-Published to TapTech's internal Nexus at
-`https://tooling.taptech.net/repository/maven-snapshots/`. **Not on
-Maven Central** — GA is gated on Embabel cutting a non-SNAPSHOT Boot-4
-release (see
+Published to TapTech's Nexus at
+`https://tooling.taptech.net/repository/maven-releases/`. **Not on
+Maven Central yet** — 1.0.0 carries `embabel-agent:2.0.0-SNAPSHOT`
+transitively; Central rejects SNAPSHOT deps in release artifacts.
+First Central publication follows Embabel 2.0.0 GA to Central (see
 [docs/spring-boot-4-upgrade/02-embabel-gate.md](../spring-boot-4-upgrade/02-embabel-gate.md)).
 
-Pilots wire two snapshot repos alongside the BOM import:
+Adopters wire the taptech-releases repo + the embabel-snapshots repo
+(for the Embabel transitive) alongside the BOM import — no
+credentials needed for reads:
 
 ```xml
 <repositories>
   <repository>
-    <id>taptech-snapshots</id>
-    <url>https://tooling.taptech.net/repository/maven-snapshots/</url>
-    <snapshots><enabled>true</enabled></snapshots>
-    <releases><enabled>false</enabled></releases>
+    <id>taptech-releases</id>
+    <url>https://tooling.taptech.net/repository/maven-releases/</url>
+    <releases><enabled>true</enabled></releases>
+    <snapshots><enabled>false</enabled></snapshots>
   </repository>
   <repository>
     <id>embabel-snapshots</id>
@@ -33,7 +36,7 @@ Pilots wire two snapshot repos alongside the BOM import:
     <dependency>
       <groupId>io.jaiclaw</groupId>
       <artifactId>jaiclaw-bom</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -41,9 +44,14 @@ Pilots wire two snapshot repos alongside the BOM import:
 </dependencyManagement>
 ```
 
+See [`releases/release-1.0.0.md`](../../releases/release-1.0.0.md) for
+the full release notes and
+[`releases/uat-1.0.0.md`](../../releases/uat-1.0.0.md) for the
+pre-release UAT sweep verification.
+
 ### Stack upgrade
 
-| Component | 0.9.x | 1.0.0-SNAPSHOT |
+| Component | 0.9.x | 1.0.0 |
 |---|---|---|
 | Spring Boot | 3.5.16 | **4.1.0** |
 | Spring Framework | 6.2.x | **7.0.8** |
@@ -102,8 +110,9 @@ Pilots wire two snapshot repos alongside the BOM import:
 
 ### Known limitations
 
-- `1.0.0-SNAPSHOT` is **not on Maven Central**. Central rejects SNAPSHOT deps in release artifacts, so the GA tag waits on Embabel `1.5.0` or `2.0.0` (release-2.0 label on [issue #1052](https://github.com/embabel/embabel-agent/issues/1052)).
-- Production consumers should stay on the latest `0.9.x` Maven Central release.
+- `1.0.0` is **not on Maven Central** — it carries `embabel-agent:2.0.0-SNAPSHOT` transitively, which Central rejects. First Central publication follows Embabel 2.0.0 GA to Central (release-2.0 label on [Embabel issue #1052](https://github.com/embabel/embabel-agent/issues/1052)).
+- Adopters who need a Central-hosted line today should stay on the latest `0.9.x` Maven Central release.
+- The Nexus release at `https://tooling.taptech.net/repository/maven-releases/` is anonymous-read; production consumers who accept the Nexus dependency (and the transitive Embabel SNAPSHOT) can adopt `1.0.0` today.
 
 ---
 

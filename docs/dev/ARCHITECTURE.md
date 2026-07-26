@@ -2,7 +2,7 @@
 
 ## Overview
 
-JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, Email, SMS), a plugin system, tool execution, skills, memory, document processing, audit logging, and MCP server hosting.
+JaiClaw is a Java 21 / Spring Boot 4.1 / Spring AI 2.0 personal AI assistant framework. It's an embeddable library with a gateway for multi-channel messaging (Telegram, Slack, Discord, Email, SMS), a plugin system, tool execution, skills, memory, document processing, audit logging, and MCP server hosting.
 
 ---
 

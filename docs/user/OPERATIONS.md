@@ -236,7 +236,7 @@ curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker
 
 # From source: build the CLI jar via `./mvnw` (needs Java 21 + git; 5-15 min cold cache)
 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
-JAICLAW_REF=v0.9.2 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
+JAICLAW_REF=v1.0.0 curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source
 ```
 
 All three land at `~/.jaiclaw/` and produce the same `jaiclaw` command on your PATH. See [CLI-REFERENCE § Installation](CLI-REFERENCE.md#installation) for the full flag reference and layout.

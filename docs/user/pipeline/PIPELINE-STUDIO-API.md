@@ -93,7 +93,7 @@ Validation checks (via `PipelineValidator`):
   mean 'X'?" Levenshtein suggestions).
 - Every PROCESSOR stage's `bean` name exists in the Spring context and
   implements either `Function<String,String>` or
-  `ConfigurableStageProcessor` (**new in 1.0.0-SNAPSHOT**).
+  `ConfigurableStageProcessor` (**new in 1.0.0**).
 - CHANNEL output `channelId` resolves in `ChannelRegistry`.
 - `errorStrategy=DEAD_LETTER` requires a `deadLetterUri`.
 - EMBABEL AGENT stages require an `AgentOrchestrationPort` bean +
@@ -216,7 +216,7 @@ providing a `@Bean PipelineDraftStore` bean. The autoconfig respects
 
 ## Phase 3 — hot deploy + test-run + authz
 
-Shipped in 1.0.0-SNAPSHOT. See
+Shipped in 1.0.0. See
 [`docs/dev/pipeline/PIPELINE_HOT_RELOAD.md`](../../dev/pipeline/PIPELINE_HOT_RELOAD.md)
 for the runtime semantics.
 

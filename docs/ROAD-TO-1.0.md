@@ -1,19 +1,31 @@
 # Road to JaiClaw 1.0
 
-> **⚠️ Superseded.** This document captures the 0.8.0 → 0.9.0 framing of
-> the API stability program. It is kept for historical context (the
-> `@Stable` / `@Experimental` / `@Internal` regime defined here is still
-> the contract).
+> **✅ SHIPPED.** JaiClaw 1.0.0 shipped 2026-07-25 to TapTech Nexus
+> (`https://tooling.taptech.net/repository/maven-releases/`). See
+> [`releases/release-1.0.0.md`](../releases/release-1.0.0.md) for the
+> release notes and [`releases/uat-1.0.0.md`](../releases/uat-1.0.0.md)
+> for the pre-release UAT verification.
 >
-> For current release plans, see:
-> - [dev/RELEASE-PLAN-0.9.2.md](./dev/RELEASE-PLAN-0.9.2.md) — the next release (secrets baseline).
-> - [dev/RELEASE-PLAN-1.0.0.md](./dev/RELEASE-PLAN-1.0.0.md) — the umbrella plan through 1.0 GA.
+> Maven Central publication is deferred until Embabel 2.0.0 GAs to
+> Central (Embabel currently ships `2.0.0-SNAPSHOT`; Central rejects
+> SNAPSHOT deps in release artifacts).
+>
+> This document is preserved as the historical planning arc that led
+> to 1.0. The `@Stable` / `@Experimental` / `@Internal` contract
+> defined here IS the 1.0 contract — every `@Stable` marker in the
+> code today is a semver-stability commitment.
+>
+> For the historical release-planning context:
+> - [dev/RELEASE-PLAN-0.9.2.md](./dev/RELEASE-PLAN-0.9.2.md) — the secrets baseline release
+> - [dev/RELEASE-PLAN-1.0.0.md](./dev/RELEASE-PLAN-1.0.0.md) — the umbrella plan through 1.0 GA
+> - [spring-boot-4-upgrade/08-execution-plan.md](./spring-boot-4-upgrade/08-execution-plan.md) — the actual 1.0.0 execution log (Phases 0–8)
 
-> **Status at 0.8.0:** The framework is production-deployable today. The
-> API stability program ([P3.5](CODEBASE-ANALYSIS-2026-06-10.md)) ships
-> in 0.8.0 with `@Stable` / `@Experimental` / `@Internal` markers on
-> public types. This document is the contract between now and 1.0:
-> what's stable, what may still change, and what gates the 1.0 cut.
+> **Historical Status at 0.8.0 (preserved):** The framework is
+> production-deployable today. The API stability program
+> ([P3.5](CODEBASE-ANALYSIS-2026-06-10.md)) ships in 0.8.0 with
+> `@Stable` / `@Experimental` / `@Internal` markers on public types.
+> This document is the contract between now and 1.0: what's stable,
+> what may still change, and what gates the 1.0 cut.
 
 The version sequence is **0.8.0 → 0.9.0 → 1.0.0**, with `0.8.x` patch
 releases in between. 0.9.0 is the "API freeze" milestone where

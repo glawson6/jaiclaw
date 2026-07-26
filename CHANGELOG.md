@@ -2,17 +2,90 @@
 
 All notable changes to JaiClaw are documented in this file. The format
 loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-with the caveat that we are pre-1.0 — public APIs may change between minor
-versions until 1.0.
+versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+1.0.0 stamps semver stability on the framework shape; the pre-1.0 caveat
+below applies only to the 0.9.x line and earlier.
 
 For deep release notes (per-module changes, breaking-change migration
 hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 ## [Unreleased]
 
-In progress in the `0.7.1-SNAPSHOT` line (heading to **0.8.0** —
-hard-break release; see `docs/MIGRATION-0.8.md`).
+In progress on the `1.0.1-SNAPSHOT` line — patch release window post-1.0.0.
+
+## [1.0.0] — 2026-07-25
+
+**Spring Boot 4 line-swap release.** Distribution: TapTech Nexus
+(`https://tooling.taptech.net/repository/maven-releases/`). Maven Central
+publication follows Embabel 2.0.0 GA to Central (Embabel currently ships
+`2.0.0-SNAPSHOT`; Central rejects SNAPSHOT deps).
+
+See [`releases/release-1.0.0.md`](releases/release-1.0.0.md) for the full
+breaking-changes catalogue, dependency table, migration guide, and
+verification summary. See [`releases/uat-1.0.0.md`](releases/uat-1.0.0.md)
+for the pre-release UAT sweep (reactor 8474/0/0/10, all 7 e2e skills,
+inline fixes).
+
+### Framework stack — every Tier-1 major bumped in one bundle
+- Spring Boot 3.5 → **4.1.0**
+- Spring Framework 6.2 → **7.0**
+- Spring AI 1.1.7 → **2.0.0**
+- Spring Shell 3.4 → **4.0** (full annotation-model rewrite)
+- Spring Security 6 → **7** (lambda-DSL, `EnableWebSecurity` requirement)
+- Spring Cloud 2025.0 → **2025.1** (Oakwood)
+- Spring Batch 5 → **6**
+- Apache Camel 4.18 (LTS) → **4.21** (first Boot-4 line)
+- Jackson 2 → **3** (new `tools.jackson.*` namespace)
+- Spock 2.4-groovy-4.0 → **2.4-groovy-5.0**
+- Groovy 4.0 → **5.0**
+- Testcontainers 1.x → **2.x**
+- JKube 1.17 → **1.19**
+- Drools 9.44 → **10.1**
+- Embabel Agent 0.5.0 → **2.0.0-SNAPSHOT** (Boot-4 line)
+- Java 21 stays the runtime baseline (Boot 4 minimum is 17).
+
+### New modules in 1.0.0 (previously untracked; now first-class in the release)
+- `apps/jaiclaw-pipeline-studio` — React 19 Flow SPA + Java autoconfig
+- `extensions/jaiclaw-github-copilot` — Spring AI ChatModel adapter over
+  the official `copilot-sdk-java`
+- `extensions/jaiclaw-pipeline-authoring` — draft store + REST + MCP +
+  lifecycle manager + role-guarded authz
+- `extensions/jaiclaw-pipeline-dashboard` — read-only vanilla HTML
+  status page
+- `extensions/jaiclaw-pipeline-processors` — 15 baseline stage
+  processors + 7 AI presets + 6 Camel URI templates
+- `extensions/jaiclaw-session-redis` — Redis-backed `SessionManager`
+- `extensions/jaiclaw-web-errors-{core,mvc,webflux}` — framework
+  default web exception handlers
+
+### BREAKING — see release notes for full details
+- Every Tier-1 major above imposes upstream breaking changes on adopter
+  code (Shell 4 annotation model, Jackson 3 namespace, Spring Security 7
+  lambda-DSL, Spring Batch 6 package moves, Spring AI 2.0 property
+  renames).
+
+## [0.9.3] — 2026-07 (Maven Central, last of the pre-1.0 line)
+
+See `releases/release-0.9.3.md` for the compliance substrate ship
+(GDPR + HIPAA orchestration, 12 SPIs, `/api/gdpr/*` REST surface).
+
+## [0.9.2] — earlier
+
+See `releases/release-0.9.2.md`.
+
+---
+
+## Historical entries (pre-1.0 development log)
+
+The remaining sections below are the pre-1.0 development log from the
+0.8.0 → 0.9.0 → 1.0.0 arc, preserved for continuity. `[Unreleased]`
+banners in these older sections refer to the state at the time they
+were written, not the current tip.
+
+## [Prior 0.7.1-SNAPSHOT log — pre-0.8.0]
+
+In progress at the time in the `0.7.1-SNAPSHOT` line (heading to
+**0.8.0** — hard-break release; see `docs/MIGRATION-0.8.md`).
 
 ### Added (0.8.0, additive — no migration required)
 

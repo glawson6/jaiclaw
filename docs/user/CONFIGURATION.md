@@ -53,7 +53,7 @@ spring:
           max-tokens: 4096
 ```
 
-**Gotcha:** Spring AI 1.1.x defaults to the retired
+**Gotcha:** Spring AI 1.1.x (pre-1.0.0 line) defaulted to the retired
 `claude-3-7-sonnet-latest` if `chat.options.model` is unset. Always
 specify the model explicitly.
 

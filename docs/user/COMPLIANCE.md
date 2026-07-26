@@ -1,6 +1,6 @@
 # JaiClaw Compliance Guide (GDPR + HIPAA)
 
-**Framework version:** 0.9.3+
+**Framework version:** 0.9.3+ (available on Maven Central), 1.0.0 (Nexus)
 **Audience:** operators and architects evaluating JaiClaw for deployments subject to GDPR (EU personal data) or HIPAA (US Protected Health Information).
 
 **Position:** JaiClaw is a **compliance-capable** framework. It provides the multi-tenant isolation, audit SPI, secrets management, retention enforcement, BAA-eligible-provider metadata, and LLM-call audit trail adopters need to build defensible GDPR + HIPAA deployments. **It is not a compliance-certified product.** Both frameworks are properties of a deployment, not of a framework.

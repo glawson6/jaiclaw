@@ -95,12 +95,27 @@ you've set one).
 ### Path 2 — Embed in your own Spring Boot app
 
 ```xml
+<repositories>
+  <repository>
+    <id>taptech-releases</id>
+    <url>https://tooling.taptech.net/repository/maven-releases/</url>
+    <releases><enabled>true</enabled></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+  <repository>
+    <id>embabel-snapshots</id>
+    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+
 <dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.jaiclaw</groupId>
       <artifactId>jaiclaw-bom</artifactId>
-      <version>0.7.0</version>
+      <version>1.0.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -119,54 +134,20 @@ you've set one).
 </dependencies>
 ```
 
+**Distribution note:** 1.0.0 is published to TapTech Nexus
+(`https://tooling.taptech.net/repository/maven-releases/`) — anonymous
+reads work; no `<servers>` block in `~/.m2/settings.xml` needed. Maven
+Central publication follows Embabel 2.0.0 GA to Central (Embabel
+currently ships `2.0.0-SNAPSHOT`; Central rejects SNAPSHOT deps in
+release artifacts). Adopters who need a Central-hosted line today
+should stay on the 0.9.x releases. See
+[`releases/release-1.0.0.md`](../../releases/release-1.0.0.md) for the
+full release notes.
+
 Then write a minimal application. The
 [hello-world example](../../jaiclaw-examples/hello-world/) shows the
 ~30-line shape end-to-end (Application class + one tool +
 `application.yml`).
-
-#### Piloting Spring Boot 4 — `1.0.0-SNAPSHOT`
-
-A Boot 4.1 preview line is published as `1.0.0-SNAPSHOT` to TapTech's
-internal Nexus for early adopters. Stack: Spring Boot 4.1.0, Spring AI
-2.0.0, Spring Shell 4.0.2, Embabel Agent 2.0.0-SNAPSHOT, Apache Camel
-4.21.0, Jackson 3 (`tools.jackson.*`), Groovy 5, Spock 2.4-groovy-5.0.
-
-Add the snapshot repos alongside the BOM import:
-
-```xml
-<repositories>
-  <repository>
-    <id>taptech-snapshots</id>
-    <url>https://tooling.taptech.net/repository/maven-snapshots/</url>
-    <snapshots><enabled>true</enabled></snapshots>
-    <releases><enabled>false</enabled></releases>
-  </repository>
-  <repository>
-    <id>embabel-snapshots</id>
-    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
-    <snapshots><enabled>true</enabled></snapshots>
-    <releases><enabled>false</enabled></releases>
-  </repository>
-</repositories>
-
-<dependencyManagement>
-  <dependencies>
-    <dependency>
-      <groupId>io.jaiclaw</groupId>
-      <artifactId>jaiclaw-bom</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-  </dependencies>
-</dependencyManagement>
-```
-
-`1.0.0-SNAPSHOT` is **pilot-only** — GA is gated on Embabel cutting a
-non-SNAPSHOT Boot-4 release (see
-[docs/spring-boot-4-upgrade/02-embabel-gate.md](../spring-boot-4-upgrade/02-embabel-gate.md)).
-Production users stay on the latest Maven Central release
-(`0.9.x`).
 
 ## What to do once it's up
 

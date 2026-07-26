@@ -10,7 +10,7 @@
 
 ## 1. Context
 
-JaiClaw is a Java 21 / Spring Boot 3.5 / Spring AI / Embabel agent framework. Agent capabilities are
+JaiClaw is a Java 21 / Spring Boot 4.1 / Spring AI 2.0 / Embabel agent framework. Agent capabilities are
 exposed as `ToolCallback` implementations registered in the `ToolRegistry` and bridged to Spring AI /
 Embabel via `SpringAiToolBridge`. Higher-level, composed capabilities live in the skills layer
 (`jaiclaw-skills`, authored via `jaiclaw-skill-creator`). The runtime is reactive, with

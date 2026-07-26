@@ -79,7 +79,7 @@ POM template (model from an existing channel):
 <parent>
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-channels</artifactId>
-    <version>0.7.1-SNAPSHOT</version>
+    <version>1.0.0</version>
 </parent>
 
 <artifactId>jaiclaw-channel-zerochat</artifactId>
