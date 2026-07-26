@@ -1,6 +1,7 @@
 package io.jaiclaw.pipeline.validation;
 
 import io.jaiclaw.channel.ChannelRegistry;
+import io.jaiclaw.pipeline.ConfigurableStageProcessor;
 import io.jaiclaw.pipeline.ErrorStrategy;
 import io.jaiclaw.pipeline.OutputDefinition;
 import io.jaiclaw.pipeline.OutputType;
@@ -81,7 +82,7 @@ public class PipelineValidator {
         this.orchestrationPortProvider = orchestrationPortProvider;
     }
 
-    /** Run validation and return the report. Does not throw. */
+    /** Run validation across every pipeline in the registry. Does not throw. */
     public ValidationReport validate() {
         ValidationReport.Builder report = new ValidationReport.Builder();
         ChannelRegistry channelRegistry = channelRegistryProvider != null
@@ -97,6 +98,38 @@ public class PipelineValidator {
         for (PipelineDefinition definition : registry.getAll()) {
             validatePipeline(definition, channelRegistry, orchestrationPort, defaultDeadLetterUri, report);
         }
+        return report.build();
+    }
+
+    /**
+     * Validate a single {@link PipelineDefinition} without touching the
+     * registry. Used by the Pipeline Studio's per-draft validate
+     * endpoint — the caller does not need the definition to be
+     * currently registered / deployed.
+     *
+     * <p>Applies the same checks as {@link #validate()}: placeholder
+     * references, PROCESSOR bean existence + type (Function or
+     * ConfigurableStageProcessor), CHANNEL id resolution, dead-letter
+     * URI requirement, EMBABEL runtime availability + workflow
+     * lookup. Never throws.
+     *
+     * @param definition the definition to validate; if {@code null}, returns
+     *                   an empty report
+     * @return a fresh {@link ValidationReport}
+     */
+    public ValidationReport validate(PipelineDefinition definition) {
+        ValidationReport.Builder report = new ValidationReport.Builder();
+        if (definition == null) return report.build();
+        ChannelRegistry channelRegistry = channelRegistryProvider != null
+                ? channelRegistryProvider.getIfAvailable()
+                : null;
+        AgentOrchestrationPort orchestrationPort = orchestrationPortProvider != null
+                ? orchestrationPortProvider.getIfAvailable()
+                : null;
+        String defaultDeadLetterUri = properties != null && properties.defaults() != null
+                ? properties.defaults().deadLetterUri()
+                : null;
+        validatePipeline(definition, channelRegistry, orchestrationPort, defaultDeadLetterUri, report);
         return report.build();
     }
 
@@ -116,6 +149,27 @@ public class PipelineValidator {
             ValidationReport.Builder report) {
 
         String pipelineId = definition.id();
+
+        // 0. Pipeline id must not be blank. This used to throw from
+        //    PipelineDefinition's compact constructor, but that broke Jackson
+        //    deserialization on the /validate endpoint (500 instead of a
+        //    ValidationReport). Now the check lives here so the same input
+        //    surfaces as a normal error the Studio's ValidationPanel can render.
+        //    Early-return so downstream stage checks don't cascade with garbage
+        //    error rows keyed off a blank pipelineId.
+        if (pipelineId == null || pipelineId.isBlank()) {
+            // Use "*" as both the map key and the error's own pipelineId so
+            // callers see a consistent "global scope" marker (matches
+            // ValidationError's own coalesce of null/blank → "*").
+            report.addPipelineError("*", new ValidationError(
+                    "*",
+                    "pipeline",
+                    "ID_BLANK",
+                    "Pipeline id must not be blank",
+                    null));
+            return;
+        }
+
         Set<String> stageNames = new TreeSet<>();
         for (StageDefinition stage : definition.stages()) {
             stageNames.add(stage.name());
@@ -250,12 +304,15 @@ public class PipelineValidator {
             return;
         }
         Class<?> type = applicationContext.getType(beanName);
-        if (type != null && !Function.class.isAssignableFrom(type)) {
+        if (type != null
+                && !Function.class.isAssignableFrom(type)
+                && !ConfigurableStageProcessor.class.isAssignableFrom(type)) {
             report.addPipelineError(pipelineId, new ValidationError(
                     pipelineId,
                     "stage '" + stage.name() + "'",
                     "WRONG_BEAN_TYPE",
-                    "PROCESSOR bean '" + beanName + "' must implement Function<String,String> "
+                    "PROCESSOR bean '" + beanName + "' must implement either "
+                            + "ConfigurableStageProcessor or Function<String,String> "
                             + "but is " + type.getName(),
                     null));
         }

@@ -10,3 +10,4 @@ io.jaiclaw.autoconfigure.JaiClawGatewayAutoConfiguration
 io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration
 io.jaiclaw.autoconfigure.JaiClawIdentityAutoConfiguration
 io.jaiclaw.autoconfigure.MiniMaxThinkingFilterAutoConfiguration
+io.jaiclaw.autoconfigure.RenderableTemplatesAutoConfiguration

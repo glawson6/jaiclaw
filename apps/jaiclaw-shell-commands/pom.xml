@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-apps</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>jaiclaw-shell-commands</artifactId>
@@ -30,6 +30,16 @@
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-identity</artifactId>
+        </dependency>
+
+        <!-- Pipeline (optional) — the `pipeline ...` shell commands compile
+             against PipelineGateway / PipelineRegistry / PipelineExecutionTracker
+             but activate at runtime only when the module is on the consumer's
+             classpath (see PipelineCommand's ObjectProvider<> injection). -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-pipeline</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- Test -->

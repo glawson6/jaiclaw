@@ -1,1 +1,2 @@
 io.jaiclaw.blueprints.BlueprintAutoConfiguration
+io.jaiclaw.blueprints.pipeline.PipelineAuthorBlueprintsConfiguration

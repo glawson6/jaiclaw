@@ -24,7 +24,7 @@ class RedisCalendarProviderSpec extends Specification {
     ReactiveZSetOperations<String, String> zSetOps = Mock()
 
     ObjectMapper objectMapper = CalendarTools.createObjectMapper()
-    CalendarEventValidator eventValidator = new CalendarEventValidator(new CalendarProperties())
+    CalendarEventValidator eventValidator = new CalendarEventValidator(CalendarProperties.defaults())
 
     RedisCalendarProvider provider
 

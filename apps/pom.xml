@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>jaiclaw-apps</artifactId>
@@ -24,5 +24,6 @@
         <module>jaiclaw-shell</module>
         <module>jaiclaw-cli</module>
         <module>jaiclaw-cron-manager-app</module>
+        <module>jaiclaw-pipeline-studio</module>
     </modules>
 </project>

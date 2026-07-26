@@ -17,6 +17,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,14 @@ public class PipelineRouteBuilder extends RouteBuilder {
     private static final Logger log = LoggerFactory.getLogger(PipelineRouteBuilder.class);
     static final String HEADER_PIPELINE_CONTEXT = "JaiClawPipelineContext";
     static final String HEADER_PIPELINE_START = "JaiClawPipelineStart";
+    /**
+     * Prefix for exchange properties whose values the runtime copies into
+     * the completing stage's {@code StageOutput.metadata}. The key stored
+     * in metadata is the property name with this prefix stripped. Used
+     * by the SetMetadata processor and any adopter that wants to expose
+     * downstream template variables like {@code {{stages.X.metadata.k}}}.
+     */
+    public static final String STAGE_METADATA_PREFIX = "jaiclaw.stage-meta.";
 
     private final PipelineDefinition definition;
     private final PipelineProperties.PipelineDefaults defaults;
@@ -155,12 +164,13 @@ public class PipelineRouteBuilder extends RouteBuilder {
      * {@code continued(false)}.
      */
     private void configureSyncFailureHandler() {
-        if (syncCoordinator == null) return;
+        // We always want the pipeline-failed hook to fire on terminal failure,
+        // even when syncCoordinator is absent (async triggers). Attach one
+        // onException handler that handles BOTH concerns: sync-completion and
+        // hook firing. Guarded internally so each branch is independently
+        // opt-in.
         onException(Exception.class)
                 .process(exchange -> {
-                    Boolean syncRequested = exchange.getIn().getHeader(
-                            DefaultPipelineGateway.HEADER_SYNC_REQUESTED, Boolean.class);
-                    if (!Boolean.TRUE.equals(syncRequested)) return;
                     PipelineContext ctx = exchange.getIn().getHeader(
                             HEADER_PIPELINE_CONTEXT, PipelineContext.class);
                     if (ctx == null) return;
@@ -168,6 +178,26 @@ public class PipelineRouteBuilder extends RouteBuilder {
                     String reason = cause != null && cause.getMessage() != null
                             ? cause.getMessage()
                             : (cause != null ? cause.getClass().getSimpleName() : "unknown failure");
+
+                    // Fire the typed pipeline-failed event. Stage identity is
+                    // already carried on the earlier PipelineStageFailedEvent
+                    // (see the stage-processing catch block); we don't try to
+                    // re-derive it here.
+                    if (hookFirer != null) {
+                        try {
+                            hookFirer.firePipelineFailed(ctx, null, cause);
+                        } catch (Exception hookEx) {
+                            // Never let a hook failure poison the error path.
+                            // Logging left to the firer.
+                        }
+                    }
+
+                    // Sync completion path — only relevant when the trigger
+                    // was a blocking triggerAndAwait(...) call.
+                    if (syncCoordinator == null) return;
+                    Boolean syncRequested = exchange.getIn().getHeader(
+                            DefaultPipelineGateway.HEADER_SYNC_REQUESTED, Boolean.class);
+                    if (!Boolean.TRUE.equals(syncRequested)) return;
                     Instant startedAt = exchange.getIn().getHeader(HEADER_PIPELINE_START, Instant.class);
                     Instant now = Instant.now();
                     Duration totalDuration = startedAt != null
@@ -395,8 +425,44 @@ public class PipelineRouteBuilder extends RouteBuilder {
                             exchange.getIn().setBody(output);
                         }
 
-                        // Advance context
-                        PipelineContext nextCtx = ctx.nextStage(stage.name(), output != null ? output : "");
+                        // Advance context — collect two flavours of stage
+                        // metadata written by the stage bean:
+                        //   (1) PipelineResult.RESULT_KEY, the well-known
+                        //       key for the caller-visible result (walked
+                        //       by the completion path).
+                        //   (2) any exchange property prefixed with
+                        //       "jaiclaw.stage-meta." — the general
+                        //       stage-metadata escape hatch used by the
+                        //       SetMetadata processor and any adopter
+                        //       that wants to expose downstream template
+                        //       variables like {{stages.X.metadata.k}}.
+                        Map<String, String> stageMetadata = new HashMap<>();
+                        Object resultProp = exchange.getProperty(PipelineResult.RESULT_KEY);
+                        if (resultProp != null) {
+                            String resultString = resultProp.toString();
+                            if (!resultString.isEmpty()) {
+                                stageMetadata.put(PipelineResult.RESULT_KEY, resultString);
+                            }
+                            // Clear so a downstream stage's write is independent.
+                            exchange.removeProperty(PipelineResult.RESULT_KEY);
+                        }
+                        java.util.List<String> stageMetaPropsToClear = new ArrayList<>();
+                        for (Map.Entry<String, Object> propEntry : exchange.getProperties().entrySet()) {
+                            if (propEntry.getKey().startsWith(STAGE_METADATA_PREFIX)
+                                    && propEntry.getValue() != null) {
+                                String key = propEntry.getKey().substring(STAGE_METADATA_PREFIX.length());
+                                if (!key.isEmpty()) {
+                                    stageMetadata.put(key, propEntry.getValue().toString());
+                                }
+                                stageMetaPropsToClear.add(propEntry.getKey());
+                            }
+                        }
+                        for (String p : stageMetaPropsToClear) {
+                            exchange.removeProperty(p);
+                        }
+                        PipelineContext nextCtx = ctx.nextStage(stage.name(),
+                                output != null ? output : "",
+                                stageMetadata.isEmpty() ? Map.of() : stageMetadata);
                         exchange.getIn().setHeader(HEADER_PIPELINE_CONTEXT, nextCtx);
 
                         Duration stageDuration = Duration.between(stageStart, Instant.now());
@@ -411,6 +477,7 @@ public class PipelineRouteBuilder extends RouteBuilder {
                     } catch (Exception e) {
                         Duration stageDuration = Duration.between(stageStart, Instant.now());
                         if (auditor != null) auditor.stageFailed(ctx, stage, e);
+                        if (hookFirer != null) hookFirer.fireStageFailed(ctx, stage, e);
                         if (metrics != null) metrics.recordStageExecution(
                                 pipelineId, stage.name(), stage.type().name(), false, stageDuration);
                         if (tracker != null) tracker.failed(ctx, e.getMessage(), stageDuration);
@@ -446,13 +513,14 @@ public class PipelineRouteBuilder extends RouteBuilder {
                         Duration totalDuration = pipelineStart != null
                                 ? Duration.between(pipelineStart, now)
                                 : Duration.ZERO;
+                        String pipelineResult = resolveResult(ctx, definition);
                         if (auditor != null) auditor.pipelineCompleted(ctx, totalDuration);
-                        if (hookFirer != null) hookFirer.firePipelineEnd(ctx);
+                        if (hookFirer != null) hookFirer.firePipelineEnd(ctx, pipelineResult);
                         if (metrics != null) {
                             metrics.recordPipelineExecution(pipelineId, ctx.tenantId(), true, totalDuration);
                             metrics.recordPipelineActive(pipelineId, -1);
                         }
-                        if (tracker != null) tracker.succeeded(ctx, totalDuration);
+                        if (tracker != null) tracker.succeeded(ctx, totalDuration, pipelineResult);
 
                         // Complete the registered sync future *before* dispatching to
                         // the external output sink (CHANNEL/CAMEL_URI/LOG). Sync callers
@@ -546,5 +614,39 @@ public class PipelineRouteBuilder extends RouteBuilder {
             }
         }
         return headers;
+    }
+
+    /**
+     * Resolve the caller-visible result for a successful pipeline execution.
+     * Resolution priority (first non-blank wins):
+     * <ol>
+     *   <li>Walk {@code ctx.stageOutputs()} in reverse insertion order;
+     *       first stage whose {@code metadata.__result__} is non-blank
+     *       wins. Covers the stage-bean write path.</li>
+     *   <li>Otherwise, if the definition's {@code resultTemplate} is set,
+     *       resolve it via {@link TemplateResolver}.</li>
+     *   <li>Otherwise, fall back to {@code "SUCCESS"} so callers never
+     *       see {@code null} on the happy path.</li>
+     * </ol>
+     * Package-private static so
+     * {@code PipelineResultResolutionSpec} can call it directly.
+     */
+    static String resolveResult(PipelineContext ctx, PipelineDefinition def) {
+        if (ctx != null && ctx.stageOutputs() != null && !ctx.stageOutputs().isEmpty()) {
+            // Walk in reverse insertion order — Map.copyOf preserves the
+            // LinkedHashMap order the runtime built up via nextStage(...).
+            String[] stageNames = ctx.stageOutputs().keySet().toArray(new String[0]);
+            for (int i = stageNames.length - 1; i >= 0; i--) {
+                PipelineContext.StageOutput out = ctx.stageOutputs().get(stageNames[i]);
+                if (out == null || out.metadata() == null) continue;
+                String candidate = out.metadata().get(PipelineResult.RESULT_KEY);
+                if (candidate != null && !candidate.isBlank()) return candidate;
+            }
+        }
+        if (def != null && def.resultTemplate() != null && !def.resultTemplate().isBlank() && ctx != null) {
+            String resolved = TemplateResolver.resolve(def.resultTemplate(), ctx);
+            if (resolved != null && !resolved.isBlank()) return resolved;
+        }
+        return "SUCCESS";
     }
 }

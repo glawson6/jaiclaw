@@ -14,12 +14,48 @@ public class PipelineRegistry {
     private final Map<String, PipelineDefinition> pipelines = new ConcurrentHashMap<>();
 
     /**
-     * Register a pipeline definition. Replaces any existing definition with the same ID.
+     * Register a pipeline definition. Silently replaces any existing
+     * definition with the same ID — delegates to {@link #replace}.
      *
      * @param definition the pipeline definition to register
      */
     public void register(PipelineDefinition definition) {
-        pipelines.put(definition.id(), definition);
+        replace(definition);
+    }
+
+    /**
+     * Register or replace a pipeline definition. Returns the previously
+     * registered definition (or {@code null} if this was a fresh
+     * registration).
+     *
+     * <p>The engine-side counterpart to the authoring plane's deploy
+     * path: {@code PipelineLifecycleManager} (Phase 3) invokes this
+     * after building the new routes.
+     *
+     * @param definition the pipeline definition to register
+     * @return the previous definition for this id, or {@code null}
+     */
+    public PipelineDefinition replace(PipelineDefinition definition) {
+        if (definition == null || definition.id() == null || definition.id().isBlank()) {
+            throw new IllegalArgumentException("PipelineDefinition and non-blank id required");
+        }
+        return pipelines.put(definition.id(), definition);
+    }
+
+    /**
+     * Remove a pipeline definition. Returns the removed definition,
+     * or {@code null} if no pipeline was registered for the id.
+     *
+     * <p>Callers are responsible for stopping/removing any Camel
+     * routes the definition backed — {@code PipelineLifecycleManager}
+     * (Phase 3) coordinates that side.
+     *
+     * @param id the pipeline id to remove
+     * @return the removed definition, or {@code null}
+     */
+    public PipelineDefinition unregister(String id) {
+        if (id == null || id.isBlank()) return null;
+        return pipelines.remove(id);
     }
 
     /**

@@ -2,6 +2,7 @@ package io.jaiclaw.pipeline.web;
 
 import io.jaiclaw.pipeline.PipelineProperties;
 import io.jaiclaw.pipeline.gateway.PipelineGateway;
+import io.jaiclaw.pipeline.render.PipelineRenderService;
 import io.jaiclaw.pipeline.tracking.PipelineExecutionTracker;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -34,5 +35,11 @@ public class PipelineWebConfiguration {
             PipelineProperties properties,
             ObjectProvider<PipelineExecutionTracker> trackerProvider) {
         return new PipelineTriggerController(gateway, properties, trackerProvider);
+    }
+
+    @Bean
+    @ConditionalOnBean(PipelineRenderService.class)
+    public PipelineRenderController pipelineRenderController(PipelineRenderService renderService) {
+        return new PipelineRenderController(renderService);
     }
 }

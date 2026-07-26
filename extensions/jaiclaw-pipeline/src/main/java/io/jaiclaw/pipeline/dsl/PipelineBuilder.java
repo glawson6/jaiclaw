@@ -27,6 +27,7 @@ public class PipelineBuilder {
     private final List<StageBuilder> stageBuilders = new ArrayList<>();
     private OutputBuilder outputBuilder;
     private SecurityBuilder securityBuilder;
+    private String resultTemplate;
 
     PipelineBuilder(String id) {
         this.id = id;
@@ -139,6 +140,27 @@ public class PipelineBuilder {
     }
 
     /**
+     * Declare the caller-visible result template for successful executions.
+     *
+     * <p>Resolved by {@link io.jaiclaw.pipeline.TemplateResolver} against
+     * the completed pipeline context — supports {@code {{stages.<name>.output}}},
+     * {@code {{stages.<name>.metadata.<key>}}}, {@code {{input}}}, and
+     * {@code {{pipeline.*}}}. The resolved string lands on
+     * {@code StatusBody.result}, {@code PipelineExecutionSummary.result},
+     * and {@code PipelineExecutionCompletedEvent.result}.
+     *
+     * <p>A stage bean that writes {@link io.jaiclaw.pipeline.PipelineResult#RESULT_KEY}
+     * to the exchange takes precedence over this template. If neither is
+     * present the runtime falls back to {@code "SUCCESS"}.
+     *
+     * @param template a template string, or {@code null} to clear
+     */
+    public PipelineBuilder resultTemplate(String template) {
+        this.resultTemplate = template;
+        return this;
+    }
+
+    /**
      * Build the pipeline definition. Validates required fields and uniqueness constraints.
      *
      * @return the built pipeline definition
@@ -180,7 +202,8 @@ public class PipelineBuilder {
                 errorStrategy, maxRetries, deadLetterUri,
                 stages,
                 outputBuilder != null ? outputBuilder.build() : null,
-                security
+                security,
+                resultTemplate
         );
     }
 }

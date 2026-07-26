@@ -6,7 +6,7 @@
 
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
     <name>JaiClaw</name>
@@ -63,6 +63,13 @@
         <embabel-agent.version>2.0.0-SNAPSHOT</embabel-agent.version>
         <spring-shell.version>4.0.2</spring-shell.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <!-- GitHub Copilot Java SDK — the official com.github:copilot-sdk-java
+             artifact on Maven Central. Consumed by extensions/jaiclaw-github-copilot
+             to expose the Copilot backend as a Spring AI ChatModel. The
+             underlying auth is delegated to the local `gh copilot` CLI (see
+             docs/user/COPILOT-INTEGRATION.md). Bytecode target is Java 17;
+             works cleanly against JaiClaw's JDK 21 baseline. -->
+        <copilot-sdk.version>1.0.5-01</copilot-sdk.version>
 
         <!-- CVE version overrides — Boot 4.1 BOM re-evaluation:
              Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11).
@@ -281,6 +288,46 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-github-copilot</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-mvc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-web-errors-webflux</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-session-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-dashboard</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-authoring</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-docs</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -410,6 +457,12 @@
             </dependency>
             <dependency>
                 <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-github-copilot</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-starter-personal-assistant</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -459,6 +512,11 @@
             <dependency>
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-cron-manager-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-pipeline-studio</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -649,6 +707,13 @@
                 <version>${embabel-agent.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- GitHub Copilot Java SDK -->
+            <dependency>
+                <groupId>com.github</groupId>
+                <artifactId>copilot-sdk-java</artifactId>
+                <version>${copilot-sdk.version}</version>
             </dependency>
 
             <!-- Spring Shell -->

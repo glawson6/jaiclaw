@@ -1,0 +1,295 @@
+/* === Palette tokens ===
+ * Declared on BOTH :host (for shadow-DOM adopters that mount the
+ * Studio inside a react-shadow wrapper) and :root (for the
+ * standalone dev server + Studio-as-whole-page deployments).
+ * Light palette is the default; dark overrides via
+ * [data-theme='dark'] on the outer host OR via
+ * `prefers-color-scheme: dark` when no theme is explicitly set.
+ * Adopters override individual tokens by re-declaring them on
+ * their own :host / :root scope — no CSS surgery needed.
+ */
+:host,
+:root {
+    --bg: #ffffff;
+    --panel: #f8fafc;
+    --panel-2: #f1f5f9;
+    --border: #cbd5e1;
+    --text: #0f172a;
+    --text-dim: #475569;
+    --accent: #0284c7;
+    --accent-2: #0369a1;
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+}
+
+/* Dark overrides: explicit data-theme=dark wins over media query. */
+:host-context([data-theme='dark']),
+[data-theme='dark'] :host,
+:root[data-theme='dark'] {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #172033;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-dim: #cbd5e1;
+    --accent: #38bdf8;
+    --accent-2: #0284c7;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+}
+
+/* Media-query dark: fires only when no explicit theme is set. */
+@media (prefers-color-scheme: dark) {
+    :host-context(:root:not([data-theme='light'])),
+    :root:not([data-theme='light']) {
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --panel-2: #172033;
+        --border: #334155;
+        --text: #e2e8f0;
+        --text-dim: #cbd5e1;
+        --accent: #38bdf8;
+        --accent-2: #0284c7;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+    }
+}
+
+/* === Container reset ===
+ * :host applies when embedded in a shadow root; html/body/#root
+ * apply when mounted at the document root. Height uses 100%
+ * (not 100vh) so the Studio fills its container — the shadow-host
+ * div in embedded mode, or the viewport in standalone mode
+ * (where html/body/#root get sized by the browser).
+ */
+:host,
+html,
+body,
+#root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+}
+
+/* :host default display so the shadow host actually renders as a
+ * layout box (default is inline, which collapses height to 0). */
+:host { display: block; }
+
+.studio-app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.studio-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+}
+
+.studio-header h1 { margin: 0; font-size: 16px; font-weight: 500; }
+.studio-header .draft-id { font-size: 12px; color: var(--text-dim); font-family: ui-monospace, monospace; }
+.studio-header .spacer { flex: 1; }
+.studio-header .status { font-size: 12px; color: var(--text-dim); }
+.studio-header .status.dirty { color: var(--warning); }
+
+.studio-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+}
+.pane.palette { width: 260px; background: var(--panel-2); }
+.pane.canvas { flex: 1; background: var(--bg); }
+.pane.inspector { width: 320px; background: var(--panel-2); border-right: 0; border-left: 1px solid var(--border); }
+
+.pane-header {
+    padding: 12px 16px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+}
+.pane-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+.btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: 0;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+}
+.btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Palette */
+.palette-search {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+.palette-group { margin-bottom: 16px; }
+.palette-group h3 {
+    margin: 0 0 6px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+}
+.palette-item {
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: grab;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+.palette-item:hover { border-color: var(--accent); }
+.palette-item .desc {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+/* Canvas */
+.react-flow { background: var(--bg); }
+.rf-node {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-width: 200px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+}
+.rf-node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25); }
+.rf-node .kind {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--accent-2);
+    color: white;
+    margin-right: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.rf-node.trigger .kind { background: var(--warning); color: black; }
+.rf-node.output .kind { background: var(--success); color: black; }
+.rf-node .name { font-weight: 500; }
+.rf-node .subtitle { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.canvas-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px;
+}
+
+/* Inspector */
+.inspector-empty { color: var(--text-dim); font-size: 13px; }
+.form-group { margin-bottom: 12px; }
+.form-group label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+}
+.form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+}
+.form-group textarea { font-family: ui-monospace, monospace; min-height: 80px; }
+.form-help { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+/* Validation panel */
+.validation-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 13px;
+}
+.validation-panel.ok { border-color: var(--success); }
+.validation-panel.errors { border-color: var(--danger); }
+.validation-panel ul { margin: 8px 0 0 0; padding-left: 20px; }
+.validation-panel li { margin: 4px 0; font-family: ui-monospace, monospace; font-size: 12px; }
+.validation-panel .suggest { color: var(--warning); }
+
+/* YAML view */
+.yaml-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 12px;
+}
+.yaml-view textarea {
+    flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    resize: none;
+}
+
+/* Header actions */
+.header-actions { display: flex; gap: 8px; }
+.tenant-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-dim);
+}

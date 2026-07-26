@@ -8,11 +8,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.server.PathContainer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.pattern.PathPattern;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,6 +27,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Sender is identified as the JWT subject (if authenticated) or client IP (fallback).
  * Returns HTTP 429 with {@code Retry-After} and {@code X-RateLimit-*} headers when exceeded.
  * A background virtual thread cleans expired entries periodically.
+ * <p>
+ * The primary gate is the {@code /api/**} whitelist — only requests whose path
+ * starts with {@code /api/} are candidates for rate-limiting. On top of that,
+ * {@code jaiclaw.security.rate-limit.skip-paths} adds Ant-pattern exclusions
+ * (e.g., {@code /api/health} to keep liveness probes off the rate limit).
  */
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -31,10 +40,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final int maxRequests;
     private final int windowSeconds;
     private final ConcurrentHashMap<String, SenderWindow> windows = new ConcurrentHashMap<>();
+    private final List<PathPattern> skipPatterns;
 
     public RateLimitFilter(int maxRequests, int windowSeconds, int cleanupIntervalSeconds) {
+        this(maxRequests, windowSeconds, cleanupIntervalSeconds, null);
+    }
+
+    /**
+     * @param skipPaths additional exclusions layered on top of the built-in
+     *                  {@code /api/**} whitelist gate. Each entry is a Spring
+     *                  path pattern ({@link PathPattern} shape).
+     *                  {@code null} or empty means no additional exclusions —
+     *                  only the whitelist gate applies.
+     */
+    public RateLimitFilter(int maxRequests, int windowSeconds, int cleanupIntervalSeconds,
+                            List<String> skipPaths) {
         this.maxRequests = maxRequests;
         this.windowSeconds = windowSeconds;
+        List<String> effective = (skipPaths == null) ? List.of() : skipPaths;
+        PathPatternParser parser = PathPatternParser.defaultInstance;
+        this.skipPatterns = effective.stream()
+                .map(parser::parse)
+                .toList();
 
         Thread.ofVirtual().name("rate-limit-cleanup").start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
@@ -54,7 +81,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !path.startsWith("/api/");
+        if (!path.startsWith("/api/")) return true;   // primary whitelist gate — unchanged
+        PathContainer pathContainer = PathContainer.parsePath(path);
+        for (PathPattern pattern : skipPatterns) {
+            if (pattern.matches(pathContainer)) return true;
+        }
+        return false;
     }
 
     @Override

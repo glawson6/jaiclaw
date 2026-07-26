@@ -1,6 +1,7 @@
 package io.jaiclaw.pipeline;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Defines a single stage within a pipeline.
@@ -25,6 +26,14 @@ import java.time.Duration;
  * @param embabelWorkflow Embabel agent name to invoke when
  *                        {@code runtime == EMBABEL}. Required for that
  *                        runtime; ignored otherwise.
+ * @param config          per-stage configuration for PROCESSOR stages
+ *                        whose bean implements
+ *                        {@link ConfigurableStageProcessor}. The map
+ *                        is passed to
+ *                        {@link ConfigurableStageProcessor#process}. Ignored
+ *                        for AGENT/CAMEL stages and for bare
+ *                        {@code Function<String,String>} beans.
+ *                        Nullable — defaults to an empty map.
  */
 public record StageDefinition(
         String name,
@@ -37,7 +46,8 @@ public record StageDefinition(
         Duration timeout,
         TransportConfig transport,
         StageRuntime runtime,
-        String embabelWorkflow
+        String embabelWorkflow,
+        Map<String, String> config
 ) {
     public StageDefinition {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Stage name must not be blank");
@@ -49,13 +59,36 @@ public record StageDefinition(
             throw new IllegalArgumentException(
                     "Stage '" + name + "': runtime=EMBABEL requires a non-blank embabelWorkflow");
         }
+        if (config == null) config = Map.of();
+        else config = Map.copyOf(config);
+    }
+
+    /**
+     * Backward-compatible 11-arg constructor — omits {@code config},
+     * which defaults to an empty map. Retained so existing per-file
+     * YAML fixtures and Spock specs compile unchanged.
+     */
+    public StageDefinition(
+            String name,
+            StageType type,
+            String bean,
+            String agentId,
+            String systemPrompt,
+            String channelId,
+            String uri,
+            Duration timeout,
+            TransportConfig transport,
+            StageRuntime runtime,
+            String embabelWorkflow) {
+        this(name, type, bean, agentId, systemPrompt, channelId, uri, timeout,
+                transport, runtime, embabelWorkflow, Map.of());
     }
 
     /**
      * Backward-compatible 9-arg constructor — delegates to the canonical
-     * 11-arg form with {@code runtime=NATIVE} and {@code embabelWorkflow=null}.
-     * Existing callers (Spock specs, hand-rolled stages) continue to compile
-     * unchanged.
+     * 12-arg form with {@code runtime=NATIVE}, {@code embabelWorkflow=null},
+     * and an empty {@code config} map. Existing callers (Spock specs,
+     * hand-rolled stages) continue to compile unchanged.
      */
     public StageDefinition(
             String name,
@@ -68,7 +101,7 @@ public record StageDefinition(
             Duration timeout,
             TransportConfig transport) {
         this(name, type, bean, agentId, systemPrompt, channelId, uri, timeout, transport,
-                StageRuntime.NATIVE, null);
+                StageRuntime.NATIVE, null, Map.of());
     }
 
     /**

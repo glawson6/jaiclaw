@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.jaiclaw</groupId>
         <artifactId>jaiclaw-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>jaiclaw-spring-boot-starter</artifactId>
@@ -56,6 +56,22 @@
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-security</artifactId>
             <optional>true</optional>
+        </dependency>
+        <!--
+          Default web exception handlers — auto-activate against whichever
+          web stack the consumer already brought in (servlet or reactive)
+          via @ConditionalOnClass, so both are safe to ship. Fixes the
+          "catch-all Throwable → 500 with ex.getMessage()" pattern; opt
+          out with jaiclaw.web.errors.enabled=false. See
+          docs/user/WEB-ERROR-HANDLING.md.
+        -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-web-errors-mvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-web-errors-webflux</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jaiclaw</groupId>

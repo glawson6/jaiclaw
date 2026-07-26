@@ -70,7 +70,7 @@ public class JaiClawSecurityAutoConfiguration {
     RateLimitFilter rateLimitFilter(JaiClawSecurityProperties properties) {
         JaiClawSecurityProperties.RateLimitProperties rl = properties.rateLimit();
         return new RateLimitFilter(rl.maxRequestsPerWindow(), rl.windowSeconds(),
-                rl.cleanupIntervalSeconds());
+                rl.cleanupIntervalSeconds(), rl.skipPaths());
     }
 
     /**
@@ -105,7 +105,9 @@ public class JaiClawSecurityAutoConfiguration {
         @ConditionalOnMissingBean(ApiKeyAuthenticationFilter.class)
         ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider,
                                                               JaiClawSecurityProperties properties) {
-            return new ApiKeyAuthenticationFilter(apiKeyProvider, null, properties.timingSafeApiKey());
+            return new ApiKeyAuthenticationFilter(apiKeyProvider, null,
+                    properties.timingSafeApiKey(),
+                    properties.apiKeyFilter().skipPaths());
         }
 
         @Bean

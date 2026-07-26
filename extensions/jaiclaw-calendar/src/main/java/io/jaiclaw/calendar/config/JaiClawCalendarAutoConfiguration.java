@@ -34,7 +34,7 @@ public class JaiClawCalendarAutoConfiguration {
     public CalendarProperties calendarProperties(Environment environment) {
         return Binder.get(environment)
                 .bind("jaiclaw.calendar", CalendarProperties.class)
-                .orElse(new CalendarProperties());
+                .orElse(CalendarProperties.defaults());
     }
 
     @Bean

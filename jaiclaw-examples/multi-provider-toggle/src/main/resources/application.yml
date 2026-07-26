@@ -1,0 +1,45 @@
+# Boot-and-log fixture for the multi-provider-chatmodel-selection e2e.
+#
+# Both Spring AI provider starters (openai + anthropic) are on the
+# classpath via pom.xml — this file supplies stub API keys so both
+# starters can build their ChatModel beans without a real network
+# call. The provider selection is left to environment variables
+# (JAICLAW_AGENT_AGENTS_DEFAULT_LLM_PROVIDER, or SPRING_AI_MODEL_CHAT)
+# so the e2e-test skill can drive each of the four sub-scenarios
+# without editing this file.
+
+spring:
+  # Exclude autoconfigs that need transitive classes this fixture
+  # doesn't pull. jaiclaw-web-errors-webflux is a compile-scope dep
+  # of the starter but its autoconfig references spring-webflux
+  # classes; same for MVC. jaiclaw-camel expects an
+  # AttachmentRouter/GatewayLifecycle chain not wired here.
+  autoconfigure:
+    exclude:
+      - io.jaiclaw.web.errors.webflux.JaiclawWebFluxErrorAutoConfiguration
+      - io.jaiclaw.web.errors.mvc.JaiclawMvcWebErrorAutoConfiguration
+      - io.jaiclaw.camel.JaiClawCamelAutoConfiguration
+      - com.embabel.agent.autoconfigure.platform.AgentPlatformAutoConfiguration
+  ai:
+    openai:
+      api-key: stub-openai-key
+    anthropic:
+      api-key: stub-anthropic-key
+
+# Match the CLAUDE.md rule for examples — never let the ~59 bundled
+# skills default into every LLM request.
+jaiclaw:
+  skills:
+    allow-bundled: []
+
+# Silence the default banner so the boot output stays clean for
+# the skill's grep step.
+spring.main.banner-mode: off
+
+# Keep logging terse — the e2e-test skill only cares about the
+# MPT-BOOT-OK marker line.
+logging:
+  level:
+    root: WARN
+    net.taptech.jaiclaw.example.multiprovider: INFO
+    io.jaiclaw.autoconfigure.LlmProviderBridgeEnvironmentPostProcessor: INFO

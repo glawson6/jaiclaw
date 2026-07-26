@@ -15,7 +15,7 @@ class CalendarMcpToolProviderSpec extends Specification {
 
     def setup() {
         def calendarProvider = new InMemoryCalendarProvider()
-        def properties = new CalendarProperties()
+        def properties = CalendarProperties.defaults()
         def calendarService = new CalendarService(calendarProvider)
         def validator = new CalendarEventValidator(properties)
         def objectMapper = CalendarTools.createObjectMapper()

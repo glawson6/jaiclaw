@@ -24,6 +24,7 @@ import java.util.Map;
  * @param httpTrigger HTTP trigger endpoint settings
  * @param locations   per-file pipeline location patterns (classpath / filesystem)
  * @param sync        synchronous-result coordinator settings
+ * @param sse         server-sent-events broadcast settings (UI + agent tools stream lifecycle events)
  */
 @ConfigurationProperties(prefix = "jaiclaw.pipeline")
 public record PipelineProperties(
@@ -34,7 +35,8 @@ public record PipelineProperties(
         TrackerProperties tracker,
         HttpTriggerProperties httpTrigger,
         LocationProperties locations,
-        SyncProperties sync
+        SyncProperties sync,
+        SseProperties sse
 ) {
     /**
      * Default SEDA queue configuration for inter-stage transport.
@@ -200,8 +202,41 @@ public record PipelineProperties(
         }
     }
 
+    /**
+     * Server-sent-events broadcast settings for the pipeline lifecycle
+     * stream at {@code /api/pipelines/{id}/events} and
+     * {@code /api/pipelines/events}.
+     *
+     * @param enabled          master switch for the SSE endpoints (default: true)
+     * @param heartbeatSeconds keep-alive interval so proxies + load balancers
+     *                         don't close idle streams (default: 15)
+     * @param maxConnections   per-tenant cap on live SSE connections; extras
+     *                         are rejected with HTTP 429 (default: 100)
+     * @param timeoutSeconds   {@code SseEmitter} timeout in seconds (default: 300)
+     * @param includeSnapshot  send an initial {@code snapshot} event on
+     *                         connect carrying the pipeline definition +
+     *                         recent-executions summary, so a UI can render
+     *                         immediately (default: true)
+     */
+    public record SseProperties(
+            boolean enabled,
+            int heartbeatSeconds,
+            int maxConnections,
+            int timeoutSeconds,
+            boolean includeSnapshot
+    ) {
+        public static final SseProperties DEFAULT =
+                new SseProperties(true, 15, 100, 300, true);
+
+        public SseProperties {
+            if (heartbeatSeconds <= 0) heartbeatSeconds = 15;
+            if (maxConnections <= 0) maxConnections = 100;
+            if (timeoutSeconds <= 0) timeoutSeconds = 300;
+        }
+    }
+
     public static final PipelineProperties DEFAULT =
-            new PipelineProperties(false, null, null, null, null, null, null, null);
+            new PipelineProperties(false, null, null, null, null, null, null, null, null);
 
     public PipelineProperties {
         if (pipelines == null) pipelines = List.of();
@@ -212,5 +247,6 @@ public record PipelineProperties(
         if (httpTrigger == null) httpTrigger = HttpTriggerProperties.DEFAULT;
         if (locations == null) locations = LocationProperties.EMPTY;
         if (sync == null) sync = SyncProperties.DEFAULT;
+        if (sse == null) sse = SseProperties.DEFAULT;
     }
 }

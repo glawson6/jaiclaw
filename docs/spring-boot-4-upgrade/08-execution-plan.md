@@ -211,3 +211,46 @@ Steps: smoke one `spock-spring` context spec module first → full reactor test 
 | 8.5 | Version cut per RELEASE-PLAN §"The cut itself" (`versions:set 1.0.0`, tag, `maven-central-deploy/release.sh`), `-Prelease` dry run first (repackage-skip behavior vs boot-maven-plugin 4.x) |
 
 **Verify:** release dry run publishes cleanly to staging; `release-1.0.0.md` complete; all STATUS lines in this file DONE.
+
+## Phase 9 — Post-1.0 Roadmap
+
+Items scoped and inventoried but deliberately not part of the 1.0.0 cut. Each entry names its trigger, the concrete change scope, and the known non-issues so future-you doesn't have to rediscover.
+
+### 9.1 — JDK 21 → JDK 25 upgrade
+
+**Trigger:** bump when Spring Boot cuts 4.2 (which is expected to move the JDK baseline higher), or when a specific dependency requires JDK 25 at runtime. **Not before.** Boot 4.1 supports JDK 17–25; JDK 21 remains fully supported for the entire 4.1.x line, so there is no forcing function today.
+
+**Not the trigger:** consuming the GitHub Copilot Java SDK (`com.github:copilot-sdk-java`) — the SDK targets Java 17 bytecode (`<maven.compiler.release>17</maven.compiler.release>`). The "JDK 25 recommended" note in its README is for *building the SDK from source* (multi-release JAR with virtual-thread overlays); JaiClaw consumes the published Central artifact and runs it on JDK 21 without issue.
+
+**Change scope (audited 2026-07-13):**
+
+- `pom.xml` (root) line 53: `<java.version>21</java.version>` — **the only pom edit needed**. No child module overrides.
+- 4 Dockerfiles / JKube base images pin `eclipse-temurin:21-*`:
+  - `e2e/Dockerfile` (builder + runner stages, `21-jdk`)
+  - `apps/jaiclaw-cli/Dockerfile` (`21-jre`)
+  - `jaiclaw-starters/jaiclaw-starter-k8s-monitor/Dockerfile` (`21-jre`)
+  - Root `pom.xml` JKube inline `<from>eclipse-temurin:21-jre</from>`
+- 5 GitHub Actions workflows pin `java-version: '21'`:
+  - `.github/workflows/unit-tests.yml`
+  - `.github/workflows/e2e-tests.yml`
+  - `.github/workflows/security-deps.yml`
+  - `.github/workflows/coverage.yml`
+  - `.github/workflows/publish-central.yml`
+- 5 shell scripts hardcode `21.0.9-oracle` via SDKMAN:
+  - `setup.sh`, `install.sh`, `quickstart.sh`, `start.sh`, `start-multitenant.sh`
+  - `bin/jaiclaw` uses `Java 21+` as a permissive floor (`sdk install java 21.0.9-oracle` in its error message) — safe to leave, or bump the suggestion.
+
+**Vendor:** Oracle 25 (`sdk install java 25.0.x-oracle`) to match the existing `21.0.9-oracle` SDKMAN pattern in CI + scripts + CLAUDE.md.
+
+**CI matrix:** 25 only when done. Consistent with the "1.0.0-SNAPSHOT is pilot-only" posture in [02 §3b](02-embabel-gate.md); no reason to double CI runtime testing both.
+
+**Known non-issues (audited 2026-07-13):**
+
+- No maven-enforcer `requireJavaVersion` rule pins the exact version — the bump is a property edit.
+- No bytecode-generation libs beyond Objenesis 3.5, which is already JDK 25-compatible (Spock's mock support).
+- No `Thread.stop`, `System.setSecurityManager`, `SecurityManager`, `AccessController.doPrivileged`, or `finalize()` overrides in the codebase — none of JDK 25's removals affect us.
+- No `--enable-preview`, `--enable-native-access`, `jdk.incubator`, or `sun.misc` usage. Single reflection `--add-opens java.base/java.lang.reflect=ALL-UNNAMED` in `jaiclaw-examples/camel-html-summarizer-embabel/…/MiniMaxThinkingFilter.java` (documented workaround, isolated to one example) — verify it still needs the flag on JDK 25.
+- Groovy 5.0.7 + Spock 2.4-groovy-5.0 are already JDK 25-compatible per Groovy release notes.
+- Boot 4.1 explicitly supports JDK 25; Camel 4.21.0 explicitly tests on JDK 17/21/25.
+
+**Verify:** `./mvnw -o compile` + `./mvnw -o test` full reactor green on JDK 25; JKube image builds succeed against `eclipse-temurin:25-jre`; e2e skills pass.

@@ -140,7 +140,8 @@ public class PipelineTriggerController {
                 summary.status() == null ? null : summary.status().name(),
                 summary.startedAt(),
                 summary.completedAt(),
-                summary.failureReason());
+                summary.failureReason(),
+                summary.result());
     }
 
     private static String firstNonBlank(String a, String b) {
