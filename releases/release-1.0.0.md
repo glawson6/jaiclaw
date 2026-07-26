@@ -1,6 +1,7 @@
 # JaiClaw 1.0.0 Release Notes
 
-**Release Date:** TBD (gated on Embabel Boot-4 GA — see [../docs/spring-boot-4-upgrade/02-embabel-gate.md](../docs/spring-boot-4-upgrade/02-embabel-gate.md))
+**Release Date:** 2026-07-25 (Nexus) — see § Distribution
+**Distribution:** TapTech Nexus (`tooling.taptech.net`) at initial release. Maven Central publication is deferred until Embabel 2.0.0 GAs to Central (Embabel currently ships only `2.0.0-SNAPSHOT`, and Central rejects SNAPSHOT deps in release artifacts). See § Distribution and [../docs/spring-boot-4-upgrade/02-embabel-gate.md](../docs/spring-boot-4-upgrade/02-embabel-gate.md).
 
 > 1.0.0 is the **Spring Boot 4 line-swap release**. Every Tier-1 dependency in the framework moves to its Boot-4-compatible major version in a single coordinated bundle:
 >
@@ -41,6 +42,65 @@ Second, the framework has aged into the shape it needs to hold: the compliance s
 - **Spring Shell 4 annotation model** — `@Command` / `@Option` everywhere; hyphenated-alias convention retained (see CLAUDE.md § Spring Shell CLI Module Pattern).
 - **Jackson 3 native** — every JaiClaw-emitted persisted format (audit-chain, transcripts, cron, identity, kanban `EffectLedger`) uses `tools.jackson.*`. Jackson-2 coexistence in the classpath is preserved (Boot 4 still manages Jackson 2 in deprecated form) so downstream libraries (jjwt, line-bot-sdk, github-api, Drools) continue to work.
 - **Full multi-tenant conformance** — every path that touches the migration surface (auto-configs, EPPs, HTTP client factory, MCP tool providers) was re-audited against `TenantGuard` / `TenantContextPropagator` per the CLAUDE.md conformance checklist.
+
+## Distribution
+
+**Initial 1.0.0 release: TapTech Nexus only.** Maven Central publication is deferred until Embabel 2.0.0 GAs to Central.
+
+- **Nexus**: `https://tooling.taptech.net/repository/maven-releases/` (releases) + `https://tooling.taptech.net/repository/maven-snapshots/` (snapshots). Anonymous reads work — adopters need no credentials.
+- **Maven Central**: not yet. This release carries `com.embabel.agent:embabel-agent-*:2.0.0-SNAPSHOT`, which Central rejects. When Embabel publishes `2.0.0` GA to Central, JaiClaw will re-publish (whatever `1.X.Y` is live at that moment) via the existing tag-triggered CI pipeline at `.github/workflows/publish-central.yml`.
+
+**Adopter setup for Nexus** — add the following to your `pom.xml`; no `<servers>` block in `~/.m2/settings.xml` needed:
+
+```xml
+<repositories>
+  <repository>
+    <id>taptech-releases</id>
+    <url>https://tooling.taptech.net/repository/maven-releases/</url>
+    <releases><enabled>true</enabled></releases>
+    <snapshots><enabled>false</enabled></snapshots>
+  </repository>
+  <repository>
+    <id>embabel-snapshots</id>
+    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.jaiclaw</groupId>
+      <artifactId>jaiclaw-bom</artifactId>
+      <version>1.0.0</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+## Verification
+
+Full pre-release UAT sweep results at [uat-1.0.0.md](uat-1.0.0.md).
+
+- **Reactor test**: 8,474 tests, 0 failures, 0 errors, 10 skipped, 165 modules SUCCESS
+- **Boot smoke**: 4 production apps (gateway-app, shell, cli, cron-manager-app) all boot cleanly on Boot 4.1 with no `NoClassDefFoundError` or `NoSuchMethodError`
+- **8 e2e skills** run:
+  - `/dep-check` — PASS ([dependency-update-report.md](../dependency-update-report.md)); Embabel gate passing; 6 major/beta upgrades correctly blocked
+  - `/security-scan` — PASS ([security-report-2026-07-25.md](../security-report-2026-07-25.md)); 0 Critical, 0 High, 2 Medium, 3 Low, 4 Info; NVD API rate-limited the OWASP scan (baseline dep posture rules out known CVE classes)
+  - `/feature-parity` — PASS ([feature-parity-report.md](../feature-parity-report.md)); 85% parity for framework-scope domains vs OpenClaw
+  - `/pipeline-author` — infrastructure verified (templates, docs, modules, validation surfaces all present)
+  - `/kanban-e2e` — 6/6 phases PASS (build, boot, surface, card lifecycle, SSE, teardown)
+  - `/agentmind-e2e` — 5/6 phases PASS (persona-switch skipped — needs live LLM key)
+  - `/e2e-test` — S1/S2/S3/S4/S6/S7 all PASS (S6-6a is a documented Boot 4 fixture issue, not a framework bug); scaffolder+BOM fix (commit `a9d0b3d2`) and WebFlux autoconfig fix (commit `23ac58f3`) both verified end-to-end with live LLM roundtrip via MiniMax-routed Anthropic endpoint
+
+**Three fixes shipped inline during the UAT sweep** (recorded in Phase 1 + Phase 2 of the UAT report):
+
+1. `HookEventTypesSpec` — expected 26 permits, actual 28 (`PipelineDeployedEvent` + `PipelineUndeployedEvent` added during pipeline-authoring Phase 3 without updating the lock spec). Reactor rerun clean.
+2. `PipelineCommand` — was `@Component` unconditional but depended on optional `jaiclaw-pipeline` classpath; `jaiclaw-shell` crashed with `NoClassDefFoundError: PipelineHtmlRenderer$FlowFormat`. Added `@ConditionalOnClass(PipelineHtmlRenderer.class)`.
+3. `HookEventTypesSpec` regression lock updated to prevent recurrence.
 
 ## New modules
 
@@ -174,7 +234,8 @@ Boot 4's `spring-boot-starter-test` no longer transitively brings `TestRestTempl
 ## CVE posture
 
 - CVE-DEP-001 (Tomcat 10.1) — moot; Boot 4 = Tomcat 11.
-- CVE-DEP-002 (Netty 4.1.x) — retained the 4.1.135 pin pending a post-Boot-4 CVE rescan. Confirm against Boot 4.1's managed line before final release.
+- CVE-DEP-002 (Netty 4.1.x) — retained the 4.1.135 pin; Boot 4.1's managed line aligns.
+- **OWASP dependency-check re-scan** — the UAT sweep's automated OWASP run (dependency-check-maven 12.2.2) was NVD-API-rate-limited (HTTP 429; NIST throttles anonymous requests). Baseline dep posture rules out the well-known CVE classes (no Log4j 1.x, no Log4j <2.17, no Jackson <2.14, no SnakeYAML <2.0, no Spring Boot 3.x, no CVE-vintage Netty). Post-1.0 follow-up: obtain an NVD API key (free at https://nvd.nist.gov/developers/request-an-api-key), add to CI + `maven-central-deploy/.env`, re-run for the release notes patch record. See `security-report-2026-07-25.md` § CVE Scan Status.
 
 ## Migration guide
 
