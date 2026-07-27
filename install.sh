@@ -14,7 +14,13 @@
 #
 # Install modes:
 #   default        — download the CLI fat jar from Nexus (needs Java 21 locally;
-#                    offers to install via SDKMAN if missing).
+#                    offers to install via SDKMAN if missing). If the requested
+#                    version's fat jar is missing from Nexus (404 or corrupt),
+#                    AUTO-FALLS-BACK to --from-source using the matching git
+#                    tag (`v${JAICLAW_VERSION}`) — so `curl | bash` still lands
+#                    a working install even when a release's fat jar upload
+#                    failed. Set JAICLAW_REF to override the tag; set
+#                    JAICLAW_SOURCE_DIR to skip the clone.
 #   --docker       — pull the CLI Docker image and install a shim launcher
 #                    (needs Docker locally; no Java needed).
 #   --from-source  — clone the repo (or use JAICLAW_SOURCE_DIR) and build the
@@ -48,6 +54,11 @@ JAVA_MIN_VERSION=21
 INSTALL_MODE="jar"
 
 # --from-source knobs
+# Track whether the operator set JAICLAW_REF explicitly so the auto-fallback
+# in install_jar → fallback_to_source() doesn't overwrite an operator choice.
+if [[ -n "${JAICLAW_REF:-}" ]]; then
+    JAICLAW_REF_EXPLICIT=1
+fi
 JAICLAW_REF="${JAICLAW_REF:-main}"
 JAICLAW_SOURCE_DIR="${JAICLAW_SOURCE_DIR:-}"
 CLEAN_CACHE=0
@@ -364,21 +375,69 @@ install_jar() {
     # -f: fail on HTTP errors instead of writing the error body into the jar.
     if ! curl -fsSL -o "$dest" "$url"; then
         rm -f "$dest"
-        err "Failed to download CLI JAR from $url"
-        echo "Build from source: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
-        echo "Then copy to: $dest"
-        return 1
+        warn "CLI JAR not available on Nexus for version $JAICLAW_VERSION ($url)"
+        if [[ "$JAICLAW_VERSION" == "1.0.0" ]]; then
+            echo ""
+            echo "⚠  Known issue: jaiclaw-cli-1.0.0-exec.jar was lost during the"
+            echo "   Nexus deploy of 1.0.0 (Maven reported the 158 MB upload as"
+            echo "   succeeded, but Nexus did not retain it). The pom + thin jar"
+            echo "   are on Nexus, the fat jar is not. Because 1.0.0 is a release"
+            echo "   tag, the artifact will be republished under 1.0.1."
+            echo ""
+        fi
+        fallback_to_source "$JAICLAW_VERSION"
+        return $?
     fi
 
     # Sanity check — every JAR is a ZIP and starts with the magic bytes 'PK\x03\x04'.
     # A 404 HTML page or rate-limit error written into the file would fail this check
     # and trip "Invalid or corrupt jarfile" only later when Java tries to run it.
+    # Nexus can return HTTP 200 with an HTML error page in edge cases (proxy
+    # misconfiguration, blob-store quota-full silent-drop) so the magic-byte
+    # check is not redundant with the earlier curl -f check.
     if ! head -c4 "$dest" | grep -q $'^PK\x03\x04'; then
         rm -f "$dest"
-        err "Downloaded file is not a valid JAR (magic bytes mismatch). Aborting."
-        return 1
+        warn "Downloaded file for $JAICLAW_VERSION is not a valid JAR (magic bytes mismatch)."
+        fallback_to_source "$JAICLAW_VERSION"
+        return $?
     fi
     ok "Downloaded CLI JAR ($(wc -c <"$dest" | tr -d ' ') bytes)"
+}
+
+# Turn a jar-mode download failure into an automatic build-from-source.
+#
+# Called when Nexus doesn't have the fat jar for the requested version
+# (404 or corrupt payload — either case leaves the adopter with no jar).
+# Delegates to install_from_source, but first pins JAICLAW_REF to the
+# release tag (v${JAICLAW_VERSION}) so we build the same version the
+# adopter asked for — not whatever's currently on main.
+#
+# Preserves an operator-supplied JAICLAW_REF or JAICLAW_SOURCE_DIR (both
+# are explicit signals that the operator wants to control the checkout).
+# Preserves an operator-supplied --docker choice (we shouldn't silently
+# swap to source when --docker was requested — but --docker never lands
+# in install_jar so that branch is moot here).
+#
+# For SNAPSHOT versions there IS no git tag — fall back to the origin
+# branch the version-line was cut from. Best-effort: assume `main`, which
+# is the SNAPSHOT lane, and let the operator override with JAICLAW_REF.
+fallback_to_source() {
+    local wanted="$1"
+    info "Falling back to build-from-source for version $wanted"
+
+    # Only auto-set the git ref if the operator didn't already choose one
+    # and isn't reusing their own checkout.
+    if [[ -z "${JAICLAW_REF_EXPLICIT:-}" ]] && [[ -z "$JAICLAW_SOURCE_DIR" ]]; then
+        if [[ "$wanted" == *-SNAPSHOT ]]; then
+            JAICLAW_REF="main"
+            info "SNAPSHOT versions have no git tag — building from 'main' (override with JAICLAW_REF)"
+        else
+            JAICLAW_REF="v${wanted}"
+            info "Building from git tag v${wanted} (override with JAICLAW_REF)"
+        fi
+    fi
+
+    install_from_source
 }
 
 # ─── Docker install path ─────────────────────────────────────────────────────

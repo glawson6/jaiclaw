@@ -13,6 +13,45 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 In progress on the `1.0.1-SNAPSHOT` line — patch release window post-1.0.0.
 
+### Added (patch — landed on `main`, ships in 1.0.1)
+
+- **`install.sh` auto-falls-back to build-from-source when Nexus is
+  missing the requested version's CLI fat jar.** Previously the
+  installer failed hard on a 404 (or a corrupt payload — Nexus can
+  return 200 with an HTML error page in some misconfigured proxy
+  setups). Now it prints a warning and delegates to the same code
+  path as `--from-source`, pinning `JAICLAW_REF` to the matching git
+  tag (`v${JAICLAW_VERSION}`) so it builds the same version the
+  adopter asked for — not whatever's currently on `main`. SNAPSHOT
+  versions fall back to `main` (they have no git tag). Preserves an
+  operator-supplied `JAICLAW_REF` or `JAICLAW_SOURCE_DIR`. Requires
+  Java 21 + git on the host — the same prereqs as the existing
+  `--from-source` mode.
+  - Motivating case: `curl -fsSL https://jaiclaw.io/install.sh | bash`
+    against 1.0.0 hit a 404 on `jaiclaw-cli-1.0.0-exec.jar` (see next
+    bullet). The auto-fallback now clones the `v1.0.0` tag and builds
+    locally, adding ~2 min but keeping the one-liner promise.
+
+### Planned for 1.0.1 (patch release)
+
+- **Republish `jaiclaw-cli-1.0.0-exec.jar` under the 1.0.1 tag.** Nexus
+  silently dropped the 158 MB fat jar during the 1.0.0 deploy — the
+  Maven client reported `Uploaded to taptech-repo: ... (158 MB at 9.1
+  MB/s)` for the artifact but subsequent `curl -I` returns HTTP 404.
+  Root cause TBD (Nexus blob-storage quota, nginx body-size limit,
+  or Nexus policy hook — needs admin-side inspection). Because
+  1.0.0 is a release tag with immutability, the fix ships as 1.0.1.
+  See [`docs/issues/nexus-1.0.0-exec-jar-missing.md`](docs/issues/nexus-1.0.0-exec-jar-missing.md).
+  The `install.sh` auto-fallback (above) masks the adopter-facing
+  impact for now.
+- **Rate limiting opt-out default** (security SEV-003 from UAT).
+- **`GdprController` framework-level authz** (security SEV-002).
+- **`OnboardResult.bindAddress` default → 127.0.0.1** (security
+  SEV-004).
+- **`mode: none` example config warnings** (security SEV-001, docs).
+- **`jsoup` version alignment** in root `dependencyManagement`.
+- **`camel.version` promotion** to root `<properties>` (DRY).
+
 ## [1.0.0] — 2026-07-25
 
 **Spring Boot 4 line-swap release.** Distribution: TapTech Nexus
