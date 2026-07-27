@@ -365,8 +365,24 @@ install_jar() {
     if ! curl -fsSL -o "$dest" "$url"; then
         rm -f "$dest"
         err "Failed to download CLI JAR from $url"
-        echo "Build from source: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
-        echo "Then copy to: $dest"
+        if [[ "$JAICLAW_VERSION" == "1.0.0" ]]; then
+            echo ""
+            echo "⚠  Known issue: jaiclaw-cli-1.0.0-exec.jar was lost during the"
+            echo "   Nexus deploy of 1.0.0 (Maven reported the 158 MB upload as"
+            echo "   succeeded, but Nexus did not retain it). The pom + thin jar"
+            echo "   are on Nexus, the fat jar is not. Because 1.0.0 is a release"
+            echo "   tag, the artifact will be republished under 1.0.1."
+            echo ""
+            echo "   Workaround: build from source"
+            echo "     git clone https://github.com/glawson6/jaiclaw"
+            echo "     cd jaiclaw && ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
+            echo "     cp apps/jaiclaw-cli/target/jaiclaw-cli-1.0.0-exec.jar $dest"
+            echo ""
+            echo "   Or use ./install.sh --from-source to have the installer do it."
+        else
+            echo "Build from source: ./mvnw package -pl :jaiclaw-cli -am -DskipTests"
+            echo "Then copy to: $dest"
+        fi
         return 1
     fi
 

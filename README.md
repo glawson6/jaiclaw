@@ -103,14 +103,24 @@ jaiclaw:
 
 ### 3. As a single-binary assistant
 
-For developers and hobbyists who want a multi-channel AI agent on their laptop in under a minute. One curl line, then chat:
+For developers and hobbyists who want a multi-channel AI agent on their laptop in under a minute. Build the CLI fat jar from source with `./mvnw package -pl :jaiclaw-cli -am -DskipTests`, then:
 
 ```bash
-curl -fsSL https://jaiclaw.io/install.sh | bash
-jaiclaw chat "hello"
+java -jar apps/jaiclaw-cli/target/jaiclaw-cli-1.0.0-exec.jar chat "hello"
+# or for the interactive REPL:
+java -jar apps/jaiclaw-cli/target/jaiclaw-cli-1.0.0-exec.jar
 ```
 
 Multi-channel out of the box — Telegram, Slack, Discord, Email, SMS, Signal, Teams, WhatsApp, Google Chat, LINE, Matrix — with local dev modes that need no public endpoint or webhook. See the [Quick Start](#quick-start) section below for details.
+
+> **⚠ `curl | bash` unavailable for 1.0.0.** The one-line
+> `curl -fsSL https://jaiclaw.io/install.sh | bash` installer needs
+> `jaiclaw-cli-1.0.0-exec.jar` on TapTech Nexus; that artifact was
+> lost during the 1.0.0 deploy (Nexus retained the pom + thin jar but
+> silently dropped the 158 MB fat jar). The one-line installer will
+> return in **1.0.1** once the artifact is republished under the
+> new tag. For now, build the CLI locally with `./mvnw` or use the
+> Docker + Maven paths.
 
 ## Why JaiClaw
 
@@ -248,7 +258,17 @@ probes:
 
 ### Option 1: Single binary via curl
 
+> **⚠ Temporarily unavailable in 1.0.0.** The one-liner needs
+> `jaiclaw-cli-1.0.0-exec.jar` on TapTech Nexus; that artifact was
+> lost during the deploy (Nexus accepted the 158 MB upload but did
+> not retain it — pom + thin jar are on Nexus, exec fat jar is not).
+> Because 1.0.0 is a release tag, the artifact cannot be republished
+> under the same coordinates. The one-line installer will return in
+> **1.0.1**. In the meantime, use Option 2 (Docker) or Option 4
+> (Build from source) below.
+
 ```bash
+# Coming in 1.0.1 — currently 404s against Nexus
 curl -fsSL https://jaiclaw.io/install.sh | bash
 jaiclaw chat "hello"
 ```
@@ -525,7 +545,7 @@ ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-shell
 | `start.sh` | **Daily driver** — start gateway (Docker or local), interactive shell (local or Docker). Reads `docker-compose/.env` for config. Use `--force-build` to rebuild Docker images. |
 | `quickstart.sh` | **First-time Docker setup** — clones, builds image, starts stack, pulls Ollama if needed. Use `--force-build` to rebuild, `--reconfigure` to re-run interactive setup. |
 | `setup.sh` | **First-time developer setup** — installs Java 21, builds from source, launches shell or gateway. |
-| `install.sh` | **One-shot installer** — `curl -fsSL https://jaiclaw.io/install.sh \| bash`. Downloads the CLI jar from Nexus, installs to `~/.jaiclaw/`, offers SDKMAN-based Java install if missing. |
+| `install.sh` | **One-shot installer** — `curl -fsSL https://jaiclaw.io/install.sh \| bash`. Downloads the CLI fat jar from Nexus, installs to `~/.jaiclaw/`, offers SDKMAN-based Java install if missing. **⚠ Currently 404s for 1.0.0** — the `jaiclaw-cli-1.0.0-exec.jar` artifact was lost during the deploy (Nexus retained the pom + thin jar but not the 158 MB fat jar). Returns in 1.0.1. Use `setup.sh` (build from source) or `quickstart.sh` (Docker) in the meantime. |
 
 ## Building from Source
 

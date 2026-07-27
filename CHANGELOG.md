@@ -13,6 +13,27 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 In progress on the `1.0.1-SNAPSHOT` line — patch release window post-1.0.0.
 
+### Planned for 1.0.1 (patch release)
+
+- **Republish `jaiclaw-cli-1.0.0-exec.jar` under the 1.0.1 tag.** Nexus
+  silently dropped the 158 MB fat jar during the 1.0.0 deploy — the
+  Maven client reported `Uploaded to taptech-repo: ... (158 MB at 9.1
+  MB/s)` for the artifact but subsequent `curl -I` returns HTTP 404.
+  Root cause TBD (Nexus blob-storage quota, nginx body-size limit,
+  or Nexus policy hook — needs admin-side inspection). Because
+  1.0.0 is a release tag with immutability, the fix ships as 1.0.1.
+  Consequence: the `curl -fsSL https://jaiclaw.io/install.sh | bash`
+  one-liner is temporarily broken for the 1.0.0 line. Adopters
+  building from source or using Docker (`setup.sh` / `quickstart.sh`)
+  are unaffected.
+- **Rate limiting opt-out default** (security SEV-003 from UAT).
+- **`GdprController` framework-level authz** (security SEV-002).
+- **`OnboardResult.bindAddress` default → 127.0.0.1** (security
+  SEV-004).
+- **`mode: none` example config warnings** (security SEV-001, docs).
+- **`jsoup` version alignment** in root `dependencyManagement`.
+- **`camel.version` promotion** to root `<properties>` (DRY).
+
 ## [1.0.0] — 2026-07-25
 
 **Spring Boot 4 line-swap release.** Distribution: TapTech Nexus
