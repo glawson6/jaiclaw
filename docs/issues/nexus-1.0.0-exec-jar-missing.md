@@ -68,11 +68,13 @@ Because 1.0.0 is a release tag under Nexus's release-repository immutability rul
 2. **Add a post-deploy verification step to `deploy-nexus.sh`** — after `mvn deploy` completes, `curl -I` each expected artifact and assert 200. Fail the script + email the operator if any artifact is missing from Nexus. Prevents the same silent-drop from shipping unnoticed in future releases.
 3. **Republish under 1.0.1** — either fixed upload path, or accept the fat jar isn't going to Nexus and permanently remove the `curl | bash` promise from the docs.
 
-## Adopter-visible impact (documented in 1.0.0 docs)
+## Adopter-visible impact (mitigated in `install.sh`)
 
-- `README.md` — `curl | bash` path now has a warning banner. Adopters routed to Docker (`quickstart.sh`) or source (`setup.sh`).
-- `install.sh` — download-failure branch now prints a targeted message for the 1.0.0 case + points at `--from-source`.
-- `CHANGELOG.md` `[Unreleased]` — first item in the 1.0.1 planned-fix list.
+The `install.sh` script now **auto-falls-back to build-from-source** when Nexus returns 404 (or a corrupt payload) for the requested CLI fat jar. It delegates to the same code path as `--from-source`, pinning `JAICLAW_REF` to the matching git tag (`v${JAICLAW_VERSION}`) so the build produces the exact version the adopter asked for — not whatever's currently on `main`. Requires Java 21 + git on the host; adds ~2 min for the first build; keeps the `curl | bash` one-liner working.
+
+- `README.md` — `curl | bash` sections keep the one-liner promise + note the auto-fallback + link to this issue for the root cause.
+- `install.sh` — `install_jar` gained a `fallback_to_source` helper that fires on download failure OR corrupt-payload detection. Also gained an explicit-`JAICLAW_REF` guard so the operator's override is preserved when they set one.
+- `CHANGELOG.md` `[Unreleased]` — the auto-fallback is recorded as a landed patch under `Added`; the artifact republish is recorded as `Planned for 1.0.1`.
 
 ## Not in scope
 

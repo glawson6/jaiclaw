@@ -103,24 +103,22 @@ jaiclaw:
 
 ### 3. As a single-binary assistant
 
-For developers and hobbyists who want a multi-channel AI agent on their laptop in under a minute. Build the CLI fat jar from source with `./mvnw package -pl :jaiclaw-cli -am -DskipTests`, then:
+For developers and hobbyists who want a multi-channel AI agent on their laptop in under a minute. One curl line, then chat:
 
 ```bash
-java -jar apps/jaiclaw-cli/target/jaiclaw-cli-1.0.0-exec.jar chat "hello"
-# or for the interactive REPL:
-java -jar apps/jaiclaw-cli/target/jaiclaw-cli-1.0.0-exec.jar
+curl -fsSL https://jaiclaw.io/install.sh | bash
+jaiclaw chat "hello"
 ```
 
 Multi-channel out of the box — Telegram, Slack, Discord, Email, SMS, Signal, Teams, WhatsApp, Google Chat, LINE, Matrix — with local dev modes that need no public endpoint or webhook. See the [Quick Start](#quick-start) section below for details.
 
-> **⚠ `curl | bash` unavailable for 1.0.0.** The one-line
-> `curl -fsSL https://jaiclaw.io/install.sh | bash` installer needs
-> `jaiclaw-cli-1.0.0-exec.jar` on TapTech Nexus; that artifact was
-> lost during the 1.0.0 deploy (Nexus retained the pom + thin jar but
-> silently dropped the 158 MB fat jar). The one-line installer will
-> return in **1.0.1** once the artifact is republished under the
-> new tag. For now, build the CLI locally with `./mvnw` or use the
-> Docker + Maven paths.
+> **Note on 1.0.0**: the `jaiclaw-cli-1.0.0-exec.jar` fat jar is
+> missing from Nexus (silently dropped during the release deploy;
+> tracking as [nexus-1.0.0-exec-jar-missing.md](docs/issues/nexus-1.0.0-exec-jar-missing.md);
+> republishes as 1.0.1). The installer detects the 404 and
+> **automatically falls back to building from the matching git tag
+> (`v1.0.0`)** — same one-liner, just adds ~2 min for the first
+> build. Requires Java 21 + git on the host. `curl | bash` still works.
 
 ## Why JaiClaw
 
@@ -258,22 +256,19 @@ probes:
 
 ### Option 1: Single binary via curl
 
-> **⚠ Temporarily unavailable in 1.0.0.** The one-liner needs
-> `jaiclaw-cli-1.0.0-exec.jar` on TapTech Nexus; that artifact was
-> lost during the deploy (Nexus accepted the 158 MB upload but did
-> not retain it — pom + thin jar are on Nexus, exec fat jar is not).
-> Because 1.0.0 is a release tag, the artifact cannot be republished
-> under the same coordinates. The one-line installer will return in
-> **1.0.1**. In the meantime, use Option 2 (Docker) or Option 4
-> (Build from source) below.
-
 ```bash
-# Coming in 1.0.1 — currently 404s against Nexus
 curl -fsSL https://jaiclaw.io/install.sh | bash
 jaiclaw chat "hello"
 ```
 
 The installer detects whether Java 21+ is available, and offers to install it via SDKMAN if not. Persists configuration to `~/.jaiclaw/profiles/default/`. Run `jaiclaw setup` for an interactive wizard to configure LLM providers, channels, MCP servers, and the REPL prompt.
+
+> **1.0.0 note**: the CLI fat jar is missing from Nexus for 1.0.0
+> ([nexus-1.0.0-exec-jar-missing.md](docs/issues/nexus-1.0.0-exec-jar-missing.md)).
+> The installer detects the 404 and **auto-falls-back to building
+> from the matching git tag (`v1.0.0`)** — the one-liner still works,
+> just adds ~2 min for the first build. Set `JAICLAW_REF=main` if
+> you want the 1.0.1-SNAPSHOT lane instead. Republishes cleanly in 1.0.1.
 
 ### Option 2: Docker
 
@@ -545,7 +540,7 @@ ANTHROPIC_API_KEY=sk-ant-... ./mvnw spring-boot:run -pl jaiclaw-shell
 | `start.sh` | **Daily driver** — start gateway (Docker or local), interactive shell (local or Docker). Reads `docker-compose/.env` for config. Use `--force-build` to rebuild Docker images. |
 | `quickstart.sh` | **First-time Docker setup** — clones, builds image, starts stack, pulls Ollama if needed. Use `--force-build` to rebuild, `--reconfigure` to re-run interactive setup. |
 | `setup.sh` | **First-time developer setup** — installs Java 21, builds from source, launches shell or gateway. |
-| `install.sh` | **One-shot installer** — `curl -fsSL https://jaiclaw.io/install.sh \| bash`. Downloads the CLI fat jar from Nexus, installs to `~/.jaiclaw/`, offers SDKMAN-based Java install if missing. **⚠ Currently 404s for 1.0.0** — the `jaiclaw-cli-1.0.0-exec.jar` artifact was lost during the deploy (Nexus retained the pom + thin jar but not the 158 MB fat jar). Returns in 1.0.1. Use `setup.sh` (build from source) or `quickstart.sh` (Docker) in the meantime. |
+| `install.sh` | **One-shot installer** — `curl -fsSL https://jaiclaw.io/install.sh \| bash`. Downloads the CLI fat jar from Nexus, installs to `~/.jaiclaw/`, offers SDKMAN-based Java install if missing. **Auto-falls-back to build-from-source** when the requested version's fat jar isn't on Nexus (e.g. the 1.0.0 exec jar that was lost during deploy) — the installer clones the matching git tag (`v${JAICLAW_VERSION}`) and builds locally, so `curl \| bash` still lands a working install. |
 
 ## Building from Source
 
