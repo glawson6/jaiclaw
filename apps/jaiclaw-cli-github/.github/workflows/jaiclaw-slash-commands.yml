@@ -1,0 +1,75 @@
+name: JaiClaw Slash Commands
+
+# Fires on comments in PRs, issues, and commit pages. The `if:` guard
+# below skips non-slash comments so we don't pay JVM boot cost for
+# ordinary discussion.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  commit_comment:
+    types: [created]
+
+# Least-privilege: the workflow needs to read repo content + issue
+# metadata and post comments. It should NOT hold write access to code.
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  dispatch:
+    if: startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the head SHA so file_read / repo-relative tools can
+      # read the actual code state the comment was made against.
+      # For fork PRs this is safe (read-only checkout, no secrets sent).
+      - name: Checkout repo at head sha
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.comment.commit_id || github.sha }}
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Fetch the CLI fat jar. Adopters pin the version they want.
+      # When JaiClaw publishes to Maven Central this URL can be swapped
+      # to repo1.maven.org — the coordinates are identical.
+      - name: Download jaiclaw-cli-github
+        run: |
+          curl -fsSL -o jaiclaw-cli-github.jar \
+            https://tooling.taptech.net/repository/maven-releases/io/jaiclaw/jaiclaw-cli-github/1.0.1-SNAPSHOT/jaiclaw-cli-github-1.0.1-SNAPSHOT-exec.jar
+
+      # Route by event type to build the correct handle-comment args.
+      # issue_comment            → --issue = the issue/PR number
+      # pull_request_review_comment → --issue = the PR number
+      # commit_comment           → --issue 0 --sha COMMIT_SHA
+      - name: Handle comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_PROVIDER: anthropic
+          ANTHROPIC_MODEL: claude-sonnet-4-5
+        run: |
+          set -eu
+
+          ISSUE="${{ github.event.issue.number || github.event.pull_request.number || 0 }}"
+          SHA="${{ github.event.comment.commit_id || '' }}"
+          COMMENT_ID="${{ github.event.comment.id }}"
+          BODY=$(cat <<'JAICLAW_EOF'
+          ${{ github.event.comment.body }}
+          JAICLAW_EOF
+          )
+
+          java -jar jaiclaw-cli-github.jar handle-comment \
+            --repo "${{ github.repository }}" \
+            --issue "$ISSUE" \
+            --sha "$SHA" \
+            --comment-id "$COMMENT_ID" \
+            --body "$BODY"

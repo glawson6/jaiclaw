@@ -1,0 +1,81 @@
+# jaiclaw-cli-github — runnable slash-command dispatcher.
+#
+# Loaded automatically when the fat jar boots. Adopters typically only
+# need to set two secrets in their GitHub Actions workflow:
+#   GITHUB_TOKEN        (posts comments back to GitHub)
+#   ANTHROPIC_API_KEY   (default AI provider)
+# Everything else is defaulted here.
+
+jaiclaw:
+  # MANDATORY per CLAUDE.md example rules: never carry the ~59 bundled
+  # skills into a specialised app. Adds ~26k tokens per LLM call otherwise.
+  skills:
+    allow-bundled: []
+
+  # Security — API key mode is default; workflow invocation is trusted
+  # (comes from GitHub Actions), but leave the door open for adopters to
+  # front the CLI with an API key when running as a keep-alive service.
+  security:
+    mode: ${JAICLAW_SECURITY_MODE:api-key}
+
+  identity:
+    name: JaiClaw GitHub Bot
+    description: Slash-command dispatcher for GitHub PR/issue/commit comments
+
+  # Single default agent — the LLM is stateless per invocation; the PR
+  # thread history is fetched from GitHub API on each /chat call.
+  agent:
+    default-agent: default
+    agents:
+      default:
+        id: default
+        name: GitHub Bot
+        tools:
+          profile: full
+
+  # Opt in the GitHub tools extension so all 12 ToolCallbacks land in the
+  # ToolRegistry via ToolBeanDiscovery.
+  github:
+    enabled: true
+    token: ${GITHUB_TOKEN:not-set}
+
+  # Slash-command dispatcher config
+  cli-github:
+    # Overridable via --jaiclaw.cli-github.system-prompt-file=... on the
+    # command line, or JAICLAW_CLI_GITHUB_SYSTEM_PROMPT_FILE env var.
+    system-prompt-file: classpath:prompts/default-system-prompt.md
+    # How many prior thread comments to include as chat history. Keeps
+    # the prompt bounded on long-running discussions.
+    max-thread-history: 20
+
+spring:
+  ai:
+    model:
+      chat: ${AI_PROVIDER:anthropic}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:not-set}
+      chat:
+        model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
+    openai:
+      api-key: ${OPENAI_API_KEY:not-set}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o-mini}
+
+  # Spring Shell — favour non-interactive mode for GitHub Actions.
+  # For local REPL testing, override with:
+  #   java -Dspring.shell.interactive.enabled=true -jar ...
+  # or set SPRING_SHELL_INTERACTIVE_ENABLED=true in the environment.
+  shell:
+    interactive:
+      enabled: ${SPRING_SHELL_INTERACTIVE_ENABLED:false}
+    script:
+      enabled: true
+
+# Keep the Actions runner logs readable — INFO at boot, DEBUG for the
+# slash-command dispatch path so /chat + tool calls are visible.
+logging:
+  level:
+    root: INFO
+    io.jaiclaw.cli.github: DEBUG
+    io.jaiclaw.tools.github: INFO
