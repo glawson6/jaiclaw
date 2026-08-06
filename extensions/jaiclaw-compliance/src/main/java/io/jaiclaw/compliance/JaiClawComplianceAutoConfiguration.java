@@ -68,6 +68,38 @@ public class JaiClawComplianceAutoConfiguration {
     }
 
     /**
+     * Federal compliance (2026-08): FedRAMP-authorized-provider warning
+     * decorator. Only exists when FedRAMP warnings are on
+     * ({@code jaiclaw.compliance.effective.fedramp-warnings=true}).
+     * Auto-enabled by the {@code fedramp-moderate} profile; opt-in
+     * individually via {@code jaiclaw.compliance.fedramp-warnings=true}.
+     */
+    @Bean
+    @ConditionalOnMissingBean(io.jaiclaw.compliance.fedramp.FedRampWarningChatModelDecorator.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.fedramp-warnings", havingValue = "true")
+    public io.jaiclaw.compliance.fedramp.FedRampWarningChatModelDecorator fedrampWarningChatModelDecorator(
+            ObjectProvider<ModelsProperties> modelsPropertiesProvider) {
+        return new io.jaiclaw.compliance.fedramp.FedRampWarningChatModelDecorator(
+                modelsPropertiesProvider.getIfAvailable(() -> new ModelsProperties(java.util.Map.of())));
+    }
+
+    /**
+     * Federal compliance (2026-08): CUI-authorized-provider warning
+     * decorator (CMMC L2 / DFARS 252.204-7012). Only exists when CUI
+     * warnings are on ({@code jaiclaw.compliance.effective.cui-warnings=true}).
+     * Auto-enabled by the {@code cmmc-l2} profile; opt-in individually
+     * via {@code jaiclaw.compliance.cui-warnings=true}.
+     */
+    @Bean
+    @ConditionalOnMissingBean(io.jaiclaw.compliance.cui.CuiWarningChatModelDecorator.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.cui-warnings", havingValue = "true")
+    public io.jaiclaw.compliance.cui.CuiWarningChatModelDecorator cuiWarningChatModelDecorator(
+            ObjectProvider<ModelsProperties> modelsPropertiesProvider) {
+        return new io.jaiclaw.compliance.cui.CuiWarningChatModelDecorator(
+                modelsPropertiesProvider.getIfAvailable(() -> new ModelsProperties(java.util.Map.of())));
+    }
+
+    /**
      * T1-3: wrap every {@code ChatModel} bean with {@code AuditingChatModel}
      * so every LLM call emits a structured {@code model.inference.request}
      * audit event. Only exists when {@code jaiclaw.compliance.effective.audit-chat-client=true}.

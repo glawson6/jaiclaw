@@ -58,18 +58,24 @@ export function App() {
 
   return (
     <div className="studio-app">
-      <header className="studio-header">
+      {/* Section 508 / WCAG 2.0 AA — semantic landmarks for screen readers */}
+      <header className="studio-header" role="banner">
         <h1>Pipeline Studio</h1>
-        <span className="draft-id">{store.definition.id}</span>
-        <span className={`status${store.dirty ? " dirty" : ""}`}>
+        <span className="draft-id" aria-label="Draft identifier">{store.definition.id}</span>
+        <span
+          className={`status${store.dirty ? " dirty" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
           {store.dirty ? "unsaved changes" : "clean"}
         </span>
         <div className="spacer" />
-        <div className="header-actions">
+        <div className="header-actions" role="toolbar" aria-label="Studio actions">
           <button
             type="button"
             className="btn secondary"
             onClick={() => setYamlMode((v) => !v)}
+            aria-pressed={yamlMode}
           >
             {yamlMode ? "Canvas" : "YAML"}
           </button>
@@ -86,19 +92,27 @@ export function App() {
         </div>
       </header>
 
-      <div className="studio-body">
+      <main className="studio-body" role="main" aria-label="Pipeline editor">
         {!yamlMode && (
-          <Palette
-            catalog={catalog}
-            onInsert={(stage) => store.insertStage(store.definition.stages.length, stage)}
-          />
+          <aside role="complementary" aria-label="Stage palette">
+            <Palette
+              catalog={catalog}
+              onInsert={(stage) => store.insertStage(store.definition.stages.length, stage)}
+            />
+          </aside>
         )}
 
-        <div className="pane canvas">
+        <section className="pane canvas" aria-label={yamlMode ? "YAML editor" : "Pipeline canvas"}>
           <div className="pane-header">
             {yamlMode ? "YAML" : "Canvas"}
             {saveStatus && (
-              <span style={{ float: "right", color: "var(--text-dim)" }}>{saveStatus}</span>
+              <span
+                style={{ float: "right", color: "var(--text-dim)" }}
+                role="status"
+                aria-live="polite"
+              >
+                {saveStatus}
+              </span>
             )}
           </div>
           <div style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
@@ -128,33 +142,44 @@ export function App() {
             )}
           </div>
           {report && (
-            <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
+            <div
+              style={{ padding: 12, borderTop: "1px solid var(--border)" }}
+              role="region"
+              aria-label="Validation results"
+              aria-live="polite"
+            >
               <ValidationPanel
                 report={report}
                 onFocusStage={(name) => store.selectStage(name)}
               />
             </div>
           )}
-          <div style={{ padding: 12, borderTop: "1px solid var(--border)" }}>
+          <div
+            style={{ padding: 12, borderTop: "1px solid var(--border)" }}
+            role="region"
+            aria-label="Deploy actions"
+          >
             <DeployToolbar
               draftId={store.definition.id}
               definition={store.definition}
             />
           </div>
-        </div>
+        </section>
 
         {!yamlMode && (
-          <Inspector
-            definition={store.definition}
-            selectedStageName={store.selectedStageName}
-            catalog={catalog}
-            onUpdatePipeline={store.updatePipeline}
-            onUpdateStage={store.updateStage}
-            onRemoveStage={store.removeStage}
-            onMoveStage={store.moveStage}
-          />
+          <aside role="complementary" aria-label="Stage inspector">
+            <Inspector
+              definition={store.definition}
+              selectedStageName={store.selectedStageName}
+              catalog={catalog}
+              onUpdatePipeline={store.updatePipeline}
+              onUpdateStage={store.updateStage}
+              onRemoveStage={store.removeStage}
+              onMoveStage={store.moveStage}
+            />
+          </aside>
         )}
-      </div>
+      </main>
     </div>
   );
 }

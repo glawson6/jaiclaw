@@ -21,6 +21,9 @@ class ComplianceEnvironmentPostProcessorSpec extends Specification {
         env.getProperty("jaiclaw.compliance.effective.audit-chat-client", Boolean) == false
         env.getProperty("jaiclaw.compliance.effective.baa-warnings", Boolean) == false
         env.getProperty("jaiclaw.compliance.effective.prompt-redaction", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.fips-enforced", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.fedramp-warnings", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.cui-warnings", Boolean) == false
         // security.require-https is NOT overwritten when profile is none
         env.getProperty("jaiclaw.security.require-https") == null
     }
@@ -114,5 +117,82 @@ class ComplianceEnvironmentPostProcessorSpec extends Specification {
         then:
         env.getProperty("jaiclaw.compliance.effective.profile") == "none"
         env.getProperty("jaiclaw.compliance.effective.require-https", Boolean) == false
+    }
+
+    def "profile=fedramp-moderate flips federal-baseline flags including FIPS"() {
+        given:
+        def env = new MockEnvironment()
+        env.setProperty("jaiclaw.compliance.profile", "fedramp-moderate")
+
+        when:
+        pp.postProcessEnvironment(env, null)
+
+        then:
+        env.getProperty("jaiclaw.compliance.effective.profile") == "fedramp_moderate"
+        env.getProperty("jaiclaw.compliance.effective.require-https", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.retention-enforcement", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.audit-chat-client", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.fips-enforced", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.fedramp-warnings", Boolean) == true
+        // Non-federal flags stay off
+        env.getProperty("jaiclaw.compliance.effective.baa-warnings", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.prompt-redaction", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.cui-warnings", Boolean) == false
+    }
+
+    def "profile=cmmc-l2 flips CUI-baseline flags"() {
+        given:
+        def env = new MockEnvironment()
+        env.setProperty("jaiclaw.compliance.profile", "cmmc-l2")
+
+        when:
+        pp.postProcessEnvironment(env, null)
+
+        then:
+        env.getProperty("jaiclaw.compliance.effective.profile") == "cmmc_l2"
+        env.getProperty("jaiclaw.compliance.effective.require-https", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.audit-chat-client", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.prompt-redaction", Boolean) == true
+        env.getProperty("jaiclaw.compliance.effective.cui-warnings", Boolean) == true
+        // Non-CMMC-specific flags stay off
+        env.getProperty("jaiclaw.compliance.effective.baa-warnings", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.fips-enforced", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.fedramp-warnings", Boolean) == false
+    }
+
+    def "profile=fips only turns on the FIPS posture check"() {
+        given:
+        def env = new MockEnvironment()
+        env.setProperty("jaiclaw.compliance.profile", "fips")
+
+        when:
+        pp.postProcessEnvironment(env, null)
+
+        then:
+        env.getProperty("jaiclaw.compliance.effective.fips-enforced", Boolean) == true
+        // Everything else stays off — FIPS is orthogonal
+        env.getProperty("jaiclaw.compliance.effective.require-https", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.retention-enforcement", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.audit-chat-client", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.baa-warnings", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.prompt-redaction", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.fedramp-warnings", Boolean) == false
+        env.getProperty("jaiclaw.compliance.effective.cui-warnings", Boolean) == false
+    }
+
+    def "explicit override wins over federal profile default"() {
+        given:
+        def env = new MockEnvironment()
+        env.setProperty("jaiclaw.compliance.profile", "fedramp-moderate")
+        env.setProperty("jaiclaw.compliance.fips-enforced", "false")
+
+        when:
+        pp.postProcessEnvironment(env, null)
+
+        then:
+        // Profile would default fips-enforced=true, but explicit false wins
+        env.getProperty("jaiclaw.compliance.effective.fips-enforced", Boolean) == false
+        // Other flags still follow the profile
+        env.getProperty("jaiclaw.compliance.effective.fedramp-warnings", Boolean) == true
     }
 }

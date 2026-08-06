@@ -115,4 +115,69 @@ class AsciiRenderToolSpec extends Specification {
         then:
         result instanceof ToolResult.Error
     }
+
+    def "altText field appears in the input schema (Section 508 / WCAG 2.0 AA)"() {
+        when:
+        def parsed = new JsonSlurper().parseText(tool.definition().inputSchema())
+
+        then:
+        parsed.get("properties").get("altText") != null
+        parsed.get("properties").get("altText").get("type") == "string"
+        // Alt text is optional — decorative diagrams don't require it under WCAG
+        (parsed.required as Set).contains("altText") == false
+    }
+
+    def "altText round-trips into ToolResult.Success metadata when supplied"() {
+        given:
+        def params = [
+                width  : 8,
+                height : 3,
+                elements: [[type: "rectangle", params: [x: 0, y: 0, w: 8, h: 3]]],
+                altText: "An 8x3 rectangle framing the canvas"
+        ]
+
+        when:
+        ToolResult result = tool.execute(params, null)
+
+        then:
+        result instanceof ToolResult.Success
+        def success = result as ToolResult.Success
+        success.metadata().get("altText") == "An 8x3 rectangle framing the canvas"
+    }
+
+    def "altText absent from metadata when the LLM omits it"() {
+        given:
+        def params = [
+                width  : 8,
+                height : 3,
+                elements: [[type: "rectangle", params: [x: 0, y: 0, w: 8, h: 3]]]
+        ]
+
+        when:
+        ToolResult result = tool.execute(params, null)
+
+        then:
+        result instanceof ToolResult.Success
+        def success = result as ToolResult.Success
+        // No altText → metadata is the empty default (no altText key)
+        !success.metadata().containsKey("altText")
+    }
+
+    def "blank altText is treated as absent"() {
+        given:
+        def params = [
+                width  : 8,
+                height : 3,
+                elements: [[type: "rectangle", params: [x: 0, y: 0, w: 8, h: 3]]],
+                altText: "   "
+        ]
+
+        when:
+        ToolResult result = tool.execute(params, null)
+
+        then:
+        result instanceof ToolResult.Success
+        def success = result as ToolResult.Success
+        !success.metadata().containsKey("altText")
+    }
 }

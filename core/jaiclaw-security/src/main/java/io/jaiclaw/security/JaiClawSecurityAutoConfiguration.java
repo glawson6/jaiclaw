@@ -62,6 +62,22 @@ public class JaiClawSecurityAutoConfiguration {
     }
 
     /**
+     * Federal compliance (2026-08): FipsPostureStartupCheck bean —
+     * always constructed but only enforces when
+     * {@code jaiclaw.compliance.effective.fips-enforced=true} (default false).
+     * Zero runtime cost when compliance module is idle. Auto-enabled by
+     * the {@code fips} or {@code fedramp-moderate} compliance profile;
+     * opt-in individually via {@code jaiclaw.compliance.fips-enforced=true}.
+     */
+    @Bean
+    public FipsPostureStartupCheck fipsPostureStartupCheck(
+            org.springframework.core.env.Environment env) {
+        FipsPostureStartupCheck check = new FipsPostureStartupCheck(env);
+        check.enforce();
+        return check;
+    }
+
+    /**
      * Rate limit filter — shared across API key and JWT modes.
      */
     @Bean

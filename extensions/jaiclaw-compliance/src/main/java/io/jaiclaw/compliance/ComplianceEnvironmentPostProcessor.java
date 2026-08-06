@@ -50,7 +50,10 @@ public class ComplianceEnvironmentPostProcessor implements EnvironmentPostProces
                 env.getProperty("jaiclaw.compliance.retention-enforcement", Boolean.class),
                 env.getProperty("jaiclaw.compliance.audit-chat-client", Boolean.class),
                 env.getProperty("jaiclaw.compliance.baa-warnings", Boolean.class),
-                env.getProperty("jaiclaw.compliance.prompt-redaction", Boolean.class)
+                env.getProperty("jaiclaw.compliance.prompt-redaction", Boolean.class),
+                env.getProperty("jaiclaw.compliance.fips-enforced", Boolean.class),
+                env.getProperty("jaiclaw.compliance.fedramp-warnings", Boolean.class),
+                env.getProperty("jaiclaw.compliance.cui-warnings", Boolean.class)
         );
 
         java.util.Map<String, Object> effective = new java.util.LinkedHashMap<>(props.asEffectiveProperties());
@@ -63,20 +66,25 @@ public class ComplianceEnvironmentPostProcessor implements EnvironmentPostProces
 
         env.getPropertySources().addFirst(new MapPropertySource(SOURCE_NAME, effective));
         if (profile != ComplianceProfile.NONE) {
-            log.info("Compliance profile '{}' active — effective flags: httpsGuard={}, retention={}, chatAudit={}, baaWarn={}, promptRedact={}",
+            log.info("Compliance profile '{}' active — effective flags: httpsGuard={}, retention={}, chatAudit={}, baaWarn={}, promptRedact={}, fipsEnforced={}, fedrampWarn={}, cuiWarn={}",
                     profile,
                     props.effectiveRequireHttps(),
                     props.effectiveRetentionEnforcement(),
                     props.effectiveAuditChatClient(),
                     props.effectiveBaaWarnings(),
-                    props.effectivePromptRedaction());
+                    props.effectivePromptRedaction(),
+                    props.effectiveFipsEnforced(),
+                    props.effectiveFedrampWarnings(),
+                    props.effectiveCuiWarnings());
         }
     }
 
     private static ComplianceProfile parseProfile(String raw) {
         if (raw == null || raw.isBlank()) return ComplianceProfile.NONE;
         try {
-            return ComplianceProfile.valueOf(raw.trim().toUpperCase());
+            // Normalize kebab-case ("fedramp-moderate", "cmmc-l2") to enum SCREAMING_SNAKE_CASE
+            String normalized = raw.trim().toUpperCase().replace('-', '_');
+            return ComplianceProfile.valueOf(normalized);
         } catch (IllegalArgumentException e) {
             log.warn("Unknown jaiclaw.compliance.profile='{}' — falling back to NONE", raw);
             return ComplianceProfile.NONE;

@@ -501,6 +501,26 @@ JAICLAW_API_KEY=my-custom-key ./start.sh local
 
 For production deployments, enable the `security-hardened` Spring profile to turn on HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe API key comparison, and ECDH agent-to-agent key exchange. See [docs/user/PRODUCTION-DEPLOYMENT.md § 9 Security hardening](docs/user/PRODUCTION-DEPLOYMENT.md).
 
+## Compliance
+
+JaiClaw is a compliance-capable framework across eight regulatory frameworks: **Section 508** (accessibility), **FedRAMP**, **FISMA**, **NIST SP 800-53 Rev. 5**, **FIPS 140-3**, **CMMC 2.0**, **HIPAA**, and **GDPR**.
+
+Every claim is backed by code, with cited file paths and control-inheritance tables:
+
+**→ [docs/compliance/README.md](docs/compliance/README.md)** — landing page with the rating table + links to per-regulation deep-dives
+
+For adopters operationalizing GDPR or HIPAA today, [docs/user/COMPLIANCE.md](docs/user/COMPLIANCE.md) remains the canonical operator guide with concrete YAML recipes.
+
+One-property activation via compliance profiles:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: hipaa          # or: gdpr | both | fedramp-moderate | cmmc-l2 | fips | none
+```
+
+Each profile flips a bundle of effective flags (HTTPS enforcement, audit chain, PHI redaction, FIPS provider check, BAA/FedRAMP/CUI provider warnings) with per-flag overrides available.
+
 ## Running the Interactive Shell
 
 The shell provides a Spring Shell CLI for chatting with the agent directly in your terminal.
