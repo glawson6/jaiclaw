@@ -59,6 +59,32 @@ reference for anyone running, configuring, or building on JaiClaw. The
   canvas, compaction, cron, group-chat routing, identity, voice,
   voice-call, workspace memory)
 
+### Compliance
+
+- [**compliance/README.md**](compliance/README.md) — landing page for
+  government researchers, ATO assessors, and adopters evaluating
+  JaiClaw against U.S. federal + EU regulatory frameworks. Rating
+  table + per-regulation deep-dives.
+- Per-regulation deep-dives (all under `compliance/`):
+  - [section-508.md](compliance/section-508.md) — accessibility (WCAG 2.0 AA)
+  - [fedramp.md](compliance/fedramp.md) — cloud service authorization
+  - [fisma.md](compliance/fisma.md) — federal information security
+  - [nist-800-53.md](compliance/nist-800-53.md) — NIST security & privacy controls (family-by-family table)
+  - [fips-140-3.md](compliance/fips-140-3.md) — cryptographic module posture + BC-FIPS integration
+  - [cmmc.md](compliance/cmmc.md) — CMMC 2.0 / CUI handling (DoD contractors)
+  - [hipaa.md](compliance/hipaa.md) — HIPAA §164.312 mapping
+  - [gdpr.md](compliance/gdpr.md) — GDPR Article-level mapping
+- [user/COMPLIANCE.md](user/COMPLIANCE.md) — the GDPR + HIPAA operator
+  guide (deployment recipes with concrete YAML). Still the canonical
+  reference for operationalizing GDPR/HIPAA; the deep-dives above
+  extract the framework-vs-adopter split into per-regulation shape.
+- [user/OPERATIONS.md § Compliance](user/OPERATIONS.md#compliance-gdpr--hipaa--federal-frameworks)
+  — profile → flag mapping table + per-tenant metadata reference
+- [FEDERAL-COMPLIANCE-ASSESSMENT-2026-08-06.md](FEDERAL-COMPLIANCE-ASSESSMENT-2026-08-06.md)
+  — point-in-time assessment across the 6 federal frameworks
+  (referenced by the deep-dives as the source of truth for their
+  rating table)
+
 ### Extending JaiClaw
 
 - [**AUTHORING-TOOLS.md**](user/AUTHORING-TOOLS.md) — write a custom

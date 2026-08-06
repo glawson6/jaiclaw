@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-apps</artifactId>
+        <version>1.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-cli-github</artifactId>
+    <name>JaiClaw :: CLI :: GitHub</name>
+    <description>Runnable slash-command dispatcher for GitHub Actions. Fat jar (-exec) invoked by a GitHub Actions workflow on every /-prefixed PR/issue/commit comment. Routes to registered slash-command handlers (/chat, /faq, /summarize, /help). Sessionless — the PR/issue thread itself is the session, re-fetched via GitHub API on each invocation.</description>
+
+    <properties>
+        <maven.deploy.skip>false</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <!-- The GitHub tools extension: 12 ToolCallbacks + MCP provider + PatGithubClientProvider -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-tools-github</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Shared shell commands — reuse ChatCommands' AgentRuntime dispatch pattern -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-shell-commands</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Shell starter — Spring Shell + core auto-config chain + web -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-shell</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!-- MCP resource provider for JaiClaw docs — /faq reads from this -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-docs</artifactId>
+        </dependency>
+
+        <!-- Core AI providers wanted by /chat + /faq + /summarize -->
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-anthropic</artifactId>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-starter-openai</artifactId>
+            <type>pom</type>
+        </dependency>
+
+        <!--
+            commons-logging must be on the runtime classpath at Boot 4 /
+            Spring Framework 7 (spring-jcl was removed in Framework 7).
+            Matches jaiclaw-cli's pattern; without this the fat jar fails
+            at startup with NoClassDefFoundError: org/apache/commons/logging/LogFactory.
+        -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.3.5</version>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>exec</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

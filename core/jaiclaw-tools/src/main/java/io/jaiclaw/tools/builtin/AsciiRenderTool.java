@@ -71,6 +71,10 @@ public class AsciiRenderTool extends AbstractBuiltinTool {
                 "trim": {
                   "type": "boolean",
                   "description": "Trim trailing whitespace from each rendered line (default true)"
+                },
+                "altText": {
+                  "type": "string",
+                  "description": "Optional accessibility description of the diagram for screen readers and non-visual consumers (Section 508 / WCAG 2.0 AA). Populate this when producing charts, diagrams, or plots so downstream renderers (chat surfaces, HTML wrappers, MCP clients) can announce the content. Round-trips into the tool result's metadata under key 'altText' — visible to callers but not embedded in the rendered ASCII."
                 }
               },
               "required": ["height", "elements"]
@@ -95,7 +99,18 @@ public class AsciiRenderTool extends AbstractBuiltinTool {
         try {
             Map<String, Object> resolved = applyProfileDefaults(parameters);
             SceneSpec scene = AsciiSceneFactory.fromMap(resolved);
-            return new ToolResult.Success(AsciiSceneFactory.render(scene));
+            String rendered = AsciiSceneFactory.render(scene);
+
+            // Section 508 / WCAG 2.0 AA — round-trip the LLM-supplied alt-text
+            // into result metadata so downstream consumers (MCP clients, chat
+            // channels, HTML wrappers around ASCII output) can surface it to
+            // screen readers. Absent when the LLM omits altText — that's fine;
+            // decorative diagrams don't require alt-text under WCAG.
+            Object altText = parameters.get("altText");
+            if (altText != null && !altText.toString().isBlank()) {
+                return new ToolResult.Success(rendered, Map.of("altText", altText.toString()));
+            }
+            return new ToolResult.Success(rendered);
         } catch (SceneSpecException e) {
             return new ToolResult.Error(formatError(e));
         }

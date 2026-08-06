@@ -23,6 +23,7 @@
         <module>jaiclaw-gateway-app</module>
         <module>jaiclaw-shell</module>
         <module>jaiclaw-cli</module>
+        <module>jaiclaw-cli-github</module>
         <module>jaiclaw-cron-manager-app</module>
         <module>jaiclaw-pipeline-studio</module>
     </modules>

@@ -181,14 +181,21 @@ function subscribeToEvents(id) {
     }
     const status = document.getElementById("connection-status");
     status.className = "connection-status";
+    // Section 508: reset the aria-label so screen readers announce the state
+    // change as we reconnect for a new pipeline.
+    status.setAttribute("aria-label", "SSE connection status: connecting");
 
     const source = new EventSource(API.events(id));
     eventSource = source;
 
-    source.addEventListener("open", () => status.classList.add("connected"));
+    source.addEventListener("open", () => {
+        status.classList.add("connected");
+        status.setAttribute("aria-label", "SSE connection status: connected");
+    });
     source.addEventListener("error", () => {
         status.classList.remove("connected");
         status.classList.add("error");
+        status.setAttribute("aria-label", "SSE connection status: error");
     });
 
     const eventNames = [

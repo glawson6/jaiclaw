@@ -11,7 +11,11 @@
         <h1>Pipeline Dashboard</h1>
         <div class="header-right">
             <span id="tenant-indicator" hidden>Tenant: <strong id="tenant-name">—</strong></span>
-            <span class="connection-status" id="connection-status" title="SSE connection status">●</span>
+            <span class="connection-status" id="connection-status"
+                  role="status"
+                  aria-live="polite"
+                  aria-label="SSE connection status: connecting"
+                  title="SSE connection status">●</span>
         </div>
     </header>
 

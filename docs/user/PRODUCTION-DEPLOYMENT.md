@@ -773,32 +773,44 @@ kubectl -n jaiclaw patch secret jaiclaw-gateway-auth --type merge \
 See [MIGRATION-0.8.md](../MIGRATION-0.8.md) for the rationale and the
 in-memory store hardening that went with it.
 
-### 9.1 Compliance-aware deployment (GDPR / HIPAA)
+### 9.1 Compliance-aware deployment (GDPR / HIPAA / federal frameworks)
 
-The 0.9.3 line adds a `jaiclaw-compliance` module that layers GDPR + HIPAA
-orchestration on top of the `security-hardened` profile. A single
-property picks the profile; every downstream flag defaults from it:
+The 0.9.3 line added the `jaiclaw-compliance` module (GDPR + HIPAA); the
+2026-08 federal-frameworks work extended it with FedRAMP, CMMC 2.0, and
+FIPS 140-3 support. A single property picks a profile; every downstream
+flag defaults from it:
 
 ```yaml
 jaiclaw:
   compliance:
-    profile: hipaa    # one of: none | gdpr | hipaa | both  (default: none)
+    profile: hipaa    # none | gdpr | hipaa | both | fedramp-moderate | cmmc-l2 | fips  (default: none)
 ```
 
-The profile turns on retention enforcement, LLM-call auditing, BAA-eligible
-provider warnings, and the HTTPS startup guard. Nothing loads when the
-profile is `none`, so the module is safe to keep on the classpath even
-for dev deployments.
+Every profile is opt-in. Nothing loads when profile is `none`, so the
+module is safe to keep on the classpath even for dev deployments.
 
-**Full reference (article-to-capability mapping, per-tenant metadata keys,
-BAA-eligible provider catalog, operator responsibilities):**
+**Federal frameworks landing page** (rating table + per-regulation deep-dives
+covering Section 508, FedRAMP, FISMA, NIST 800-53, FIPS 140-3, CMMC 2.0):
+[docs/compliance/README.md](../compliance/README.md).
+
+**GDPR + HIPAA operator guide** (article-to-capability mapping, per-tenant
+metadata keys, BAA-eligible provider catalog, operator responsibilities):
 [docs/user/COMPLIANCE.md](COMPLIANCE.md).
 
-**Deployment model** — tenants subject to full GDPR or HIPAA typically get
-their own `jaiclaw-gateway-app` instance rather than sharing persistence,
-audit, and LLM configuration with other tenants. The framework does not
-enforce this, but the compliance story is easier to audit when a
+**Effective flag matrix** (which flags each profile flips): see
+[OPERATIONS.md § Compliance](OPERATIONS.md#compliance-gdpr--hipaa--federal-frameworks)
+for the full table.
+
+**Deployment model** — tenants subject to full GDPR, HIPAA, FedRAMP, or CMMC
+typically get their own `jaiclaw-gateway-app` instance rather than sharing
+persistence, audit, and LLM configuration with other tenants. The framework
+does not enforce this, but the compliance story is easier to audit when a
 regulated tenant gets its own JVM.
+
+**Verification** — the `jaiclaw:compliance-report` Maven goal (bound to the
+`verify` phase) cross-checks the compliance-docs claims against actual code
+state and emits a report at `target/jaiclaw-compliance-report.md`. Run
+after any dependency bump or module rearrangement to catch drift.
 
 ---
 

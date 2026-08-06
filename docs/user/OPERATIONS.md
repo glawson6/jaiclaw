@@ -1009,27 +1009,32 @@ via a `SecurityFilterChain` override if your deployment needs it.
 
 ---
 
-## Compliance (GDPR + HIPAA)
+## Compliance (GDPR / HIPAA / federal frameworks)
 
-The `jaiclaw-compliance` extension (0.9.3+) layers GDPR + HIPAA orchestration on top of `security-hardened`. Everything is opt-in via one property:
+The `jaiclaw-compliance` extension (0.9.3+) provides a compliance orchestration surface layered on top of `security-hardened`. Everything is opt-in via one property:
 
 ```yaml
 jaiclaw:
   compliance:
-    profile: hipaa    # one of: none | gdpr | hipaa | both  (default: none)
+    profile: hipaa    # none | gdpr | hipaa | both | fedramp-moderate | cmmc-l2 | fips  (default: none)
 ```
 
 When `profile: none` (the default), zero compliance beans load — the module is safe to keep on the classpath at zero cost.
 
+**Federal-frameworks landing page:** [docs/compliance/README.md](../compliance/README.md) — one-page rating table + per-regulation deep-dives (Section 508, FedRAMP, FISMA, NIST 800-53, FIPS 140-3, CMMC 2.0). The GDPR + HIPAA deep-dives in that directory extract and restructure the material below into per-regulation shape.
+
 ### Profile → flag mapping
 
-| Flag | `none` | `gdpr` | `hipaa` | `both` |
-|---|---|---|---|---|
-| `jaiclaw.compliance.require-https` | off | on | on | on |
-| `jaiclaw.compliance.retention-enforcement` | off | on | on | on |
-| `jaiclaw.compliance.audit-chat-client` | off | on | on | on |
-| `jaiclaw.compliance.baa-warnings` | off | off | on | on |
-| `jaiclaw.compliance.prompt-redaction` | off | off | on | on |
+| Flag | `none` | `gdpr` | `hipaa` | `both` | `fedramp-moderate` | `cmmc-l2` | `fips` |
+|---|---|---|---|---|---|---|---|
+| `jaiclaw.compliance.require-https` | off | on | on | on | on | on | off |
+| `jaiclaw.compliance.retention-enforcement` | off | on | on | on | on | on | off |
+| `jaiclaw.compliance.audit-chat-client` | off | on | on | on | on | on | off |
+| `jaiclaw.compliance.baa-warnings` | off | off | on | on | off | off | off |
+| `jaiclaw.compliance.prompt-redaction` | off | off | on | on | off | on | off |
+| `jaiclaw.compliance.fips-enforced` | off | off | off | off | on | off | on |
+| `jaiclaw.compliance.fedramp-warnings` | off | off | off | off | on | off | off |
+| `jaiclaw.compliance.cui-warnings` | off | off | off | off | off | on | off |
 
 Individual flags override the profile default in either direction. Example — run the HIPAA profile on a bench deployment behind a private TLS-terminating proxy:
 
@@ -1038,6 +1043,16 @@ jaiclaw:
   compliance:
     profile: hipaa
     require-https: false     # override — you MUST have TLS terminating upstream
+```
+
+Example — FedRAMP-Moderate deployment where FIPS enforcement is handled by the underlying RHEL FIPS-mode host and you want JaiClaw's provider-name check to trust that attestation:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: fedramp-moderate
+    fips:
+      trust-sun: true    # attest OS-level FIPS mode — skip strict provider allowlist
 ```
 
 ### Inspecting effective flags at runtime
@@ -1052,7 +1067,7 @@ curl http://localhost:8888/actuator/env/jaiclaw.compliance.effective.audit-chat-
 Or scan the startup log:
 
 ```
-INFO ... ComplianceEnvironmentPostProcessor -- Compliance profile 'HIPAA' active — effective flags: httpsGuard=true, retention=true, chatAudit=true, baaWarn=true, promptRedact=true
+INFO ... ComplianceEnvironmentPostProcessor -- Compliance profile 'HIPAA' active — effective flags: httpsGuard=true, retention=true, chatAudit=true, baaWarn=true, promptRedact=true, fipsEnforced=false, fedrampWarn=false, cuiWarn=false
 ```
 
 ### Per-tenant compliance metadata
@@ -1067,6 +1082,8 @@ Some behavior is per-tenant, driven by `TenantContext.getMetadata()`:
 | `data.residency_required` | Required residency for routing / storage |
 | `hipaa.phi_processing` | Drives BAA-eligible-provider enforcement + `PromptRedactor` |
 | `gdpr.consent_token` | Reference into a `ConsentManager` record |
+| `fedramp.impact_level` | `low` / `moderate` / `high` — drives `FedRampWarningChatModelDecorator` when `fedramp-warnings=true` |
+| `cui.processing` | Boolean — drives `CuiWarningChatModelDecorator` when `cui-warnings=true` (CMMC L2 / DFARS 252.204-7012) |
 
 ### Retention enforcement runbook
 

@@ -27,6 +27,8 @@ import java.util.Set;
  *   <li>{@value #KEY_DATA_RESIDENCY} — required residency (e.g. "eu-west", string)</li>
  *   <li>{@value #KEY_PHI_PROCESSING} — true when tenant handles PHI (boolean)</li>
  *   <li>{@value #KEY_CONSENT_TOKEN} — reference to a consent record (string)</li>
+ *   <li>{@value #KEY_FEDRAMP_IMPACT} — FedRAMP impact level "low" | "moderate" | "high" | null</li>
+ *   <li>{@value #KEY_CUI_PROCESSING} — true when tenant processes CUI (boolean)</li>
  * </ul>
  */
 @Stable
@@ -49,6 +51,25 @@ public interface TenantContext {
 
     /** Metadata key: consent record reference used by {@code ConsentManager} in T2-5. Value: string. */
     String KEY_CONSENT_TOKEN = "gdpr.consent_token";
+
+    /**
+     * Metadata key: FedRAMP impact level for this tenant. Value:
+     * {@code "low"}, {@code "moderate"}, {@code "high"}, or {@code null}
+     * when the tenant is not subject to FedRAMP scope. Drives the
+     * FedRAMP-warning provider decorator — see
+     * {@code io.jaiclaw.compliance.fedramp.FedRampWarningChatModelDecorator}.
+     */
+    String KEY_FEDRAMP_IMPACT = "fedramp.impact_level";
+
+    /**
+     * Metadata key: true when this tenant processes CUI (Controlled
+     * Unclassified Information — CMMC / DFARS 252.204-7012). Drives the
+     * CUI-warning provider decorator — see
+     * {@code io.jaiclaw.compliance.cui.CuiWarningChatModelDecorator}.
+     * Defaults to false so non-CUI deployments aren't paying for the
+     * decorator check.
+     */
+    String KEY_CUI_PROCESSING = "cui.processing";
 
     /**
      * Unique tenant identifier (e.g., programId UUID).
@@ -179,6 +200,33 @@ public interface TenantContext {
      */
     default String getConsentToken() {
         return metadataString(KEY_CONSENT_TOKEN);
+    }
+
+    /**
+     * Optional FedRAMP impact level for this tenant. Returns one of
+     * {@code "low"}, {@code "moderate"}, {@code "high"}, or {@code null}
+     * when the tenant is not subject to FedRAMP scope.
+     *
+     * <p>Consumed by {@code FedRampWarningChatModelDecorator} to gate
+     * LLM-provider selection: moderate and high tenants should route
+     * only to FedRAMP-authorized providers.
+     */
+    default String getFedrampImpactLevel() {
+        return metadataString(KEY_FEDRAMP_IMPACT);
+    }
+
+    /**
+     * True when this tenant processes CUI (Controlled Unclassified
+     * Information — CMMC / DFARS 252.204-7012). Drives the T2
+     * {@code CuiWarningChatModelDecorator} — matches the shape of
+     * {@link #isPhiProcessing()} so both compliance regimes have the
+     * same accessor pattern.
+     */
+    default boolean isCuiProcessing() {
+        Object raw = getMetadata() != null ? getMetadata().get(KEY_CUI_PROCESSING) : null;
+        if (raw == null) return false;
+        if (raw instanceof Boolean b) return b;
+        return "true".equalsIgnoreCase(String.valueOf(raw).trim());
     }
 
     /** Internal helper: pull a string value from the metadata map, tolerating null map + null value. */
