@@ -1,0 +1,35 @@
+{
+  "_comment": "MCP Design Pattern 5/6: Hierarchical MCP. See docs/user/features/mcp-design-patterns.md § 5.",
+  "width": 80,
+  "height": 12,
+  "elements": [
+    {"type": "rectangle", "params": {"x": 2,  "y": 4, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": "  Agent", "x": 3,  "y": 6}},
+
+    {"type": "rectangle", "params": {"x": 24, "y": 4, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": " Domain-", "x": 26, "y": 5}},
+    {"type": "label",     "params": {"text": "  level", "x": 26, "y": 6}},
+    {"type": "label",     "params": {"text": " server ", "x": 26, "y": 7}},
+
+    {"type": "rectangle", "params": {"x": 55, "y": 1, "width": 22, "height": 3}},
+    {"type": "label",     "params": {"text": " Customer MCP", "x": 57, "y": 2}},
+
+    {"type": "rectangle", "params": {"x": 55, "y": 5, "width": 22, "height": 3}},
+    {"type": "label",     "params": {"text": " Wallet MCP",   "x": 57, "y": 6}},
+
+    {"type": "rectangle", "params": {"x": 55, "y": 9, "width": 22, "height": 3}},
+    {"type": "label",     "params": {"text": " Payments MCP", "x": 57, "y": 10}},
+
+    {"type": "line",      "params": {"x1": 14, "y1": 6, "x2": 23, "y2": 6, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 22, "y": 6}},
+
+    {"type": "line",      "params": {"x1": 42, "y1": 6, "x2": 54, "y2": 2, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 53, "y": 2}},
+
+    {"type": "line",      "params": {"x1": 42, "y1": 6, "x2": 54, "y2": 6, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 53, "y": 6}},
+
+    {"type": "line",      "params": {"x1": 42, "y1": 6, "x2": 54, "y2": 10, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 53, "y": 10}}
+  ]
+}

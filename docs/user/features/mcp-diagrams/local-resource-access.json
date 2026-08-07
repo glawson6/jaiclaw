@@ -1,0 +1,19 @@
+{
+  "_comment": "MCP Design Pattern 6/6: Local Resource Access. See docs/user/features/mcp-design-patterns.md § 6.",
+  "width": 80,
+  "height": 10,
+  "elements": [
+    {"type": "rectangle", "params": {"x": 2,  "y": 3, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": "  Agent", "x": 3,  "y": 5}},
+
+    {"type": "rectangle", "params": {"x": 40, "y": 3, "width": 34, "height": 5}},
+    {"type": "label",     "params": {"text": "  Server -> File system",  "x": 42, "y": 4}},
+    {"type": "label",     "params": {"text": "        (Local MCP)",      "x": 42, "y": 6}},
+
+    {"type": "line",      "params": {"x1": 14, "y1": 5, "x2": 39, "y2": 5, "pen": "─"}},
+    {"type": "label",     "params": {"text": "▶", "x": 38, "y": 5}},
+
+    {"type": "label",     "params": {"text": "Task: File processing", "x": 16, "y": 4}},
+    {"type": "label",     "params": {"text": "Execute",              "x": 16, "y": 6}}
+  ]
+}

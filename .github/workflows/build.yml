@@ -1,0 +1,78 @@
+name: Build (self-hosted)
+
+# Basic Maven build workflow — compiles the whole reactor and runs unit
+# tests. Runs on self-hosted runners where Java 21, git, and docker are
+# pre-installed.
+#
+# Assumes the runner has:
+#   - Java 21 on PATH (or JAVA_HOME set to a 21 install)
+#   - git
+#   - Enough RAM for `-Xmx2g` Maven builds (~4 GB total headroom is comfortable)
+#
+# Runtime target: 15-25 min for the full reactor (168 modules).
+
+on:
+  push:
+    branches: [main, spring-boot-4-upgrade]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'releases/**'
+  pull_request:
+    branches: [main, spring-boot-4-upgrade]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'releases/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+    timeout-minutes: 45
+    env:
+      MAVEN_OPTS: '-Xmx2g'
+      # If your runner's JAVA_HOME isn't set at the runner level, uncomment:
+      # JAVA_HOME: /usr/lib/jvm/java-21-openjdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Java 21 is available
+        # Fails fast with a clear message if the runner isn't provisioned
+        # correctly, instead of a confusing "class file version 65" error
+        # 400 lines into the Maven build.
+        run: |
+          set -eu
+          if ! command -v java &>/dev/null; then
+            echo "ERROR: java not on PATH. Runner needs Java 21 pre-installed."
+            exit 1
+          fi
+          JAVA_VERSION=$(java -version 2>&1 | head -1)
+          echo "Detected: $JAVA_VERSION"
+          if ! echo "$JAVA_VERSION" | grep -qE '"21\.|version "21'; then
+            echo "ERROR: expected Java 21, got: $JAVA_VERSION"
+            exit 1
+          fi
+          echo "JAVA_HOME=${JAVA_HOME:-<unset>}"
+
+      - name: Compile + install reactor
+        # `install` (not just `compile`) so downstream `-pl` builds can
+        # resolve inter-module deps without hitting the network. Skips
+        # tests to keep this step under 10 min; tests run in the next step.
+        run: ./mvnw install -DskipTests -B
+
+      - name: Run unit tests
+        # `-o` (offline) because everything is already resolved from the
+        # install step above. Saves ~3-5 min on cold Nexus.
+        run: ./mvnw test -B -o
+
+      - name: Upload surefire reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/'
+          retention-days: 7
+          if-no-files-found: ignore
