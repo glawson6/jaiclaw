@@ -1,0 +1,32 @@
+{
+  "_comment": "MCP Design Pattern 4/6: Event-Driven Integration. See docs/user/features/mcp-design-patterns.md § 4.",
+  "width": 80,
+  "height": 10,
+  "elements": [
+    {"type": "rectangle", "params": {"x": 2,  "y": 3, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": "  Agent", "x": 3,  "y": 5}},
+
+    {"type": "rectangle", "params": {"x": 22, "y": 3, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": " Server", "x": 23, "y": 5}},
+
+    {"type": "rectangle", "params": {"x": 42, "y": 3, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": " Event ", "x": 43, "y": 4}},
+    {"type": "label",     "params": {"text": "stream", "x": 43, "y": 6}},
+
+    {"type": "rectangle", "params": {"x": 60, "y": 3, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  Async", "x": 62, "y": 4}},
+    {"type": "label",     "params": {"text": " workflow", "x": 62, "y": 5}},
+    {"type": "label",     "params": {"text": "processing", "x": 62, "y": 6}},
+
+    {"type": "line",      "params": {"x1": 14, "y1": 5, "x2": 21, "y2": 5, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 20, "y": 5}},
+
+    {"type": "line",      "params": {"x1": 34, "y1": 5, "x2": 41, "y2": 5, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 40, "y": 5}},
+
+    {"type": "line",      "params": {"x1": 54, "y1": 5, "x2": 59, "y2": 5, "pen": "╌"}},
+    {"type": "label",     "params": {"text": "▶", "x": 58, "y": 5}},
+
+    {"type": "label",     "params": {"text": "MCP protocol", "x": 22, "y": 9}}
+  ]
+}

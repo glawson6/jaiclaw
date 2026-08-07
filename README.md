@@ -129,7 +129,7 @@ Surface-level evidence that this is a serious framework, not a demo:
 - **Multi-tenancy is wired at the framework level** — `jaiclaw.tenant.mode: single | multi` flips per-tenant isolation across sessions, memory, skills, audit, and secrets without code changes. ([details](docs/user/JAICLAW-FROM-PERSONAL-TO-ENTERPRISE.md))
 - **Kubernetes-ready** — JKube produces multi-arch (`linux/amd64` + `linux/arm64`) container images. The gateway is stateless and horizontally scalable. Distributed memory backends supported. ([Production Deployment](docs/user/PRODUCTION-DEPLOYMENT.md))
 - **22 plugin lifecycle hooks** — intercept before/after LLM calls, tool execution, message pipeline, context compaction, session events. Reshape the entire agent behavior without forking. ([hook events](core/jaiclaw-core/src/main/java/io/jaiclaw/core/hook/event/))
-- **MCP server hosting** — expose JaiClaw tools to Claude Desktop, Cursor, or any MCP client. `McpToolProvider` SPI dogfooded by 22 in-repo implementations. ([details](core/jaiclaw-core/src/main/java/io/jaiclaw/core/mcp/))
+- **MCP server hosting** — expose JaiClaw tools to Claude Desktop, Cursor, or any MCP client. `McpToolProvider` SPI dogfooded by 22 in-repo implementations across all six [canonical MCP design patterns](docs/user/features/mcp-design-patterns.md) (Direct API Wrapper, Composite Service, MCP-to-Agent, Event-Driven Integration, Hierarchical MCP, Local Resource Access). ([MCP feature reference](docs/user/features/mcp.md))
 - **Observability built in** — Spring Boot Actuator with custom endpoints (`/actuator/pipelines`, `/actuator/kanban`, `/actuator/agentmind-tendencies`), Micrometer instrumentation throughout, `AuditLogger` + `TranscriptStore` SPIs.
 - **GDPR + HIPAA compliance substrate** — one property (`jaiclaw.compliance.profile={gdpr|hipaa|both}`) turns on retention enforcement, LLM-call auditing with recipient tracking, BAA-eligible provider warnings, HTTPS startup guard, PHI redaction, and a REST surface at `/api/gdpr/*` for Art. 15/17/20 subject requests. 12 `@Stable` SPIs covering data-subject erasure + export, consent, prompt redaction, field encryption, chain-of-hashes audit, privacy notice, RoPA generation. Zero code loads when profile=none. ([compliance guide](docs/user/COMPLIANCE.md))
 - **GOAP multi-agent planning** — [Embabel](https://github.com/embabel/embabel-agent) integration. Deterministic action sequences computed by A* search, with automatic parallelism detection and typed intermediate results.
@@ -520,6 +520,29 @@ jaiclaw:
 ```
 
 Each profile flips a bundle of effective flags (HTTPS enforcement, audit chain, PHI redaction, FIPS provider check, BAA/FedRAMP/CUI provider warnings) with per-flag overrides available.
+
+## MCP (Model Context Protocol)
+
+JaiClaw hosts MCP servers as a first-class exposure surface. Any JaiClaw capability — a tool, a document repository, an agent — can be published as an MCP server with ~30 lines of code. 22 MCP surfaces ship in the reactor today (`docs`, `messaging`, `github`, `calendar`, `kanban`, `pipeline`, `agentmind-memory`, `agentmind-soul`, `voicecall`, `discord`, `cron-manager`, `ascii-render`, and more).
+
+Two docs cover the story:
+
+**→ [docs/user/features/mcp.md](docs/user/features/mcp.md)** — MCP feature reference: the two SPIs (`McpToolProvider` / `McpResourceProvider`), gateway wiring, REST surface, transports (HTTP/SSE/stdio), and a 3-step recipe for writing your own MCP server.
+
+**→ [docs/user/features/mcp-design-patterns.md](docs/user/features/mcp-design-patterns.md)** — the six canonical MCP integration patterns mapped to concrete JaiClaw code with ASCII diagrams:
+
+| Pattern | JaiClaw exemplar |
+|---|---|
+| **Direct API Wrapper** | `DocsMcpToolProvider` — one server, thin wrapper over `DocsRepository` |
+| **Composite Service** | `MessagingMcpToolProvider` — 8 tools, orchestrates channel adapters + session manager |
+| **MCP-to-Agent** | `EmbabelAgentOrchestrationPort` — hand off to GOAP specialist agents |
+| **Event-Driven Integration** | `PipelineGateway.trigger()` + `HookRunner` — fire-and-forget with virtual threads |
+| **Hierarchical MCP** | `HttpMcpToolProvider` / `SseMcpToolProvider` / `StdioMcpToolProvider` — fan out to remote MCP servers behind one facade |
+| **Local Resource Access** | `FileReadTool` / `FileWriteTool` / `ShellExecTool` with workspace-boundary enforcement |
+
+Every pattern shares the same tenant context, audit trail, rate limiting, and security policies. A production gateway typically exhibits all six behind the same `/mcp/{name}` routing.
+
+For the Claude Desktop-specific JBang stdio recipe, see [docs/user/CLAUDE-DESKTOP-MCP.md](docs/user/CLAUDE-DESKTOP-MCP.md).
 
 ## Running the Interactive Shell
 

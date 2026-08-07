@@ -55,6 +55,15 @@ reference for anyone running, configuring, or building on JaiClaw. The
   - [PIPELINE-PROCESSOR-CATALOG.md](user/pipeline/PIPELINE-PROCESSOR-CATALOG.md) —
     baseline processor pack (Phase 4: ~15 core + 7 AI presets + 6
     Camel templates + Tool/Memory/Document integrations)
+- [**user/features/mcp.md**](user/features/mcp.md) — MCP feature reference:
+  the two SPIs (`McpToolProvider` / `McpResourceProvider`), gateway
+  wiring, REST surface, transports (HTTP/SSE/stdio), and a 3-step
+  recipe for writing your own MCP server
+- [**user/features/mcp-design-patterns.md**](user/features/mcp-design-patterns.md) —
+  the six canonical MCP integration patterns (Direct API Wrapper,
+  Composite Service, MCP-to-Agent, Event-Driven Integration,
+  Hierarchical MCP, Local Resource Access) mapped to concrete
+  JaiClaw code with ASCII diagrams
 - [features/](user/features/) — per-feature reference (browser,
   canvas, compaction, cron, group-chat routing, identity, voice,
   voice-call, workspace memory)
