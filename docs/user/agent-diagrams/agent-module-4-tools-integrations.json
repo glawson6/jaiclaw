@@ -1,0 +1,28 @@
+{
+  "_comment": "Module 4: Tools & Integrations. See docs/user/BUILDING-AGENTS.md § Module 4.",
+  "width": 80,
+  "height": 8,
+  "elements": [
+    {"type": "label",     "params": {"text": "MODULE 4 — TOOLS & INTEGRATIONS", "x": 2, "y": 0}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "  Simple", "x": 4, "y": 3}},
+    {"type": "label",     "params": {"text": " (local)", "x": 4, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 18, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "   API", "x": 20, "y": 3}},
+    {"type": "label",     "params": {"text": " (web/db)", "x": 20, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 34, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "    MCP", "x": 36, "y": 3}},
+    {"type": "label",     "params": {"text": "  server", "x": 36, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 50, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "  Agent", "x": 52, "y": 3}},
+    {"type": "label",     "params": {"text": " as tool", "x": 52, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 66, "y": 2, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": "Custom", "x": 68, "y": 3}},
+    {"type": "label",     "params": {"text": "  fns", "x": 68, "y": 4}}
+  ]
+}

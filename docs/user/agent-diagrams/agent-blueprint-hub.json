@@ -1,0 +1,44 @@
+{
+  "_comment": "Agent Blueprint hub. 8 modules radiating from a central AGENT BLUEPRINT box. See docs/user/BUILDING-AGENTS.md § The blueprint.",
+  "width": 80,
+  "height": 22,
+  "elements": [
+    {"type": "rectangle", "params": {"x": 2,  "y": 0, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 1. Purpose",       "x": 3, "y": 1}},
+
+    {"type": "rectangle", "params": {"x": 31, "y": 0, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 2. Sys Prompt",    "x": 32, "y": 1}},
+
+    {"type": "rectangle", "params": {"x": 60, "y": 0, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 3. LLM",           "x": 61, "y": 1}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 9, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 5. Memory",        "x": 3, "y": 10}},
+
+    {"type": "rectangle", "params": {"x": 60, "y": 9, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 4. Tools",         "x": 61, "y": 10}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 18, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 6. Orchestrate",   "x": 3, "y": 19}},
+
+    {"type": "rectangle", "params": {"x": 31, "y": 18, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 7. UI",            "x": 32, "y": 19}},
+
+    {"type": "rectangle", "params": {"x": 60, "y": 18, "width": 18, "height": 3}},
+    {"type": "label",     "params": {"text": " 8. Testing",       "x": 61, "y": 19}},
+
+    {"type": "rectangle", "params": {"x": 30, "y": 8, "width": 20, "height": 6}},
+    {"type": "label",     "params": {"text": "    AGENT",         "x": 31, "y": 9}},
+    {"type": "label",     "params": {"text": "  BLUEPRINT",       "x": 31, "y": 10}},
+    {"type": "label",     "params": {"text": "  8 modules",       "x": 31, "y": 12}},
+
+    {"type": "line",      "params": {"x1": 20, "y1": 2,  "x2": 30, "y2": 9,  "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 40, "y1": 3,  "x2": 40, "y2": 7,  "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 60, "y1": 2,  "x2": 50, "y2": 9,  "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 20, "y1": 10, "x2": 29, "y2": 10, "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 50, "y1": 10, "x2": 59, "y2": 10, "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 20, "y1": 19, "x2": 30, "y2": 13, "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 40, "y1": 18, "x2": 40, "y2": 14, "pen": "╌"}},
+    {"type": "line",      "params": {"x1": 60, "y1": 19, "x2": 50, "y2": 13, "pen": "╌"}}
+  ]
+}
