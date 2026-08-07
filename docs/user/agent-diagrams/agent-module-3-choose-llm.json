@@ -1,0 +1,23 @@
+{
+  "_comment": "Module 3: Choose LLM. See docs/user/BUILDING-AGENTS.md § Module 3.",
+  "width": 80,
+  "height": 8,
+  "elements": [
+    {"type": "label",     "params": {"text": "MODULE 3 — CHOOSE LLM", "x": 2, "y": 0}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  Base model", "x": 4, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 22, "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": " Parameters", "x": 24, "y": 3}},
+    {"type": "label",     "params": {"text": " (temp, ...)", "x": 24, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 42, "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  Context", "x": 44, "y": 3}},
+    {"type": "label",     "params": {"text": "   window", "x": 44, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 62, "y": 2, "width": 16, "height": 5}},
+    {"type": "label",     "params": {"text": "  Cost /", "x": 64, "y": 3}},
+    {"type": "label",     "params": {"text": " latency", "x": 64, "y": 4}}
+  ]
+}

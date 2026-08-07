@@ -4,6 +4,11 @@
 > [user/GETTING-STARTED.md](user/GETTING-STARTED.md). It walks the
 > three launch paths (Docker, library, CLI) and the top five
 > first-time failure modes.
+>
+> **New to agentic AI in general?** Read in this order:
+> 1. [WHAT-IS-AGENTIC-AI.md](user/WHAT-IS-AGENTIC-AI.md) — plain-English primer (no CS degree required)
+> 2. [BUILDING-AGENTS.md](user/BUILDING-AGENTS.md) — the 8-module architectural blueprint mapped to JaiClaw code
+> 3. [GETTING-STARTED.md](user/GETTING-STARTED.md) — quickstart
 
 This index is grouped by audience. The `user/` tree is the canonical
 reference for anyone running, configuring, or building on JaiClaw. The
@@ -17,6 +22,10 @@ reference for anyone running, configuring, or building on JaiClaw. The
 
 - [**GETTING-STARTED.md**](user/GETTING-STARTED.md) — your first 10
   minutes; three launch paths compared
+- [**BUILDING-AGENTS.md**](user/BUILDING-AGENTS.md) — the 8-module
+  agent blueprint (Purpose, Prompt, LLM, Tools, Memory, Orchestration,
+  UI, Testing) mapped to JaiClaw code, with ASCII diagrams.
+  Architectural companion to WHAT-IS-AGENTIC-AI.md
 - [**CONFIGURATION.md**](user/CONFIGURATION.md) — minimal-viable
   config + common recipes (Anthropic+Telegram, OpenAI+Slack,
   Ollama-only)

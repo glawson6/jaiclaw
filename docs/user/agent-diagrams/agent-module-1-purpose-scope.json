@@ -1,0 +1,21 @@
+{
+  "_comment": "Module 1: Define Purpose & Scope. See docs/user/BUILDING-AGENTS.md § Module 1.",
+  "width": 80,
+  "height": 8,
+  "elements": [
+    {"type": "label",     "params": {"text": "MODULE 1 — DEFINE PURPOSE & SCOPE", "x": 2, "y": 0}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  Use case", "x": 4, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 22, "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": " User needs", "x": 24, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 42, "y": 2, "width": 18, "height": 5}},
+    {"type": "label",     "params": {"text": "  Success", "x": 44, "y": 3}},
+    {"type": "label",     "params": {"text": "  criteria", "x": 44, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 62, "y": 2, "width": 16, "height": 5}},
+    {"type": "label",     "params": {"text": "Constraints", "x": 64, "y": 4}}
+  ]
+}

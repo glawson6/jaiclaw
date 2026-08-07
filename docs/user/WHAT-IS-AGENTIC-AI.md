@@ -49,6 +49,8 @@ If the first venue is fully booked, it doesn't stop and ask you what to do. It m
 ### 4. Remember context
 It keeps track of what it has already done, what worked, what didn't, and what's left. It doesn't start from scratch every time.
 
+> **Note for engineers:** these four capabilities describe what an agent *does* at runtime. The architectural building blocks that make it possible are 8 modules covered in [BUILDING-AGENTS.md](BUILDING-AGENTS.md) — LLM choice, tools, memory, and orchestration appear directly; purpose scoping, system prompt design, user interface, and testing complete the picture.
+
 ---
 
 ## A real-world analogy
@@ -114,6 +116,15 @@ Safety depends on how it's built. Good agentic systems have:
 
 **"Do I need to be technical to use it?"**
 No. The whole point is that you describe _what_ you want in plain language, and the AI figures out _how_ to do it.
+
+---
+
+## Now — how do you actually build one?
+
+That's what the rest of this documentation covers. If you're an engineer or architect asking "OK, what does an agentic system actually consist of, and how do I put one together?", start here:
+
+- [**BUILDING-AGENTS.md**](BUILDING-AGENTS.md) — the 8-module architectural blueprint (Purpose, System Prompt, LLM, Tools, Memory, Orchestration, UI, Testing) mapped to concrete JaiClaw code, with ASCII diagrams for each module.
+- [**GETTING-STARTED.md**](GETTING-STARTED.md) — hands-on quickstart: install JaiClaw, boot a gateway, send your first agent message. Three launch paths compared (Docker, library, CLI).
 
 ---
 

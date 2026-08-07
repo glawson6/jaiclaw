@@ -1,0 +1,28 @@
+{
+  "_comment": "Module 5: Memory Systems. See docs/user/BUILDING-AGENTS.md § Module 5.",
+  "width": 80,
+  "height": 8,
+  "elements": [
+    {"type": "label",     "params": {"text": "MODULE 5 — MEMORY SYSTEMS", "x": 2, "y": 0}},
+
+    {"type": "rectangle", "params": {"x": 2,  "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "Episodic", "x": 4, "y": 3}},
+    {"type": "label",     "params": {"text": " (conv)", "x": 4, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 18, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": " Working", "x": 20, "y": 3}},
+    {"type": "label",     "params": {"text": " memory", "x": 20, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 34, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": " Vector", "x": 36, "y": 3}},
+    {"type": "label",     "params": {"text": "   DB", "x": 36, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 50, "y": 2, "width": 14, "height": 5}},
+    {"type": "label",     "params": {"text": "  SQL /", "x": 52, "y": 3}},
+    {"type": "label",     "params": {"text": " struct", "x": 52, "y": 4}},
+
+    {"type": "rectangle", "params": {"x": 66, "y": 2, "width": 12, "height": 5}},
+    {"type": "label",     "params": {"text": " File", "x": 68, "y": 3}},
+    {"type": "label",     "params": {"text": "store", "x": 68, "y": 4}}
+  ]
+}

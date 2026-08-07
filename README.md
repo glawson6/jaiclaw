@@ -40,6 +40,8 @@ Built on Java 21, Spring Boot 4.1.0, Spring AI 2.0.0, Embabel Agent 2.0.0-SNAPSH
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, declarative pipelines, scaffolding tooling, and security hardening that don't exist in the Node.js version.
 
+**New to agentic AI?** Read in order: [WHAT-IS-AGENTIC-AI.md](docs/user/WHAT-IS-AGENTIC-AI.md) (plain-English primer) → [BUILDING-AGENTS.md](docs/user/BUILDING-AGENTS.md) (8-module architecture mapped to JaiClaw code) → [GETTING-STARTED.md](docs/user/GETTING-STARTED.md) (quickstart).
+
 ## Three Ways to Use JaiClaw
 
 ### 1. As an enterprise library — build your own AI agent product
