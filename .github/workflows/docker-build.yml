@@ -1,0 +1,119 @@
+name: Docker Build (self-hosted)
+
+# Builds the three Docker-imageable apps (`jaiclaw-gateway-app`,
+# `jaiclaw-shell`, `jaiclaw-cli`) using JKube's `k8s:build` goal under the
+# `-Pk8s` profile. Runs on self-hosted runners with Docker pre-installed.
+#
+# What this produces:
+#   - io.jaiclaw/jaiclaw-gateway-app:<version>
+#   - io.jaiclaw/jaiclaw-shell:<version>
+#   - io.jaiclaw/jaiclaw-cli:<version>
+#
+# Where <version> is the current reactor version (1.0.1-SNAPSHOT today).
+# Images stay on the runner's local Docker daemon by default. To push,
+# add a push step gated on push events / manual dispatch (not enabled
+# by default — depends on your registry setup).
+#
+# Runtime target: 10-15 min (dominated by fat-jar packaging).
+
+on:
+  push:
+    branches: [main, spring-boot-4-upgrade]
+    paths:
+      - 'apps/jaiclaw-gateway-app/**'
+      - 'apps/jaiclaw-shell/**'
+      - 'apps/jaiclaw-cli/**'
+      - 'core/**'
+      - 'extensions/**'
+      - 'channels/**'
+      - 'jaiclaw-spring-boot-starter/**'
+      - 'jaiclaw-bom/**'
+      - 'pom.xml'
+      - '.github/workflows/docker-build.yml'
+  workflow_dispatch:
+    inputs:
+      push_to_registry:
+        description: 'Push images to registry after build (default: no)'
+        type: boolean
+        default: false
+        required: false
+
+jobs:
+  docker-build:
+    runs-on: self-hosted
+    timeout-minutes: 45
+    env:
+      MAVEN_OPTS: '-Xmx2g'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Java 21 + Docker are available
+        # Fail-fast if the runner is under-provisioned.
+        run: |
+          set -eu
+          if ! command -v java &>/dev/null; then
+            echo "ERROR: java not on PATH. Runner needs Java 21 pre-installed."
+            exit 1
+          fi
+          JAVA_VERSION=$(java -version 2>&1 | head -1)
+          echo "Java: $JAVA_VERSION"
+          if ! echo "$JAVA_VERSION" | grep -qE '"21\.|version "21'; then
+            echo "ERROR: expected Java 21, got: $JAVA_VERSION"
+            exit 1
+          fi
+          if ! command -v docker &>/dev/null; then
+            echo "ERROR: docker not on PATH. Runner needs Docker pre-installed."
+            exit 1
+          fi
+          echo "Docker: $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'daemon not reachable')"
+
+      - name: Install reactor to local Maven repo
+        # Prerequisite: the `-pl :...` module builds below need every
+        # inter-module dep in the local ~/.m2 tree. Install without
+        # tests keeps this step ~4 min.
+        run: ./mvnw install -DskipTests -B
+
+      - name: Build gateway + shell + CLI Docker images
+        # `-Pk8s` activates JKube's kubernetes-maven-plugin which
+        # produces native-platform Docker images tagged
+        # `io.jaiclaw/<artifactId>:<version>`.
+        # `-am` isn't needed here — the install step above populated
+        # every dep — but `-pl` is required so we only rebuild these
+        # three apps, not the whole reactor.
+        run: |
+          ./mvnw package k8s:build \
+            -pl :jaiclaw-gateway-app,:jaiclaw-shell,:jaiclaw-cli \
+            -am -Pk8s -DskipTests -B -o
+
+      - name: List built images
+        # Show what landed on the runner's Docker daemon — useful for
+        # debugging when the k8s:build step succeeded but no image
+        # appeared (rare, usually a mis-configured JKube manifest).
+        run: |
+          docker images | grep -E 'io.jaiclaw/(jaiclaw-gateway-app|jaiclaw-shell|jaiclaw-cli)' || {
+              echo "ERROR: no io.jaiclaw/* images found after build"
+              docker images | head -20
+              exit 1
+          }
+
+      # Push step is opt-in via workflow_dispatch input. Not enabled on
+      # push events by default because your registry credentials and
+      # tag conventions vary per deployment. To enable:
+      # 1. Set the registry URL as a repo secret (e.g. NEXUS_DOCKER_REGISTRY)
+      # 2. Add a `docker login` step here
+      # 3. Retag + push each image
+      - name: Push images (opt-in)
+        if: github.event_name == 'workflow_dispatch' && inputs.push_to_registry == true
+        run: |
+          echo "Push requested. Add your `docker tag` + `docker push` "
+          echo "commands here targeting your registry."
+          echo ""
+          echo "Reference (uncomment + adapt):"
+          echo "# REGISTRY=tooling.taptech.net:5000"
+          echo "# VERSION=\$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          echo "# for app in jaiclaw-gateway-app jaiclaw-shell jaiclaw-cli; do"
+          echo "#     docker tag io.jaiclaw/\$app:\$VERSION \$REGISTRY/\$app:\$VERSION"
+          echo "#     docker push \$REGISTRY/\$app:\$VERSION"
+          echo "# done"
