@@ -16,7 +16,11 @@ class GithubCommentToolSpec extends Specification {
     def repo = Mock(GHRepository)
     def issue = Mock(GHIssue)
     def comment = Mock(GHIssueComment)
-    def tool = new GithubCommentTool(clientProvider)
+    // Spy the tool so we can stub the extracted postComment(issue, body) helper —
+    // GHIssue.comment(String) has two public overloads (void + GHIssueComment) with
+    // identical erased signatures; Spock's proxy dispatches between them non-
+    // deterministically. Stubbing postComment sidesteps the ambiguous surface.
+    def tool = Spy(GithubCommentTool, constructorArgs: [clientProvider])
     def context = new ToolContext("agent1", "sess1", "sid1", "/tmp")
 
     def setup() {
@@ -41,7 +45,7 @@ class GithubCommentToolSpec extends Specification {
     def "posts the comment and returns a confirmation message"() {
         given:
         repo.getIssue(42) >> issue
-        issue.comment(_ as String) >> { String body -> comment }
+        tool.postComment(issue, _ as String) >> comment
         comment.getHtmlUrl() >> new URL("https://github.com/owner/name/issues/42#issuecomment-999")
 
         when:
@@ -66,7 +70,7 @@ class GithubCommentToolSpec extends Specification {
     def "accepts issue param as a String number"() {
         given:
         repo.getIssue(7) >> issue
-        issue.comment(_ as String) >> { String body -> comment }
+        tool.postComment(issue, _ as String) >> comment
         comment.getHtmlUrl() >> new URL("https://github.com/owner/name/issues/7#issuecomment-1")
 
         when:

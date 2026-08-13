@@ -60,7 +60,7 @@
              (docs/spring-boot-4-upgrade/02-embabel-gate.md). -->
         <spring-boot.version>4.1.0</spring-boot.version>
         <spring-ai.version>2.0.0</spring-ai.version>
-        <embabel-agent.version>2.0.0-SNAPSHOT</embabel-agent.version>
+        <embabel-agent.version>1.5.0</embabel-agent.version>
         <spring-shell.version>4.0.2</spring-shell.version>
         <spring-cloud.version>2025.1.2</spring-cloud.version>
         <!-- GitHub Copilot Java SDK — the official com.github:copilot-sdk-java

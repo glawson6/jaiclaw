@@ -1,0 +1,27 @@
+{
+  "_comment": "Task checklist — mixed name-lookup glyphs marking pass/pending/fail states. Regenerate with ./render.sh glyph-checklist",
+  "width": 56,
+  "height": 10,
+  "elements": [
+    {"type": "label",     "params": {"text": "RELEASE 1.0.2 CHECKLIST", "x": 2, "y": 0}},
+    {"type": "rectangle", "params": {"x": 0, "y": 1, "width": 56, "height": 9}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 3, "name": "ok"}},
+    {"type": "label", "params": {"text": "compile all modules",       "x": 6, "y": 3}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 4, "name": "ok"}},
+    {"type": "label", "params": {"text": "unit tests (2,341 passing)","x": 6, "y": 4}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 5, "name": "pending"}},
+    {"type": "label", "params": {"text": "integration tests",         "x": 6, "y": 5}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 6, "name": "fail"}},
+    {"type": "label", "params": {"text": "dep vulnerability scan",    "x": 6, "y": 6}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 7, "name": "question"}},
+    {"type": "label", "params": {"text": "release notes review",      "x": 6, "y": 7}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 8, "name": "pending"}},
+    {"type": "label", "params": {"text": "sign + push artifacts",     "x": 6, "y": 8}}
+  ]
+}

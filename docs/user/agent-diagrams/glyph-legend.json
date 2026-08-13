@@ -1,0 +1,39 @@
+{
+  "_comment": "Quick-reference legend of the built-in glyph vocabulary. Regenerate with ./render.sh glyph-legend",
+  "width": 60,
+  "height": 14,
+  "elements": [
+    {"type": "label",     "params": {"text": "BUILT-IN GLYPH VOCABULARY", "x": 2, "y": 0}},
+    {"type": "rectangle", "params": {"x": 0, "y": 1, "width": 60, "height": 13}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 3, "name": "ok"}},
+    {"type": "label", "params": {"text": "ok / check       (SUCCESS)", "x": 6, "y": 3}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 4, "name": "fail"}},
+    {"type": "label", "params": {"text": "fail / cross     (ERROR)",   "x": 6, "y": 4}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 5, "name": "warn"}},
+    {"type": "label", "params": {"text": "warn / bang      (WARNING)", "x": 6, "y": 5}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 6, "name": "warning"}},
+    {"type": "label", "params": {"text": "warning          (WARNING)", "x": 6, "y": 6}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 7, "name": "info"}},
+    {"type": "label", "params": {"text": "info / arrowhead (INFO)",    "x": 6, "y": 7}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 8, "name": "arrow"}},
+    {"type": "label", "params": {"text": "arrow            (INFO)",    "x": 6, "y": 8}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 9, "name": "bullet"}},
+    {"type": "label", "params": {"text": "bullet / dot     (NEUTRAL)", "x": 6, "y": 9}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 10, "name": "star"}},
+    {"type": "label", "params": {"text": "star             (INFO)",    "x": 6, "y": 10}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 11, "name": "pending"}},
+    {"type": "label", "params": {"text": "pending / hourglass (NEUTRAL)","x": 6, "y": 11}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 12, "name": "question"}},
+    {"type": "label", "params": {"text": "question         (INFO)",    "x": 6, "y": 12}}
+  ]
+}

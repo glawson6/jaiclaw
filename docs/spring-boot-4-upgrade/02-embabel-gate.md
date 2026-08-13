@@ -3,6 +3,28 @@
 > Embabel is JaiClaw's binding Tier-1 dependency (agent runtime via GOAP). It is the **only** dependency without a Boot-4-compatible release, and therefore the single hard gate on cutting 1.0.0 with Spring Boot 4.
 > Primary sources: [issue #1052](https://github.com/embabel/embabel-agent/issues/1052) · [Spring Boot 4 / Spring AI 2.0 migration wiki](https://github.com/embabel/embabel-agent/wiki/Spring-Boot-4---Spring-AI-2.0-Migration) · verified 2026-07-13.
 
+## Current status (2026-08-13)
+
+**Embabel `1.5.0` GA is out** — published to Maven Central on `2026-08-11 23:23 UTC`. Same version on Embabel's `libs-release`. JaiClaw's `spring-boot-4-upgrade` branch is pinned to **`1.5.0` GA** (bumped from `1.5.0-SNAPSHOT` on 2026-08-13 after the GA landed).
+
+### Available Embabel lines
+
+| Line | Availability | Target stack | JaiClaw stance |
+|---|---|---|---|
+| `1.0.0` (previous GA) | Maven Central | Boot 3.5 + Spring AI 1.1.x | superseded on the Boot-4 branch |
+| `1.0.1-SNAPSHOT` | libs-snapshot only | Boot 3.5 patch line | ignore |
+| **`1.5.0` GA** | **Maven Central + libs-release** | **Boot 4.1.0 + Spring AI 2.0.0 GA + Spring 7.0.8 + Kotlin 2.2.21 + Java 21 + Jackson 3.1.4 (`tools.jackson.*`)** | **✓ pinned on `spring-boot-4-upgrade` branch** |
+| `1.5.0-SNAPSHOT` | libs-snapshot only | same as GA | superseded — use the GA |
+| `2.0.0-SNAPSHOT` | libs-snapshot only | same as 1.5.0 | paused (last built 2026-06-25, ~50 days stale, build #7) — do not pin |
+
+Build-number gap on the SNAPSHOTs (1.5.0 at #43+ vs 2.0.0 at #7) confirmed the 1.5.0 line was the active release candidate. The GA drop on 2026-08-11 vindicates that reading.
+
+### GA validation (2026-08-13)
+
+- **Full reactor clean install:** 84 modules build clean in 01:33.
+- **Full reactor `test`:** 4,283 tests across 84 modules — **0 failures, 0 errors, 10 skipped**. `--fail-at-end` returned BUILD SUCCESS.
+- **Known flake resolved:** the `GithubCommentToolSpec` intermittent failure that surfaced after the 1.5.0 bump was traced to a `github-api 1.330` `GHIssue.comment(String)` overload ambiguity — two `public` overloads with identical erased signatures (one returning `void`, one returning `GHIssueComment`). Production dispatches correctly via bytecode descriptor; Spock's byte-buddy proxy is descriptor-blind and picked between them non-deterministically. Fixed by extracting the call into a `protected postComment(GHIssue, String)` helper the tests mock via `Spy`. Details in `docs/issues/embabel-1.5.0-github-mock-flake.md` (marked RESOLVED). 10/10 isolated runs green after the fix.
+
 ## 1. Where Embabel stands (issue #1052 digest)
 
 [#1052 "Spring Boot 4 support"](https://github.com/embabel/embabel-agent/issues/1052) — opened 2025-11-18, **still open**, labels `spring-boot`, `waiting-on-3rd-party`, **`release-2.0`**. Key beats:

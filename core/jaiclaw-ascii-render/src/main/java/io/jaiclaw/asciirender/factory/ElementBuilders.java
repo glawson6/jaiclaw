@@ -6,6 +6,7 @@ import io.jaiclaw.asciirender.core.Region;
 import io.jaiclaw.asciirender.element.Circle;
 import io.jaiclaw.asciirender.element.Dot;
 import io.jaiclaw.asciirender.element.Ellipse;
+import io.jaiclaw.asciirender.element.Glyph;
 import io.jaiclaw.asciirender.element.Label;
 import io.jaiclaw.asciirender.element.Line;
 import io.jaiclaw.asciirender.element.Rectangle;
@@ -14,6 +15,8 @@ import io.jaiclaw.asciirender.element.Text;
 import io.jaiclaw.asciirender.element.plot.IPlotPoint;
 import io.jaiclaw.asciirender.element.plot.Plot;
 import io.jaiclaw.asciirender.element.plot.PlotPoint;
+import io.jaiclaw.asciirender.glyph.GlyphRegistry;
+import io.jaiclaw.asciirender.glyph.GlyphSemanticClass;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,6 +137,33 @@ final class ElementBuilders {
         return new Table(columns, rows);
     }
 
+    static Glyph buildGlyph(Map<String, Object> p) {
+        int x = intArg(p, "x", 0);
+        int y = intArg(p, "y", 0);
+        String name = stringArg(p, "name", null);
+        String literal = stringArg(p, "glyph", null);
+        if ((name == null || name.isBlank()) && (literal == null || literal.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "'glyph' element requires either 'name' (registry lookup) or 'glyph' (literal text).");
+        }
+        if (name != null && !name.isBlank()) {
+            return Glyph.byName(name, x, y, GlyphRegistry.global());
+        }
+        String rawClass = stringArg(p, "semanticClass", null);
+        GlyphSemanticClass sc;
+        if (rawClass == null || rawClass.isBlank()) {
+            sc = GlyphSemanticClass.DECORATIVE;
+        } else {
+            try {
+                sc = GlyphSemanticClass.valueOf(rawClass.toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unknown 'semanticClass' '" + rawClass
+                        + "'. Known: SUCCESS | WARNING | ERROR | INFO | NEUTRAL | DECORATIVE.");
+            }
+        }
+        return new Glyph(x, y, literal, sc);
+    }
+
     static Plot buildPlot(Map<String, Object> p) {
         Object rawPts = p.get("points");
         if (!(rawPts instanceof List<?> rawList) || rawList.isEmpty()) {
@@ -175,6 +205,7 @@ final class ElementBuilders {
             case "ellipse"   -> buildEllipse(params);
             case "table"     -> buildTable(params);
             case "plot"      -> buildPlot(params);
+            case "glyph"     -> buildGlyph(params);
             default          -> null;
         };
     }

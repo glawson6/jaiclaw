@@ -104,10 +104,14 @@ Position keys are optional — omitting them centres or fills automatically.
 | `ellipse` | — | `x`, `y`, `width`, `height` |
 | `table` | `rows`, `columns` (both > 0) | `x`, `y`, `width`, `height` |
 | `plot` | `points` (list of `[x, y]`), `width`, `height` (> 0) | `x`, `y` |
+| `glyph` | `x`, `y`, and either `name` (registry lookup: `ok`, `fail`, `warn`, `warning`, `info`, `arrow`, `bullet`, `star`, `pending`, `question`) OR `glyph` + optional `semanticClass` | — |
 
 Look at `${CLAUDE_PLUGIN_ROOT}/skills/ascii-rendering/examples/boxed-hello.json`,
 `call-graph.json`, and `scatter-plot.json` in the same directory for
-full reference scenes.
+full reference scenes. See `GLYPHS.md` (next to this file) for the
+full glyph vocabulary, the `GlyphContribution` SPI for registering
+your own glyphs, and the `AnsiPalette` post-processor that colorizes
+the rendered output for terminals.
 
 ## Errors
 

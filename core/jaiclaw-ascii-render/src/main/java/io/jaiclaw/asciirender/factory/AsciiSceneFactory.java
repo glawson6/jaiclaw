@@ -51,8 +51,13 @@ import static io.jaiclaw.asciirender.factory.ParamCoercions.castStringObjectMap;
  *
  * <p>Supported {@code type} values: {@code rectangle}, {@code line},
  * {@code label}, {@code text}, {@code dot}, {@code circle},
- * {@code ellipse}, {@code table}, {@code plot}. See the per-element
- * methods in {@link ElementBuilders} for accepted parameter keys.
+ * {@code ellipse}, {@code table}, {@code plot}, {@code glyph}. See the
+ * per-element methods in {@link ElementBuilders} for accepted
+ * parameter keys. The {@code glyph} type resolves names against the
+ * shared {@link io.jaiclaw.asciirender.glyph.GlyphRegistry#global()}
+ * registry — see the {@code io.jaiclaw.asciirender.glyph} package for
+ * the built-in vocabulary and the {@code GlyphContribution} SPI
+ * adopters use to add their own.
  */
 public final class AsciiSceneFactory {
 

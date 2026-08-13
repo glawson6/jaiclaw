@@ -1,0 +1,33 @@
+{
+  "_comment": "Sequential pipeline steps — arrow glyphs mark the flow, bullet glyphs mark completed stages. Regenerate with ./render.sh glyph-progress",
+  "width": 66,
+  "height": 6,
+  "elements": [
+    {"type": "label", "params": {"text": "BUILD PIPELINE", "x": 2, "y": 0}},
+
+    {"type": "glyph", "params": {"x": 2,  "y": 2, "name": "bullet"}},
+    {"type": "label", "params": {"text": "fetch", "x": 4, "y": 2}},
+
+    {"type": "glyph", "params": {"x": 11, "y": 2, "name": "arrow"}},
+
+    {"type": "glyph", "params": {"x": 14, "y": 2, "name": "bullet"}},
+    {"type": "label", "params": {"text": "compile", "x": 16, "y": 2}},
+
+    {"type": "glyph", "params": {"x": 25, "y": 2, "name": "arrow"}},
+
+    {"type": "glyph", "params": {"x": 28, "y": 2, "name": "bullet"}},
+    {"type": "label", "params": {"text": "test", "x": 30, "y": 2}},
+
+    {"type": "glyph", "params": {"x": 36, "y": 2, "name": "arrow"}},
+
+    {"type": "glyph", "params": {"x": 39, "y": 2, "name": "pending"}},
+    {"type": "label", "params": {"text": "package", "x": 41, "y": 2}},
+
+    {"type": "glyph", "params": {"x": 51, "y": 2, "name": "arrow"}},
+
+    {"type": "glyph", "params": {"x": 54, "y": 2, "name": "question"}},
+    {"type": "label", "params": {"text": "deploy", "x": 56, "y": 2}},
+
+    {"type": "label", "params": {"text": "● complete  ⧗ running  ? gated", "x": 2, "y": 4}}
+  ]
+}

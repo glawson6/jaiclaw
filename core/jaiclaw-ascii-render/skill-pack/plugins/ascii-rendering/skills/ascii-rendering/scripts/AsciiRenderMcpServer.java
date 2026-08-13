@@ -1,6 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //JAVA 21
-//DEPS io.jaiclaw:jaiclaw-ascii-render:0.8.1-SNAPSHOT
+//DEPS io.jaiclaw:jaiclaw-ascii-render:1.0.1-SNAPSHOT
 //DEPS tools.jackson.core:jackson-databind:2.18.2
 //REPOS taptech=https://tooling.taptech.net/repository/maven-public/
 
@@ -37,7 +37,7 @@ public class AsciiRenderMcpServer {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String PROTOCOL_VERSION = "2024-11-05";
     private static final String SERVER_NAME = "jaiclaw-ascii-render";
-    private static final String SERVER_VERSION = "0.8.1";
+    private static final String SERVER_VERSION = "1.0.1";
 
     public static void main(String[] args) throws IOException {
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
@@ -143,8 +143,11 @@ public class AsciiRenderMcpServer {
         tool.put("name", "ascii_render");
         tool.put("description",
                 "Render a structured ASCII scene from a canvas spec. Use for diagrams "
-                + "with multiple boxes, lines, labels, plots, tables. Supports element "
-                + "types: rectangle, line, label, text, dot, circle, ellipse, table, plot. "
+                + "with multiple boxes, lines, labels, plots, tables, and named status glyphs. "
+                + "Supports element types: rectangle, line, label, text, dot, circle, "
+                + "ellipse, table, plot, glyph. The glyph type renders named status markers "
+                + "(ok, fail, warn, info, arrow, bullet, star, pending, question) via "
+                + "{\"type\":\"glyph\",\"params\":{\"x\":..,\"y\":..,\"name\":\"ok\"}}. "
                 + "Coordinates: origin (0,0) at top-left; x grows right, y grows down.");
         ObjectNode schema = tool.putObject("inputSchema");
         schema.put("type", "object");
@@ -164,7 +167,7 @@ public class AsciiRenderMcpServer {
 
         ObjectNode elements = props.putObject("elements");
         elements.put("type", "array");
-        elements.put("description", "List of {type, params} entries. type: rectangle | line | label | text | dot | circle | ellipse | table | plot. params: object with x/y/width/height/text/etc as appropriate.");
+        elements.put("description", "List of {type, params} entries. type: rectangle | line | label | text | dot | circle | ellipse | table | plot | glyph. params: object with x/y/width/height/text/name/etc as appropriate. For glyph elements pass {name:'ok'} to look up a built-in status marker, or {glyph:'⚡', semanticClass:'INFO'} for a literal.");
 
         ArrayNode required = schema.putArray("required");
         required.add("width");

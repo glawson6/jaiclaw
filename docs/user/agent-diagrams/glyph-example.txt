@@ -1,0 +1,10 @@
+  SYSTEM STATUS                                             
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│  ✓  gateway     ready                                    │
+│  ✓  auth        ready                                    │
+│  ⚠  cache       stale                                    │
+│  ✗  queue       offline                                  │
+│  ⧗  migration   running                                  │
+│  ▸  docs        updated                                  │
+└──────────────────────────────────────────────────────────┘

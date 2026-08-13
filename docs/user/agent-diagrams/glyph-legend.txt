@@ -1,0 +1,14 @@
+  BUILT-IN GLYPH VOCABULARY                                 
+┌──────────────────────────────────────────────────────────┐
+│                                                          │
+│  ✓  ok / check       (SUCCESS)                           │
+│  ✗  fail / cross     (ERROR)                             │
+│  !  warn / bang      (WARNING)                           │
+│  ⚠  warning          (WARNING)                           │
+│  ▸  info / arrowhead (INFO)                              │
+│  ▶  arrow            (INFO)                              │
+│  ●  bullet / dot     (NEUTRAL)                           │
+│  ★  star             (INFO)                              │
+│  ⧗  pending / hourglass (NEUTRAL)                        │
+│  ?  question         (INFO)                              │
+└──────────────────────────────────────────────────────────┘
