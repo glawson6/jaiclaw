@@ -1,0 +1,10 @@
+  RELEASE 1.0.2 CHECKLIST                               
+┌──────────────────────────────────────────────────────┐
+│                                                      │
+│  ✓  compile all modules                              │
+│  ✓  unit tests (2,341 passing)                       │
+│  ⧗  integration tests                                │
+│  ✗  dep vulnerability scan                           │
+│  ?  release notes review                             │
+│  ⧗  sign + push artifacts                            │
+└──────────────────────────────────────────────────────┘

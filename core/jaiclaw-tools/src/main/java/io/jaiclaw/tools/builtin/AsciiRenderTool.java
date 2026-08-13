@@ -58,7 +58,7 @@ public class AsciiRenderTool extends AbstractBuiltinTool {
                 },
                 "elements": {
                   "type": "array",
-                  "description": "Scene elements in z-order. Each entry: {\\"type\\": string, \\"params\\": object}. Types: rectangle | line | label | text | dot | circle | ellipse | table | plot.",
+                  "description": "Scene elements in z-order. Each entry: {\\"type\\": string, \\"params\\": object}. Types: rectangle | line | label | text | dot | circle | ellipse | table | plot | glyph. The 'glyph' type renders a named status glyph — e.g. {\\"type\\":\\"glyph\\",\\"params\\":{\\"x\\":2,\\"y\\":3,\\"name\\":\\"ok\\"}} draws a green check-mark at (2,3). Built-in names: ok/check, fail/cross, warn/bang, warning, info/arrowhead, arrow, bullet/dot, star, pending/hourglass, question. Alternatively supply a literal 'glyph' + optional 'semanticClass' (SUCCESS|WARNING|ERROR|INFO|NEUTRAL|DECORATIVE) for a one-off character.",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -84,10 +84,13 @@ public class AsciiRenderTool extends AbstractBuiltinTool {
         super(new ToolDefinition(
                 "ascii_render",
                 "Render a declarative scene (rectangles, lines, labels, text blocks, dots, "
-                        + "circles, ellipses, tables, scatter plots) to ASCII art. Use for "
-                        + "diagrams, boxes, charts that should be embedded in chat responses. "
-                        + "Supports channel-aware rendering profiles (telegram_mobile, "
-                        + "slack_desktop, etc.) that supply width / padding defaults when omitted.",
+                        + "circles, ellipses, tables, scatter plots, named status glyphs) to "
+                        + "ASCII art. Use for diagrams, boxes, charts that should be embedded "
+                        + "in chat responses. Supports channel-aware rendering profiles "
+                        + "(telegram_mobile, slack_desktop, etc.) that supply width / padding "
+                        + "defaults when omitted. Named glyphs (ok, fail, warn, info, arrow, "
+                        + "bullet, star, pending, question) are addressable via "
+                        + "{\"type\":\"glyph\",\"params\":{\"x\":..,\"y\":..,\"name\":\"ok\"}}.",
                 ToolCatalog.SECTION_RENDERING,
                 INPUT_SCHEMA,
                 Set.of(ToolProfile.FULL, ToolProfile.CODING, ToolProfile.MESSAGING)

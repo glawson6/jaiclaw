@@ -54,9 +54,26 @@ public class GithubCommentTool extends AbstractGithubTool {
         String body = requireParam(parameters, "body");
 
         GHIssue issue = repo(repo).getIssue(number);
-        GHIssueComment comment = issue.comment(body);
+        GHIssueComment comment = postComment(issue, body);
         return new ToolResult.Success(
                 "Posted comment to " + repo + " #" + number
                         + " (" + body.length() + " chars). URL: " + comment.getHtmlUrl());
+    }
+
+    /**
+     * Post {@code body} on {@code issue} and return the created comment.
+     *
+     * <p>Exists as a separate method for one reason: {@code GHIssue} in
+     * github-api 1.330 declares two {@code public} overloads of
+     * {@code comment(String)} — one returning {@code void}, one returning
+     * {@code GHIssueComment}. Their JVM descriptors differ (return type is
+     * part of the descriptor) so production dispatches correctly, but
+     * Spock's byte-buddy mock proxy keys stubs on (name, param-types) only
+     * and picks between them non-deterministically. Extracting the call
+     * into this method gives tests a single, unambiguous mocking surface —
+     * stub {@code postComment(...)} instead of {@code GHIssue.comment(...)}.
+     */
+    protected GHIssueComment postComment(GHIssue issue, String body) throws Exception {
+        return issue.comment(body);
     }
 }

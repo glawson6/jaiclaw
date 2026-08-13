@@ -1,0 +1,21 @@
+{
+  "_comment": "Literal glyphs — no registry lookup. Uses the raw 'glyph' + 'semanticClass' path for one-off emoji. Regenerate with ./render.sh glyph-custom-emoji",
+  "width": 56,
+  "height": 8,
+  "elements": [
+    {"type": "label",     "params": {"text": "DEPLOYMENT TARGETS", "x": 2, "y": 0}},
+    {"type": "rectangle", "params": {"x": 0, "y": 1, "width": 56, "height": 7}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 3, "glyph": "☁", "semanticClass": "INFO"}},
+    {"type": "label", "params": {"text": "aws-prod-us-east", "x": 6, "y": 3}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 4, "glyph": "☁", "semanticClass": "INFO"}},
+    {"type": "label", "params": {"text": "gcp-staging-eu",   "x": 6, "y": 4}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 5, "glyph": "⌂", "semanticClass": "NEUTRAL"}},
+    {"type": "label", "params": {"text": "onprem-dc-1",       "x": 6, "y": 5}},
+
+    {"type": "glyph", "params": {"x": 3, "y": 6, "glyph": "⚡", "semanticClass": "SUCCESS"}},
+    {"type": "label", "params": {"text": "edge-worker-fast",  "x": 6, "y": 6}}
+  ]
+}

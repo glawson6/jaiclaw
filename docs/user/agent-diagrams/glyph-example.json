@@ -1,0 +1,27 @@
+{
+  "_comment": "Glyph element demo — status grid using name-lookup against the built-in GlyphRegistry. Regenerate with ./render.sh glyph-example",
+  "width": 60,
+  "height": 10,
+  "elements": [
+    {"type": "label",     "params": {"text": "SYSTEM STATUS", "x": 2, "y": 0}},
+    {"type": "rectangle", "params": {"x": 0, "y": 1, "width": 60, "height": 9}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 3, "name": "ok"}},
+    {"type": "label", "params": {"text": "gateway     ready",  "x": 6, "y": 3}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 4, "name": "ok"}},
+    {"type": "label", "params": {"text": "auth        ready",  "x": 6, "y": 4}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 5, "name": "warning"}},
+    {"type": "label", "params": {"text": "cache       stale",  "x": 6, "y": 5}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 6, "name": "fail"}},
+    {"type": "label", "params": {"text": "queue       offline","x": 6, "y": 6}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 7, "name": "pending"}},
+    {"type": "label", "params": {"text": "migration   running","x": 6, "y": 7}},
+
+    {"type": "glyph", "params": {"x": 3,  "y": 8, "name": "info"}},
+    {"type": "label", "params": {"text": "docs        updated","x": 6, "y": 8}}
+  ]
+}

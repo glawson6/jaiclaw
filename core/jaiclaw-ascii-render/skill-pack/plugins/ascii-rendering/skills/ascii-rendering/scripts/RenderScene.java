@@ -1,6 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //JAVA 21
-//DEPS io.jaiclaw:jaiclaw-ascii-render:0.8.1-SNAPSHOT
+//DEPS io.jaiclaw:jaiclaw-ascii-render:1.0.1-SNAPSHOT
 //REPOS taptech=https://tooling.taptech.net/repository/maven-public/
 
 import io.jaiclaw.asciirender.factory.AsciiSceneFactory;
