@@ -61,6 +61,16 @@
             <artifactId>spring-web</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- Spring Security — needed by GdprAuthzExpressions + @PreAuthorize on
+             GdprController. Optional so adopters without Spring Security continue
+             to compile + run; the @PreAuthorize annotation is silently inert
+             when Spring Security is absent from the classpath. Same pattern as
+             extensions/jaiclaw-pipeline-authoring. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

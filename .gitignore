@@ -3,6 +3,13 @@ target/
 *.iml
 *.class
 CLAUDE.md
+# Environment files — catch-all (any .env anywhere in the tree). Specific
+# entries below are kept for documentation of known locations.
+.env
+**/.env
+.env.local
+.env.*.local
+*.env
 docker-compose/.env
 docker-compose/docker-compose.auth-volumes.yml
 *.log

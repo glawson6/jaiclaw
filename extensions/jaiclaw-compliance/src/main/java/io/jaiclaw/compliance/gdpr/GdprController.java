@@ -6,6 +6,7 @@ import io.jaiclaw.core.tenant.TenantContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,9 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
  * responsible for populating the tenant context; if it's absent the
  * controller returns 403 rather than falling through to a global scope.
  *
- * <p>Rate-limiting + auth belong at the gateway layer and aren't wired here.
- * Adopters SHOULD front this controller with rate-limiter middleware and
- * require a role like {@code gdpr.operator} on the calling principal.
+ * <p>Method-level {@code @PreAuthorize} on both endpoints delegates to
+ * {@link GdprAuthzExpressions#operator()}, which checks the role named by
+ * {@code jaiclaw.compliance.gdpr.roles.operator} (default
+ * {@code GDPR_OPERATOR}). Setting the role to blank short-circuits to
+ * "any authenticated principal" — useful during initial rollout. When
+ * Spring Security is absent from the classpath, {@code @PreAuthorize} is
+ * silently inert and the controller behaves as it did pre-1.1.0.
+ *
+ * <p>Rate-limiting still belongs at the gateway layer and isn't wired here.
+ * Adopters SHOULD front this controller with rate-limiter middleware
+ * proportional to their DSAR volume.
  */
 @RestController
 @RequestMapping("/api/gdpr")
@@ -46,6 +55,7 @@ public class GdprController {
      * @param dataSubjectId the subject identifier
      * @param format        {@code json} (default), {@code json_ld}, {@code csv_bundle}
      */
+    @PreAuthorize("@gdprAuthzExpressions.operator()")
     @GetMapping("/export/{dataSubjectId}")
     public ResponseEntity<DataSubjectExportService.DataSubjectExport> export(
             @PathVariable String dataSubjectId,
@@ -64,6 +74,7 @@ public class GdprController {
     /**
      * GDPR Art. 17 — erase every stored artifact for a data subject.
      */
+    @PreAuthorize("@gdprAuthzExpressions.operator()")
     @DeleteMapping("/subject/{dataSubjectId}")
     public ResponseEntity<DataSubjectErasureSpi.ErasureResult> erase(
             @PathVariable String dataSubjectId,

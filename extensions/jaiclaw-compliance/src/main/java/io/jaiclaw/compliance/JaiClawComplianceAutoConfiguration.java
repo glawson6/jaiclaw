@@ -10,6 +10,8 @@ import io.jaiclaw.compliance.gdpr.AggregateDataSubjectExportService;
 import io.jaiclaw.compliance.gdpr.AuditBasedRopaGenerator;
 import io.jaiclaw.compliance.gdpr.DefaultPrivacyNoticeService;
 import io.jaiclaw.compliance.gdpr.DefaultProcessorMetadataExporter;
+import io.jaiclaw.compliance.gdpr.GdprAuthzExpressions;
+import io.jaiclaw.compliance.gdpr.GdprAuthzProperties;
 import io.jaiclaw.compliance.gdpr.InMemoryConsentManager;
 import io.jaiclaw.compliance.gdpr.InMemoryObjectionService;
 import io.jaiclaw.compliance.gdpr.RegexPromptRedactor;
@@ -27,6 +29,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -37,7 +40,22 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration
 @ConditionalOnClass(TranscriptStore.class)
+@EnableConfigurationProperties(GdprAuthzProperties.class)
 public class JaiClawComplianceAutoConfiguration {
+
+    /**
+     * Bean referenced from {@code @PreAuthorize} SpEL on
+     * {@link io.jaiclaw.compliance.gdpr.GdprController} Article 15 / 17
+     * endpoints. Always registered — the {@code @PreAuthorize} annotations
+     * on the controller are inert when Spring Security is absent from the
+     * classpath, so the bean can safely exist even in non-Security
+     * deployments.
+     */
+    @Bean(name = "gdprAuthzExpressions")
+    @ConditionalOnMissingBean(GdprAuthzExpressions.class)
+    public GdprAuthzExpressions gdprAuthzExpressions(GdprAuthzProperties properties) {
+        return new GdprAuthzExpressions(properties.roles());
+    }
 
     /**
      * RetentionEnforcementService — only exists when retention enforcement
