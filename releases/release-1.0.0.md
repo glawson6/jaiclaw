@@ -1,7 +1,9 @@
 # JaiClaw 1.0.0 Release Notes
 
+> **NOTE — 2026-08-13:** the Embabel-gate blocker described below was resolved when Embabel `1.5.0` GA landed on Maven Central on 2026-08-11. **Adopters starting fresh should skip 1.0.0 and go straight to [1.1.0](release-1.1.0.md)** — the first Boot-4-line JaiClaw release on Central. 1.0.0 remains available on TapTech Nexus for adopters already deployed against it. This file is preserved as the historical record of the Boot-4 line-swap.
+
 **Release Date:** 2026-07-25 (Nexus) — see § Distribution
-**Distribution:** TapTech Nexus (`tooling.taptech.net`) at initial release. Maven Central publication is deferred until Embabel 2.0.0 GAs to Central (Embabel currently ships only `2.0.0-SNAPSHOT`, and Central rejects SNAPSHOT deps in release artifacts). See § Distribution and [../docs/spring-boot-4-upgrade/02-embabel-gate.md](../docs/spring-boot-4-upgrade/02-embabel-gate.md).
+**Distribution:** TapTech Nexus (`tooling.taptech.net`) at initial release. Maven Central publication was deferred at 1.0.0 because Embabel shipped only `2.0.0-SNAPSHOT` at the time, and Central rejects SNAPSHOT deps in release artifacts. See § Distribution and [../docs/spring-boot-4-upgrade/02-embabel-gate.md](../docs/spring-boot-4-upgrade/02-embabel-gate.md) for the full history.
 
 > 1.0.0 is the **Spring Boot 4 line-swap release**. Every Tier-1 dependency in the framework moves to its Boot-4-compatible major version in a single coordinated bundle:
 >

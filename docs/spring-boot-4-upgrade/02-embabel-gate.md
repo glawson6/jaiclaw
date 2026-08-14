@@ -1,6 +1,8 @@
 # 02 — The Embabel Gate
 
-> Embabel is JaiClaw's binding Tier-1 dependency (agent runtime via GOAP). It is the **only** dependency without a Boot-4-compatible release, and therefore the single hard gate on cutting 1.0.0 with Spring Boot 4.
+> **GATE RESOLVED — 2026-08-13.** Embabel `1.5.0` GA landed on Maven Central on 2026-08-11. JaiClaw `1.1.0` (2026-08-13) is the first Boot-4-line release on Central. This doc is preserved as the historical record of the ~9-month blocker; the "Current status (2026-08-13)" section below is now the load-bearing summary.
+
+> Embabel is JaiClaw's binding Tier-1 dependency (agent runtime via GOAP). It was the **only** dependency without a Boot-4-compatible release, and therefore the single hard gate on cutting 1.0.0 with Spring Boot 4.
 > Primary sources: [issue #1052](https://github.com/embabel/embabel-agent/issues/1052) · [Spring Boot 4 / Spring AI 2.0 migration wiki](https://github.com/embabel/embabel-agent/wiki/Spring-Boot-4---Spring-AI-2.0-Migration) · verified 2026-07-13.
 
 ## Current status (2026-08-13)

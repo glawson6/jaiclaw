@@ -3,7 +3,7 @@
 # JaiClaw Installer — curl-installable setup script
 #
 # Usage:
-#   curl -fsSL https://jaiclaw.io/install.sh | bash                        # default (JAR from Nexus)
+#   curl -fsSL https://jaiclaw.io/install.sh | bash                        # default (JAR from Maven Central)
 #   curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --docker         # Docker-backed launcher
 #   curl -fsSL https://jaiclaw.io/install.sh | bash -s -- --from-source    # Build from git
 #
@@ -13,14 +13,16 @@
 #   ./install.sh --from-source                                              # From-source build
 #
 # Install modes:
-#   default        — download the CLI fat jar from Nexus (needs Java 21 locally;
-#                    offers to install via SDKMAN if missing). If the requested
-#                    version's fat jar is missing from Nexus (404 or corrupt),
-#                    AUTO-FALLS-BACK to --from-source using the matching git
-#                    tag (`v${JAICLAW_VERSION}`) — so `curl | bash` still lands
-#                    a working install even when a release's fat jar upload
-#                    failed. Set JAICLAW_REF to override the tag; set
-#                    JAICLAW_SOURCE_DIR to skip the clone.
+#   default        — download the CLI fat jar from Maven Central (needs Java 21
+#                    locally; offers to install via SDKMAN if missing). If the
+#                    requested version's fat jar is missing from Central (404
+#                    or corrupt), AUTO-FALLS-BACK to --from-source using the
+#                    matching git tag (`v${JAICLAW_VERSION}`) — so `curl | bash`
+#                    still lands a working install even when a release's fat
+#                    jar upload failed. Set JAICLAW_REF to override the tag;
+#                    set JAICLAW_SOURCE_DIR to skip the clone. Override the
+#                    JAR mirror via JAICLAW_CLI_BASE_URL (default: Maven
+#                    Central; TapTech Nexus is a valid alternative).
 #   --docker       — pull the CLI Docker image and install a shim launcher
 #                    (needs Docker locally; no Java needed).
 #   --from-source  — clone the repo (or use JAICLAW_SOURCE_DIR) and build the
@@ -50,7 +52,7 @@ set -euo pipefail
 JAICLAW_VERSION="${JAICLAW_VERSION:-latest}"
 JAICLAW_HOME="${JAICLAW_HOME:-$HOME/.jaiclaw}"
 JAICLAW_REPO="glawson6/jaiclaw"
-JAICLAW_CLI_BASE_URL="${JAICLAW_CLI_BASE_URL:-https://tooling.taptech.net/repository/maven-public/io/jaiclaw/jaiclaw-cli}"
+JAICLAW_CLI_BASE_URL="${JAICLAW_CLI_BASE_URL:-https://repo1.maven.org/maven2/io/jaiclaw/jaiclaw-cli}"
 JAICLAW_DOCKER_IMAGE_BASE="${JAICLAW_DOCKER_IMAGE_BASE:-tooling.taptech.net:5000/jaiclaw-cli}"
 JAVA_MIN_VERSION=21
 

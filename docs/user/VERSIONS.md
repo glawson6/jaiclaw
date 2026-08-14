@@ -2,6 +2,50 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 1.1.0 (released 2026-08-13)
+
+Published to **Maven Central** — first Central publish since 0.9.3, unblocked by the Embabel `1.5.0` GA on Central (2026-08-11). No `<repositories>` block, no snapshot repos, no credentials — the BOM import is all adopters need:
+
+```xml
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.jaiclaw</groupId>
+      <artifactId>jaiclaw-bom</artifactId>
+      <version>1.1.0</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+The same 1.1.0 artifacts are mirrored on **TapTech Nexus** (`https://tooling.taptech.net/repository/maven-releases/`); adopters already wired for Nexus can keep pointing there.
+
+See [`releases/release-1.1.0.md`](../../releases/release-1.1.0.md) for the full change catalogue.
+
+### Highlights
+
+- **Embabel `1.5.0` GA on Maven Central** — the Boot-4 stack (Spring Boot 4.1.0 + Spring AI 2.0.0 GA + Spring 7.0.8 + Kotlin 2.2.21 + Jackson 3.1.4) resolves cleanly from Central.
+- **New `glyph` scene element in `jaiclaw-ascii-render`** — first-class status glyphs (`ok`, `fail`, `warn`, `info`, `arrow`, `bullet`, `star`, `pending`, `question`, plus aliases). Custom-glyph SPI (`GlyphContribution` bean) + optional `AnsiPalette` post-render colorizer. Full docs at `core/jaiclaw-ascii-render/skill-pack/plugins/ascii-rendering/skills/ascii-rendering/GLYPHS.md`.
+- **New "How to Build an AI Agent" doc set** — `docs/user/WHAT-IS-AGENTIC-AI.md` + `docs/user/BUILDING-AGENTS.md` + `docs/user/agent-diagrams/*`.
+- **MCP design-patterns doc** — `docs/user/features/mcp-design-patterns.md` catalogues five reusable JaiClaw MCP shapes.
+- **GitHub actionable slash-command dispatcher** in `jaiclaw-cli-github`.
+- **Overload-ambiguity fix in `github_comment` tool** — `GHIssue.comment(String)` in `github-api 1.330` has two `public` overloads (`void` vs. `GHIssueComment`) with identical erased signatures. Extracted the ambiguous call into `protected postComment(GHIssue, String)` so tests mock the unambiguous helper via `Spy`. 10/10 isolated runs green after the fix.
+
+### No breaking changes
+
+All Highlights are additive. Adopters on 1.0.0 upgrade by bumping the BOM version — nothing else.
+
+### Dependency deltas (vs 1.0.0)
+
+| Component | 1.0.0 | 1.1.0 |
+|---|---|---|
+| Embabel Agent | Boot-4 SNAPSHOT line | **1.5.0 GA on Maven Central** |
+| Everything else | see below | unchanged |
+
+---
+
 ## 1.0.0 (released 2026-07-25)
 
 Published to TapTech's Nexus at
@@ -108,11 +152,9 @@ pre-release UAT sweep verification.
 - **New module: `jaiclaw-session-redis`** — Redis-backed `SessionManager` for durable chat history that survives pod restarts. Closes the durable-backend follow-up piece (the SPI + `InMemorySessionManager` default shipped in 0.9.1; this ships the Redis backend). Two Redis keys per session (`{prefix}:{tenantId}:{sessionKey}` metadata blob + `:msgs` LIST of message envelopes) plus a per-tenant index SET. `RPUSH` on the hot `appendMessage` path; `WATCH/MULTI/EXEC` for atomic `transitionState` compare-and-set with 3-retry budget. Tenant scoping via `TenantGuard.resolveTenantPrefix()`; belt-and-braces re-validation on read against the decoded `Session.tenantId` matches `InMemorySessionManager`. Hand-rolled `SessionCodec` with an explicit `"type"` discriminator on each Message envelope — the sealed `io.jaiclaw.core.model.Message` hierarchy round-trips without touching core. Forward-compat on decode: unknown fields ignored, missing optionals default. Configurable TTL (default 30d). Opt-in via `jaiclaw.agent.session.backend=redis` + `jaiclaw.agent.session.redis.{prefix,ttl}`; falls back to the framework's `InMemorySessionManager` otherwise. Not pulled by `jaiclaw-spring-boot-starter` — adopters add the dependency explicitly. 32 new Spock specs green (12 codec + 15 manager against mocked `StringRedisTemplate` + 5 autoconfig). See `docs/user/SESSION-BACKENDS.md`.
 - **Pipeline author-declared result slot (`jaiclaw-pipeline`)** — pipelines can now declare a caller-visible completion string that flows through the summary + status endpoint + SSE. New `PipelineResult` interface (`RESULT_KEY = "__result__"`) + `TextResult` convenience record. Authors declare a result three ways (resolution priority): (1) a stage bean writes `exchange.setProperty(PipelineResult.RESULT_KEY, "...")` — the runtime copies it into that stage's `StageOutput.metadata` and the completion path walks `stageOutputs` in reverse insertion order to find the first non-blank one; (2) a definition-level `PipelineBuilder.resultTemplate("...")` resolved via `TemplateResolver` (persists to YAML through the new nullable `PipelineDefinition.resultTemplate` field); (3) fallback `"SUCCESS"` so callers never see `null` on the happy path. Nullable `result` field added to `PipelineExecutionSummary`, `StatusBody`, and `PipelineExecutionCompletedEvent` — all 4 KB-capped with the same `"…[truncated]"` marker as `failureReason`. Failed executions keep `result = null`. Backward-compat overloads keep the 5-arg `.of(...)` factory, the 2-arg `completedSuccessfully(...)`, the 2-arg `succeeded(...)`, and the 1-arg `firePipelineEnd(ctx)` working unchanged. 16 new Spock specs green (`PipelineResultResolutionSpec` × 8 + `PipelineExecutionSummaryResultSpec` × 6 + `PipelineHookFirerResultSpec` × 2).
 
-### Known limitations
+### Known limitations (superseded by 1.1.0)
 
-- `1.0.0` is **not on Maven Central** — it carries `embabel-agent:2.0.0-SNAPSHOT` transitively, which Central rejects. First Central publication follows Embabel 2.0.0 GA to Central (release-2.0 label on [Embabel issue #1052](https://github.com/embabel/embabel-agent/issues/1052)).
-- Adopters who need a Central-hosted line today should stay on the latest `0.9.x` Maven Central release.
-- The Nexus release at `https://tooling.taptech.net/repository/maven-releases/` is anonymous-read; production consumers who accept the Nexus dependency (and the transitive Embabel SNAPSHOT) can adopt `1.0.0` today.
+- `1.0.0` was **Nexus-only** — it carried `embabel-agent:2.0.0-SNAPSHOT` transitively, which Central rejects. **Resolved in 1.1.0**: Embabel `1.5.0` GA landed on Maven Central on 2026-08-11, and JaiClaw `1.1.0` (2026-08-13) is the first Central publish of this line. Adopters starting fresh should skip 1.0.0 and go straight to 1.1.0.
 
 ---
 

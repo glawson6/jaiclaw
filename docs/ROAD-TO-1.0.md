@@ -6,9 +6,11 @@
 > release notes and [`releases/uat-1.0.0.md`](../releases/uat-1.0.0.md)
 > for the pre-release UAT verification.
 >
-> Maven Central publication is deferred until Embabel 2.0.0 GAs to
-> Central (Embabel currently ships `2.0.0-SNAPSHOT`; Central rejects
-> SNAPSHOT deps in release artifacts).
+> **✅ MAVEN CENTRAL — 2026-08-13.** JaiClaw
+> [1.1.0](../releases/release-1.1.0.md) is the first Boot-4-line
+> release on Maven Central, unblocked by the Embabel `1.5.0` GA on
+> Central (2026-08-11). Adopters starting fresh should skip 1.0.0 and
+> go straight to 1.1.0.
 >
 > This document is preserved as the historical planning arc that led
 > to 1.0. The `@Stable` / `@Experimental` / `@Internal` contract

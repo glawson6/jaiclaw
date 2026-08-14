@@ -17,7 +17,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.0"></a>
   <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.0-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="https://tooling.taptech.net/repository/maven-releases/io/jaiclaw/jaiclaw-bom/"><img src="https://img.shields.io/badge/TapTech%20Nexus-1.0.0-blueviolet" alt="TapTech Nexus 1.0.0"></a>
+  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.1.0-blue" alt="Maven Central 1.1.0"></a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@ JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI
 
 Built on Java 21, Spring Boot 4.1.0, Spring AI 2.0.0, Embabel Agent 2.0.0-SNAPSHOT, Spring Shell 4.0.2, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
 
-**1.0.0 released** to TapTech Nexus (`https://tooling.taptech.net/repository/maven-releases/`) on 2026-07-25. Adopter reads are anonymous — no credentials required. Maven Central publication follows Embabel 2.0.0 GA to Central; see [Distribution](#distribution) for the adopter recipe and the release notes at [releases/release-1.0.0.md](releases/release-1.0.0.md) for the full change catalogue.
+**1.1.0 released to Maven Central** on 2026-08-13 — the first Central publish since 0.9.3, unblocked by the Embabel `1.5.0` GA on Central (2026-08-11). See [Distribution](#distribution) for the adopter recipe and the release notes at [releases/release-1.1.0.md](releases/release-1.1.0.md) for the full change catalogue. TapTech Nexus remains an alternative mirror for adopters already wired for it.
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, declarative pipelines, scaffolding tooling, and security hardening that don't exist in the Node.js version.
 
@@ -48,9 +48,25 @@ It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/op
 
 For Java teams building their own AI agent product on top of a proven foundation. Pull JaiClaw via the BOM, compose the [Spring Boot starters](jaiclaw-starters/) you need, implement the SPIs for your business domain. The framework gets out of your way.
 
-#### <a name="distribution"></a>Distribution — 1.0.0 on TapTech Nexus
+#### <a name="distribution"></a>Distribution — 1.1.0 on Maven Central
 
-1.0.0 is published to TapTech Nexus (`https://tooling.taptech.net/repository/maven-releases/`). Adopter reads are anonymous — no `<servers>` block in `~/.m2/settings.xml` needed. The reactor pulls `embabel-agent:2.0.0-SNAPSHOT` transitively, so add both the taptech-releases and embabel-snapshots repos:
+1.1.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-bom</artifactId>
+            <version>1.1.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+**Alternative mirror — TapTech Nexus.** The same 1.1.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
 
 ```xml
 <repositories>
@@ -60,28 +76,10 @@ For Java teams building their own AI agent product on top of a proven foundation
         <releases><enabled>true</enabled></releases>
         <snapshots><enabled>false</enabled></snapshots>
     </repository>
-    <repository>
-        <id>embabel-snapshots</id>
-        <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
-        <snapshots><enabled>true</enabled></snapshots>
-        <releases><enabled>false</enabled></releases>
-    </repository>
 </repositories>
-
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>io.jaiclaw</groupId>
-            <artifactId>jaiclaw-bom</artifactId>
-            <version>1.0.0</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
 ```
 
-**Maven Central**: not yet. 1.0.0 carries the `embabel-agent:2.0.0-SNAPSHOT` transitive, which Central rejects. First Central publication follows Embabel 2.0.0 GA (see [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md)). Adopters who need a Central-hosted line today should stay on the 0.9.x releases.
+Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changes that. See [releases/release-1.1.0.md](releases/release-1.1.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
 
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 

@@ -94,28 +94,15 @@ you've set one).
 
 ### Path 2 — Embed in your own Spring Boot app
 
-```xml
-<repositories>
-  <repository>
-    <id>taptech-releases</id>
-    <url>https://tooling.taptech.net/repository/maven-releases/</url>
-    <releases><enabled>true</enabled></releases>
-    <snapshots><enabled>false</enabled></snapshots>
-  </repository>
-  <repository>
-    <id>embabel-snapshots</id>
-    <url>https://repo.embabel.com/artifactory/libs-snapshot</url>
-    <snapshots><enabled>true</enabled></snapshots>
-    <releases><enabled>false</enabled></releases>
-  </repository>
-</repositories>
+`1.1.0` is on **Maven Central** — no `<repositories>` block, no snapshot repos, no credentials. Just import the BOM:
 
+```xml
 <dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.jaiclaw</groupId>
       <artifactId>jaiclaw-bom</artifactId>
-      <version>1.0.0</version>
+      <version>1.1.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -134,15 +121,7 @@ you've set one).
 </dependencies>
 ```
 
-**Distribution note:** 1.0.0 is published to TapTech Nexus
-(`https://tooling.taptech.net/repository/maven-releases/`) — anonymous
-reads work; no `<servers>` block in `~/.m2/settings.xml` needed. Maven
-Central publication follows Embabel 2.0.0 GA to Central (Embabel
-currently ships `2.0.0-SNAPSHOT`; Central rejects SNAPSHOT deps in
-release artifacts). Adopters who need a Central-hosted line today
-should stay on the 0.9.x releases. See
-[`releases/release-1.0.0.md`](../../releases/release-1.0.0.md) for the
-full release notes.
+**Alternative mirror — TapTech Nexus.** The same 1.1.0 artifacts are mirrored at `https://tooling.taptech.net/repository/maven-releases/`; adopters already wired for Nexus can keep pointing there by adding a `<repository>` for `taptech-releases`. See [`releases/release-1.1.0.md`](../../releases/release-1.1.0.md) for the full release notes.
 
 Then write a minimal application. The
 [hello-world example](../../jaiclaw-examples/hello-world/) shows the
