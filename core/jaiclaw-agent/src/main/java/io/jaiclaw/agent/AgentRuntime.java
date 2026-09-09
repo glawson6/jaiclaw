@@ -56,6 +56,13 @@ import java.util.stream.Collectors;
 public class AgentRuntime {
 
     private static final Logger log = LoggerFactory.getLogger(AgentRuntime.class);
+
+    /**
+     * {@link ToolContext#contextData()} key under which the active
+     * {@link AgentRuntimeContext} is published, so tools that spawn child runs
+     * can inherit tenant, profile and delegation depth from their caller.
+     */
+    public static final String AGENT_RUNTIME_CONTEXT_KEY = "jaiclaw.agent.runtimeContext";
     private static final Executor AGENT_EXECUTOR = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "agent-worker");
         t.setDaemon(true);
@@ -653,7 +660,12 @@ public class AgentRuntime {
                 context.agentId(),
                 context.sessionKey(),
                 context.session() != null ? context.session().id() : "unknown",
-                context.workspaceDir()
+                context.workspaceDir(),
+                // Carry the runtime context so tools that need to spawn work on
+                // behalf of this run (delegate_task) can inherit its tenant,
+                // tool profile and delegation depth. ToolContext itself stays a
+                // @Stable core type with no dependency on jaiclaw-agent.
+                Map.of(AGENT_RUNTIME_CONTEXT_KEY, context)
         );
     }
 
