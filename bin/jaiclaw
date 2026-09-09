@@ -545,6 +545,68 @@ cmd_auth_status() {
     fi
 }
 
+# ─── Emergency stop (fast-path, pre-JVM) ─────────────────────────────────────
+# The ESTOP sentinel is a plain file, so pause/resume never needs a JVM — an
+# operator can stop the fleet even when the app is wedged. Kept byte-compatible
+# with io.jaiclaw.core.ops.EmergencyStop: same path, same JSON body.
+
+estop_path() { echo "$JAICLAW_HOME/ESTOP"; }
+
+cmd_pause() {
+    local reason="${1:-}"
+    local sentinel
+    sentinel="$(estop_path)"
+    mkdir -p "$JAICLAW_HOME"
+
+    # Match EmergencyStop.engage(): {"reason":<json>,"engagedAt":"<iso8601>"}
+    local reason_json
+    if [[ -z "$reason" ]]; then
+        reason_json="null"
+    else
+        # Escape backslashes then quotes; control chars are not expected here.
+        reason_json="\"$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+    fi
+    local now
+    now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    printf '{"reason":%s,"engagedAt":"%s"}' "$reason_json" "$now" > "$sentinel.tmp"
+    mv -f "$sentinel.tmp" "$sentinel"
+
+    ok "Emergency stop ENGAGED"
+    info "Sentinel: $sentinel"
+    [[ -n "$reason" ]] && info "Reason:   $reason"
+    echo
+    warn "New work is refused: gateway messages, cron jobs, kanban processors and"
+    warn "pipeline triggers. Work already in flight runs to completion."
+    info "Resume with: jaiclaw resume"
+}
+
+cmd_resume() {
+    local sentinel
+    sentinel="$(estop_path)"
+    if [[ -f "$sentinel" ]]; then
+        rm -f "$sentinel"
+        ok "Emergency stop RELEASED — new work is accepted again"
+    else
+        info "Emergency stop was not engaged (no sentinel at $sentinel)"
+    fi
+}
+
+cmd_estop_status() {
+    local sentinel
+    sentinel="$(estop_path)"
+    if [[ -f "$sentinel" ]]; then
+        err "Emergency stop is ENGAGED"
+        info "Sentinel: $sentinel"
+        local body
+        body="$(cat "$sentinel" 2>/dev/null || true)"
+        [[ -n "$body" ]] && info "Body:     $body"
+        return 1
+    fi
+    ok "Running — emergency stop is not engaged"
+    return 0
+}
+
 # ─── 1Password setup wizard (fast-path, pre-JVM) ─────────────────────────────
 #
 # Walks the operator through writing a `.env.op.tpl` template for a
@@ -932,6 +994,18 @@ case "$SUBCOMMAND" in
     setup-1password|onepassword-setup)
         cmd_setup_1password
         ;;
+    pause)
+        shift
+        # `jaiclaw pause`, `jaiclaw pause "reason"`, or `jaiclaw pause --reason "..."`
+        if [[ "${1:-}" == "--reason" ]]; then shift; fi
+        cmd_pause "${1:-}"
+        ;;
+    resume)
+        cmd_resume
+        ;;
+    estop|estop-status)
+        cmd_estop_status
+        ;;
     # JVM-path commands
     chat|setup|onboard|gateway|gateway-start|gateway-stop|gateway-status|\
     tools|skills|status|models|login|logout|\
@@ -956,6 +1030,9 @@ Fast commands (no JVM):
   profiles switch <name>    Switch active profile
   auth status               Show auth profile status
   setup-1password           Wizard: write .env.op.tpl for `op run` injection
+  pause [--reason "..."]    Engage the emergency stop (refuse new work)
+  resume                    Release the emergency stop
+  estop                     Show emergency stop state (exit 1 when engaged)
 
 JVM commands:
   chat <message>            Send a message (or start REPL)
