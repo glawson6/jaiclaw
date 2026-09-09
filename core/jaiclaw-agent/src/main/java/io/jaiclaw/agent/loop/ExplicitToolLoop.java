@@ -86,7 +86,21 @@ public class ExplicitToolLoop {
         TokenUsage accumulatedUsage = TokenUsage.ZERO;
         long loopStartNanos = System.nanoTime();
 
+        // Phase 1 runtime guards: iteration budget, repetition, empty responses,
+        // approval floors. Neutral unless configured — see LoopGuard.
+        LoopGuard guard = new LoopGuard(config, hooks, agentId, sessionKey);
+
         for (int i = 0; i < config.maxIterations(); i++) {
+            // Budget exhausted, or a guard asked us to stop using tools: make one
+            // final call with no tools attached so the run still answers.
+            if (!guard.tryConsumeIteration() || guard.finalTurnRequested()) {
+                String instruction = guard.finalTurnRequested()
+                        ? guard.finalTurnInstruction()
+                        : BudgetGuard.exhaustedInstruction();
+                return finalTurn(messages, instruction, toolCallHistory,
+                        accumulatedUsage, guard.iterationsUsed(), loopStartNanos);
+            }
+
             // Spring AI 2.0: the internalToolExecutionEnabled(false) flag from 1.x was removed.
             // Instead, the ChatModel only auto-executes tools when a caller-supplied
             // ToolCallingManager is wired into the ChatModel's construction. Our
@@ -111,7 +125,15 @@ public class ExplicitToolLoop {
             LlmTraceLogger.logIteration(i + 1, messages, output.getText(),
                     toolsByName.values(), iterationUsage.inputTokens(), iterationUsage.outputTokens());
 
-            if (output.getToolCalls() == null || output.getToolCalls().isEmpty()) {
+            int requestedToolCalls = output.getToolCalls() == null ? 0 : output.getToolCalls().size();
+            boolean forceAfterEmpty = guard.observeResponse(output.getText(), requestedToolCalls);
+
+            if (requestedToolCalls == 0) {
+                if (forceAfterEmpty) {
+                    // Two consecutive empty responses — ask once, explicitly, for an answer.
+                    return finalTurn(messages, EmptyResponseGuard.instruction(), toolCallHistory,
+                            accumulatedUsage, guard.iterationsUsed(), loopStartNanos);
+                }
                 long durationMs = (System.nanoTime() - loopStartNanos) / 1_000_000;
                 return new LoopResult(output.getText(), toolCallHistory, i + 1, accumulatedUsage, durationMs);
             }
@@ -131,9 +153,39 @@ public class ExplicitToolLoop {
                             agentId, sessionKey, tc.name(), tc.arguments(), iteration));
                 }
 
-                // Optional approval gate
                 String toolArguments = tc.arguments();
-                if (config.requireApproval() && approvalHandler != null) {
+
+                // Repetition guard — identical consecutive calls mean a stuck model.
+                RepetitionGuard.Verdict verdict = guard.observeToolCall(tc.name(), toolArguments);
+                if (verdict == RepetitionGuard.Verdict.NOTIFY) {
+                    String notice = RepetitionGuard.notice(tc.name());
+                    responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), notice));
+                    toolCallHistory.add(ToolCallEvent.after(tc.name(), toolArguments, notice, iteration, sessionKey));
+                    if (hooks != null) {
+                        hooks.fireVoid(ToolCallEndedEvent.of(
+                                agentId, sessionKey, tc.name(), toolArguments, notice, iteration));
+                    }
+                    continue;
+                }
+
+                // Approval floor — a per-tool minimum posture the model cannot talk past.
+                ApprovalFloor floor = guard.floorFor(tc.name());
+                if (floor == ApprovalFloor.DENY) {
+                    String denial = "Tool call denied: `" + tc.name()
+                            + "` is blocked by an operator approval floor and cannot be used.";
+                    responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), denial));
+                    toolCallHistory.add(ToolCallEvent.after(tc.name(), toolArguments, denial, iteration, sessionKey));
+                    if (hooks != null) {
+                        hooks.fireVoid(ToolCallEndedEvent.of(
+                                agentId, sessionKey, tc.name(), toolArguments, denial, iteration));
+                    }
+                    continue;
+                }
+
+                // Optional approval gate. A PROMPT_ALWAYS floor forces the gate on for
+                // this tool even when the session would otherwise skip approval.
+                boolean approvalRequired = config.requireApproval() || floor == ApprovalFloor.PROMPT_ALWAYS;
+                if (approvalRequired && approvalHandler != null) {
                     try {
                         Map<String, Object> params = parseParams(toolArguments);
                         var decision = approvalHandler.requestApproval(tc.name(), params, sessionKey).get();
@@ -179,6 +231,13 @@ public class ExplicitToolLoop {
                     result = "ERROR: Unknown tool: " + tc.name();
                 }
 
+                // One-time budget checkpoint, appended to the next real tool result so
+                // the model learns how much room it has left (Hermes pattern).
+                String budgetWarning = guard.takeBudgetWarning();
+                if (budgetWarning != null) {
+                    result = result + "\n\n" + budgetWarning;
+                }
+
                 responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), result));
 
                 // Fire AFTER_TOOL_CALL hook
@@ -194,8 +253,40 @@ public class ExplicitToolLoop {
         }
 
         log.warn("Explicit tool loop hit max iterations ({}) for session {}", config.maxIterations(), sessionKey);
+        return finalTurn(messages, BudgetGuard.exhaustedInstruction(), toolCallHistory,
+                accumulatedUsage, config.maxIterations(), loopStartNanos);
+    }
+
+    /**
+     * Runs one last model call with <em>no tools attached</em> and an explicit
+     * instruction to answer, then returns its text.
+     *
+     * <p>This is what a guard trip produces instead of the old bare
+     * "Max iterations reached" string: the model still gets to summarise what it
+     * accomplished. If that final call fails for any reason we fall back to the
+     * instruction text rather than propagating — a guard must never turn a
+     * partially successful run into an exception.
+     */
+    private LoopResult finalTurn(List<Message> messages, String instruction,
+                                 List<ToolCallEvent> toolCallHistory,
+                                 TokenUsage accumulatedUsage, int iterationsUsed,
+                                 long loopStartNanos) {
+        List<Message> finalMessages = new ArrayList<>(messages);
+        finalMessages.add(new UserMessage(instruction));
+
+        String text;
+        try {
+            ChatResponse response = chatModel.call(new Prompt(finalMessages));
+            accumulatedUsage = accumulatedUsage.add(extractUsage(response));
+            text = response.getResult().getOutput().getText();
+            if (text == null || text.isBlank()) text = instruction;
+        } catch (Exception e) {
+            log.warn("Final tool-less turn failed for session — returning guard instruction", e);
+            text = instruction;
+        }
+
         long durationMs = (System.nanoTime() - loopStartNanos) / 1_000_000;
-        return new LoopResult("Max iterations reached (" + config.maxIterations() + ")", toolCallHistory, config.maxIterations(), accumulatedUsage, durationMs);
+        return new LoopResult(text, toolCallHistory, iterationsUsed, accumulatedUsage, durationMs);
     }
 
     @SuppressWarnings("unchecked")

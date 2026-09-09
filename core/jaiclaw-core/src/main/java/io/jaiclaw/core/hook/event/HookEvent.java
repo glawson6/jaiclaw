@@ -44,7 +44,8 @@ public sealed interface HookEvent
                 PipelineStageStartedEvent, PipelineStageCompletedEvent,
                 PipelineStageFailedEvent,
                 PipelineDeployedEvent, PipelineUndeployedEvent,
-                SoulUpdatedEvent, MemoryUpdatedEvent, TendenciesUpdatedEvent {
+                SoulUpdatedEvent, MemoryUpdatedEvent, TendenciesUpdatedEvent,
+                BudgetWarningEvent, RepetitionDetectedEvent, EmergencyStopEvent {
 
     /** The agent id firing this event (e.g. {@code "default"}). Never null. */
     String agentId();

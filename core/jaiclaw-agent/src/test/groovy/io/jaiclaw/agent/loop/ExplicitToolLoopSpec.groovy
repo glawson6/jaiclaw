@@ -102,14 +102,40 @@ class ExplicitToolLoopSpec extends Specification {
         1 * hooks.fireVoid(_ as ToolCallEndedEvent)
     }
 
-    def "stops at max iterations"() {
-        given:
-        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 2, false)
+    def "exhausting the budget ends with a tool-less final turn"() {
+        given: "a 2-iteration budget and a model that keeps asking for the same tool"
+        // Repetition threshold is disabled here so the budget, not the repetition
+        // guard, is what ends the run.
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 2, false,
+                null, ToolLoopConfig.DEFAULT_WARNING_RATIO, 0, [:])
         def loop = new ExplicitToolLoop(chatModel, config, null, null)
 
         def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "myTool", '{}')
         def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
+        def summary = new ChatResponse(List.of(new Generation(textMessage("Here is what I found."))))
 
+        // Two tool-calling turns, then the tool-less final turn returns prose.
+        chatModel.call(_ as Prompt) >>> [toolResponse, toolResponse, summary]
+
+        def mockTool = mockToolCallback("myTool", "result")
+
+        when:
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
+
+        then: "the run answers rather than returning a placeholder"
+        result.finalText() == "Here is what I found."
+        result.iterationsUsed() == 2
+        result.durationMs() >= 0
+    }
+
+    def "budget exhaustion falls back to the guard instruction when the final turn yields no prose"() {
+        given: "a model that only ever emits tool calls, even on the final turn"
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 2, false,
+                null, ToolLoopConfig.DEFAULT_WARNING_RATIO, 0, [:])
+        def loop = new ExplicitToolLoop(chatModel, config, null, null)
+
+        def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "myTool", '{}')
+        def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
         chatModel.call(_ as Prompt) >> toolResponse
 
         def mockTool = mockToolCallback("myTool", "result")
@@ -117,10 +143,9 @@ class ExplicitToolLoopSpec extends Specification {
         when:
         def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
 
-        then:
-        result.finalText().contains("Max iterations reached")
+        then: "the caller still gets a coherent explanation, never an empty string"
+        result.finalText().contains("budget")
         result.iterationsUsed() == 2
-        result.durationMs() >= 0
     }
 
     def "approval denial stops tool execution"() {
