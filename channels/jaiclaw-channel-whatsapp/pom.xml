@@ -14,9 +14,6 @@
     <name>JaiClaw :: Channel :: WhatsApp</name>
     <description>WhatsApp channel adapter using Apache Camel camel-whatsapp component</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <dependency>

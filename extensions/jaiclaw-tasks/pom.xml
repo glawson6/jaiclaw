@@ -14,9 +14,6 @@
     <name>JaiClaw :: Tasks</name>
     <description>Task executor and flow engine with JSON persistence, dual-mode execution (Camel SEDA / virtual threads), and CRUD tools</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <dependency>

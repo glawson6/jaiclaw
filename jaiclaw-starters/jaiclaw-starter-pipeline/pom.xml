@@ -15,9 +15,6 @@
     <name>JaiClaw :: Starter :: Pipeline</name>
     <description>JaiClaw starter for declarative multi-stage pipeline orchestration</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <dependency>

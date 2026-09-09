@@ -56,11 +56,20 @@ jobs:
 
       - name: Run OWASP dependency-check
         run: |
+          # -Dnvd.api.key is REQUIRED here, not just the NVD_API_KEY env var.
+          # The POM reads the Maven property ${nvd.api.key} (pom.xml), and
+          # nothing bridges an env var to it. Without this flag the plugin
+          # aborts on the first artifact with
+          #   NvdApiException: Invalid API Key, length of 0 too short
+          # and every downstream step still reports success. That defect
+          # silently produced ZERO CVE data on every scheduled run up to
+          # 2026-09-08 — see security-report-2026-09-08.md.
           ./mvnw -B \
             org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=7.0 \
             -DsuppressionFiles=.security/dependency-check-suppressions.xml \
             -Dformat=ALL \
+            -Dnvd.api.key="$NVD_API_KEY" \
             -DossIndex.user="$OSS_USERNAME" \
             -DossIndex.token="$OSS_API_TOKEN" \
             -DdataDirectory="${{ github.workspace }}/.dc-data"
@@ -74,6 +83,44 @@ jobs:
           # either way.
           OSS_USERNAME: ${{ secrets.OSS_USERNAME }}
           OSS_API_TOKEN: ${{ secrets.OSS_API_TOKEN }}
+
+      # A scan that analyzes zero dependencies is indistinguishable from a
+      # clean scan in the plugin's exit code. That is exactly how this
+      # workflow reported "green" while producing no CVE data at all: the
+      # only report ever committed (jaiclaw-bom, 2026-08-24) contained
+      # "dependencies": 0. Assert the aggregate count is non-trivial so a
+      # broken scan fails loudly instead of passing silently.
+      - name: Assert the scan actually analyzed dependencies
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys
+
+          MIN_DEPS = 500  # the 2026-09-08 full-reactor baseline was 12,182
+
+          reports = [f for f in glob.glob('**/target/dependency-check-report.json',
+                                          recursive=True)
+                     if 'node_modules' not in f]
+          if not reports:
+              sys.exit('FAIL: no dependency-check JSON reports were produced.')
+
+          total = 0
+          for path in reports:
+              try:
+                  with open(path) as handle:
+                      total += len(json.load(handle).get('dependencies', []))
+              except (OSError, ValueError) as exc:
+                  sys.exit(f'FAIL: unreadable report {path}: {exc}')
+
+          print(f'{len(reports)} report(s), {total} dependency entries analyzed.')
+          if total < MIN_DEPS:
+              sys.exit(
+                  f'FAIL: only {total} dependency entries analyzed '
+                  f'(expected >= {MIN_DEPS}). The scan aborted early — most '
+                  'likely a missing or rejected NVD API key. Treat this run '
+                  'as PRODUCING NO CVE DATA, not as a clean result.'
+              )
+          PY
 
       - name: Upload dependency-check reports
         if: always()

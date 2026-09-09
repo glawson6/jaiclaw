@@ -78,10 +78,14 @@
             <artifactId>jaiclaw-channel-telegram</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Version inherited from the root POM's camel.version property.
+             Was pinned at 4.18.2 here while 15 other modules used 4.21.0 —
+             a three-minor drift in the artifact every adopter consumes.
+             Found by the 2026-09-08 CVE scan. -->
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
-            <version>4.18.2</version>
+            <version>${camel.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>

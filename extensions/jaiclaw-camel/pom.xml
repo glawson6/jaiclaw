@@ -18,7 +18,6 @@
         <!-- Camel 4.19 is the first Boot-4 release (drops Boot 3 in the same release);
              we stay on the non-LTS 4.21.x line until the next Boot-4-compatible LTS ships.
              See docs/spring-boot-4-upgrade/07-camel-and-other-deps.md. -->
-        <camel.version>4.21.0</camel.version>
     </properties>
 
     <dependencies>

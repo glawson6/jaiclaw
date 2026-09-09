@@ -47,11 +47,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- jsoup normalizes HTML fragments to XHTML for OpenHTMLtoPDF -->
+        <!-- jsoup normalizes HTML fragments to XHTML for OpenHTMLtoPDF.
+             Version managed in the root POM's CVE-override block. -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.18.3</version>
             <optional>true</optional>
         </dependency>
 

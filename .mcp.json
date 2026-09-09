@@ -1,7 +1,14 @@
 {
   "mcpServers": {
     "jaiclaw-docs": {
+      "type": "sse",
       "url": "http://localhost:8888/mcp/docs/sse"
+    },
+    "drawio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@drawio/mcp@1.5.0"],
+      "env": {}
     }
   }
 }

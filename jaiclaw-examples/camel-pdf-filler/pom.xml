@@ -46,9 +46,6 @@
         </dependency>
     </dependencies>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <build>
         <plugins>

@@ -14,18 +14,45 @@
   Three confirmed false positives are documented here as of 0.9.2; the
   rest will migrate one-by-one as they're re-triaged against the
   current dependency tree (see docs/dev/RELEASE-PLAN-0.9.2.md §7).
+
+  2026-09-08 re-triage: the first NVD-backed scan this project has ever
+  completed (170 module reports, 12,182 dependency entries) surfaced 139
+  unique (artifact, CVE) pairs. 119 of them were CPE name collisions,
+  which the entries below now encode by class rather than one-by-one:
+
+    1. JaiClaw's OWN jars matching consumer-app CPEs. dependency-check
+       derives a CPE from the artifact name, so jaiclaw-channel-whatsapp
+       matches cpe:/a:whatsapp:whatsapp and inherits every WhatsApp
+       *mobile client* CVE (CVE-2019-3568 et al., 15 of them at CVSS 9.8).
+       Same for telegram / signal / line. These are JaiClaw adapter
+       modules; the mobile-app CVEs are unreachable by construction.
+    2. Upstream libraries whose CVE record belongs to a different product
+       with a similar name, or to a different language binding.
+
+  Each entry states which of the two it is and cites the evidence.
 -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
 
     <suppress>
         <notes><![CDATA[
         FALSE POSITIVE: dependency-check matches the LINE Messaging API
-        SDK's Jackson companion module against CVEs filed against the
-        WhatsApp mobile client (also named "line"). The vulnerable CPE
-        is for an unrelated product family. Confirmed against
-        security-report-2026-06-15.md.
+        SDK against CVEs filed against the LINE *consumer messenger* client
+        for iOS/Android (cpe:/a:line:line). The vulnerable CPE is for an
+        unrelated product family — a server-side bot SDK cannot reach an
+        iOS TLS-verification or Android integer-overflow bug. Confirmed
+        against security-report-2026-06-15.md.
+
+        (The original 0.9.2 note said "WhatsApp mobile client" here; that
+        was a copy-paste slip from the camel-whatsapp entry below — the
+        product is LINE. Corrected 2026-09-08.)
+
+        2026-09-08: widened from line-bot-jackson to every
+        com.linecorp.bot:line-bot-* artifact. The scan showed the same
+        inherited records (CVE-2023-5554 at 9.8, CVE-2019-6010,
+        CVE-2021-41011, CVE-2022-41568, the CVE-2025-1402x family) on
+        line-bot-webhook and line-bot-client-base as well.
         ]]></notes>
-        <packageUrl regex="true">^pkg:maven/com\.linecorp\.bot/line-bot-jackson@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/com\.linecorp\.bot/line-bot-.*@.*$</packageUrl>
         <cpe>cpe:/a:line:line</cpe>
     </suppress>
 
@@ -37,9 +64,49 @@
         artifact whose name starts with "telegram"; CVE records like
         CVE-2024-* on the Messenger app are not reachable via a Camel
         webhook receiver. Confirmed against security-report-2026-06-15.md.
+
+        2026-09-08: this long-form CPE turned out to match nothing in
+        practice — dependency-check actually assigns the SHORT form
+        cpe:2.3:a:telegram:telegram to these artifacts (confirmed by
+        reading `vulnerabilityIds` out of the JSON report). The entry is
+        retained because the long form is what NVD registers for some
+        Telegram records; the short-form entry in the Class 1 block below
+        is the one that does the work. The camel CPE
+        (cpe:2.3:a:apache:camel) is deliberately NOT suppressed on any
+        entry — a real Apache Camel CVE must still fail the build.
         ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.apache\.camel/camel-telegram@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?@.*$</packageUrl>
         <cpe>cpe:/a:telegram:telegram_messenger</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: Telegram *client* CVEs matched against artifacts
+        whose name merely contains "telegram" — Apache Camel's Telegram
+        component and JaiClaw's own Telegram adapters. CVE-2019-10044
+        (8.8), CVE-2024-7014 (8.1) and CVE-2021-31320/31321 (7.1) are all
+        against the Telegram desktop/mobile applications. These four are
+        pinned by CVE id as a belt-and-braces layer; the short-form
+        cpe:2.3:a:telegram:telegram entry below is what covers the whole
+        family (13+ records) without enumerating ids.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <cve>CVE-2019-10044</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the Telegram-client CVE entry above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <cve>CVE-2024-7014</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the Telegram-client CVE entry above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <cve>CVE-2021-31320</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the Telegram-client CVE entry above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <cve>CVE-2021-31321</cve>
     </suppress>
 
     <suppress>
@@ -52,6 +119,524 @@
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.camel/camel-whatsapp@.*$</packageUrl>
         <cpe>cpe:/a:whatsapp:whatsapp</cpe>
+    </suppress>
+
+    <!-- ==================================================================
+         2026-09-08 re-triage — Class 1: JaiClaw's own jars vs consumer-app CPEs
+         ==================================================================
+
+         IMPORTANT — <cpe> suppression DOES NOT WORK for these records on
+         dependency-check 12.1.0. This was established empirically on
+         2026-09-08 against jaiclaw-channel-line: the short product form
+         (cpe:2.3:a:linecorp:line), the full versioned form
+         (cpe:2.3:a:line:line:9.15.0:*:*:*:*:*:*:*) and a regex form were
+         each tried in isolation, and all three still failed the build,
+         while a <cve> entry in the same file suppressed its record
+         immediately.
+
+         The <cpe> entries in this block are therefore RETAINED ONLY AS
+         DOCUMENTATION of which consumer-product CPE each artifact collides
+         with. The suppression that actually takes effect is the
+         per-family <vulnerabilityName> regex block at the END of this
+         file. If you add a new colliding artifact, add it there — adding
+         only a <cpe> entry here will silently do nothing.
+
+         The legitimate product CPE for each artifact — cpe:2.3:a:apache:camel
+         on the Camel components, cpe:2.3:a:apache:pdfbox, etc. — is
+         deliberately never suppressed, so a real CVE in the actual library
+         still fails the build.
+    -->
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (Telegram consumer client): every artifact whose name
+        contains "telegram" is assigned cpe:2.3:a:telegram:telegram and
+        inherits the Telegram desktop/mobile CVE history — CVE-2019-10044,
+        CVE-2024-7014, CVE-2021-3131x/3132x, CVE-2020-10570, CVE-2020-12474,
+        CVE-2021-2720x, CVE-2019-16248, CVE-2021-27351, CVE-2021-36769 and
+        more. Affects Apache Camel's camel-telegram + camel-telegram-starter
+        and JaiClaw's own jaiclaw-channel-telegram / jaiclaw-docstore-telegram.
+        All are server-side Bot API clients over HTTPS; none contains the
+        Telegram client codebase. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <cpe>cpe:2.3:a:telegram:telegram</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (WhatsApp consumer client), short-CPE form. Covers
+        camel-whatsapp, camel-whatsapp-starter and jaiclaw-channel-whatsapp.
+        See the long-form entries for the full rationale.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-whatsapp(-starter)?|io\.jaiclaw/jaiclaw-channel-whatsapp)@.*$</packageUrl>
+        <cpe>cpe:2.3:a:whatsapp:whatsapp</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (LINE consumer messenger), short-CPE form. Covers
+        every com.linecorp.bot:line-bot-* artifact and JaiClaw's own
+        jaiclaw-channel-line. See the long-form entry at the top of this
+        file for the full rationale.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(com\.linecorp\.bot/line-bot-.*|io\.jaiclaw/jaiclaw-channel-line)@.*$</packageUrl>
+        <cpe>cpe:2.3:a:line:line</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (LINE consumer messenger), linecorp vendor form.
+        dependency-check assigns cpe:2.3:a:linecorp:line to the LINE SDK
+        artifacts in addition to cpe:2.3:a:line:line — verified from the
+        scan's ERROR output. Same rationale as the other LINE entries: a
+        server-side bot SDK cannot reach an iOS/Android messenger bug.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(com\.linecorp\.bot/line-bot-.*|io\.jaiclaw/jaiclaw-channel-line)@.*$</packageUrl>
+        <cpe>cpe:2.3:a:linecorp:line</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (Signal consumer client), short-CPE form. Covers
+        jaiclaw-channel-signal. See the long-form entry for rationale.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-channel-signal@.*$</packageUrl>
+        <cpe>cpe:2.3:a:signal:signal</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (Tasks.org Android app), short-CPE form. Covers
+        io.jaiclaw:jaiclaw-tasks. See the long-form entry for rationale.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-tasks@.*$</packageUrl>
+        <cpe>cpe:2.3:a:tasks:tasks</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (Element Matrix client), short-CPE form. Covers
+        io.jaiclaw:jaiclaw-ascii-render. See the long-form entry for
+        rationale.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <cpe>cpe:2.3:a:element:element</cpe>
+    </suppress>
+
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-channel-whatsapp is JaiClaw's own
+        WhatsApp *channel adapter*. dependency-check derives a CPE from the
+        artifact name and matches cpe:/a:whatsapp:whatsapp, inheriting the
+        entire WhatsApp mobile-client CVE history — 15 records at CVSS 9.8
+        (CVE-2018-6349/6350, CVE-2019-3568, CVE-2019-11933, CVE-2020-1891/
+        1907/1909, CVE-2021-24026/24041/24042, CVE-2022-36934 and others).
+        These are buffer overflows and RCEs in the Android/iOS WhatsApp
+        application. This artifact is a Spring adapter that speaks the
+        WhatsApp Business HTTP API; none of that native client code exists
+        here. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-channel-whatsapp@.*$</packageUrl>
+        <cpe>cpe:/a:whatsapp:whatsapp</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: Apache Camel's WhatsApp *starter* — the Spring Boot
+        packaging of camel-whatsapp, matched against the WhatsApp mobile
+        client CPE for the same reason as the camel-whatsapp entry above.
+        The starter is a thin auto-configuration wrapper; the WhatsApp
+        native-client CVEs (CVE-2020-1907 et al.) are unreachable.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.camel\.springboot/camel-whatsapp-starter@.*$</packageUrl>
+        <cpe>cpe:/a:whatsapp:whatsapp</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-tasks is JaiClaw's own task/work
+        item module. dependency-check matches it against the "Tasks.org"
+        Android to-do application on the bare word "tasks", inheriting
+        CVE-2020-22475 (VoiceCommandActivity insecure permissions) and
+        CVE-2022-39349 (ShareLinkActivity.kt handling). Both are Android
+        Activity components; this is a server-side Java module with no
+        Android code. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-tasks@.*$</packageUrl>
+        <cpe>cpe:/a:tasks:tasks</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the jaiclaw-tasks / Tasks.org entry above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-tasks@.*$</packageUrl>
+        <cve>CVE-2020-22475</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the jaiclaw-tasks / Tasks.org entry above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-tasks@.*$</packageUrl>
+        <cve>CVE-2022-39349</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-video-generation is JaiClaw's own
+        video-generation extension, matched against the Drupal "Video"
+        contributed module. CVE-2015-3362 is an XSS in the Drupal video
+        WYSIWYG plugin (7.x-2.x) — a PHP CMS component with no relationship
+        to this artifact. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-video-generation@.*$</packageUrl>
+        <cve>CVE-2015-3362</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (Drupal "Video" module), product-CPE form. The
+        scanner assigns cpe:2.3:a:video_project:video to
+        io.jaiclaw:jaiclaw-video-generation on the bare word "video".
+        Suppressing the product CPE rather than the single CVE so future
+        Drupal Video advisories do not re-surface here.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-video-generation@.*$</packageUrl>
+        <cpe>cpe:2.3:a:video_project:video</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-channel-telegram and
+        jaiclaw-docstore-telegram are JaiClaw's own Telegram Bot API
+        adapters, matched against cpe:/a:telegram:telegram_messenger —
+        the consumer messenger app. Inherited CVE-2019-10044 (8.8),
+        CVE-2024-7014 (8.1), CVE-2021-31320/31321 (7.1) are all against
+        the Telegram desktop/mobile clients. JaiClaw polls the Bot API
+        over HTTPS; no messenger client code is present.
+        Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-(channel|docstore)-telegram@.*$</packageUrl>
+        <cpe>cpe:/a:telegram:telegram_messenger</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-channel-signal is JaiClaw's own
+        Signal channel adapter, matched against the Signal desktop/mobile
+        client CPE. Inherited CVE-2018-16132 (8.6) and CVE-2022-28345 (7.5)
+        are against the Signal client applications, not a server-side
+        adapter. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-channel-signal@.*$</packageUrl>
+        <cpe>cpe:/a:signal:signal</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-channel-line is JaiClaw's own
+        LINE channel adapter, matched against cpe:/a:line:line — the LINE
+        consumer messenger. Same class of collision as the line-bot-jackson
+        entry above. Confirmed by the 2026-09-08 NVD-backed scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-channel-line@.*$</packageUrl>
+        <cpe>cpe:/a:line:line</cpe>
+    </suppress>
+
+
+    <!-- ==================================================================
+         2026-09-08 re-triage — Class 2: upstream product / binding mismatches
+         ================================================================== -->
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: spring-cloud-starter-vault-config is assigned
+        cpe:2.3:a:vmware:spring_cloud_config (confidence HIGHEST) purely on
+        the "config" name fragment. The three flagged records —
+        CVE-2026-40982 (9.1 CRITICAL, directory traversal in
+        spring-cloud-config-server), CVE-2026-41002 (8.1, TOCTOU on
+        spring.cloud.config.server.git.basedir) and CVE-2026-40981 (7.5,
+        GCP Secrets Manager backend cross-project exposure) — are all
+        against Spring Cloud *Config Server*, a different artifact.
+        Verified 2026-09-08: spring-cloud-config-server and
+        spring-cloud-starter-config appear nowhere in the reactor; JaiClaw
+        uses Spring Cloud *Vault* to mount HashiCorp Vault secrets as
+        property sources. The vulnerable server code is not on the
+        classpath.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.cloud/spring-cloud-(starter-)?vault-config@.*$</packageUrl>
+        <cpe>cpe:/a:vmware:spring_cloud_config</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: com.paypal.sdk:paypal-server-sdk (a server-side
+        REST SDK) matches the PayPal *Android application* CPE. Both
+        flagged records are from 2013 and explicitly scoped to the mobile
+        app: CVE-2013-7202 (8.1) "The WebHybridClient class in PayPal 5.3
+        and earlier for Android" and CVE-2013-7201 (7.4)
+        "WebHybridClient.java ... ignores SSL errors". There is no
+        WebHybridClient in a server SDK. Confirmed by the 2026-09-08 scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.paypal\.sdk/paypal-server-sdk@.*$</packageUrl>
+        <cve>CVE-2013-7201</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: see the CVE-2013-7201 entry above — same artifact,
+        same PayPal-for-Android mismatch.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.paypal\.sdk/paypal-server-sdk@.*$</packageUrl>
+        <cve>CVE-2013-7202</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (wrong language binding): CVE-2026-0994 (7.5) is a
+        recursion-depth DoS in google.protobuf.json_format.ParseDict() —
+        the *Python* protobuf runtime. The flagged artifact is
+        protobuf-java. The vulnerable ParseDict entry point does not exist
+        in the Java runtime. Confirmed by the 2026-09-08 scan (5 modules,
+        all via transitive google-cloud / gRPC dependencies).
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.google\.protobuf/protobuf-java@.*$</packageUrl>
+        <cve>CVE-2026-0994</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (wrong artifact): CVE-2026-42582 (7.5) is in
+        io.netty.handler.codec.http3.QpackDecoder#decodeHuffmanEncodedLiteral,
+        fixed in 4.2.13.Final. dependency-check flags netty-transport
+        4.1.135.Final because the CPE matches the netty *product* at that
+        version, but the QPACK/HTTP3 decoder does not live in
+        netty-transport. Verified 2026-09-08 on the jaiclaw-gateway tree:
+        the artifact that actually contains the vulnerable class,
+        io.netty:netty-codec-http3, resolves to 4.2.15.Final — already
+        past the 4.2.13 fix. This closes the "re-evaluate the netty pin in
+        the next CVE scan" TODO in the root POM's CVE-override block.
+
+        Scoped to the io.netty group at the 4.1.x line rather than to
+        individual artifacts: the assigned CPE is cpe:2.3:a:netty:netty,
+        which matches the netty *product* at 4.1.135, so EVERY 4.1.x
+        artifact on the classpath inherits this record — netty-codec,
+        netty-transport, netty-transport-classes-epoll,
+        netty-transport-native-unix-common, netty-handler, and so on.
+        Chasing them by artifact name would be an open-ended list.
+        The HTTP/3 codec that actually contains the vulnerable class is
+        versioned independently (4.2.15.Final) and is NOT covered by this
+        suppression — if netty-codec-http3 is ever flagged below 4.2.13,
+        that is a real finding and must be fixed, not suppressed.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/netty-.*@4\.1\..*$</packageUrl>
+        <cve>CVE-2026-42582</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: io.jaiclaw:jaiclaw-ascii-render is JaiClaw's own
+        ASCII box/diagram renderer. dependency-check matches it against the
+        Element Matrix client CPE (cpe:/a:element:element_*) on the word
+        "element", inheriting CVE-2022-41904 (6.5, Element iOS Megolm trust),
+        CVE-2025-27606 (4.6, Element Android PIN logout) and CVE-2024-26132
+        (3.3, Element Android file sharing). All three are against the
+        Element Matrix mobile clients; this artifact renders text boxes and
+        has no Matrix, crypto, or Android code. Confirmed by the 2026-09-08
+        NVD-backed scan (flagged in 4 modules).
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <cpe>cpe:/a:element:element</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: companion to the jaiclaw-ascii-render entry above —
+        the Element Android/iOS CPEs are registered under several product
+        names, so match by CVE as well to cover the variants.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <cve>CVE-2022-41904</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the jaiclaw-ascii-render / Element entries above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <cve>CVE-2025-27606</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ See the jaiclaw-ascii-render / Element entries above. ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <cve>CVE-2024-26132</cve>
+    </suppress>
+
+    <!-- ==================================================================
+         2026-09-08 re-triage — Class 3: real CVE, unreachable code path
+         ================================================================== -->
+
+    <suppress>
+        <notes><![CDATA[
+        NOT REACHABLE: CVE-2025-67030 (8.8) is a directory traversal in
+        org.codehaus.plexus.util.Expand#extractFile — archive extraction.
+        plexus-utils 3.5.1 reaches JaiClaw only as a *provided*-scope
+        transitive of maven-plugin-api 3.9.8 in jaiclaw-maven-plugin, i.e.
+        it is supplied by the Maven runtime at build time and is never
+        packaged into or shipped with any JaiClaw artifact. Verified
+        2026-09-08: none of the five Mojos (Analyze, Scaffold,
+        VerifyDeploy, ComplianceReport, Catalog) reference plexus Expand or
+        perform archive extraction. Re-evaluate if the plugin ever gains
+        an unpack step; the fix is plexus-utils >= 4.0.1.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.codehaus\.plexus/plexus-utils@.*$</packageUrl>
+        <cve>CVE-2025-67030</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (wrong artifact + already-patched version):
+        CVE-2026-23907 (5.3) and CVE-2026-33929 (4.3) are path-traversal
+        flaws in the *ExtractEmbeddedFiles example*, which ships in
+        pdfbox-examples — not in the core pdfbox artifact. The advisory
+        ranges also end at 3.0.6 ("from 3.0.0 through 3.0.6"), so the
+        pinned 3.0.7 is already past the fix; dependency-check matches on
+        the pdfbox product CPE regardless of sub-artifact. Verified
+        2026-09-08: pdfbox-examples and ExtractEmbeddedFiles appear
+        nowhere in the reactor. Same reasoning covers the xmpbox 2.0.24
+        companion flagged in jaiclaw-html-pdf.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/(pdfbox|xmpbox|fontbox).*@.*$</packageUrl>
+        <cve>CVE-2026-23907</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE: see the CVE-2026-23907 entry above — same
+        pdfbox-examples / ExtractEmbeddedFiles mismatch.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.pdfbox/(pdfbox|xmpbox|fontbox).*@.*$</packageUrl>
+        <cve>CVE-2026-33929</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        VENDOR-DISPUTED, and not reachable with attacker-controlled input.
+        CVE-2023-51079 (5.3) reports that
+        MVEL ParseTools.subCompileExpression can take a long time to
+        compile expressions with many Java class lookups. The NVD record
+        carries an explicit vendor dispute: "the only thing that you could
+        expect is that the parser will take a crazy amount of time to
+        complete its task." mvel2 reaches JaiClaw only as a transitive of
+        drools-mvel in the optional jaiclaw-rules module, where DRL rules
+        are authored by the deploying operator, not supplied by end users.
+        Re-evaluate if jaiclaw-rules ever compiles user-submitted DRL.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.mvel/mvel2@.*$</packageUrl>
+        <cve>CVE-2023-51079</cve>
+    </suppress>
+
+
+    <!-- telegram: 17 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (telegram name collision). Telegram desktop/mobile client CVEs matched against server-side Bot API adapters (Apache Camel components + JaiClaw channel/docstore adapters).
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-telegram(-starter)?|io\.jaiclaw/jaiclaw-(channel|docstore)-telegram)@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2019-10044|CVE-2019-16248|CVE-2020-10570|CVE-2020-12474|CVE-2021-27204|CVE-2021-27205|CVE-2021-27351|CVE-2021-31315|CVE-2021-31317|CVE-2021-31318|CVE-2021-31319|CVE-2021-31320|CVE-2021-31321|CVE-2021-31322|CVE-2021-31323|CVE-2021-36769|CVE-2024-7014)$</vulnerabilityName>
+    </suppress>
+
+    <!-- whatsapp: 25 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (whatsapp name collision). WhatsApp Android/iOS native-client CVEs matched against WhatsApp Business HTTP API adapters.
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(org\.apache\.camel(\.springboot)?/camel-whatsapp(-starter)?|io\.jaiclaw/jaiclaw-channel-whatsapp)@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2018-6344|CVE-2018-6349|CVE-2018-6350|CVE-2018-20655|CVE-2019-3568|CVE-2019-11927|CVE-2019-11931|CVE-2019-11932|CVE-2019-11933|CVE-2019-18426|CVE-2020-1886|CVE-2020-1890|CVE-2020-1891|CVE-2020-1894|CVE-2020-1906|CVE-2020-1907|CVE-2020-1909|CVE-2020-1910|CVE-2021-24026|CVE-2021-24027|CVE-2021-24035|CVE-2021-24041|CVE-2021-24042|CVE-2022-27492|CVE-2022-36934)$</vulnerabilityName>
+    </suppress>
+
+    <!-- line: 10 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (line name collision). LINE consumer messenger (iOS/Android) CVEs matched against the LINE Messaging API server SDK and JaiClaw's LINE adapter.
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/(com\.linecorp\.bot/line-bot-.*|io\.jaiclaw/jaiclaw-channel-line)@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2019-6010|CVE-2021-36214|CVE-2021-36215|CVE-2021-41011|CVE-2022-41568|CVE-2023-5554|CVE-2025-14020|CVE-2025-14021|CVE-2025-14022|CVE-2025-14023)$</vulnerabilityName>
+    </suppress>
+
+    <!-- signal: 2 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (signal name collision). Signal desktop/mobile client CVEs matched against JaiClaw's Signal adapter.
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-channel-signal@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2018-16132|CVE-2022-28345)$</vulnerabilityName>
+    </suppress>
+
+    <!-- tasks: 2 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (tasks name collision). Tasks.org Android app CVEs (Activity components) matched against JaiClaw's server-side task module on the bare word "tasks".
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-tasks@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2020-22475|CVE-2022-39349)$</vulnerabilityName>
+    </suppress>
+
+    <!-- video: 1 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (video name collision). Drupal "Video" contributed-module XSS matched against JaiClaw's video-generation extension.
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-video-generation@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2015-3362)$</vulnerabilityName>
+    </suppress>
+
+    <!-- ascii: 3 inherited consumer-app CVEs -->
+    <suppress>
+        <notes><![CDATA[
+        FALSE POSITIVE (ascii name collision). Element Matrix client CVEs matched against JaiClaw's ASCII renderer on the word "element".
+        dependency-check derives a CPE from the artifact name, so these
+        server-side Java artifacts inherit the consumer application's CVE
+        history. Suppressed by CVE id: <cpe> suppression was verified NOT
+        to work for these records on dependency-check 12.1.0 (tested with
+        the short product form, the full versioned form, and a regex form
+        — all three still failed the build), whereas <cve> suppression
+        works. Full CVE set taken from the 2026-09-08 full-reactor scan.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jaiclaw/jaiclaw-ascii-render@.*$</packageUrl>
+        <vulnerabilityName regex="true">^(CVE-2022-41904|CVE-2025-27606|CVE-2024-26132)$</vulnerabilityName>
     </suppress>
 
 </suppressions>

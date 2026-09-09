@@ -15,9 +15,6 @@
     <name>JaiClaw :: Starter :: Camel</name>
     <description>JaiClaw starter for Apache Camel channel integration with 390+ connectors</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <dependency>

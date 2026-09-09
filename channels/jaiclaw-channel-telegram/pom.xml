@@ -14,9 +14,6 @@
     <name>JaiClaw :: Channel :: Telegram</name>
     <description>Telegram Bot API channel adapter</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <dependency>

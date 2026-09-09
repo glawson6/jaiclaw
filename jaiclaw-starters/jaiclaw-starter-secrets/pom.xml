@@ -15,9 +15,6 @@
     <name>JaiClaw :: Starter :: Secrets</name>
     <description>Pre-packaged secrets management via Spring Cloud Vault and Camel vault components</description>
 
-    <properties>
-        <camel.version>4.21.0</camel.version>
-    </properties>
 
     <dependencies>
         <!-- Spring Cloud Vault — mounts HashiCorp Vault secrets as Spring property sources -->
