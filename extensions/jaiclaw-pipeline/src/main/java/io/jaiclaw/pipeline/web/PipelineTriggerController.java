@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
+import io.jaiclaw.core.ops.EmergencyStop;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,6 +53,11 @@ public class PipelineTriggerController {
     private final PipelineGateway gateway;
     private final PipelineProperties properties;
     private final ObjectProvider<PipelineExecutionTracker> trackerProvider;
+    /**
+     * Optional global emergency stop. Null means "never paused" — the behaviour
+     * of every release before 1.2.0.
+     */
+    private EmergencyStop emergencyStop;
 
     public PipelineTriggerController(
             PipelineGateway gateway,
@@ -62,11 +68,24 @@ public class PipelineTriggerController {
         this.trackerProvider = trackerProvider;
     }
 
+    /** Wires the global emergency stop. Optional; null disables the check. */
+    public void setEmergencyStop(EmergencyStop emergencyStop) {
+        this.emergencyStop = emergencyStop;
+    }
+
     @PostMapping("/trigger")
     public ResponseEntity<?> trigger(
             @RequestBody(required = false) PipelineTriggerRequest request,
             @RequestHeader(value = "X-Tenant-Id", required = false) String tenantIdHeader,
             @RequestHeader(value = "X-Correlation-Id", required = false) String corrIdHeader) {
+
+        // Emergency stop: refuse to start new pipeline runs. Retry-After tells a
+        // well-behaved caller to come back rather than treating this as fatal.
+        if (emergencyStop != null && emergencyStop.isEngaged()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .header("Retry-After", "60")
+                    .body(new ErrorBody("Pipeline triggers are paused by the operator (emergency stop)."));
+        }
 
         if (request == null) {
             return ResponseEntity.badRequest()

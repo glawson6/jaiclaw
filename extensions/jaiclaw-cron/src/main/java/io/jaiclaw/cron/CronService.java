@@ -2,6 +2,7 @@ package io.jaiclaw.cron;
 
 import io.jaiclaw.core.model.CronJob;
 import io.jaiclaw.core.model.CronJobResult;
+import io.jaiclaw.core.ops.EmergencyStop;
 import io.jaiclaw.core.tenant.TenantGuard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,17 @@ public class CronService {
     private final Map<String, ScheduledFuture<?>> scheduledFutures = new ConcurrentHashMap<>();
     private final List<CronJobResult> history = new CopyOnWriteArrayList<>();
     private final TenantGuard tenantGuard;
+    /**
+     * Optional global emergency stop. Null means "never paused" — the behaviour
+     * of every release before 1.2.0.
+     */
+    private EmergencyStop emergencyStop;
+    /**
+     * Job ids already logged as skipped during the current engagement. Cleared
+     * on release so the next pause logs afresh — one line per job per pause,
+     * rather than one line per job per tick.
+     */
+    private final Set<String> estopSkipLogged = ConcurrentHashMap.newKeySet();
 
     public CronService(CronJobStore jobStore, CronJobExecutor executor,
                        int maxConcurrentJobs, int jobTimeoutSeconds) {
@@ -160,7 +172,39 @@ public class CronService {
         });
     }
 
+    /**
+     * Wires the global emergency stop. Optional; a null stop disables the check.
+     */
+    public void setEmergencyStop(EmergencyStop emergencyStop) {
+        this.emergencyStop = emergencyStop;
+    }
+
+    /**
+     * True while the operator has paused the deployment. Due jobs are skipped and
+     * rescheduled rather than dropped, so nothing is lost — the job simply fires
+     * at its next occurrence once the stop is released.
+     */
+    private boolean estopSkip(CronJob job) {
+        if (emergencyStop == null || !emergencyStop.isEngaged()) {
+            if (!estopSkipLogged.isEmpty()) estopSkipLogged.clear();
+            return false;
+        }
+        if (estopSkipLogged.add(job.id())) {
+            log.info("ESTOP engaged — skipping cron job '{}' ({}); it will run at its next "
+                    + "occurrence after release", job.name(), job.id());
+        }
+        return true;
+    }
+
     private void executeAndReschedule(CronJob job) {
+        if (estopSkip(job)) {
+            // Skip the run but keep the schedule alive.
+            Instant skipNext = scheduleComputer.nextFireTime(job.schedule(), job.timezone()).orElse(null);
+            CronJob rescheduled = job.withNextRunAt(skipNext);
+            jobStore.save(rescheduled);
+            if (rescheduled.enabled()) scheduleJob(rescheduled);
+            return;
+        }
         CronJobResult result = executor.execute(job);
         history.add(result);
         CronJob updated = job.withLastRunAt(Instant.now());

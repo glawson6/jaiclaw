@@ -65,6 +65,15 @@
             <artifactId>reactor-netty-http</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Optional: enables EstopActuatorEndpoint (/actuator/jaiclaw-estop).
+             Optional so adopters without actuator on the classpath still get
+             the gateway; the endpoint bean is conditional in the starter. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

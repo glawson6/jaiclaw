@@ -1,5 +1,6 @@
 package io.jaiclaw.kanban.engine;
 
+import io.jaiclaw.core.ops.EmergencyStop;
 import io.jaiclaw.kanban.events.TaskStateChanged;
 import io.jaiclaw.kanban.model.BoardDefinition;
 import io.jaiclaw.kanban.service.KanbanBoardService;
@@ -51,6 +52,11 @@ public class ColumnProcessorManager {
     private final TaskTransitionService transitionService;
     private final AgentColumnProcessor agentProcessor;
     private final Executor executor;
+    /**
+     * Optional global emergency stop. Null means "never paused" — the behaviour
+     * of every release before 1.2.0.
+     */
+    private EmergencyStop emergencyStop;
 
     public ColumnProcessorManager(KanbanBoardService boardService,
                                   TaskStore taskStore,
@@ -73,9 +79,21 @@ public class ColumnProcessorManager {
         this.executor = executor;
     }
 
+    /** Wires the global emergency stop. Optional; null disables the check. */
+    public void setEmergencyStop(EmergencyStop emergencyStop) {
+        this.emergencyStop = emergencyStop;
+    }
+
     @EventListener
     public void onTaskStateChanged(TaskStateChanged event) {
         if (event.toState() == null) return;
+        // Emergency stop: stand down column processors. The card keeps its state,
+        // so moving it again (or re-running the column) after release picks it up.
+        if (emergencyStop != null && emergencyStop.isEngaged()) {
+            log.info("ESTOP engaged — skipping column processor for board {} column {}",
+                    event.boardId(), event.toState());
+            return;
+        }
         BoardDefinition board = boardService.get(event.boardId()).orElse(null);
         if (board == null) return;
         ColumnPolicy policy = board.column(event.toState())

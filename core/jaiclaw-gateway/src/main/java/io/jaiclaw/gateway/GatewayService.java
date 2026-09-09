@@ -13,6 +13,7 @@ import io.jaiclaw.core.agent.AgentHookDispatcher;
 import io.jaiclaw.core.hook.event.HookEvent;
 import io.jaiclaw.core.hook.event.MessageReceivedEvent;
 import io.jaiclaw.core.model.AgentIdentity;
+import io.jaiclaw.core.ops.EmergencyStop;
 import io.jaiclaw.core.model.AssistantMessage;
 import io.jaiclaw.core.model.MediaAttachment;
 import io.jaiclaw.core.tenant.TenantContext;
@@ -58,6 +59,8 @@ public class GatewayService implements ChannelMessageHandler {
     private final ThreadOwnershipTracker ownershipTracker;
     private AgentHookDispatcher hooks;
     private boolean autoVision = true;
+    private EmergencyStop emergencyStop;
+    private String estopMessage = GatewayProperties.DEFAULT_ESTOP_MESSAGE;
 
     public static Builder builder() { return new Builder(); }
 
@@ -102,6 +105,28 @@ public class GatewayService implements ChannelMessageHandler {
     }
 
     /**
+     * Wires the global emergency stop. Optional — a null stop means the gateway
+     * never refuses on ESTOP grounds, which is the behaviour of every release
+     * before 1.2.0.
+     *
+     * @param emergencyStop the sentinel reader
+     * @param estopMessage  refusal text sent to the user while engaged; falls back
+     *                      to {@link GatewayProperties#DEFAULT_ESTOP_MESSAGE}
+     */
+    public void setEmergencyStop(EmergencyStop emergencyStop, String estopMessage) {
+        this.emergencyStop = emergencyStop;
+        if (estopMessage != null && !estopMessage.isBlank()) this.estopMessage = estopMessage;
+    }
+
+    /**
+     * True when the operator has paused the gateway. One filesystem check; no
+     * caching, so a pause takes effect on the very next inbound message.
+     */
+    private boolean estopEngaged() {
+        return emergencyStop != null && emergencyStop.isEngaged();
+    }
+
+    /**
      * Handle an inbound message from any channel adapter.
      * Routes to the agent runtime and delivers the response back through the originating channel.
      */
@@ -109,6 +134,15 @@ public class GatewayService implements ChannelMessageHandler {
     public void onMessage(ChannelMessage message) {
         String sessionKey = message.sessionKey(defaultAgentId);
         log.info("Inbound message on {}: sessionKey={}", message.channelId(), sessionKey);
+
+        // Emergency stop: refuse NEW work only. Turns already in flight are never
+        // interrupted — see docs/user/EMERGENCY-STOP.md.
+        if (estopEngaged()) {
+            log.info("ESTOP engaged — refusing inbound message on {} (sessionKey={})",
+                    message.channelId(), sessionKey);
+            deliverErrorResponse(message, estopMessage);
+            return;
+        }
 
         fireMessageReceived(message, sessionKey, defaultAgentId);
 
@@ -245,6 +279,13 @@ public class GatewayService implements ChannelMessageHandler {
      * Caller must set TenantContextHolder before calling this method.
      */
     public CompletableFuture<AssistantMessage> handleAsync(String sessionKey, String content) {
+        if (estopEngaged()) {
+            log.info("ESTOP engaged — refusing handleAsync for sessionKey={}", sessionKey);
+            return CompletableFuture.completedFuture(AssistantMessage.builder()
+                    .id(UUID.randomUUID().toString())
+                    .content(estopMessage)
+                    .build());
+        }
         var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
         ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
         AgentRuntimeContext context = new AgentRuntimeContext(
