@@ -16,6 +16,10 @@ import io.jaiclaw.core.tool.ToolProfile;
  * @param workspaceDir workspace directory for memory loading
  * @param tenantConfig per-tenant agent configuration (nullable — null means use singleton path)
  * @param stateless    when true, session history is not persisted (ephemeral execution)
+ * @param delegationDepth how many delegation hops produced this run; 0 for a run
+ *                     started by a user. Incremented for each child so
+ *                     {@code SubAgentLauncher} can enforce a depth limit.
+ * @param parentSessionKey session key of the delegating run, or null at depth 0
  */
 public record AgentRuntimeContext(
         String agentId,
@@ -25,7 +29,9 @@ public record AgentRuntimeContext(
         ToolProfile toolProfile,
         String workspaceDir,
         TenantAgentConfig tenantConfig,
-        boolean stateless
+        boolean stateless,
+        int delegationDepth,
+        String parentSessionKey
 ) {
     /**
      * Backward-compatible constructor without stateless.
@@ -33,7 +39,19 @@ public record AgentRuntimeContext(
     public AgentRuntimeContext(String agentId, String sessionKey, Session session,
                                AgentIdentity identity, ToolProfile toolProfile,
                                String workspaceDir, TenantAgentConfig tenantConfig) {
-        this(agentId, sessionKey, session, identity, toolProfile, workspaceDir, tenantConfig, false);
+        this(agentId, sessionKey, session, identity, toolProfile, workspaceDir, tenantConfig,
+                false, 0, null);
+    }
+
+    /**
+     * Backward-compatible constructor without delegation fields.
+     */
+    public AgentRuntimeContext(String agentId, String sessionKey, Session session,
+                               AgentIdentity identity, ToolProfile toolProfile,
+                               String workspaceDir, TenantAgentConfig tenantConfig,
+                               boolean stateless) {
+        this(agentId, sessionKey, session, identity, toolProfile, workspaceDir, tenantConfig,
+                stateless, 0, null);
     }
 
     /**
@@ -48,7 +66,8 @@ public record AgentRuntimeContext(
      * Minimal backward-compatible constructor.
      */
     public AgentRuntimeContext(String agentId, String sessionKey, Session session) {
-        this(agentId, sessionKey, session, AgentIdentity.DEFAULT, ToolProfile.FULL, ".", null, false);
+        this(agentId, sessionKey, session, AgentIdentity.DEFAULT, ToolProfile.FULL, ".", null,
+                false, 0, null);
     }
 
     public static Builder builder() { return new Builder(); }
@@ -62,6 +81,8 @@ public record AgentRuntimeContext(
         private String workspaceDir;
         private TenantAgentConfig tenantConfig;
         private boolean stateless;
+        private int delegationDepth;
+        private String parentSessionKey;
 
         public Builder agentId(String agentId) { this.agentId = agentId; return this; }
         public Builder sessionKey(String sessionKey) { this.sessionKey = sessionKey; return this; }
@@ -71,11 +92,13 @@ public record AgentRuntimeContext(
         public Builder workspaceDir(String workspaceDir) { this.workspaceDir = workspaceDir; return this; }
         public Builder tenantConfig(TenantAgentConfig tenantConfig) { this.tenantConfig = tenantConfig; return this; }
         public Builder stateless(boolean stateless) { this.stateless = stateless; return this; }
+        public Builder delegationDepth(int delegationDepth) { this.delegationDepth = delegationDepth; return this; }
+        public Builder parentSessionKey(String parentSessionKey) { this.parentSessionKey = parentSessionKey; return this; }
 
         public AgentRuntimeContext build() {
             return new AgentRuntimeContext(
                     agentId, sessionKey, session, identity, toolProfile,
-                    workspaceDir, tenantConfig, stateless);
+                    workspaceDir, tenantConfig, stateless, delegationDepth, parentSessionKey);
         }
     }
 }

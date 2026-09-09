@@ -678,6 +678,6 @@ before announcing.
 | 2026-09-09 | Tool Search index is lexical, no vector dependency | Keep `jaiclaw-tools` dependency-free; vector ranking can be an SPI impl later |
 | 2026-09-09 | ESTOP is a file sentinel, not a DB flag | Works without Redis/JDBC; operable from `bin/jaiclaw` fast path with no JVM |
 | 2026-09-09 | Curator consolidation always proposes, even in `auto` | Merging skills is destructive; keep a human in that path |
-| — | *(open)* concurrency overflow: queue vs refuse (Phase 2) | |
+| 2026-09-09 | Concurrency overflow **queues** (bounded wait), depth overflow **refuses** | A parent at the concurrency limit is transiently busy — refusing would make `delegate_task` fail for reasons the model cannot see or act on, and it would retry blindly. Depth is different: it is a property of the call graph, not of timing, so retrying can never help and an immediate `ToolResult.Error` is the honest answer. The queue is bounded by the tool's own wait timeout, so a saturated parent degrades to a RUNNING handle rather than hanging. |
 | — | *(open)* memory applier target: AgentMind memory vs memory-wiki (Phase 4A) | |
 | — | *(open)* webhook channel starter placement (Phase 5) | |

@@ -14,7 +14,7 @@ import java.time.Instant
  */
 class HookEventTypesSpec extends Specification {
 
-    def "HookEvent is sealed with all 31 expected permits"() {
+    def "HookEvent is sealed with all 34 expected permits"() {
         when:
         Set<String> permitted = HookEvent.class.getPermittedSubclasses()
                 .collect { it.simpleName } as Set
@@ -40,6 +40,8 @@ class HookEventTypesSpec extends Specification {
                 "SoulUpdatedEvent", "MemoryUpdatedEvent", "TendenciesUpdatedEvent",
                 // 1.2.0 Phase 1 — runtime guards + emergency stop
                 "BudgetWarningEvent", "RepetitionDetectedEvent", "EmergencyStopEvent",
+                // 1.2.0 Phase 2 — subagent delegation
+                "SubAgentStartedEvent", "SubAgentProgressEvent", "SubAgentEndedEvent",
         ] as Set
     }
 
