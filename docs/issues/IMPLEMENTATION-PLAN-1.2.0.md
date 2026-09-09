@@ -4,7 +4,7 @@
 truth for scope: [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md)
 Part 6. Companion: [`IMPLEMENTATION-PLAN-1.3.0.md`](./IMPLEMENTATION-PLAN-1.3.0.md).*
 
-**Status:** not started — current phase: **Phase 1 (§6)**.
+**Status:** in progress — Phase 1 (§6) complete; current phase: **Phase 2 (§7)**.
 
 ---
 
@@ -204,7 +204,7 @@ conventions) and checks that a proposal file appears under
 
 ## 6. Phase 1 — Runtime guards & ESTOP
 
-**Resume here →** first task: `IterationBudget` record. | last touched: —
+**Resume here →** COMPLETE. | last touched: `core/jaiclaw-agent/src/test/groovy/io/jaiclaw/agent/e2e/RuntimeGuardsE2ESpec.groovy`
 
 **Estimate:** 1 week.
 
@@ -255,37 +255,37 @@ delegation and autonomous learning responsibly.
 ### 6.4 Task list
 
 **Iteration budget**
-- [ ] Create `IterationBudget` (AtomicInteger; `tryConsume` returns false at 0; `refund` for retried calls; `ratioConsumed()`)
-- [ ] Extend `ToolLoopConfig` with budget/warning/repetition/floors; keep both legacy constructors delegating
-- [ ] `BudgetGuard`: per-run budget from template; at `warningRatio` attach a one-time checkpoint notice to the next tool result ("~N iterations remain — finish or persist progress")
-- [ ] On exhaustion: one final model call with tools removed, response tagged `finishReason=BUDGET_EXHAUSTED`
-- [ ] Fire `BudgetWarningEvent` at warn ratio
-- [ ] Spock: budget counts down; warn once; exhausted run ends with tool-less turn; refund on retry
+- [x] Create `IterationBudget` (AtomicInteger; `tryConsume` returns false at 0; `refund` for retried calls; `ratioConsumed()`)
+- [x] Extend `ToolLoopConfig` with budget/warning/repetition/floors; keep both legacy constructors delegating
+- [x] `BudgetGuard`: per-run budget from template; at `warningRatio` attach a one-time checkpoint notice to the next tool result ("~N iterations remain — finish or persist progress")
+- [x] On exhaustion: one final model call with tools removed, response tagged `finishReason=BUDGET_EXHAUSTED`
+- [x] Fire `BudgetWarningEvent` at warn ratio
+- [x] Spock: budget counts down; warn once; exhausted run ends with tool-less turn; refund on retry
 
 **Repetition guard**
-- [ ] `RepetitionGuard`: sliding window of `(toolName, paramsHash)`; N identical consecutive calls → inject a tool result "repeated call detected — change approach or finish" and fire `RepetitionDetectedEvent`; N+2 → force final turn
-- [ ] Empty-response guard: two consecutive empty assistant messages → force final turn with explicit instruction
-- [ ] Spock: threshold 3 triggers on third identical call; different params reset; empty-response path
+- [x] `RepetitionGuard`: sliding window of `(toolName, paramsHash)`; N identical consecutive calls → inject a tool result "repeated call detected — change approach or finish" and fire `RepetitionDetectedEvent`; N+2 → force final turn
+- [x] Empty-response guard: two consecutive empty assistant messages → force final turn with explicit instruction
+- [x] Spock: threshold 3 triggers on third identical call; different params reset; empty-response path
 
 **Approval floors**
-- [ ] `ApprovalFloor` enum + `AgentProperties.approval.floors` (`shell_exec: PROMPT_ALWAYS`, `file_write: PROMPT_ALWAYS` shipped as defaults in `application.yml` docs, not hard-coded)
-- [ ] `AgentRuntime` approval path: floor applied before honoring an `ALLOW_ALWAYS` decision; floor `DENY` short-circuits without asking
-- [ ] Spock: `ALLOW_ALWAYS` for a `PROMPT_ALWAYS` tool is downgraded; `DENY` floor never calls handler
+- [x] `ApprovalFloor` enum + `AgentProperties.approval.floors` (`shell_exec: PROMPT_ALWAYS`, `file_write: PROMPT_ALWAYS` shipped as defaults in `application.yml` docs, not hard-coded)
+- [x] `AgentRuntime` approval path: floor applied before honoring an `ALLOW_ALWAYS` decision; floor `DENY` short-circuits without asking
+- [x] Spock: `ALLOW_ALWAYS` for a `PROMPT_ALWAYS` tool is downgraded; `DENY` floor never calls handler
 
 **ESTOP**
-- [ ] `EmergencyStop` in `jaiclaw-core` (no Spring); JSON body `{reason, engagedAt}` optional; corrupt file still counts as engaged (fail safe)
-- [ ] `GatewayService` admission check + `GatewayProperties.estopMessage` default "Assistant is paused by the operator."
-- [ ] `CronService` skip + single log line per job per engagement (keep a `Set<String>` of logged ids cleared on release)
-- [ ] Kanban processor dispatcher skip; pipeline trigger 503 with `Retry-After`
-- [ ] `EstopActuatorEndpoint` (`@ReadOperation` state, `@WriteOperation engage/release`) — reuse `PipelineActuatorEndpoint` style
-- [ ] `bin/jaiclaw pause|resume` fast path + `PauseCommand`/`ResumeCommand` JVM path (Spring Shell + hyphenated aliases per `CLAUDE.md`)
-- [ ] `EmergencyStopEvent` fired on engage/release (from the actuator/CLI paths, not from readers)
-- [ ] Spock: engaged → gateway refusal; in-flight `AgentRuntime.run` completes; release → next message accepted
+- [x] `EmergencyStop` in `jaiclaw-core` (no Spring); JSON body `{reason, engagedAt}` optional; corrupt file still counts as engaged (fail safe)
+- [x] `GatewayService` admission check + `GatewayProperties.estopMessage` default "Assistant is paused by the operator."
+- [x] `CronService` skip + single log line per job per engagement (keep a `Set<String>` of logged ids cleared on release)
+- [x] Kanban processor dispatcher skip; pipeline trigger 503 with `Retry-After`
+- [x] `EstopActuatorEndpoint` (`@ReadOperation` state, `@WriteOperation engage/release`) — reuse `PipelineActuatorEndpoint` style
+- [x] `bin/jaiclaw pause|resume` fast path + `PauseCommand`/`ResumeCommand` JVM path (Spring Shell + hyphenated aliases per `CLAUDE.md`)
+- [x] `EmergencyStopEvent` fired on engage/release (from the actuator/CLI paths, not from readers)
+- [x] Spock: engaged → gateway refusal; in-flight `AgentRuntime.run` completes; release → next message accepted
 
 **E2E + docs**
-- [ ] Scaffold `self-improving-assistant` example (mock `ChatModel` with scripted turn table, 60-tool registry helper)
-- [ ] `RuntimeGuardsE2ESpec` — §5.2 row 1
-- [ ] Docs pages + `CLAUDE.md` counts
+- [ ] Scaffold `self-improving-assistant` example (mock `ChatModel` with scripted turn table, 60-tool registry helper) — *deferred to Phase 3, where the 60-tool registry is first actually needed (ToolSearchE2ESpec). Phase 1 guards are covered by RuntimeGuardsE2ESpec with an in-spec scripted ChatModel.*
+- [x] `RuntimeGuardsE2ESpec` — §5.2 row 1
+- [x] Docs pages + `CLAUDE.md` counts
 
 ### 6.5 Verification
 
