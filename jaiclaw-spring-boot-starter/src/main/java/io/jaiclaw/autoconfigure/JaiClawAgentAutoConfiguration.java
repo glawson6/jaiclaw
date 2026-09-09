@@ -35,6 +35,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ResourceLoader;
 
@@ -435,5 +436,63 @@ public class JaiClawAgentAutoConfiguration {
             result.add(value);
         }
         return result;
+    }
+
+    // ─── Subagent delegation (1.2.0 Phase 2) ──────────────────────────────────
+    // Off by default: with jaiclaw.agent.delegation.enabled=false the launcher
+    // and both tools are absent, so no model can reach them.
+
+    /**
+     * Binds {@code jaiclaw.agent.delegation}. Always present so the properties can
+     * be inspected even while delegation is disabled.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.config.DelegationProperties delegationProperties(
+            org.springframework.core.env.Environment env) {
+        return org.springframework.boot.context.properties.bind.Binder.get(env)
+                .bind("jaiclaw.agent.delegation",
+                        io.jaiclaw.config.DelegationProperties.class)
+                .orElseGet(io.jaiclaw.config.DelegationProperties::defaults);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(io.jaiclaw.agent.delegation.SubAgentLauncher.class)
+    @ConditionalOnProperty(prefix = "jaiclaw.agent.delegation", name = "enabled", havingValue = "true")
+    public io.jaiclaw.agent.delegation.SubAgentLauncher subAgentLauncher(
+            AgentRuntime agentRuntime,
+            SessionManager sessionManager,
+            io.jaiclaw.config.DelegationProperties delegationProperties,
+            ObjectProvider<io.jaiclaw.core.agent.AgentHookDispatcher> hooksProvider) {
+        log.info("Subagent delegation ENABLED — maxDepth={} maxConcurrent={} childBudget={} defaultProfile={}",
+                delegationProperties.maxDepth(), delegationProperties.maxConcurrent(),
+                delegationProperties.childMaxIterations(), delegationProperties.defaultChildProfile());
+        return new io.jaiclaw.agent.delegation.DefaultSubAgentLauncher(
+                agentRuntime, sessionManager, delegationProperties, hooksProvider.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnBean(io.jaiclaw.agent.delegation.SubAgentLauncher.class)
+    @ConditionalOnMissingBean(io.jaiclaw.agent.delegation.tool.DelegateTaskTool.class)
+    public io.jaiclaw.agent.delegation.tool.DelegateTaskTool delegateTaskTool(
+            io.jaiclaw.agent.delegation.SubAgentLauncher launcher,
+            io.jaiclaw.config.DelegationProperties delegationProperties,
+            io.jaiclaw.tools.ToolRegistry toolRegistry) {
+        var tool = new io.jaiclaw.agent.delegation.tool.DelegateTaskTool(launcher, delegationProperties);
+        toolRegistry.register(tool);
+        log.info("DelegateTaskTool registered (delegate_task)");
+        return tool;
+    }
+
+    @Bean
+    @ConditionalOnBean(io.jaiclaw.agent.delegation.SubAgentLauncher.class)
+    @ConditionalOnMissingBean(io.jaiclaw.agent.delegation.tool.DelegateStatusTool.class)
+    public io.jaiclaw.agent.delegation.tool.DelegateStatusTool delegateStatusTool(
+            io.jaiclaw.agent.delegation.SubAgentLauncher launcher,
+            io.jaiclaw.tools.ToolRegistry toolRegistry) {
+        var tool = new io.jaiclaw.agent.delegation.tool.DelegateStatusTool(launcher);
+        toolRegistry.register(tool);
+        log.info("DelegateStatusTool registered (delegate_status)");
+        return tool;
     }
 }
