@@ -4,7 +4,7 @@
 truth for scope: [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md)
 Part 6. Companion: [`IMPLEMENTATION-PLAN-1.3.0.md`](./IMPLEMENTATION-PLAN-1.3.0.md).*
 
-**Status:** in progress — Phase 1 (§6) complete; current phase: **Phase 2 (§7)**.
+**Status:** in progress — Phases 1-2 complete; current phase: **Phase 3 (§8)**.
 
 ---
 
@@ -302,7 +302,7 @@ phase commits; no persisted format changes.
 
 ## 7. Phase 2 — Subagent delegation
 
-**Resume here →** first task: `SubAgentLauncher` SPI. | last touched: —
+**Resume here →** COMPLETE (kanban bridge + messaging MCP exposure deferred — see notes). | last touched: `core/jaiclaw-agent/src/test/groovy/io/jaiclaw/agent/e2e/DelegationE2ESpec.groovy`
 
 **Estimate:** 2 weeks.
 
@@ -345,25 +345,25 @@ a kanban card.
 ### 7.4 Task list
 
 **SPI + launcher**
-- [ ] `SubAgentRequest(goal, context, parentContext, toolProfile, budget, wait)`; `SubAgentResult(sessionKey, status, summary, iterationsUsed, error)`; `SubAgentHandle(id, future, cancel(), progress Flux)`
-- [ ] `DefaultSubAgentLauncher`: session key derivation, `ToolProfile` intersection (child ⊆ parent; if `compositeProfileRegistry` present use `resolveForCompositePolicy`), budget from config, depth check (`parentContext.delegationDepth() + 1 > maxDepth` → error result), semaphore per parent session
-- [ ] Run child via `agentRuntime.run(goal, childContext)` on `Thread.ofVirtual()` wrapped with `TenantContextPropagator`; close child session on completion (`SessionManager.close`)
-- [ ] Fire `SubAgentStarted/Progress/Ended` through `AgentHookDispatcher`
-- [ ] Spock: key format; depth 3 refused; concurrency 4 → 5th queues (not refused) — decide and record in §11; tenant visible inside child; child profile narrower
+- [x] `SubAgentRequest(goal, context, parentContext, toolProfile, budget, wait)`; `SubAgentResult(sessionKey, status, summary, iterationsUsed, error)`; `SubAgentHandle(id, future, cancel(), progress Flux)`
+- [x] `DefaultSubAgentLauncher`: session key derivation, `ToolProfile` intersection (child ⊆ parent; if `compositeProfileRegistry` present use `resolveForCompositePolicy`), budget from config, depth check (`parentContext.delegationDepth() + 1 > maxDepth` → error result), semaphore per parent session
+- [x] Run child via `agentRuntime.run(goal, childContext)` on `Thread.ofVirtual()` wrapped with `TenantContextPropagator`; close child session on completion (`SessionManager.close`)
+- [x] Fire `SubAgentStarted/Progress/Ended` through `AgentHookDispatcher`
+- [x] Spock: key format; depth 3 refused; concurrency 4 → 5th queues (not refused) — decide and record in §11; tenant visible inside child; child profile narrower
 
 **Tools**
-- [ ] `DelegateTaskTool` (`AbstractBuiltinTool`): validate params, call launcher, `wait=true` blocks with timeout `delegation.waitTimeout` (default 10 min) then returns `RUNNING` handle
-- [ ] `DelegateStatusTool`: `status|cancel|result` actions by handle id
-- [ ] Register both in `BuiltinTools` behind `delegation.enabled`; tag with `ToolProfile` section `delegation` so adopters can exclude via policy
-- [ ] Spock: tool result JSON shape; timeout returns handle; cancel propagates to `AgentRuntime.cancel(childKey)`
+- [x] `DelegateTaskTool` (`AbstractBuiltinTool`): validate params, call launcher, `wait=true` blocks with timeout `delegation.waitTimeout` (default 10 min) then returns `RUNNING` handle
+- [x] `DelegateStatusTool`: `status|cancel|result` actions by handle id
+- [x] Register both in `BuiltinTools` behind `delegation.enabled`; tag with `ToolProfile` section `delegation` so adopters can exclude via policy
+- [x] Spock: tool result JSON shape; timeout returns handle; cancel propagates to `AgentRuntime.cancel(childKey)`
 
 **Bridges**
-- [ ] `SubAgentKanbanBridge` (optional bean) — card created on started, moved on ended, comment with summary
-- [ ] Messaging MCP exposure
+- [ ] `SubAgentKanbanBridge` (optional bean) — card created on started, moved on ended, comment with summary — *deferred: optional bridge, gated on `delegation.kanban.enabled`; the lifecycle events it consumes are shipped and specced, so this is additive and does not block Phase 3.*
+- [ ] Messaging MCP exposure — *deferred with the kanban bridge; `delegate_task` is already reachable by any in-process model, and MCP re-export is additive.*
 
 **E2E + docs**
-- [ ] `DelegationE2ESpec` — §5.2 row 2 (extend the example app with a "research" delegation scenario)
-- [ ] Docs + `CLAUDE.md`
+- [x] `DelegationE2ESpec` — §5.2 row 2 (extend the example app with a "research" delegation scenario)
+- [x] Docs + `CLAUDE.md`
 
 ### 7.5 Verification
 
