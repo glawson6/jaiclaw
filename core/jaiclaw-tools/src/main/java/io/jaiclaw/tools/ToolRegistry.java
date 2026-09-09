@@ -2,10 +2,13 @@ package io.jaiclaw.tools;
 
 import io.jaiclaw.core.tool.CompositeToolProfile;
 import io.jaiclaw.core.tool.ToolCallback;
+import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
+import io.jaiclaw.tools.search.ToolSearchIndex;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -16,8 +19,23 @@ public class ToolRegistry {
 
     private final Map<String, ToolCallback> tools = new ConcurrentHashMap<>();
 
+    /**
+     * Names marked deferred. Held here rather than on the ToolDefinition because
+     * {@code definition()} is owned by each tool implementation — the registry
+     * cannot rewrite what a tool reports about itself, and rewrapping every
+     * callback to change one flag would obscure the tool's real type from
+     * {@code instanceof} checks elsewhere.
+     */
+    private final Set<String> deferred = ConcurrentHashMap.newKeySet();
+
+    /** Rebuilt lazily on the next search after any registration change. */
+    private volatile ToolSearchIndex index;
+
     public void register(ToolCallback tool) {
         tools.put(tool.definition().name(), tool);
+        // A tool that declares itself deferred is honoured without configuration.
+        if (tool.definition().deferred()) deferred.add(tool.definition().name());
+        index = null;
     }
 
     public void registerAll(Collection<? extends ToolCallback> callbacks) {
@@ -25,6 +43,8 @@ public class ToolRegistry {
     }
 
     public boolean unregister(String name) {
+        deferred.remove(name);
+        index = null;
         return tools.remove(name) != null;
     }
 
@@ -120,6 +140,124 @@ public class ToolRegistry {
                 .toList();
     }
 
+    // ─── Tool Search / deferred schemas (1.2.0 Phase 3) ──────────────────────
+
+    /**
+     * Marks every currently-registered tool matching {@code predicate} as deferred:
+     * its schema is withheld from the model until {@code tool_search} surfaces it.
+     *
+     * <p>Deferral is a <strong>context-economy</strong> control, not an
+     * authorization one. A deferred tool is still fully permitted — profile and
+     * policy filtering remain the security boundary. Use
+     * {@code resolveActive} to get the list actually sent to the model.
+     *
+     * @return how many tools were newly deferred
+     */
+    public int markDeferred(Predicate<ToolDefinition> predicate) {
+        if (predicate == null) return 0;
+        int count = 0;
+        for (ToolCallback tool : tools.values()) {
+            ToolDefinition def = tool.definition();
+            if (predicate.test(def) && deferred.add(def.name())) count++;
+        }
+        if (count > 0) index = null;
+        return count;
+    }
+
+    /** Clears deferral for a single tool, so its schema is sent up front again. */
+    public boolean clearDeferred(String name) {
+        boolean removed = deferred.remove(name);
+        if (removed) index = null;
+        return removed;
+    }
+
+    /** Clears every deferral. */
+    public void clearAllDeferred() {
+        if (!deferred.isEmpty()) {
+            deferred.clear();
+            index = null;
+        }
+    }
+
+    /** True when this tool's schema is withheld until discovered. */
+    public boolean isDeferred(String name) {
+        return deferred.contains(name);
+    }
+
+    /** Names of all deferred tools. */
+    public Set<String> deferredNames() {
+        return Set.copyOf(deferred);
+    }
+
+    /**
+     * The tools whose schemas should be sent to the model this turn: everything
+     * permitted by {@code profile} that is <em>not</em> deferred, plus any
+     * deferred tools this session has already discovered.
+     *
+     * <p>With no deferrals configured this returns exactly what
+     * {@link #resolveForProfile(ToolProfile)} returns, in the same order — the
+     * feature is inert until switched on.
+     *
+     * @param profile             the run's tool profile
+     * @param sessionDiscoveries  names surfaced earlier in this session; may be null
+     */
+    public List<ToolCallback> resolveActive(ToolProfile profile, Set<String> sessionDiscoveries) {
+        List<ToolCallback> permitted = resolveForProfile(profile);
+        if (deferred.isEmpty()) return permitted;
+        Set<String> discovered = sessionDiscoveries == null ? Set.of() : sessionDiscoveries;
+        return permitted.stream()
+                .filter(t -> {
+                    String name = t.definition().name();
+                    return !deferred.contains(name) || discovered.contains(name);
+                })
+                .toList();
+    }
+
+    /**
+     * Same as {@link #resolveActive(ToolProfile, Set)} but honouring allow/deny
+     * policy as well.
+     */
+    public List<ToolCallback> resolveActiveForPolicy(ToolProfile profile, List<String> allow,
+                                                     List<String> deny, Set<String> sessionDiscoveries) {
+        List<ToolCallback> permitted = resolveForPolicy(profile, allow, deny);
+        if (deferred.isEmpty()) return permitted;
+        Set<String> discovered = sessionDiscoveries == null ? Set.of() : sessionDiscoveries;
+        return permitted.stream()
+                .filter(t -> {
+                    String name = t.definition().name();
+                    return !deferred.contains(name) || discovered.contains(name);
+                })
+                .toList();
+    }
+
+    /**
+     * Searches tool metadata, restricted to what {@code profile} permits.
+     *
+     * <p>Searches every permitted tool, not only deferred ones: a model asking
+     * "is there a tool for X" should get a truthful answer whether or not X
+     * happened to be deferred.
+     *
+     * @param query free text
+     * @param profile the run's profile — results never exceed it
+     * @param limit maximum results
+     */
+    public List<ToolDefinition> search(String query, ToolProfile profile, int limit) {
+        ToolSearchIndex current = index;
+        if (current == null) {
+            current = ToolSearchIndex.of(tools.values().stream()
+                    .map(ToolCallback::definition)
+                    .toList());
+            index = current;
+        }
+        List<ToolDefinition> hits = current.search(query, Math.max(limit, 0) * 4);
+        List<ToolDefinition> allowed = new ArrayList<>();
+        for (ToolDefinition d : hits) {
+            if (d.isAvailableIn(profile)) allowed.add(d);
+            if (allowed.size() >= limit) break;
+        }
+        return List.copyOf(allowed);
+    }
+
     public boolean contains(String name) {
         return tools.containsKey(name);
     }
@@ -133,6 +271,8 @@ public class ToolRegistry {
     }
 
     public void clear() {
+        deferred.clear();
+        index = null;
         tools.clear();
     }
 }
