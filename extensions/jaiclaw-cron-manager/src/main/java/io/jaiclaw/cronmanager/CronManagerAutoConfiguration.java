@@ -6,6 +6,7 @@ import io.jaiclaw.core.tenant.TenantGuard;
 import io.jaiclaw.cron.CronJobExecutor;
 import io.jaiclaw.cron.CronJobStore;
 import io.jaiclaw.cron.CronService;
+import org.springframework.beans.factory.ObjectProvider;
 import io.jaiclaw.cronmanager.agent.CronAgentFactory;
 import io.jaiclaw.cronmanager.batch.CronBatchJobFactory;
 import io.jaiclaw.cronmanager.mcp.CronManagerMcpToolProvider;
@@ -48,8 +49,12 @@ class CronManagerAutoConfiguration {
 
     @Bean
     CronService cronService(CronJobStore cronJobStore, CronJobExecutor cronJobExecutor,
-                            TenantGuard tenantGuard) {
-        return new CronService(cronJobStore, cronJobExecutor, 5, 600, tenantGuard);
+                            TenantGuard tenantGuard,
+                            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider) {
+        CronService service = new CronService(cronJobStore, cronJobExecutor, 5, 600, tenantGuard);
+        // Optional: skip (and reschedule) due jobs while the operator has paused.
+        service.setEmergencyStop(emergencyStopProvider.getIfAvailable());
+        return service;
     }
 
     @Bean

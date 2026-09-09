@@ -33,8 +33,13 @@ public class PipelineWebConfiguration {
     public PipelineTriggerController pipelineTriggerController(
             PipelineGateway gateway,
             PipelineProperties properties,
-            ObjectProvider<PipelineExecutionTracker> trackerProvider) {
-        return new PipelineTriggerController(gateway, properties, trackerProvider);
+            ObjectProvider<PipelineExecutionTracker> trackerProvider,
+            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider) {
+        PipelineTriggerController controller =
+                new PipelineTriggerController(gateway, properties, trackerProvider);
+        // Optional: return 503 while the operator has paused the deployment.
+        controller.setEmergencyStop(emergencyStopProvider.getIfAvailable());
+        return controller;
     }
 
     @Bean

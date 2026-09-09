@@ -96,7 +96,8 @@ public class JaiClawGatewayAutoConfiguration {
             ObjectProvider<io.jaiclaw.core.tenant.TenantGuard> tenantGuardProvider,
             ObjectProvider<TenantAgentConfigService> configServiceProvider,
             ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider,
-            ObjectProvider<io.jaiclaw.agent.ownership.ThreadOwnershipTracker> ownershipTrackerProvider) {
+            ObjectProvider<io.jaiclaw.agent.ownership.ThreadOwnershipTracker> ownershipTrackerProvider,
+            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider) {
         io.jaiclaw.gateway.GatewayService svc = new io.jaiclaw.gateway.GatewayService(
                 agentRuntime, sessionManager, channelRegistry,
                 properties.agent().defaultAgent(), tenantResolver, attachmentRouter,
@@ -105,7 +106,40 @@ public class JaiClawGatewayAutoConfiguration {
                 tenantChannelRegistryProvider.getIfAvailable(),
                 ownershipTrackerProvider.getIfAvailable());
         svc.setAutoVision(gatewayProperties.autoVision());
+        svc.setEmergencyStop(emergencyStopProvider.getIfAvailable(), gatewayProperties.estopMessage());
         return svc;
+    }
+
+    /**
+     * The global emergency stop. Always created — it is inert while the sentinel
+     * file is absent, which is the default state, so there is nothing to gate on.
+     * Components that consult it (gateway, cron, kanban, pipeline) take it as an
+     * optional dependency, so removing this bean simply disables the feature.
+     *
+     * @see io.jaiclaw.core.ops.EmergencyStop
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.core.ops.EmergencyStop emergencyStop() {
+        return new io.jaiclaw.core.ops.EmergencyStop();
+    }
+
+    /**
+     * Actuator control for the emergency stop at {@code /actuator/jaiclaw-estop}.
+     * Only registered when Spring Boot Actuator is on the classpath.
+     *
+     * <p><strong>This endpoint mutates global state.</strong> Front
+     * {@code /actuator/**} with your admin authentication — see
+     * {@code docs/user/EMERGENCY-STOP.md}.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(name = "org.springframework.boot.actuate.endpoint.annotation.Endpoint")
+    public io.jaiclaw.gateway.admin.EstopActuatorEndpoint estopActuatorEndpoint(
+            io.jaiclaw.core.ops.EmergencyStop emergencyStop,
+            ObjectProvider<io.jaiclaw.core.agent.AgentHookDispatcher> hooksProvider) {
+        return new io.jaiclaw.gateway.admin.EstopActuatorEndpoint(
+                emergencyStop, hooksProvider.getIfAvailable());
     }
 
     /**

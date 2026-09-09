@@ -259,9 +259,13 @@ public class KanbanAutoConfiguration {
             KanbanBoardService boardService,
             TaskStore taskStore,
             TaskTransitionService transitionService,
-            AgentColumnProcessor processor) {
-        return new ColumnProcessorManager(boardService, taskStore,
+            AgentColumnProcessor processor,
+            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider) {
+        ColumnProcessorManager manager = new ColumnProcessorManager(boardService, taskStore,
                 transitionService, processor);
+        // Optional: stand down column processors while the operator has paused.
+        manager.setEmergencyStop(emergencyStopProvider.getIfAvailable());
+        return manager;
     }
 
     @Bean
