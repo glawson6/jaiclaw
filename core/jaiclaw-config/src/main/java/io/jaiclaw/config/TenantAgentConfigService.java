@@ -1,5 +1,7 @@
 package io.jaiclaw.config;
 
+import io.jaiclaw.core.agent.ApprovalFloor;
+import io.jaiclaw.core.agent.ToolLoopConfig;
 import io.jaiclaw.core.tenant.TenantMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -531,8 +533,33 @@ public class TenantAgentConfigService {
         return new ToolLoopProperties(
                 getStr(map, "mode", "spring-ai"),
                 getInt(map, "max-iterations", 25),
-                getBool(map, "require-approval", false)
+                getBool(map, "require-approval", false),
+                getInt(map, "budget-max-iterations", 0),
+                getDouble(map, "budget-warning-ratio", ToolLoopConfig.DEFAULT_WARNING_RATIO),
+                getInt(map, "repetition-threshold", ToolLoopConfig.DEFAULT_REPETITION_THRESHOLD),
+                parseApprovalFloors(getMap(map, "approval-floors"))
         );
+    }
+
+    /**
+     * Parses the per-tool approval-floor map. Unknown floor names are skipped with
+     * a warning rather than failing tenant config load — one typo in one tenant's
+     * YAML must not take down config resolution for every tenant.
+     */
+    private Map<String, ApprovalFloor> parseApprovalFloors(Map<String, Object> map) {
+        if (map == null || map.isEmpty()) return Map.of();
+        Map<String, ApprovalFloor> floors = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            Object value = e.getValue();
+            if (value == null) continue;
+            try {
+                floors.put(e.getKey(), ApprovalFloor.valueOf(value.toString().trim().toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException ex) {
+                log.warn("Unknown approval floor '{}' for tool '{}' — ignoring. Valid values: {}",
+                        value, e.getKey(), java.util.Arrays.toString(ApprovalFloor.values()));
+            }
+        }
+        return floors;
     }
 
     private AgentLoopDelegateConfig parseLoopDelegate(Map<String, Object> map, AgentProperties.AgentConfig defaults) {
