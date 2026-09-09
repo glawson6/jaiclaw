@@ -134,6 +134,15 @@ public class ExplicitToolLoop {
                     return finalTurn(messages, EmptyResponseGuard.instruction(), toolCallHistory,
                             accumulatedUsage, guard.iterationsUsed(), loopStartNanos);
                 }
+                boolean empty = output.getText() == null || output.getText().isBlank();
+                if (empty) {
+                    // A single empty response is a provider hiccup, not an answer.
+                    // Retry rather than returning "" to the caller; the guard escalates
+                    // to a forced final turn if the next response is empty too.
+                    log.debug("Empty assistant response on iteration {} — retrying", i + 1);
+                    messages.add(output);
+                    continue;
+                }
                 long durationMs = (System.nanoTime() - loopStartNanos) / 1_000_000;
                 return new LoopResult(output.getText(), toolCallHistory, i + 1, accumulatedUsage, durationMs);
             }
