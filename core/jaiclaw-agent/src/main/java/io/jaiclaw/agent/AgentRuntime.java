@@ -63,6 +63,12 @@ public class AgentRuntime {
      * can inherit tenant, profile and delegation depth from their caller.
      */
     public static final String AGENT_RUNTIME_CONTEXT_KEY = "jaiclaw.agent.runtimeContext";
+
+    /**
+     * Per-session record of deferred tools surfaced by {@code tool_search}.
+     * Null when Tool Search is disabled, which is the default.
+     */
+    private io.jaiclaw.tools.search.SessionToolDiscoveries sessionToolDiscoveries;
     private static final Executor AGENT_EXECUTOR = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "agent-worker");
         t.setDaemon(true);
@@ -300,6 +306,8 @@ public class AgentRuntime {
             effectiveClientBuilder = chatClientBuilder;
         }
 
+        jaiclawTools = applyToolSearchDeferral(jaiclawTools, context);
+
         ToolContext toolContext = buildToolContext(context);
         List<org.springframework.ai.tool.ToolCallback> springTools = SpringAiToolBridge.bridgeAll(jaiclawTools, toolContext);
 
@@ -438,6 +446,8 @@ public class AgentRuntime {
             effectiveChatModel = chatModel;
             effectiveToolLoopConfig = toolLoopConfig;
         }
+
+        jaiclawTools = applyToolSearchDeferral(jaiclawTools, context);
 
         ToolContext toolContext = buildToolContext(context);
         List<org.springframework.ai.tool.ToolCallback> springTools = SpringAiToolBridge.bridgeAll(jaiclawTools, toolContext);
@@ -644,6 +654,39 @@ public class AgentRuntime {
         }
     }
 
+
+    /**
+     * Withholds deferred tool schemas the current session has not yet discovered.
+     *
+     * <p>No-op unless Tool Search is wired ({@code sessionToolDiscoveries} non-null)
+     * AND the registry actually has deferrals, so the default deployment sends the
+     * same tool list it always did.
+     *
+     * <p>Filtering happens here, after both the tenant and singleton resolution
+     * paths have converged, so one call covers both.
+     */
+    private List<ToolCallback> applyToolSearchDeferral(List<ToolCallback> tools,
+                                                       AgentRuntimeContext context) {
+        if (sessionToolDiscoveries == null || tools == null || tools.isEmpty()) return tools;
+        java.util.Set<String> deferredNames = toolRegistry.deferredNames();
+        if (deferredNames.isEmpty()) return tools;
+
+        java.util.Set<String> discovered = sessionToolDiscoveries.discovered(context.sessionKey());
+        List<ToolCallback> active = tools.stream()
+                .filter(t -> {
+                    String name = t.definition().name();
+                    return !deferredNames.contains(name) || discovered.contains(name);
+                })
+                .toList();
+
+        if (log.isDebugEnabled() && active.size() != tools.size()) {
+            log.debug("Tool search: sending {} of {} tools for session {} ({} deferred, {} discovered)",
+                    active.size(), tools.size(), context.sessionKey(),
+                    deferredNames.size(), discovered.size());
+        }
+        return active;
+    }
+
     private String buildSystemPrompt(List<ToolCallback> tools, AgentRuntimeContext context) {
         if (replaceSystemPrompt && !defaultAdditionalInstructions.isEmpty()) {
             return defaultAdditionalInstructions;
@@ -653,6 +696,14 @@ public class AgentRuntime {
                 .identity(context.identity())
                 .additionalInstructions(defaultAdditionalInstructions)
                 .build();
+    }
+
+    /**
+     * Enables Tool Search filtering. Optional — without it every permitted tool's
+     * schema is sent every turn, exactly as before 1.2.0.
+     */
+    public void setSessionToolDiscoveries(io.jaiclaw.tools.search.SessionToolDiscoveries discoveries) {
+        this.sessionToolDiscoveries = discoveries;
     }
 
     private ToolContext buildToolContext(AgentRuntimeContext context) {

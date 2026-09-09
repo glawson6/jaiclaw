@@ -237,7 +237,12 @@ public class ExplicitToolLoop {
                         result = "ERROR: " + e.getMessage();
                     }
                 } else {
-                    result = "ERROR: Unknown tool: " + tc.name();
+                    // A tool that exists but was deferred and not yet discovered
+                    // lands here. Name tool_search so the model can recover, rather
+                    // than concluding the capability does not exist.
+                    result = "ERROR: Unknown tool: " + tc.name()
+                            + ". If you expected this tool to exist, call tool_search to look it up "
+                            + "first — some tools are only listed on demand.";
                 }
 
                 // One-time budget checkpoint, appended to the next real tool result so

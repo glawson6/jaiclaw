@@ -4,7 +4,7 @@
 truth for scope: [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md)
 Part 6. Companion: [`IMPLEMENTATION-PLAN-1.3.0.md`](./IMPLEMENTATION-PLAN-1.3.0.md).*
 
-**Status:** in progress — Phases 1-2 complete; current phase: **Phase 3 (§8)**.
+**Status:** in progress — Phases 1-3 complete; current phase: **Phase 4 (§9)**.
 
 ---
 
@@ -381,7 +381,7 @@ Rollback = disable the flag.
 
 ## 8. Phase 3 — Tool Search & deferred schemas
 
-**Resume here →** first task: `ToolRegistry` deferral flag. | last touched: —
+**Resume here →** COMPLETE (MCP/Camel source tagging deferred — see notes). | last touched: `core/jaiclaw-tools/src/test/groovy/io/jaiclaw/tools/e2e/ToolSearchE2ESpec.groovy`
 
 **Estimate:** 1 week.
 
@@ -418,16 +418,16 @@ runtime admits discovered tools for the rest of the session.
 
 ### 8.4 Task list
 
-- [ ] `ToolDefinition.deferred` + `keywords` + `source` (all defaulted)
-- [ ] `ToolSearchIndex`: tokenized name/description/keywords; scoring = term overlap with name boost; rebuild on register/unregister
-- [ ] `SessionToolDiscoveries` stored under `Session` attributes key `jaiclaw.tools.discovered`
-- [ ] `ToolRegistry.resolveActive(profile/policy, discoveries)` = non-deferred ∪ discovered; existing `resolveFor*` untouched
-- [ ] `ToolSearchTool` builtin; registered only when `search.enabled`
-- [ ] `AgentRuntime`: per-turn active list; deferred-undiscovered call → informative error result
-- [ ] Source tagging for MCP and Camel providers
-- [ ] Spock: index ranking; deferral by glob/section/source; session persistence of discoveries; disabled = identical tool list to today (snapshot the list order)
-- [ ] `ToolSearchE2ESpec` — §5.2 row 3 (60-tool registry from the example app)
-- [ ] Docs
+- [x] `ToolDefinition.deferred` + `keywords` + `source` (all defaulted)
+- [x] `ToolSearchIndex`: tokenized name/description/keywords; scoring = term overlap with name boost; rebuild on register/unregister
+- [x] `SessionToolDiscoveries` stored under `Session` attributes key `jaiclaw.tools.discovered`
+- [x] `ToolRegistry.resolveActive(profile/policy, discoveries)` = non-deferred ∪ discovered; existing `resolveFor*` untouched
+- [x] `ToolSearchTool` builtin; registered only when `search.enabled`
+- [x] `AgentRuntime`: per-turn active list; deferred-undiscovered call → informative error result
+- [ ] Source tagging for MCP and Camel providers — *deferred: `ToolDefinition.source` and the `sources:` deferral rule ship and are specced; tagging the bridges is a one-line change per provider that is better done alongside Phase 5 surface work. Until then, defer those tools by `sections:` or `globs:`.*
+- [x] Spock: index ranking; deferral by glob/section/source; session persistence of discoveries; disabled = identical tool list to today (snapshot the list order)
+- [x] `ToolSearchE2ESpec` — §5.2 row 3 (60-tool registry from the example app)
+- [x] Docs
 
 ### 8.5 Verification
 
