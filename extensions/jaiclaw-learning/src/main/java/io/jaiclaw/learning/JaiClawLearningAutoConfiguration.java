@@ -103,7 +103,8 @@ public class JaiClawLearningAutoConfiguration {
     public LearningReviewer learningReviewer(ObjectProvider<ChatModel> chatModels,
                                              LearningProperties properties) {
         ChatModel auxiliary = chatModels.getIfAvailable();
-        return new LlmLearningReviewer(auxiliary, properties.maxTranscriptChars());
+        return new LlmLearningReviewer(auxiliary, properties.maxTranscriptChars(),
+                properties.selectivityLevel());
     }
 
     @Bean
@@ -154,9 +155,11 @@ public class JaiClawLearningAutoConfiguration {
                                                ReviewCadenceGate cadenceGate,
                                                LearningProperties properties,
                                                ObjectProvider<ProposalApplier> appliers) {
-        log.info("Learning loop ENABLED — mode={} minTurns={} minInterval={} transcriptCap={}",
-                properties.mode(), properties.reviewMinTurns(),
-                properties.reviewMinInterval(), properties.maxTranscriptChars());
+        log.info("Learning loop ENABLED — mode={} selectivity={} minTurns={} minInterval={} "
+                        + "maxProposalsPerReview={} transcriptCap={}",
+                properties.mode(), properties.selectivity(), properties.reviewMinTurns(),
+                properties.reviewMinInterval(), properties.maxProposalsPerReview(),
+                properties.maxTranscriptChars());
         if (properties.isAuto()) {
             log.warn("Learning mode is 'auto' — memory and new-skill proposals apply "
                     + "WITHOUT operator review. Skill patches still require an explicit apply "

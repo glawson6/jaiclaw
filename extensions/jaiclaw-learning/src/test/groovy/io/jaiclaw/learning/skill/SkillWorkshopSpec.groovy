@@ -42,7 +42,7 @@ class SkillWorkshopSpec extends Specification {
     }
 
     private static LearningProperties mode(String m, boolean allowPatches) {
-        new LearningProperties(m, 2, Duration.ZERO, 12000, "/tmp/p", "/tmp/s",
+        new LearningProperties(m, "balanced", 2, Duration.ZERO, 12000, "/tmp/p", "/tmp/s",
                 allowPatches, true, Duration.ofDays(30), Duration.ofDays(90))
     }
 
@@ -351,7 +351,7 @@ class SkillWorkshopSpec extends Specification {
     def "a disabled curator does nothing"() {
         given:
         applier.applyIfEligible(newSkill(), "operator")
-        def disabled = new LearningProperties("propose", 2, Duration.ZERO, 12000, "/t", "/s",
+        def disabled = new LearningProperties("propose", "balanced", 2, Duration.ZERO, 12000, "/t", "/s",
                 false, false, Duration.ofDays(30), Duration.ofDays(90))
         def curator = new SkillCurator(writer, disabled,
                 Clock.fixed(Instant.now().plus(Duration.ofDays(365)), ZoneOffset.UTC))

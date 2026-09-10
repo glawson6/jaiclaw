@@ -23,8 +23,20 @@ import java.time.Duration;
  * <p>Bound by the constructor binder, so exactly one public constructor.
  *
  * @param mode                 {@code off | propose | auto}
- * @param reviewMinTurns       minimum session turns before a review is worthwhile
- * @param reviewMinInterval    minimum wall-clock gap between reviews of one session
+ * @param selectivity          how eagerly the reviewer proposes:
+ *                             {@code conservative | balanced | eager}. Sets the
+ *                             defaults for turns, interval and per-review cap, and
+ *                             varies the threshold stated in the reviewer prompt.
+ *                             {@code balanced} (the default) reproduces the
+ *                             behaviour of every release before this setting
+ *                             existed. NOT the LLM sampling temperature — see
+ *                             {@link LearningSelectivity}.
+ * @param reviewMinTurns       minimum session turns before a review is worthwhile;
+ *                             {@code 0} means "use the selectivity default", and
+ *                             any explicit value overrides it
+ * @param reviewMinInterval    minimum wall-clock gap between reviews of one
+ *                             session; {@code null} means "use the selectivity
+ *                             default", and any explicit value overrides it
  * @param maxTranscriptChars   transcript is truncated head+tail to this budget
  * @param proposalsDir         base directory for the proposal store and ledger
  * @param skillsDir            base directory learned skills are written to
@@ -38,8 +50,9 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "jaiclaw.learning")
 public record LearningProperties(
         @DefaultValue("off") String mode,
-        @DefaultValue("4") int reviewMinTurns,
-        @DefaultValue("5m") Duration reviewMinInterval,
+        @DefaultValue("balanced") String selectivity,
+        @DefaultValue("0") int reviewMinTurns,
+        Duration reviewMinInterval,
         @DefaultValue("12000") int maxTranscriptChars,
         @DefaultValue("${user.home}/.jaiclaw/learning") String proposalsDir,
         @DefaultValue("${user.home}/.jaiclaw/skills/learned") String skillsDir,
@@ -52,16 +65,32 @@ public record LearningProperties(
     public LearningProperties {
         if (mode == null || mode.isBlank()) mode = "off";
         mode = mode.trim().toLowerCase(java.util.Locale.ROOT);
-        if (reviewMinTurns < 1) reviewMinTurns = 1;
-        if (reviewMinInterval == null || reviewMinInterval.isNegative()) reviewMinInterval = Duration.ofMinutes(5);
+        // Selectivity supplies the defaults; an explicitly configured value always
+        // wins, so an operator can pick a level and still tune one dimension of it.
+        LearningSelectivity level = LearningSelectivity.parse(selectivity);
+        selectivity = level.name().toLowerCase(java.util.Locale.ROOT);
+        if (reviewMinTurns <= 0) reviewMinTurns = level.minTurns();
+        if (reviewMinInterval == null || reviewMinInterval.isNegative()) {
+            reviewMinInterval = level.minInterval();
+        }
         if (maxTranscriptChars < 500) maxTranscriptChars = 500;
         if (curatorStaleAfter == null || curatorStaleAfter.isNegative()) curatorStaleAfter = Duration.ofDays(30);
         if (curatorArchiveAfter == null || curatorArchiveAfter.isNegative()) curatorArchiveAfter = Duration.ofDays(90);
     }
 
+    /** The resolved selectivity level. */
+    public LearningSelectivity selectivityLevel() {
+        return LearningSelectivity.parse(selectivity);
+    }
+
+    /** Cap on proposals accepted from one review, from the selectivity level. */
+    public int maxProposalsPerReview() {
+        return selectivityLevel().maxProposalsPerReview();
+    }
+
     /** Programmatic defaults; never seen by the binder. */
     public static LearningProperties defaults() {
-        return new LearningProperties("off", 4, Duration.ofMinutes(5), 12000,
+        return new LearningProperties("off", "balanced", 4, Duration.ofMinutes(5), 12000,
                 System.getProperty("user.home") + "/.jaiclaw/learning",
                 System.getProperty("user.home") + "/.jaiclaw/skills/learned",
                 false, true, Duration.ofDays(30), Duration.ofDays(90));

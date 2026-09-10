@@ -57,12 +57,12 @@ class LearningLoopE2ESpec extends Specification {
     }
 
     private static LearningProperties proposeMode() {
-        new LearningProperties("propose", 2, Duration.ZERO, 12000,
+        new LearningProperties("propose", "balanced", 2, Duration.ZERO, 12000,
                 "/tmp/x", "/tmp/y", false, true, Duration.ofDays(30), Duration.ofDays(90))
     }
 
     private static LearningProperties autoMode() {
-        new LearningProperties("auto", 2, Duration.ZERO, 12000,
+        new LearningProperties("auto", "balanced", 2, Duration.ZERO, 12000,
                 "/tmp/x", "/tmp/y", false, true, Duration.ofDays(30), Duration.ofDays(90))
     }
 

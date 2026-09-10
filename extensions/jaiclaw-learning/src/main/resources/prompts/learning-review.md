@@ -1,9 +1,7 @@
 You are reviewing a finished conversation between an AI agent and a user, to
 decide whether the agent should durably learn anything from it.
 
-Be conservative. Most conversations teach nothing worth keeping. Proposing
-nothing is the correct and common answer — a queue full of marginal suggestions
-is worse than an empty one, because a human has to read it.
+{{selectivityGuidance}}
 
 Propose something ONLY when it is:
 - **Durable** — true beyond this one conversation.

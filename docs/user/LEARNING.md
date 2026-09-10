@@ -27,8 +27,9 @@ one is destructive.
 jaiclaw:
   learning:
     mode: propose            # off | propose | auto   (default: off)
-    review-min-turns: 4      # don't review trivially short sessions
-    review-min-interval: 5m  # per-session cooldown between reviews
+    selectivity: balanced    # conservative | balanced | eager
+    review-min-turns: 0      # 0 = use the selectivity default
+    review-min-interval:     # unset = use the selectivity default
     max-transcript-chars: 12000
     proposals-dir: ${user.home}/.jaiclaw/learning
     skills-dir: ${user.home}/.jaiclaw/skills/learned
@@ -62,6 +63,35 @@ picked up by `SkillLoader` at session start. A skill applied mid-conversation
 appears in the *next* session, deliberately — swapping instructions underneath a
 running conversation would invalidate the cache and confuse the model about rules
 that changed mid-task.
+
+## Selectivity
+
+How eagerly the reviewer proposes. Three named levels rather than a 0.0–1.0
+float, because this is a **policy over a queue a human reads**, not a sampling
+parameter — turning it up does not produce bolder insights, it produces more
+proposals, and the failure mode is a queue nobody reads. Once that happens,
+`propose` mode has silently degraded into `auto` mode without anyone deciding to.
+
+| Level | Min turns | Interval | Max per review | Use when |
+|---|---|---|---|---|
+| `conservative` | 6 | 15m | 2 | The queue is read by someone whose time is expensive, or a wrong skill is costly |
+| `balanced` *(default)* | 4 | 5m | 5 | General use — reproduces pre-1.2.0 behaviour exactly |
+| `eager` | 2 | 1m | 8 | Personal assistant, or an evaluation run to see what the reviewer surfaces |
+
+Each level also varies the **threshold stated in the reviewer prompt** — that is
+the real knob; the caps just bound the damage.
+
+Setting `review-min-turns` or `review-min-interval` explicitly overrides the
+level, so you can pick a level and still tune one dimension of it.
+
+> **This is not the LLM's sampling temperature, and is deliberately not wired to
+> it.** The review call is structured JSON extraction; raising sampling
+> temperature there yields malformed output and invented skill names, not better
+> judgement. Selectivity moves the threshold while the model keeps sampling
+> conservatively.
+
+`eager` is a poor fit for `mode: auto` in a multi-tenant deployment: you would be
+combining "propose freely" with "apply without review".
 
 ## Cost control
 

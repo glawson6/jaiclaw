@@ -49,17 +49,30 @@ public class LlmLearningReviewer implements LearningReviewer {
     private static final ObjectMapper MAPPER = JsonMapper.builder().build();
     private static final String PROMPT_RESOURCE = "/prompts/learning-review.md";
 
-    /** Cap on proposals accepted from one review, so a runaway reply cannot flood the queue. */
-    private static final int MAX_PROPOSALS_PER_REVIEW = 5;
+    /** Fallback cap when no selectivity level is supplied. */
+    private static final int DEFAULT_MAX_PROPOSALS = 5;
 
     private final ChatModel chatModel;
     private final int maxTranscriptChars;
     private final String promptTemplate;
+    private final io.jaiclaw.learning.LearningSelectivity selectivity;
 
     public LlmLearningReviewer(ChatModel chatModel, int maxTranscriptChars) {
+        this(chatModel, maxTranscriptChars, io.jaiclaw.learning.LearningSelectivity.BALANCED);
+    }
+
+    public LlmLearningReviewer(ChatModel chatModel, int maxTranscriptChars,
+                               io.jaiclaw.learning.LearningSelectivity selectivity) {
         this.chatModel = chatModel;
         this.maxTranscriptChars = Math.max(500, maxTranscriptChars);
+        this.selectivity = selectivity == null
+                ? io.jaiclaw.learning.LearningSelectivity.BALANCED : selectivity;
         this.promptTemplate = loadTemplate();
+    }
+
+    /** Cap on proposals accepted from one review, so a runaway reply cannot flood the queue. */
+    private int maxProposals() {
+        return selectivity == null ? DEFAULT_MAX_PROPOSALS : selectivity.maxProposalsPerReview();
     }
 
     @Override
@@ -68,6 +81,7 @@ public class LlmLearningReviewer implements LearningReviewer {
             return ReviewOutcome.empty();
         }
         String prompt = promptTemplate
+                .replace("{{selectivityGuidance}}", selectivity.promptGuidance())
                 .replace("{{existingSkills}}", input.existingSkills().isEmpty()
                         ? "(none yet)" : String.join(", ", input.existingSkills()))
                 .replace("{{existingMemory}}", blankToNone(input.existingMemory()))
@@ -104,8 +118,9 @@ public class LlmLearningReviewer implements LearningReviewer {
 
         List<Proposal> proposals = new ArrayList<>();
         for (JsonNode node : array) {
-            if (proposals.size() >= MAX_PROPOSALS_PER_REVIEW) {
-                log.debug("Capping learning review at {} proposals", MAX_PROPOSALS_PER_REVIEW);
+            if (proposals.size() >= maxProposals()) {
+                log.debug("Capping learning review at {} proposals ({} selectivity)",
+                        maxProposals(), selectivity);
                 break;
             }
             Proposal p = toProposal(node, input);
