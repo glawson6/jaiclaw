@@ -546,8 +546,8 @@ to consolidate duplicates.
 - [x] `LearningLedger` JSONL + `BlobStore` (sha256 dedupe); every skill mutation appends before/after manifest
 - [x] `SkillProposalApplier` (create) and `SkillPatchProposal` applier (unique exact-span replace; reject if span not unique — Hermes/OpenClaw `prepare_patch` rule)
 - [x] `rollback(entryId)`: restore prior blobs; fail closed if any blob missing
-- [ ] `SkillLoader` scans learned dir, honors sidecar lifecycle, tenant filter via existing `tenantIds` — *deferred: touches core jaiclaw-skills loading for every adopter, so it wants its own change with a full-reactor test pass rather than riding along at the end of a large phase.*
-- [ ] **Deferred-invalidation spec** — *partially covered: the applier returns "loaded in the next session, not this one"; the loader-side assertion lands with the SkillLoader change.*: a skill applied mid-session is not in that session's prompt; it is in the next session's
+- [x] `SkillLoader` scans learned dir, honors sidecar lifecycle, tenant filter via existing `tenantIds`
+- [x] **Deferred-invalidation spec**
 - [x] Spock: create; patch; ambiguous span rejected; rollback restores bytes; archived skipped by loader
 
 *Usage tracking*
