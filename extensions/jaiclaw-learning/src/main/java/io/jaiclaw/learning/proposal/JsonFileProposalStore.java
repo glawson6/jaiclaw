@@ -17,7 +17,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -217,15 +216,8 @@ public class JsonFileProposalStore implements ProposalStore {
         return v == null || v.isNull() ? null : v.asString();
     }
 
-    /**
-     * Reduces an identifier to a safe single path segment. Anything outside
-     * {@code [A-Za-z0-9._-]} becomes an underscore, and {@code .}/{@code ..} are
-     * rewritten, so a tenant id can never traverse out of the base directory.
-     */
+    /** Delegates to the shared traversal defence; see {@link io.jaiclaw.learning.util.PathSegments}. */
     static String safeSegment(String raw) {
-        if (raw == null || raw.isBlank()) return "default";
-        String cleaned = raw.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]", "_");
-        if (cleaned.equals(".") || cleaned.equals("..")) return "_" + cleaned;
-        return cleaned.length() > 128 ? cleaned.substring(0, 128) : cleaned;
+        return io.jaiclaw.learning.util.PathSegments.safe(raw);
     }
 }

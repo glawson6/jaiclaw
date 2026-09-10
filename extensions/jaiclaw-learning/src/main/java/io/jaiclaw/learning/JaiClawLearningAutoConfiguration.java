@@ -107,14 +107,42 @@ public class JaiClawLearningAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.learning.skill.SkillWriter learningSkillWriter(LearningProperties properties) {
+        return new io.jaiclaw.learning.skill.SkillWriter(Path.of(properties.skillsDir()));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.learning.ledger.LearningLedger learningLedger(LearningProperties properties) {
+        return new io.jaiclaw.learning.ledger.LearningLedger(Path.of(properties.proposalsDir()));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.learning.curator.SkillCurator learningSkillCurator(
+            io.jaiclaw.learning.skill.SkillWriter skills, LearningProperties properties) {
+        return new io.jaiclaw.learning.curator.SkillCurator(skills, properties);
+    }
+
+    /**
+     * The applier the rest of the module uses. Skill handling wraps memory
+     * handling rather than replacing it, so one bean covers all three proposal
+     * kinds and callers never have to pick.
+     */
+    @Bean
     @ConditionalOnMissingBean(ProposalApplier.class)
     public ProposalApplier learningProposalApplier(
             ObjectProvider<AgentMindMemoryProvider> memoryProviders,
             ProposalService proposals,
             LearningProperties properties,
-            ObjectProvider<AgentHookDispatcher> hooks) {
-        return new MemoryProposalApplier(memoryProviders.getIfAvailable(), proposals,
-                properties, hooks.getIfAvailable());
+            ObjectProvider<AgentHookDispatcher> hooks,
+            io.jaiclaw.learning.skill.SkillWriter skills,
+            io.jaiclaw.learning.ledger.LearningLedger ledger) {
+        MemoryProposalApplier memory = new MemoryProposalApplier(
+                memoryProviders.getIfAvailable(), proposals, properties, hooks.getIfAvailable());
+        return new io.jaiclaw.learning.apply.SkillProposalApplier(
+                skills, ledger, proposals, properties, memory);
     }
 
     @Bean
