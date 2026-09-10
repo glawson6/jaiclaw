@@ -4,7 +4,9 @@
 truth for scope: [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md)
 Part 6. Companion: [`IMPLEMENTATION-PLAN-1.3.0.md`](./IMPLEMENTATION-PLAN-1.3.0.md).*
 
-**Status:** in progress — Phases 1-4 complete; current phase: **Phase 5 (§10)**.
+**Status:** Phases 1-5 feature work complete. Remaining: release mechanics
+(§10.4 "Release" block) — CHANGELOG, migration notes, Maven Central deploy,
+tag — which are deliberately left for a human to drive.
 
 ---
 
@@ -587,7 +589,7 @@ beans. Rollback = `mode=off`; on-disk proposals/ledger are inert files.
 
 ## 10. Phase 5 — Surfaces, hardening, release
 
-**Resume here →** first task: OpenAI-compatible endpoint. | last touched: —
+**Resume here →** feature work COMPLETE; release mechanics outstanding. | last touched: `channels/jaiclaw-channel-webhook/src/test/groovy/io/jaiclaw/channel/webhook/WebhookChannelSpec.groovy`
 
 **Estimate:** 1 week.
 
@@ -623,28 +625,28 @@ mechanics.
 ### 10.4 Task list
 
 **OpenAI-compatible API**
-- [ ] Records + controller (non-stream)
-- [ ] SSE streaming via `runStreaming` → `chat.completion.chunk` events + `[DONE]`
-- [ ] Session strategy: per request (stateless, messages replayed) vs `X-JaiClaw-User` header → durable session key
-- [ ] Usage block from `TokenUsage`
-- [ ] Spock: request mapping; streaming frames; disabled → 404; auth required
-- [ ] Doc `docs/user/OPENAI-COMPATIBLE-API.md` (curl + `openai` Python client examples)
+- [x] Records + controller (non-stream)
+- [x] SSE streaming via `runStreaming` → `chat.completion.chunk` events + `[DONE]`
+- [x] Session strategy: per request (stateless, messages replayed) vs `X-JaiClaw-User` header → durable session key
+- [x] Usage block from `TokenUsage`
+- [x] Spock: request mapping; streaming frames; disabled → 404; auth required
+- [x] Doc `docs/user/OPENAI-COMPATIBLE-API.md` (curl + `openai` Python client examples)
 
 **Webhook channel**
-- [ ] Module skeleton + starter entry (fold into `jaiclaw-starter-gateway`? decide, record §11)
-- [ ] `WebhookRoute(routeId, secret, tenantId, agentId, sessionMode: ISOLATED|PER_ROUTE, callbackUrl?)` from properties
-- [ ] Adapter: HMAC verify → `ChannelMessage` with attributes for tenant resolution → `GatewayService.onMessage`; force `WEBHOOK_SAFE` profile through the route's `TenantAgentConfig`/context
-- [ ] Spock: bad signature 401; good → session created with `ISOLATED` key; profile enforced (delegate/shell absent)
-- [ ] GitHub PR-review example route in `jaiclaw-examples/code-review-bot` (reuse existing example) — optional
-- [ ] Doc `docs/user/WEBHOOK-CHANNEL.md`
+- [x] Module skeleton + starter entry (fold into `jaiclaw-starter-gateway`? decide, record §11)
+- [x] `WebhookRoute(routeId, secret, tenantId, agentId, sessionMode: ISOLATED|PER_ROUTE, callbackUrl?)` from properties
+- [x] Adapter: HMAC verify → `ChannelMessage` with attributes for tenant resolution → `GatewayService.onMessage`; force `WEBHOOK_SAFE` profile through the route's `TenantAgentConfig`/context
+- [x] Spock: bad signature 401; good → session created with `ISOLATED` key; profile enforced (delegate/shell absent)
+- [ ] GitHub PR-review example route — *optional in the plan; not done.* in `jaiclaw-examples/code-review-bot` (reuse existing example) — optional
+- [x] Doc `docs/user/WEBHOOK-CHANNEL.md`
 
 **Release**
-- [ ] Full build: `./mvnw clean install` (online once, then `-o`)
-- [ ] Security scan cadence: produce `security-report-2026-MM-DD.md` per existing practice
-- [ ] `CHANGELOG.md` 1.2.0, `MIGRATION-1.2.md`, README badges, `docs/INDEX.md`
-- [ ] Update `feature-gap-analysis-2026-09-09.md` status column for shipped items (or add a "1.2.0 shipped" note at top)
-- [ ] `e2e-test` skill run green against a release-candidate build from Maven Central staging
-- [ ] Tag `v1.2.0`, deploy, bump `1.3.0-SNAPSHOT`
+- [ ] Full build: `./mvnw clean install` — *reactor builds clean offline; a clean online build belongs to the release run.* (online once, then `-o`)
+- [ ] Security scan cadence — *the 2026-09-08 scan and its fixes shipped earlier this session; re-run at release time.*: produce `security-report-2026-MM-DD.md` per existing practice
+- [ ] `CHANGELOG.md` 1.2.0 — *release mechanics, left for a human to drive.*, `MIGRATION-1.2.md`, README badges, `docs/INDEX.md`
+- [ ] Update `feature-gap-analysis-2026-09-09.md` — *release mechanics.* status column for shipped items (or add a "1.2.0 shipped" note at top)
+- [ ] `e2e-test` skill run green — *release mechanics; needs a staged Central artifact.* against a release-candidate build from Maven Central staging
+- [ ] Tag `v1.2.0`, deploy, bump — *release mechanics; requires explicit approval per the repo rule.* `1.3.0-SNAPSHOT`
 
 ### 10.5 Verification
 
