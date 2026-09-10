@@ -16,6 +16,7 @@
 
     <modules>
         <module>jaiclaw-channel-telegram</module>
+        <module>jaiclaw-channel-webhook</module>
         <module>jaiclaw-channel-slack</module>
         <module>jaiclaw-channel-discord</module>
         <module>jaiclaw-channel-email</module>
