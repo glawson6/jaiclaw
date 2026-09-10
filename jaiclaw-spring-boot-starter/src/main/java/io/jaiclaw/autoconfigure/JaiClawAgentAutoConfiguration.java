@@ -184,7 +184,8 @@ public class JaiClawAgentAutoConfiguration {
             ObjectProvider<ToolApprovalHandler> approvalHandlerProvider,
             ObjectProvider<AgentOrchestrationPort> orchestrationPortProvider,
             ObjectProvider<TenantAgentRuntimeFactory> tenantRuntimeFactoryProvider,
-            ObjectProvider<AgentLoopDelegateRegistry> delegateRegistryProvider) {
+            ObjectProvider<AgentLoopDelegateRegistry> delegateRegistryProvider,
+            ObjectProvider<io.jaiclaw.tools.search.SessionToolDiscoveries> toolDiscoveriesProvider) {
 
         List<SkillDefinition> skills = skillLoader.loadConfigured(
                 properties.skills().allowBundled(),
@@ -268,6 +269,10 @@ public class JaiClawAgentAutoConfiguration {
                 toolPolicy,
                 compositeToolProfileRegistry
         );
+
+        // Optional: when Tool Search is enabled, deferred schemas are withheld
+        // from each turn until the session discovers them.
+        runtime.setSessionToolDiscoveries(toolDiscoveriesProvider.getIfAvailable());
 
         Set<String> toolNames = toolRegistry.toolNames();
         log.info("AgentRuntime initialized — {} tools available: {}", toolNames.size(), toolNames);

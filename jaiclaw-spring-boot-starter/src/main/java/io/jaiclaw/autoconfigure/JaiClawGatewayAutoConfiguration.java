@@ -37,6 +37,9 @@ import java.util.List;
 @EnableConfigurationProperties(io.jaiclaw.gateway.GatewayProperties.class)
 public class JaiClawGatewayAutoConfiguration {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(JaiClawGatewayAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnClass(name = "io.jaiclaw.gateway.WebhookDispatcher")
@@ -108,6 +111,25 @@ public class JaiClawGatewayAutoConfiguration {
         svc.setAutoVision(gatewayProperties.autoVision());
         svc.setEmergencyStop(emergencyStopProvider.getIfAvailable(), gatewayProperties.estopMessage());
         return svc;
+    }
+
+    /**
+     * OpenAI-compatible chat endpoint at {@code POST /v1/chat/completions}.
+     *
+     * <p>Registered only when {@code jaiclaw.gateway.openai-api-enabled=true}. It
+     * presents as a model API, so an adopter must enable it deliberately and
+     * front it with their own authentication — the controller performs none.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "jaiclaw.gateway", name = "openai-api-enabled", havingValue = "true")
+    public io.jaiclaw.gateway.openai.OpenAiCompatController openAiCompatController(
+            io.jaiclaw.gateway.GatewayService gatewayService,
+            io.jaiclaw.gateway.GatewayProperties gatewayProperties) {
+        log.warn("OpenAI-compatible API ENABLED at POST /v1/chat/completions — "
+                + "this surface performs no authentication of its own; front /v1/** with "
+                + "your existing auth. Session strategy: {}", gatewayProperties.openaiApiSessionStrategy());
+        return new io.jaiclaw.gateway.openai.OpenAiCompatController(gatewayService, gatewayProperties);
     }
 
     /**

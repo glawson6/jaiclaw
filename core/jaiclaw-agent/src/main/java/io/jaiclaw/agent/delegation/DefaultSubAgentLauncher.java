@@ -54,18 +54,6 @@ public class DefaultSubAgentLauncher implements SubAgentLauncher {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultSubAgentLauncher.class);
 
-    /**
-     * Privilege ordering, least to most. Used to clamp a child's requested profile
-     * to its parent's. NONE < MINIMAL < MESSAGING < CODING < FULL — MESSAGING sits
-     * below CODING because sending a message is narrower than shell and file access.
-     */
-    private static final Map<ToolProfile, Integer> PRIVILEGE = Map.of(
-            ToolProfile.NONE, 0,
-            ToolProfile.MINIMAL, 1,
-            ToolProfile.MESSAGING, 2,
-            ToolProfile.CODING, 3,
-            ToolProfile.FULL, 4);
-
     private final AgentRuntime agentRuntime;
     private final SessionManager sessionManager;
     private final DelegationProperties properties;
@@ -244,13 +232,13 @@ public class DefaultSubAgentLauncher implements SubAgentLauncher {
         return parent.agentId() + ":subagent:" + parentKey + ":" + n;
     }
 
-    /** The less-privileged of two profiles. Unknown values are treated as most restrictive. */
+    /**
+     * The less-privileged of two profiles. Delegates to {@link ToolProfile#narrowest}
+     * so the ordering lives in one place — this class previously carried its own
+     * copy, which would have silently ignored WEBHOOK_SAFE when that was added.
+     */
     static ToolProfile narrowest(ToolProfile requested, ToolProfile parent) {
-        if (requested == null) return parent == null ? ToolProfile.NONE : parent;
-        if (parent == null) return requested;
-        int r = PRIVILEGE.getOrDefault(requested, 0);
-        int p = PRIVILEGE.getOrDefault(parent, 0);
-        return r <= p ? requested : parent;
+        return ToolProfile.narrowest(requested, parent);
     }
 
     private SubAgentHandle refusedHandle(String reason) {

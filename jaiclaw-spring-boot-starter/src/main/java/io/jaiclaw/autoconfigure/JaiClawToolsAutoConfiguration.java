@@ -264,4 +264,57 @@ public class JaiClawToolsAutoConfiguration {
             return tool;
         }
     }
+
+    // ─── Tool Search / deferred schemas (1.2.0 Phase 3) ──────────────────────
+    // Off by default: with jaiclaw.tools.search.enabled=false nothing is deferred
+    // and tool_search is not registered, so the model sees the pre-1.2.0 list.
+
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.config.ToolSearchProperties toolSearchProperties(
+            org.springframework.core.env.Environment env) {
+        return org.springframework.boot.context.properties.bind.Binder.get(env)
+                .bind("jaiclaw.tools.search", io.jaiclaw.config.ToolSearchProperties.class)
+                .orElseGet(io.jaiclaw.config.ToolSearchProperties::defaults);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "jaiclaw.tools.search", name = "enabled", havingValue = "true")
+    public io.jaiclaw.tools.search.SessionToolDiscoveries sessionToolDiscoveries() {
+        return new io.jaiclaw.tools.search.SessionToolDiscoveries();
+    }
+
+    /**
+     * Registers {@code tool_search} and applies the configured deferral rules.
+     *
+     * <p>Deferral is applied here, after {@link ToolBeanDiscovery} has registered
+     * every tool bean, so rules can match tools contributed by plugins and MCP
+     * bridges rather than only the built-ins present at registry construction.
+     */
+    @Bean
+    @ConditionalOnBean(io.jaiclaw.tools.search.SessionToolDiscoveries.class)
+    @ConditionalOnMissingBean(io.jaiclaw.tools.builtin.ToolSearchTool.class)
+    public io.jaiclaw.tools.builtin.ToolSearchTool toolSearchTool(
+            ToolRegistry toolRegistry,
+            io.jaiclaw.tools.search.SessionToolDiscoveries discoveries,
+            io.jaiclaw.config.ToolSearchProperties searchProperties) {
+        var tool = new io.jaiclaw.tools.builtin.ToolSearchTool(
+                toolRegistry, discoveries, searchProperties.limit());
+        toolRegistry.register(tool);
+
+        if (searchProperties.hasDeferralRules()) {
+            int deferredCount = toolRegistry.markDeferred(def ->
+                    // tool_search itself must never be deferred — the model would
+                    // have no way to discover the thing that does discovery.
+                    !"tool_search".equals(def.name())
+                            && searchProperties.matches(def.name(), def.section(), def.source()));
+            log.info("Tool search ENABLED — {} of {} tools deferred; tool_search registered",
+                    deferredCount, toolRegistry.size());
+        } else {
+            log.info("Tool search ENABLED — no deferral rules configured; "
+                    + "tool_search registered but all schemas are still sent");
+        }
+        return tool;
+    }
 }
