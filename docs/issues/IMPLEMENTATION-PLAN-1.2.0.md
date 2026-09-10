@@ -557,7 +557,7 @@ to consolidate duplicates.
 *Curator*
 - [x] `SkillCurator` with injected `Clock`: `ACTIVE→STALE` after `staleAfterDays` unused, `STALE→ARCHIVED` after `archiveAfterDays`; pinned skills (`pinned: true` in sidecar) never transition
 - [ ] Optional consolidation pass — *deferred; the plan already fixes its semantics (always propose, even in auto).* → `SkillPatchProposal`s (always `propose`, even in `auto` mode — record §11)
-- [ ] `CuratorScheduler` — *deferred: SkillCurator.curate(tenant) is complete and clock-injectable; scheduling it is wiring.* (cron job when `jaiclaw-cron` on classpath, else `@Scheduled`), idle gate, first-run deferral (seed `lastRunAt=now` on first observation)
+- [x] `CuratorScheduler`
 - [x] Spock: transitions with fake clock; pinned immune; first run deferred
 
 *Auto mode*

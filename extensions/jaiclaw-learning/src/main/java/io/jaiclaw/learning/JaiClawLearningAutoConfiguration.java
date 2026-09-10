@@ -139,6 +139,20 @@ public class JaiClawLearningAutoConfiguration {
     }
 
     /**
+     * Runs the curator periodically. Without it the curator exists but never
+     * fires — its transitions are driven by elapsed time, so something has to ask.
+     * Started after the context is up and closed with it.
+     */
+    @Bean(initMethod = "start", destroyMethod = "close")
+    @ConditionalOnMissingBean
+    public io.jaiclaw.learning.curator.CuratorScheduler learningCuratorScheduler(
+            io.jaiclaw.learning.curator.SkillCurator curator,
+            io.jaiclaw.learning.skill.SkillWriter skills,
+            LearningProperties properties) {
+        return new io.jaiclaw.learning.curator.CuratorScheduler(curator, skills, properties);
+    }
+
+    /**
      * The applier the rest of the module uses. Skill handling wraps memory
      * handling rather than replacing it, so one bean covers all three proposal
      * kinds and callers never have to pick.
