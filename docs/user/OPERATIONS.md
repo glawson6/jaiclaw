@@ -1466,6 +1466,47 @@ Tasks (via `jaiclaw-tasks`): JSON by default; H2 / Postgres / Redis available vi
 
 ---
 
+## Hook Events (1.2.0 additions)
+
+The sealed `HookEvent` hierarchy grew from 28 to 34 permits in 1.2.0. Subscribe
+from a plugin with `api.on(EventType.class, handler)`.
+
+### Runtime guards (Phase 1)
+
+| Event | Fired when | Fired from |
+|---|---|---|
+| `BudgetWarningEvent` | A run crosses its iteration-budget warning ratio (once per run) | `LoopGuard` |
+| `RepetitionDetectedEvent` | N identical consecutive tool calls trip the repetition guard; again with `forcedFinal=true` if it escalates | `LoopGuard` |
+| `EmergencyStopEvent` | ESTOP engaged or released | Actuator / CLI **only** |
+
+`EmergencyStopEvent` is deliberately *not* fired by the readers that poll the
+sentinel — they run on every inbound message and every cron tick, and firing
+there would flood the hook bus. Only the mutating paths emit it.
+
+### Subagent delegation (Phase 2)
+
+| Event | Fired when |
+|---|---|
+| `SubAgentStartedEvent` | A delegated child run begins (carries depth, goal, budget) |
+| `SubAgentProgressEvent` | Optional progress update during a long delegation |
+| `SubAgentEndedEvent` | Child reaches a terminal state — **including failures**, so a listener can always close whatever it opened on `Started` |
+
+`sessionKey()` on all three is the **child's** key; the parent's is a separate
+`parentSessionKey()` field.
+
+```java
+api.on(SubAgentEndedEvent.class, event -> {
+    if (!"COMPLETED".equals(event.status())) {
+        alerting.warn("Subagent failed: " + event.error());
+    }
+    return null;
+});
+```
+
+See [`BUDGETS-AND-GUARDS.md`](./BUDGETS-AND-GUARDS.md),
+[`EMERGENCY-STOP.md`](./EMERGENCY-STOP.md) and
+[`DELEGATION.md`](./DELEGATION.md).
+
 ## AgentMind Configuration
 
 JaiClaw's AgentMind family (port of `NousResearch/hermes-agent`'s three concepts — Soul, Memory, Tendencies — into the JaiClaw runtime) ships as four independent extensions. Each is **off by default**. Plan: `docs/dev/AGENTMIND-MEMORY-SOUL-PLAN.md`. Analysis: `docs/dev/AGENTMIND-MEMORY-SOUL-ANALYSIS.md`.

@@ -338,6 +338,127 @@ Both properties are added in 0.8.0. The fix that prompted them is in
 documented handler was previously declared as a bean but not bound to
 any URL — silently 404'd).
 
+## 1.2.0 features (all opt-in)
+
+Every group below is **off by default**; an existing deployment behaves exactly
+as it did before 1.2.0 until one is enabled.
+
+### Runtime guards — `jaiclaw.agent.agents.<name>.tool-loop`
+
+```yaml
+jaiclaw:
+  agent:
+    agents:
+      default:
+        tool-loop:
+          mode: explicit            # guards apply to the explicit loop
+          max-iterations: 25        # hard cap (pre-existing)
+          budget-max-iterations: 0  # 0 = use max-iterations
+          budget-warning-ratio: 0.9 # tell the model to wrap up at 90%
+          repetition-threshold: 3   # identical consecutive calls (0 = off)
+          approval-floors:
+            shell_exec: PROMPT_ALWAYS   # NONE | PROMPT_ALWAYS | DENY
+            file_write: PROMPT_ALWAYS
+```
+
+Guards are neutral at these defaults except the iteration cap that already
+existed. See [`BUDGETS-AND-GUARDS.md`](./BUDGETS-AND-GUARDS.md).
+
+### Emergency stop
+
+```yaml
+jaiclaw:
+  gateway:
+    estop-message: "Assistant is paused by the operator."
+```
+
+The stop itself is a file at `$JAICLAW_HOME/ESTOP`, not a property —
+`jaiclaw pause` / `jaiclaw resume`. See [`EMERGENCY-STOP.md`](./EMERGENCY-STOP.md).
+
+### Subagent delegation — `jaiclaw.agent.delegation`
+
+```yaml
+jaiclaw:
+  agent:
+    delegation:
+      enabled: false            # default: tools are not registered at all
+      max-depth: 2
+      max-concurrent: 4         # per parent session; overflow QUEUES
+      child-max-iterations: 50
+      default-child-profile: MINIMAL
+      wait-timeout: 10m
+      kanban-enabled: false
+```
+
+See [`DELEGATION.md`](./DELEGATION.md).
+
+### Tool search — `jaiclaw.tools.search`
+
+```yaml
+jaiclaw:
+  tools:
+    search:
+      enabled: false            # default: nothing deferred, no tool_search
+      sources: [mcp, camel]     # defer whole classes of tools
+      sections: [k8s]
+      globs: ["kubectl_*"]
+      names: [some_rare_tool]
+      limit: 5
+```
+
+Deferral is context economy, **not** access control — profiles and allow/deny
+remain the security boundary. See [`TOOL-SEARCH.md`](./TOOL-SEARCH.md).
+
+### Learning loop — `jaiclaw.learning`
+
+```yaml
+jaiclaw:
+  learning:
+    mode: off                 # off | propose | auto
+    selectivity: balanced     # conservative | balanced | eager
+    review-min-turns: 0       # 0 = use the selectivity default
+    review-min-interval:      # unset = use the selectivity default
+    max-transcript-chars: 12000
+    proposals-dir: ${user.home}/.jaiclaw/learning
+    skills-dir: ${user.home}/.jaiclaw/skills/learned
+    auto-allow-patches: false
+    curator-enabled: true
+    curator-stale-after: 30d
+    curator-archive-after: 90d
+```
+
+`mode: off` creates zero beans. See [`LEARNING.md`](./LEARNING.md).
+
+### OpenAI-compatible API — `jaiclaw.gateway`
+
+```yaml
+jaiclaw:
+  gateway:
+    openai-api-enabled: false
+    openai-api-session-strategy: per-request   # or by-user-header
+```
+
+**Performs no authentication of its own** — front `/v1/**` before enabling.
+See [`OPENAI-COMPATIBLE-API.md`](./OPENAI-COMPATIBLE-API.md).
+
+### Webhook channel — `jaiclaw.channels.webhook`
+
+```yaml
+jaiclaw:
+  channels:
+    webhook:
+      enabled: false
+      routes:
+        - route-id: github-pr
+          secret: ${GITHUB_WEBHOOK_SECRET}   # required — no secret, no route
+          tenant-id: acme
+          agent-id: reviewer
+          session-mode: ISOLATED             # or PER_ROUTE
+```
+
+Sessions are clamped to the `WEBHOOK_SAFE` tool profile regardless of
+configuration. See [`WEBHOOK-CHANNEL.md`](./WEBHOOK-CHANNEL.md).
+
 ## Environment-variable cheat sheet
 
 Spring Boot binds every `jaiclaw.*` property to a `JAICLAW_*` env

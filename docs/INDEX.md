@@ -36,6 +36,24 @@ reference for anyone running, configuring, or building on JaiClaw. The
 - [WHAT-IS-AGENTIC-AI.md](user/WHAT-IS-AGENTIC-AI.md) —
   plain-language explainer
 
+### 1.2.0 capabilities (all opt-in)
+
+- [**LEARNING.md**](user/LEARNING.md) — the learning loop: background
+  review turns sessions into proposals an operator applies; selectivity
+  levels, the skill workshop, rollback ledger and curator
+- [**DELEGATION.md**](user/DELEGATION.md) — `delegate_task`: bounded
+  subagents with their own session, budget and narrower tool profile
+- [**TOOL-SEARCH.md**](user/TOOL-SEARCH.md) — deferred tool schemas and
+  `tool_search`, for keeping a large catalog out of every request
+- [**BUDGETS-AND-GUARDS.md**](user/BUDGETS-AND-GUARDS.md) — iteration
+  budgets, repetition and empty-response guards, per-tool approval floors
+- [**EMERGENCY-STOP.md**](user/EMERGENCY-STOP.md) — the global pause
+  switch; `jaiclaw pause` / `resume`, and what it does and does not stop
+- [**OPENAI-COMPATIBLE-API.md**](user/OPENAI-COMPATIBLE-API.md) —
+  `POST /v1/chat/completions` for OpenAI-format clients
+- [**WEBHOOK-CHANNEL.md**](user/WEBHOOK-CHANNEL.md) — HMAC-verified
+  inbound webhooks routed to a `WEBHOOK_SAFE` agent session
+
 ### Operating
 
 - [**OPERATIONS.md**](user/OPERATIONS.md) — running, deploying,

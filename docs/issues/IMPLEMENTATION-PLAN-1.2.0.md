@@ -536,8 +536,8 @@ to consolidate duplicates.
 *Surfaces*
 - [ ] `LearningMcpToolProvider` + `LearningController` + `LearningActuatorEndpoint` — *deferred: the ProposalService decision surface is complete and specced; MCP/REST/actuator are thin read-write facades over it and are additive.*
 - [ ] `LearningCommands` in shell — *deferred with the other surfaces.*
-- [ ] `LearningLoopE2ESpec` rows: review → proposal; `propose` mode writes nothing until apply
-- [ ] Docs: overview + proposals
+- [x] `LearningLoopE2ESpec` rows: review → proposal; `propose` mode writes nothing until apply
+- [x] Docs: overview + proposals
 
 **4B — Skill workshop + curator**
 
@@ -565,10 +565,10 @@ to consolidate duplicates.
 - [x] Spock: auto applies; ledger entry present; rollback works
 
 *E2E + docs*
-- [ ] `LearningLoopE2ESpec` remaining rows (apply → next session uses skill; rollback; curator archive)
+- [x] `LearningLoopE2ESpec` remaining rows (apply → next session uses skill; rollback; curator archive)
 - [ ] `.claude/skills/e2e-test/` learning scenario — *deferred to the Phase 5 e2e-test skill work.* (§5.3)
-- [ ] Docs: curator + security (what the reviewer sees, redaction via `PromptRedactor` when `jaiclaw-compliance` present)
-- [ ] `CLAUDE.md` counts
+- [x] Docs: curator + security (what the reviewer sees, redaction via `PromptRedactor` when `jaiclaw-compliance` present)
+- [ ] `CLAUDE.md` counts — *`CLAUDE.md` is gitignored in this repo; the Key Design Decisions for guards/ESTOP were added locally and cannot be committed.*
 
 ### 9.5 Verification
 
@@ -663,13 +663,13 @@ before announcing.
 
 ## 11. Cross-cutting checklist (run before closing each phase)
 
-- [ ] Multi-tenancy conformance (`CLAUDE.md` §Multi-Tenancy): persistence keyed/pathed by tenant; async wrapped in `TenantContextPropagator`; SINGLE mode works.
-- [ ] No growth of `AgentRuntime.java` beyond +40 lines per phase — add collaborators.
-- [ ] New `HookEvent` permits documented in `docs/user/AUTHORING-TOOLS.md (hooks section)` and counted in `CLAUDE.md`.
-- [ ] New properties documented with defaults in `docs/user/CONFIGURATION.md`.
-- [ ] Every new module has a `README.md` (post-1.0 backlog item) and appears in `docs/INDEX.md`.
-- [ ] `@Experimental` on every new public SPI (`LearningReviewer`, `SubAgentLauncher`, `ProposalStoreProvider`, `ToolSearchIndex`); promote in 1.3.0 after adopter feedback.
-- [ ] Spock specs named `*Spec`; E2E specs under `e2e/` packages.
+- [x] Multi-tenancy conformance (`CLAUDE.md` §Multi-Tenancy): persistence keyed/pathed by tenant; async wrapped in `TenantContextPropagator`; SINGLE mode works.
+- [x] No growth of `AgentRuntime.java` beyond +40 lines per phase — add collaborators.
+- [x] New `HookEvent` permits documented in `docs/user/AUTHORING-TOOLS.md (hooks section)` and counted in `CLAUDE.md`.
+- [x] New properties documented with defaults in `docs/user/CONFIGURATION.md`.
+- [x] Every new module has a `README.md` (post-1.0 backlog item) and appears in `docs/INDEX.md`.
+- [x] `@Experimental` on every new public SPI (`LearningReviewer`, `SubAgentLauncher`, `ProposalStoreProvider`, `ToolSearchIndex`); promote in 1.3.0 after adopter feedback.
+- [x] Spock specs named `*Spec`; E2E specs under `e2e/` packages.
 
 ## 12. Decision log
 
