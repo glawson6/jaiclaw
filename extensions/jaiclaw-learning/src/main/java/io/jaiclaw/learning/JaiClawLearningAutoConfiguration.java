@@ -119,6 +119,18 @@ public class JaiClawLearningAutoConfiguration {
         return new io.jaiclaw.learning.ledger.LearningLedger(Path.of(properties.proposalsDir()));
     }
 
+    /**
+     * Records learned-skill usage so the curator ages on actual use rather than
+     * on age alone. Without it {@code lastUsedAt} is never written and a skill
+     * used every day would still archive 90 days after it was created.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public io.jaiclaw.learning.skill.SkillUsageTracker learningSkillUsageTracker(
+            io.jaiclaw.learning.skill.SkillWriter skills) {
+        return new io.jaiclaw.learning.skill.SkillUsageTracker(skills);
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public io.jaiclaw.learning.curator.SkillCurator learningSkillCurator(

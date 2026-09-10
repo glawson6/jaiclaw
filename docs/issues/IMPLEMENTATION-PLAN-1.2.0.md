@@ -551,8 +551,8 @@ to consolidate duplicates.
 - [x] Spock: create; patch; ambiguous span rejected; rollback restores bytes; archived skipped by loader
 
 *Usage tracking*
-- [ ] `SkillUsageTracker` — *deferred with the SkillLoader change; the sidecar already carries useCount/lastUsedAt and the curator consumes them.*: `lastUsedAt`, `useCount` in sidecar; updated when a learned skill is included in a prompt (hook) — batched writes, never on the hot path synchronously
-- [ ] Spock: counters update off-thread — *deferred with SkillUsageTracker.*
+- [x] `SkillUsageTracker`
+- [x] Spock: counters update off-thread
 
 *Curator*
 - [x] `SkillCurator` with injected `Clock`: `ACTIVE→STALE` after `staleAfterDays` unused, `STALE→ARCHIVED` after `archiveAfterDays`; pinned skills (`pinned: true` in sidecar) never transition
