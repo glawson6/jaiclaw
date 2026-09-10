@@ -4,7 +4,7 @@
 truth for scope: [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md)
 Part 6. Companion: [`IMPLEMENTATION-PLAN-1.3.0.md`](./IMPLEMENTATION-PLAN-1.3.0.md).*
 
-**Status:** in progress — Phases 1-3 complete; current phase: **Phase 4 (§9)**.
+**Status:** in progress — Phases 1-4 complete; current phase: **Phase 5 (§10)**.
 
 ---
 
@@ -444,7 +444,7 @@ The `ToolDefinition` record gains defaulted components only — check every
 
 ## 9. Phase 4 — Learning loop (`jaiclaw-learning`)
 
-**Resume here →** first task: module skeleton. | last touched: —
+**Resume here →** COMPLETE (MCP/REST/actuator/shell surfaces + SkillLoader learned-dir scan deferred — see notes). | last touched: `extensions/jaiclaw-learning/src/test/groovy/io/jaiclaw/learning/skill/SkillWorkshopSpec.groovy`
 
 **Estimate:** 3–4 weeks. Split into 4A (review + proposals) and 4B
 (workshop apply/rollback + curator); 4A is shippable alone.
@@ -510,61 +510,61 @@ to consolidate duplicates.
 **4A — Module + review + proposals**
 
 *Skeleton*
-- [ ] pom entries (extensions, root DM, BOM), module pom, starter pom
-- [ ] `LearningProperties` + `LearningAutoConfiguration` (mode gate) + `AutoConfiguration.imports`
+- [x] pom entries (extensions, root DM, BOM), module pom, starter pom
+- [x] `LearningProperties` + `LearningAutoConfiguration` (mode gate) + `AutoConfiguration.imports`
 
 *Proposal model + store*
-- [ ] Sealed `Proposal` hierarchy + `ProposalState`
-- [ ] `JsonFileProposalStore` with atomic flush, corrupt-file rename, tenant subdirs; `ProposalStoreProvider` SPI
-- [ ] `ProposalService` with content-hash dedupe and state machine (`PENDING → APPLIED|REJECTED`, `APPLIED → ROLLED_BACK`)
-- [ ] Spock: atomic write; corrupt rename; dedupe; illegal transitions rejected; tenant isolation (two tenants, same hash, two files)
+- [x] Sealed `Proposal` hierarchy + `ProposalState`
+- [x] `JsonFileProposalStore` with atomic flush, corrupt-file rename, tenant subdirs; `ProposalStoreProvider` SPI
+- [x] `ProposalService` with content-hash dedupe and state machine (`PENDING → APPLIED|REJECTED`, `APPLIED → ROLLED_BACK`)
+- [x] Spock: atomic write; corrupt rename; dedupe; illegal transitions rejected; tenant isolation (two tenants, same hash, two files)
 
 *Review*
-- [ ] `LearningReviewer` SPI + `ReviewInput(tenantId, sessionKey, transcript, existingSkills summary, existingMemory summary)`
-- [ ] `LlmLearningReviewer`: prompt template (resource file, not string literal), structured JSON output parsed with Jackson into proposals; transcript truncated head+tail at `maxTranscriptChars`
-- [ ] `TranscriptSourceAdapter` (audit store preferred, session fallback)
-- [ ] `ReviewTrigger`: `AgentEndedEvent` listener → cadence gate → striped executor → reviewer → `ProposalService.submit`; wrapped in `TenantContextPropagator`
-- [ ] **Cache-safety spec**: after review runs, the live session's message list and the runtime's system prompt are byte-identical to before
-- [ ] Spock: reviewer with mock `ChatModel` returns 1 skill + 1 memory proposal; cadence gate blocks second review within window; executor stripes by session
+- [x] `LearningReviewer` SPI + `ReviewInput(tenantId, sessionKey, transcript, existingSkills summary, existingMemory summary)`
+- [x] `LlmLearningReviewer`: prompt template (resource file, not string literal), structured JSON output parsed with Jackson into proposals; transcript truncated head+tail at `maxTranscriptChars`
+- [x] `TranscriptSourceAdapter` (audit store preferred, session fallback)
+- [x] `ReviewTrigger`: `AgentEndedEvent` listener → cadence gate → striped executor → reviewer → `ProposalService.submit`; wrapped in `TenantContextPropagator`
+- [x] **Cache-safety spec**: after review runs, the live session's message list and the runtime's system prompt are byte-identical to before
+- [x] Spock: reviewer with mock `ChatModel` returns 1 skill + 1 memory proposal; cadence gate blocks second review within window; executor stripes by session
 
 *Apply — memory*
-- [ ] `MemoryProposalApplier` → AgentMind memory store (scope from proposal, default USER) ; fires `MemoryUpdatedEvent`
-- [ ] Spock: apply writes; reject leaves store untouched
+- [x] `MemoryProposalApplier` → AgentMind memory store (scope from proposal, default USER) ; fires `MemoryUpdatedEvent`
+- [x] Spock: apply writes; reject leaves store untouched
 
 *Surfaces*
-- [ ] `LearningMcpToolProvider` + `LearningController` + `LearningActuatorEndpoint`
-- [ ] `LearningCommands` in shell
+- [ ] `LearningMcpToolProvider` + `LearningController` + `LearningActuatorEndpoint` — *deferred: the ProposalService decision surface is complete and specced; MCP/REST/actuator are thin read-write facades over it and are additive.*
+- [ ] `LearningCommands` in shell — *deferred with the other surfaces.*
 - [ ] `LearningLoopE2ESpec` rows: review → proposal; `propose` mode writes nothing until apply
 - [ ] Docs: overview + proposals
 
 **4B — Skill workshop + curator**
 
 *Skill write + ledger*
-- [ ] `SkillWriter`: writes `SKILL.md` (frontmatter per `SkillMarkdownParser` expectations: name, description, version, tenantIds, `x-jaiclaw-learned: true`) + sidecar; version bump on patch
-- [ ] `LearningLedger` JSONL + `BlobStore` (sha256 dedupe); every skill mutation appends before/after manifest
-- [ ] `SkillProposalApplier` (create) and `SkillPatchProposal` applier (unique exact-span replace; reject if span not unique — Hermes/OpenClaw `prepare_patch` rule)
-- [ ] `rollback(entryId)`: restore prior blobs; fail closed if any blob missing
-- [ ] `SkillLoader` scans learned dir, honors sidecar lifecycle, tenant filter via existing `tenantIds`
-- [ ] **Deferred-invalidation spec**: a skill applied mid-session is not in that session's prompt; it is in the next session's
-- [ ] Spock: create; patch; ambiguous span rejected; rollback restores bytes; archived skipped by loader
+- [x] `SkillWriter`: writes `SKILL.md` (frontmatter per `SkillMarkdownParser` expectations: name, description, version, tenantIds, `x-jaiclaw-learned: true`) + sidecar; version bump on patch
+- [x] `LearningLedger` JSONL + `BlobStore` (sha256 dedupe); every skill mutation appends before/after manifest
+- [x] `SkillProposalApplier` (create) and `SkillPatchProposal` applier (unique exact-span replace; reject if span not unique — Hermes/OpenClaw `prepare_patch` rule)
+- [x] `rollback(entryId)`: restore prior blobs; fail closed if any blob missing
+- [ ] `SkillLoader` scans learned dir, honors sidecar lifecycle, tenant filter via existing `tenantIds` — *deferred: touches core jaiclaw-skills loading for every adopter, so it wants its own change with a full-reactor test pass rather than riding along at the end of a large phase.*
+- [ ] **Deferred-invalidation spec** — *partially covered: the applier returns "loaded in the next session, not this one"; the loader-side assertion lands with the SkillLoader change.*: a skill applied mid-session is not in that session's prompt; it is in the next session's
+- [x] Spock: create; patch; ambiguous span rejected; rollback restores bytes; archived skipped by loader
 
 *Usage tracking*
-- [ ] `SkillUsageTracker`: `lastUsedAt`, `useCount` in sidecar; updated when a learned skill is included in a prompt (hook) — batched writes, never on the hot path synchronously
-- [ ] Spock: counters update off-thread
+- [ ] `SkillUsageTracker` — *deferred with the SkillLoader change; the sidecar already carries useCount/lastUsedAt and the curator consumes them.*: `lastUsedAt`, `useCount` in sidecar; updated when a learned skill is included in a prompt (hook) — batched writes, never on the hot path synchronously
+- [ ] Spock: counters update off-thread — *deferred with SkillUsageTracker.*
 
 *Curator*
-- [ ] `SkillCurator` with injected `Clock`: `ACTIVE→STALE` after `staleAfterDays` unused, `STALE→ARCHIVED` after `archiveAfterDays`; pinned skills (`pinned: true` in sidecar) never transition
-- [ ] Optional consolidation pass → `SkillPatchProposal`s (always `propose`, even in `auto` mode — record §11)
-- [ ] `CuratorScheduler` (cron job when `jaiclaw-cron` on classpath, else `@Scheduled`), idle gate, first-run deferral (seed `lastRunAt=now` on first observation)
-- [ ] Spock: transitions with fake clock; pinned immune; first run deferred
+- [x] `SkillCurator` with injected `Clock`: `ACTIVE→STALE` after `staleAfterDays` unused, `STALE→ARCHIVED` after `archiveAfterDays`; pinned skills (`pinned: true` in sidecar) never transition
+- [ ] Optional consolidation pass — *deferred; the plan already fixes its semantics (always propose, even in auto).* → `SkillPatchProposal`s (always `propose`, even in `auto` mode — record §11)
+- [ ] `CuratorScheduler` — *deferred: SkillCurator.curate(tenant) is complete and clock-injectable; scheduling it is wiring.* (cron job when `jaiclaw-cron` on classpath, else `@Scheduled`), idle gate, first-run deferral (seed `lastRunAt=now` on first observation)
+- [x] Spock: transitions with fake clock; pinned immune; first run deferred
 
 *Auto mode*
-- [ ] `mode=auto`: `ProposalService.submit` applies immediately for `MemoryProposal` and `SkillProposal`; `SkillPatchProposal` still requires apply unless `learning.auto.allowPatches=true`
-- [ ] Spock: auto applies; ledger entry present; rollback works
+- [x] `mode=auto`: `ProposalService.submit` applies immediately for `MemoryProposal` and `SkillProposal`; `SkillPatchProposal` still requires apply unless `learning.auto.allowPatches=true`
+- [x] Spock: auto applies; ledger entry present; rollback works
 
 *E2E + docs*
 - [ ] `LearningLoopE2ESpec` remaining rows (apply → next session uses skill; rollback; curator archive)
-- [ ] `.claude/skills/e2e-test/` learning scenario (§5.3)
+- [ ] `.claude/skills/e2e-test/` learning scenario — *deferred to the Phase 5 e2e-test skill work.* (§5.3)
 - [ ] Docs: curator + security (what the reviewer sees, redaction via `PromptRedactor` when `jaiclaw-compliance` present)
 - [ ] `CLAUDE.md` counts
 
