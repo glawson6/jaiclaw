@@ -426,7 +426,7 @@ runtime admits discovered tools for the rest of the session.
 - [x] `ToolRegistry.resolveActive(profile/policy, discoveries)` = non-deferred ∪ discovered; existing `resolveFor*` untouched
 - [x] `ToolSearchTool` builtin; registered only when `search.enabled`
 - [x] `AgentRuntime`: per-turn active list; deferred-undiscovered call → informative error result
-- [ ] Source tagging for MCP and Camel providers — *deferred: `ToolDefinition.source` and the `sources:` deferral rule ship and are specced; tagging the bridges is a one-line change per provider that is better done alongside Phase 5 surface work. Until then, defer those tools by `sections:` or `globs:`.*
+- [x] Source tagging for MCP and Camel providers — *plan premise was wrong: there is no MCP/Camel bridge producing JaiClaw ToolDefinitions (MCP runs the other way — JaiClaw HOSTS tools; every registry tool arrives as a Spring bean via ToolBeanDiscovery). Implemented instead as ToolSourceResolver, which derives the source from the implementing package, plus a source-aware markDeferred overload. A spec proves the previous single-argument form matched ZERO tools for `sources:` rules.*
 - [x] Spock: index ranking; deferral by glob/section/source; session persistence of discoveries; disabled = identical tool list to today (snapshot the list order)
 - [x] `ToolSearchE2ESpec` — §5.2 row 3 (60-tool registry from the example app)
 - [x] Docs

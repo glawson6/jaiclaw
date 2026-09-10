@@ -5,6 +5,7 @@ import io.jaiclaw.core.tool.ToolCallback;
 import io.jaiclaw.core.tool.ToolDefinition;
 import io.jaiclaw.core.tool.ToolProfile;
 import io.jaiclaw.tools.search.ToolSearchIndex;
+import io.jaiclaw.tools.search.ToolSourceResolver;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -162,6 +163,37 @@ public class ToolRegistry {
         }
         if (count > 0) index = null;
         return count;
+    }
+
+    /**
+     * Like {@link #markDeferred(Predicate)}, but the predicate also receives the
+     * tool's <em>resolved</em> source.
+     *
+     * <p>Most tools do not stamp {@link ToolDefinition#source()} themselves — it
+     * is derived from the implementing class's package by
+     * {@link ToolSourceResolver}. Rules keyed on source must therefore go through
+     * this overload, or they would only ever match the handful of tools that set
+     * the field explicitly.
+     *
+     * @param predicate receives {@code (definition, resolvedSource)}
+     * @return how many tools were newly deferred
+     */
+    public int markDeferred(java.util.function.BiPredicate<ToolDefinition, String> predicate) {
+        if (predicate == null) return 0;
+        int count = 0;
+        for (ToolCallback tool : tools.values()) {
+            ToolDefinition def = tool.definition();
+            String source = ToolSourceResolver.resolve(tool);
+            if (predicate.test(def, source) && deferred.add(def.name())) count++;
+        }
+        if (count > 0) index = null;
+        return count;
+    }
+
+    /** The resolved source of a registered tool; {@code builtin} when unknown. */
+    public String sourceOf(String toolName) {
+        ToolCallback tool = tools.get(toolName);
+        return tool == null ? ToolDefinition.SOURCE_BUILTIN : ToolSourceResolver.resolve(tool);
     }
 
     /** Clears deferral for a single tool, so its schema is sent up front again. */

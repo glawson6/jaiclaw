@@ -304,11 +304,15 @@ public class JaiClawToolsAutoConfiguration {
         toolRegistry.register(tool);
 
         if (searchProperties.hasDeferralRules()) {
-            int deferredCount = toolRegistry.markDeferred(def ->
+            // The BiPredicate overload supplies the RESOLVED source (derived from
+            // the tool's package when it does not stamp one itself). Using the
+            // single-argument form here would silently match almost nothing for
+            // `sources:` rules.
+            int deferredCount = toolRegistry.markDeferred((def, source) ->
                     // tool_search itself must never be deferred — the model would
                     // have no way to discover the thing that does discovery.
                     !"tool_search".equals(def.name())
-                            && searchProperties.matches(def.name(), def.section(), def.source()));
+                            && searchProperties.matches(def.name(), def.section(), source));
             log.info("Tool search ENABLED — {} of {} tools deferred; tool_search registered",
                     deferredCount, toolRegistry.size());
         } else {

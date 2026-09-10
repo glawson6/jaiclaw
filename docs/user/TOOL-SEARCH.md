@@ -34,6 +34,28 @@ jaiclaw:
 
 Rules are additive: a tool is deferred if it matches **any** of them.
 
+### How `sources` is determined
+
+Most tools do not declare a source, so it is **derived from the implementing
+class's package**:
+
+| Package contains | Reported source |
+|---|---|
+| `.mcp.` | `mcp` |
+| `.camel.` | `camel` |
+| `io.jaiclaw.<module>.…` | the module name (`kanban`, `pipeline`, …) |
+| `io.jaiclaw.tools.…` / `io.jaiclaw.core.…` | `builtin` |
+
+A tool that stamps `ToolDefinition.source()` explicitly is always believed and
+overrides the inference.
+
+Package inference is a heuristic, and treated as one: it feeds a context-economy
+control, never an authorization decision. A wrong guess means a schema is sent
+that could have been deferred — not that a tool becomes reachable. Profile and
+allow/deny filtering are unaffected.
+
+Check what a tool resolves to with `ToolRegistry.sourceOf(name)`.
+
 Enabling search with **no** rules registers `tool_search` but defers nothing.
 That is a reasonable first step — the model gains the ability to look around
 without changing what it is sent.
