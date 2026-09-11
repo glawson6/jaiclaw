@@ -12,6 +12,13 @@ particular `IterationBudget`, `SubAgentLauncher`, `ToolSearch`, ESTOP and
 
 ## 1. Context
 
+> **See also:** [`DESIGN-1.3.0-SKILL-EXTRACTION.md`](./DESIGN-1.3.0-SKILL-EXTRACTION.md)
+> — a proposed redesign of the 1.2.0 learning loop as batch extraction over the
+> `jaiclaw-audit` transcript corpus. **Not scheduled work.** It documents a
+> prerequisite (an outcome signal) that should land before any of it is built,
+> and records that `jaiclaw-audit` becomes a *strict* dependency of skill
+> extraction rather than the optional one it is in 1.2.0.
+
 1.3.0 is the **protocols + safety** release. 1.2.0 made JaiClaw agents learn
 and delegate; 1.3.0 makes them interoperable with other agents (A2A),
 recoverable when they damage a workspace (checkpoints + rollback), cheaper
@@ -524,5 +531,8 @@ pools/fallbacks are configured).
 | 2026-09-09 | Prompt-cache invariant is spec-enforced before cache markers ship | Markers on an unstable prefix are worse than none |
 | 2026-09-09 | Session primitives stored in `Session` attributes | Redis sessions carry them for free; no new stores |
 | 2026-09-09 | `TranscriptSearchPort` lives in core | Keeps `jaiclaw-tools` free of an audit dependency |
+| 2026-09-10 | Skill extraction, if built, reads the **audit transcript corpus**, not live sessions | A single live session cannot answer "is this durable?" — durability is a claim about recurrence. A corpus can. It also removes the prompt-cache risk by construction and makes extraction evaluable: same corpus in, diff the proposals out. See DESIGN-1.3.0-SKILL-EXTRACTION.md. |
+| 2026-09-10 | `jaiclaw-audit` is a **strict** dependency of skill extraction | The 1.2.0 reviewer degrades to `SessionManager` when audit is absent; a batch extractor has no fallback — there is nothing to batch over. Compile-time non-optional, a `TranscriptStore` bean required at runtime, and archiving must have run long enough to build a corpus. Must fail loudly, not silently extract nothing. |
+| 2026-09-10 | An **outcome signal** precedes any extraction work | Batch extraction improves how proposals are generated; it does nothing about our inability to tell whether an applied skill helped. Building it first yields a better-engineered guess. |
 | — | *(open)* `a2a-java` SDK vs hand-rolled JSON-RPC (Phase 1) | |
 | — | *(open)* checkpoints starter placement (Phase 2) | |

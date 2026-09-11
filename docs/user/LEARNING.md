@@ -166,6 +166,25 @@ personal data. That is an instruction, not an enforcement: if you handle
 regulated data, review the queue before applying, and consider the redaction
 support in `jaiclaw-compliance`.
 
+## Future direction
+
+This loop reviews a **live session** after each turn. A proposed redesign for
+1.3.0 runs extraction as a **batch pass over the `jaiclaw-audit` transcript
+corpus** instead — which can ask "what recurs across many conversations?" rather
+than "is anything in this one conversation durable?", removes the prompt-cache
+risk by construction, and makes extraction evaluable by re-running over a fixed
+corpus.
+
+That design makes `jaiclaw-audit` a **strict** dependency: the current reviewer
+falls back to `SessionManager` when audit is absent, but a batch extractor has
+nothing to batch over. Archiving would need to have been enabled long enough to
+accumulate a corpus.
+
+It is **not scheduled**, and it is gated behind a prerequisite: an outcome signal
+that tells us whether an applied skill actually helped. Without that, batch
+extraction is the same unvalidated guess, just cheaper. See
+[`docs/issues/DESIGN-1.3.0-SKILL-EXTRACTION.md`](../issues/DESIGN-1.3.0-SKILL-EXTRACTION.md).
+
 ## See also
 
 - [`DELEGATION.md`](./DELEGATION.md)

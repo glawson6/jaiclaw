@@ -459,6 +459,54 @@ jaiclaw:
 Sessions are clamped to the `WEBHOOK_SAFE` tool profile regardless of
 configuration. See [`WEBHOOK-CHANNEL.md`](./WEBHOOK-CHANNEL.md).
 
+## Retention (1.2.0 follow-up)
+
+Two stores grew without bound before 1.2.0. Both fixes default to **disabled**,
+reproducing the old behaviour — silently dropping sessions or deleting audit data
+on upgrade would be worse than the leaks.
+
+### Live sessions
+
+`InMemorySessionManager` held every session for the life of the process. Bound it
+programmatically:
+
+```java
+InMemorySessionManager sessions = new InMemorySessionManager(tenantGuard, hooks);
+sessions.setRetentionPolicy(SessionRetentionPolicy.bounded());   // 10k / 24h / 500 msgs
+// or tune each dimension:
+sessions.setRetentionPolicy(new SessionRetentionPolicy(
+        5_000,                    // max live sessions (0 = unlimited)
+        Duration.ofHours(12),     // idle timeout   (null = no idle eviction)
+        200));                    // max messages per session (0 = unlimited)
+```
+
+Eviction is **idle-first, then size** — the longest-untouched session goes first,
+because a conversation nobody has touched in a day is likelier finished than one
+that started a day ago and is still running. The session being created is never
+evicted. Each eviction fires `SessionEndedEvent`.
+
+`RedisSessionManager` already has a TTL (30 days by default) and is unaffected.
+
+### Archived transcripts
+
+`FileTranscriptStore` wrote to disk forever — a data-protection problem, not a
+disk-space one. `TranscriptRetentionSweeper` deletes whole day-partitions past a
+window:
+
+```java
+var sweeper = new TranscriptRetentionSweeper(storeDir, Duration.ofDays(90));
+sweeper.start();    // no-op unless a retention window is configured
+```
+
+It works at the partition level, so it never parses a transcript, never decides
+from file contents, and cannot delete today's data through a rounding error.
+Directories whose names are not ISO dates are left untouched. The first sweep is
+deferred one interval, so startup does no deletion work.
+
+> If you later enable batch skill extraction, note that retention and extraction
+> pull in opposite directions — extraction only ever sees what retention kept.
+> See [`DESIGN-1.3.0-SKILL-EXTRACTION.md`](../issues/DESIGN-1.3.0-SKILL-EXTRACTION.md) §2.
+
 ## Environment-variable cheat sheet
 
 Spring Boot binds every `jaiclaw.*` property to a `JAICLAW_*` env
