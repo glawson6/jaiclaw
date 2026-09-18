@@ -381,6 +381,62 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-blueprints</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-compliance</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-discord-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-kanban</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-messaging</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-prompt-analyzer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-secrets-1password</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-slack-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-tools-github</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-tools-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-voice-call</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- Starters -->
             <dependency>
                 <groupId>io.jaiclaw</groupId>
@@ -649,6 +705,18 @@
                 <groupId>io.jaiclaw</groupId>
                 <artifactId>jaiclaw-tendencies-honcho</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-cron</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>io.jaiclaw</groupId>
+                <artifactId>jaiclaw-starter-kanban</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
             </dependency>
         </dependencies>
     </dependencyManagement>
