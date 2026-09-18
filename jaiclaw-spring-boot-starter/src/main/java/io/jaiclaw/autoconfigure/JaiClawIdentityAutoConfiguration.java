@@ -35,6 +35,8 @@ import java.util.Map;
 @AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "io.jaiclaw.identity.auth.AuthProfileStoreManager")
 @EnableConfigurationProperties(JaiClawIdentityAutoConfiguration.OAuthProperties.class)
+@org.springframework.context.annotation.Import(
+        io.jaiclaw.identity.link.ChannelLinkConfiguration.class)
 public class JaiClawIdentityAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(JaiClawIdentityAutoConfiguration.class);
@@ -132,5 +134,36 @@ public class JaiClawIdentityAutoConfiguration {
     @ConditionalOnMissingBean
     public IdentityResolver identityResolver(IdentityLinkStore store) {
         return new IdentityResolver(store);
+    }
+
+    /**
+     * Expands a GDPR data subject across every channel they have a verified
+     * link for.
+     *
+     * <p>Without this, an Article 17 erasure naming one channel id leaves the
+     * same person's data on every other channel in place.
+     */
+    @Bean
+    @ConditionalOnMissingBean(io.jaiclaw.core.gdpr.DataSubjectAliasResolver.class)
+    public io.jaiclaw.identity.IdentityLinkDataSubjectAliasResolver dataSubjectAliasResolver(
+            IdentityLinkStore store) {
+        return new io.jaiclaw.identity.IdentityLinkDataSubjectAliasResolver(store);
+    }
+
+    /**
+     * Resolves the per-user key AgentMind state is stored under.
+     *
+     * <p>Opt-in via {@code jaiclaw.agentmind.canonical-user-keys=true}; default
+     * off, because switching keys without the dual-read would orphan every
+     * user's existing memory and tendencies.
+     */
+    @Bean
+    @ConditionalOnMissingBean(io.jaiclaw.identity.CanonicalUserKeyResolver.class)
+    public io.jaiclaw.identity.CanonicalUserKeyResolver canonicalUserKeyResolver(
+            IdentityLinkStore store,
+            org.springframework.core.env.Environment environment) {
+        boolean enabled = Boolean.parseBoolean(
+                environment.getProperty("jaiclaw.agentmind.canonical-user-keys", "false"));
+        return new io.jaiclaw.identity.CanonicalUserKeyResolver(store, enabled);
     }
 }

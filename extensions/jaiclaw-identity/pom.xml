@@ -28,6 +28,23 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!--
+            Optional: the channel-linking ceremony binds @ConfigurationProperties
+            and exposes a callback controller. Marked optional so the module's
+            existing outbound-OAuth and identity-link types stay usable without
+            Spring on the classpath; the linking beans are conditional.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Test: Spock + Groovy -->
         <dependency>
             <groupId>org.apache.groovy</groupId>

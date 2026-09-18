@@ -3,6 +3,7 @@ package io.jaiclaw.compliance.gdpr;
 import io.jaiclaw.audit.AuditEvent;
 import io.jaiclaw.audit.AuditLogger;
 import io.jaiclaw.audit.TranscriptStore;
+import io.jaiclaw.core.gdpr.DataSubjectAliasResolver;
 import io.jaiclaw.core.gdpr.DataSubjectErasureSpi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ public class AggregateDataSubjectErasureSpi implements DataSubjectErasureSpi {
     private final List<TranscriptStore> transcriptStores;
     private final List<AuditLogger> auditLoggers;
     private final Clock clock;
+    private final DataSubjectAliasResolver aliasResolver;
 
     public AggregateDataSubjectErasureSpi(List<TranscriptStore> transcriptStores,
                                           List<AuditLogger> auditLoggers) {
@@ -47,9 +49,24 @@ public class AggregateDataSubjectErasureSpi implements DataSubjectErasureSpi {
     public AggregateDataSubjectErasureSpi(List<TranscriptStore> transcriptStores,
                                           List<AuditLogger> auditLoggers,
                                           Clock clock) {
+        this(transcriptStores, auditLoggers, clock, DataSubjectAliasResolver.identity());
+    }
+
+    /**
+     * @param aliasResolver expands the subject across every identifier their data
+     *                      may be stored under. Defaults to
+     *                      {@link DataSubjectAliasResolver#identity()}, which
+     *                      preserves the pre-1.4.0 single-identifier behaviour.
+     */
+    public AggregateDataSubjectErasureSpi(List<TranscriptStore> transcriptStores,
+                                          List<AuditLogger> auditLoggers,
+                                          Clock clock,
+                                          DataSubjectAliasResolver aliasResolver) {
         this.transcriptStores = List.copyOf(transcriptStores == null ? List.of() : transcriptStores);
         this.auditLoggers = List.copyOf(auditLoggers == null ? List.of() : auditLoggers);
         this.clock = clock == null ? Clock.systemUTC() : clock;
+        this.aliasResolver = aliasResolver == null
+                ? DataSubjectAliasResolver.identity() : aliasResolver;
     }
 
     @Override
@@ -63,23 +80,36 @@ public class AggregateDataSubjectErasureSpi implements DataSubjectErasureSpi {
         ErasureReason effectiveReason = reason == null ? ErasureReason.OPERATOR_INITIATED : reason;
 
         Instant start = clock.instant();
+
+        // A data subject may have talked on several channels under different
+        // platform ids. Erasing only the id named in the request would leave the
+        // rest of their data in place — the exact thing Article 17 forbids.
+        List<String> subjectIds = aliasResolver.aliasesOf(tenantId, dataSubjectId);
+        if (subjectIds.size() > 1) {
+            log.debug("Subject {} resolved to {} linked identifiers", dataSubjectId, subjectIds.size());
+        }
+
         int transcriptsDeleted = 0;
         for (TranscriptStore store : transcriptStores) {
-            try {
-                transcriptsDeleted += store.eraseForDataSubject(tenantId, dataSubjectId);
-            } catch (RuntimeException e) {
-                log.warn("Transcript-store erasure failed for tenant={} subject={}: {}",
-                        tenantId, dataSubjectId, e.getMessage());
+            for (String subjectId : subjectIds) {
+                try {
+                    transcriptsDeleted += store.eraseForDataSubject(tenantId, subjectId);
+                } catch (RuntimeException e) {
+                    log.warn("Transcript-store erasure failed for tenant={} subject={}: {}",
+                            tenantId, subjectId, e.getMessage());
+                }
             }
         }
 
         int auditEventsDeleted = 0;
         for (AuditLogger logger : auditLoggers) {
-            try {
-                auditEventsDeleted += logger.eraseForDataSubject(tenantId, dataSubjectId);
-            } catch (RuntimeException e) {
-                log.warn("Audit-logger erasure failed for tenant={} subject={}: {}",
-                        tenantId, dataSubjectId, e.getMessage());
+            for (String subjectId : subjectIds) {
+                try {
+                    auditEventsDeleted += logger.eraseForDataSubject(tenantId, subjectId);
+                } catch (RuntimeException e) {
+                    log.warn("Audit-logger erasure failed for tenant={} subject={}: {}",
+                            tenantId, subjectId, e.getMessage());
+                }
             }
         }
 

@@ -140,10 +140,17 @@ public class JaiClawComplianceAutoConfiguration {
     @ConditionalOnProperty(name = "jaiclaw.compliance.effective.retention-enforcement", havingValue = "true")
     public DataSubjectErasureSpi dataSubjectErasureSpi(
             ObjectProvider<TranscriptStore> transcriptStores,
-            ObjectProvider<AuditLogger> auditLoggers) {
+            ObjectProvider<AuditLogger> auditLoggers,
+            ObjectProvider<io.jaiclaw.core.gdpr.DataSubjectAliasResolver> aliasResolver) {
+        // When identity linking is present the subject expands across every
+        // channel they have a verified link for; otherwise this is identity and
+        // behaviour is unchanged.
         return new AggregateDataSubjectErasureSpi(
                 transcriptStores.stream().toList(),
-                auditLoggers.stream().toList());
+                auditLoggers.stream().toList(),
+                java.time.Clock.systemUTC(),
+                aliasResolver.getIfAvailable(
+                        io.jaiclaw.core.gdpr.DataSubjectAliasResolver::identity));
     }
 
     /**
