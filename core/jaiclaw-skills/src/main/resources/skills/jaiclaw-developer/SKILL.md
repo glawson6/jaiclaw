@@ -454,7 +454,7 @@ When building inside the JaiClaw mono-repo, use `<parent>jaiclaw-parent</parent>
 JaiClaw supports per-tenant isolation:
 
 - **TenantContext**: ThreadLocal via `TenantContextHolder`, carries `tenantId` + metadata
-- **JWT auth**: `JwtTenantResolver` extracts tenant from JWT claims
+- **JWT/OIDC auth**: `SecurityContextTenantResolver` reads the tenant off the validated principal (never from a raw header)
 - **API key auth**: `BotTokenTenantResolver` maps tokens to tenants
 - **Session isolation**: Session keys include tenant context
 - **Skill scoping**: Skills can be restricted to specific tenants via `tenantIds` in metadata

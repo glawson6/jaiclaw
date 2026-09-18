@@ -538,7 +538,7 @@ JaiClawAutoConfiguration
 JaiClawGatewayAutoConfiguration
   │
   ├── webhookDispatcher       WebhookDispatcher
-  ├── jwtTenantResolver       JwtTenantResolver
+  ├── securityContextTenantResolver  SecurityContextTenantResolver
   ├── botTokenTenantResolver  BotTokenTenantResolver
   ├── compositeTenantResolver CompositeTenantResolver     (aggregates all TenantResolvers)
   ├── loggingAttachmentRouter LoggingAttachmentRouter      @ConditionalOnMissingBean(AttachmentRouter)

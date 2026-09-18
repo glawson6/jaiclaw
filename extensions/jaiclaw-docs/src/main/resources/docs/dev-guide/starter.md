@@ -109,7 +109,7 @@ JaiClawGatewayAutoConfiguration
   │
   ├── webhookDispatcher           WebhookDispatcher
   │
-  ├── jwtTenantResolver           JwtTenantResolver
+  ├── securityContextTenantResolver  SecurityContextTenantResolver
   ├── botTokenTenantResolver      BotTokenTenantResolver
   ├── compositeTenantResolver     CompositeTenantResolver
   │     (aggregates all TenantResolver beans)

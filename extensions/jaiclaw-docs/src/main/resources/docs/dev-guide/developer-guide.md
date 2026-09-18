@@ -355,7 +355,7 @@ Every class in JaiClaw, alphabetically. Click **Details** to jump to the module 
 | JsonFileSubscriptionRepository | jaiclaw-subscription | class | JSON subscription store | [View](dev-guide/extensions.md#jaiclaw-subscription) |
 | JsonRpcClient | jaiclaw-channel-api | class | JSON-RPC 2.0 client | [View](dev-guide/core-modules.md#jaiclaw-channel-api) |
 | JwtAuthenticationFilter | jaiclaw-security | class | JWT auth filter | [View](dev-guide/core-modules.md#jaiclaw-security) |
-| JwtTenantResolver | jaiclaw-gateway | class | JWT-based tenant resolution | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
+| SecurityContextTenantResolver | jaiclaw-gateway | class | Tenant from the validated security principal | [View](dev-guide/core-modules.md#jaiclaw-gateway) |
 | JwtTokenValidator | jaiclaw-security | class | JWT token validation | [View](dev-guide/core-modules.md#jaiclaw-security) |
 | KeyExchangeResult | jaiclaw-tools-security | record | Key exchange result | [View](dev-guide/extensions.md#jaiclaw-tools-security) |
 | KubectlExecTool | jaiclaw-tools-k8s | class | kubectl execution | [View](dev-guide/extensions.md#jaiclaw-tools-k8s) |

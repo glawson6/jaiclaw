@@ -114,7 +114,7 @@ interface FooSpi              ← abstract contract (in core or SPI module)
 | `MediaAnalyzer` | `CompositeMediaAnalyzer` | `jaiclaw-media` |
 | `JaiClawPlugin` | (user-provided) | `jaiclaw-plugin-sdk` |
 | `McpToolProvider` | (user-provided) | `jaiclaw-gateway` |
-| `TenantResolver` | `BotTokenTenantResolver`, `JwtTenantResolver` | `jaiclaw-security` |
+| `TenantResolver` | `SecurityContextTenantResolver`, `BotTokenTenantResolver` | `jaiclaw-gateway` |
 | `AttachmentRouter` | `LoggingAttachmentRouter` | `jaiclaw-gateway` |
 | `TtsProvider` / `SttProvider` | `OpenAiTtsProvider` / `OpenAiSttProvider` | `jaiclaw-voice` |
 | `IdentityStore` | `JsonFileIdentityStore` | `jaiclaw-identity` |
@@ -272,7 +272,7 @@ JaiClaw supports multi-tenant deployments where a single gateway serves multiple
 ```
 Inbound request
   │
-  ├── JwtTenantResolver: extracts tenantId from JWT claims
+  ├── SecurityContextTenantResolver: reads tenant off the validated principal
   ├── BotTokenTenantResolver: maps channel bot tokens to tenants
   └── CompositeTenantResolver: tries each resolver in order
         │

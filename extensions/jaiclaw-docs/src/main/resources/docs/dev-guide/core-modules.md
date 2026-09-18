@@ -517,7 +517,7 @@ RateLimitFilter (applied regardless of mode)
 | RoutingService | class | Routes by channel, chat type, @mention rules |
 | MentionParser | class | Extracts @mention bot IDs (channel-specific patterns) |
 | TenantResolver | interface | SPI for resolving tenant from request |
-| JwtTenantResolver | class | Resolves tenant from JWT claims |
+| SecurityContextTenantResolver | class | Resolves tenant from the validated security principal |
 | BotTokenTenantResolver | class | Resolves tenant from channel bot token mapping |
 | CompositeTenantResolver | class | Tries multiple resolvers in order |
 | AttachmentRouter | interface | SPI for routing attachments to processing |
@@ -551,7 +551,7 @@ GatewayService (core orchestrator)
   ├── ChannelRegistry
   ├── RoutingService → MentionParser
   └── CompositeTenantResolver
-        ├── JwtTenantResolver
+        ├── SecurityContextTenantResolver
         └── BotTokenTenantResolver
 
 McpController (@RestController) — /mcp/{server}/tools/*
