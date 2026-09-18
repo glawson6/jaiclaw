@@ -84,7 +84,12 @@ public class ToolSearchTool extends AbstractBuiltinTool {
         // The run's profile bounds what search may reveal: a deferred tool the
         // profile does not permit must stay invisible, or search would become a
         // way to enumerate tools the run is not allowed to call.
-        ToolProfile profile = ToolProfileHolder.getOrDefault();
+        //
+        // Fails CLOSED. This executes inside an agent turn, by which point
+        // GatewayService has always set the holder; an unset profile here means
+        // something went wrong upstream, and the safe answer to "which tools
+        // exist" is then "none you may call" rather than "all of them".
+        ToolProfile profile = ToolProfileHolder.getOrDefault(ToolProfile.MINIMAL);
         List<ToolDefinition> hits = registry.search(query, profile, limit);
 
         if (hits.isEmpty()) {

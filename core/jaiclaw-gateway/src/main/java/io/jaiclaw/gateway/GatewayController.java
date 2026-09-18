@@ -1,6 +1,8 @@
 package io.jaiclaw.gateway;
 
 import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tool.ToolProfile;
+import io.jaiclaw.core.tool.ToolProfileHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +44,12 @@ public class GatewayController {
             @RequestHeader Map<String, String> headers) {
 
         // Resolve and set tenant context from request headers
-        gatewayService.resolveTenant(headers).ifPresent(TenantContextHolder::set);
+        // Never overwrite a tenant already established by authentication —
+        // TenantContextHolder.set() replaces unconditionally, so an unguarded
+        // call here would let a later, less-trusted resolver win.
+        if (TenantContextHolder.get() == null) {
+            gatewayService.resolveTenant(headers).ifPresent(TenantContextHolder::set);
+        }
 
         try {
             var response = gatewayService.handleSync(
@@ -67,7 +74,21 @@ public class GatewayController {
             @RequestBody String body,
             @RequestHeader Map<String, String> headers) {
         log.debug("Webhook received for channel: {}", channelId);
-        return webhookDispatcher.dispatch(channelId, body, headers);
+        // /webhook/** is permitAll, so the payload is attacker-controlled and the
+        // caller is unauthenticated. Clamp the session to WEBHOOK_SAFE for the
+        // duration of the dispatch — without this the agent inherits the
+        // deployment default, which in 1.2.0 is still FULL.
+        ToolProfile previous = ToolProfileHolder.get();
+        ToolProfileHolder.set(ToolProfile.narrowest(previous, ToolProfile.WEBHOOK_SAFE));
+        try {
+            return webhookDispatcher.dispatch(channelId, body, headers);
+        } finally {
+            if (previous == null) {
+                ToolProfileHolder.clear();
+            } else {
+                ToolProfileHolder.set(previous);
+            }
+        }
     }
 
     @GetMapping("/api/channels")

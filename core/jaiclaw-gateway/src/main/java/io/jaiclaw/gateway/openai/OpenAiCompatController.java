@@ -69,7 +69,12 @@ public class OpenAiCompatController {
         String id = "chatcmpl-" + UUID.randomUUID();
         String sessionKey = sessionKeyFor(model, headers);
 
-        gatewayService.resolveTenant(headers).ifPresent(TenantContextHolder::set);
+        // Never overwrite a tenant already established by authentication —
+        // TenantContextHolder.set() replaces unconditionally, so an unguarded
+        // call here would let a later, less-trusted resolver win.
+        if (TenantContextHolder.get() == null) {
+            gatewayService.resolveTenant(headers).ifPresent(TenantContextHolder::set);
+        }
         try {
             return request.streaming()
                     ? stream(id, model, sessionKey, prompt)

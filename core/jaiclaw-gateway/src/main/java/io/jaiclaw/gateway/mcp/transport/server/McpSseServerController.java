@@ -190,12 +190,14 @@ public class McpSseServerController {
             }
         }
 
-        TenantContext tenant = null;
-        if (tenantResolver != null) {
+        TenantContext tenant = TenantContextHolder.get();
+        if (tenant == null && tenantResolver != null) {
+            // Only resolve when authentication left no tenant — see
+            // SecurityContextTenantResolver for why the order matters.
             tenant = tenantResolver.resolve(headers).orElse(null);
-        }
-        if (tenant != null) {
-            TenantContextHolder.set(tenant);
+            if (tenant != null) {
+                TenantContextHolder.set(tenant);
+            }
         }
 
         try {
@@ -247,12 +249,14 @@ public class McpSseServerController {
 
         String uri = params.has("uri") ? params.get("uri").asText() : "";
 
-        TenantContext tenant = null;
-        if (tenantResolver != null) {
+        TenantContext tenant = TenantContextHolder.get();
+        if (tenant == null && tenantResolver != null) {
+            // Only resolve when authentication left no tenant — see
+            // SecurityContextTenantResolver for why the order matters.
             tenant = tenantResolver.resolve(headers).orElse(null);
-        }
-        if (tenant != null) {
-            TenantContextHolder.set(tenant);
+            if (tenant != null) {
+                TenantContextHolder.set(tenant);
+            }
         }
 
         try {

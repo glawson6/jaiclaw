@@ -9,7 +9,14 @@ import java.util.stream.Collectors;
 /**
  * Maps JWT roles to {@link ToolProfile} values.
  * When a user has multiple roles, the highest-privilege profile wins.
- * Hierarchy: MINIMAL &lt; CODING &lt; MESSAGING &lt; FULL.
+ *
+ * <p>Ranking uses {@link ToolProfile#privilege()}, not {@code ordinal()}. The
+ * two disagree: declaration order puts {@code CODING} before {@code MESSAGING},
+ * while the privilege lattice ranks {@code MESSAGING} below {@code CODING}
+ * (sending a message is narrower than shell and filesystem access). Ranking by
+ * ordinal therefore handed a user holding both roles the weaker profile.
+ *
+ * <p>Hierarchy: NONE &lt; MINIMAL &lt; WEBHOOK_SAFE &lt; MESSAGING &lt; CODING &lt; FULL.
  */
 public class RoleToolProfileResolver {
 
@@ -36,7 +43,7 @@ public class RoleToolProfileResolver {
         ToolProfile best = null;
         for (String role : roles) {
             ToolProfile mapped = roleToProfile.get(role);
-            if (mapped != null && (best == null || mapped.ordinal() > best.ordinal())) {
+            if (mapped != null && (best == null || mapped.privilege() > best.privilege())) {
                 best = mapped;
             }
         }

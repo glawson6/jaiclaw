@@ -21,8 +21,18 @@ class RoleToolProfileResolverSpec extends Specification {
     def "highest privilege wins when user has multiple roles"() {
         expect:
         resolver.resolve(["viewer", "admin"]) == ToolProfile.FULL
-        resolver.resolve(["athlete", "coach"]) == ToolProfile.MESSAGING
+        // CODING outranks MESSAGING on the privilege lattice (shell and filesystem
+        // access is wider than sending a message). Before 1.2.0 this asserted
+        // MESSAGING, because ranking used ordinal() — declaration order — which
+        // disagrees with ToolProfile.privilege(). The resolver, not the test, was wrong.
+        resolver.resolve(["athlete", "coach"]) == ToolProfile.CODING
         resolver.resolve(["viewer", "coach"]) == ToolProfile.CODING
+    }
+
+    def "ranks by privilege lattice, not declaration order"() {
+        expect:
+        resolver.resolve(["coach", "athlete"]) == ToolProfile.CODING
+        resolver.resolve(["athlete", "viewer"]) == ToolProfile.MESSAGING
     }
 
     def "falls back to default when no role matches"() {

@@ -54,6 +54,12 @@ public class GatewayService implements ChannelMessageHandler {
     private final TenantResolver tenantResolver;
     private final AttachmentRouter attachmentRouter;
     private final TenantGuard tenantGuard;
+    /**
+     * Profile used when no authentication filter established one. Configured via
+     * {@code jaiclaw.security.default-tool-profile}; defaults to {@code FULL} in
+     * 1.2.0 to preserve existing behaviour, and becomes {@code MINIMAL} in 1.3.0.
+     */
+    private ToolProfile defaultToolProfile = ToolProfile.FULL;
     private final TenantAgentConfigService tenantAgentConfigService;
     private final TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
     private final ThreadOwnershipTracker ownershipTracker;
@@ -90,6 +96,21 @@ public class GatewayService implements ChannelMessageHandler {
      * Wires the {@link AgentHookDispatcher} after construction so {@link MessageReceivedEvent}
      * can be fired on each inbound message. Optional — null dispatcher means no events fire.
      */
+    /**
+     * Sets the profile used when no authentication filter established one.
+     *
+     * <p>Defaults to {@link ToolProfile#FULL}, which is fail-<em>open</em> and is
+     * retained for 1.2.0 so the security work does not silently strip tool access
+     * from existing api-key deployments. Operators should set
+     * {@code jaiclaw.security.default-tool-profile} explicitly; the default
+     * becomes {@code MINIMAL} in 1.3.0.
+     */
+    public void setDefaultToolProfile(ToolProfile defaultToolProfile) {
+        if (defaultToolProfile != null) {
+            this.defaultToolProfile = defaultToolProfile;
+        }
+    }
+
     public void setHookDispatcher(AgentHookDispatcher hooks) {
         this.hooks = hooks;
     }
@@ -218,7 +239,7 @@ public class GatewayService implements ChannelMessageHandler {
             } else {
                 session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
             }
-            ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+            ToolProfile toolProfile = ToolProfileHolder.getOrDefault(defaultToolProfile);
 
             // Build identity from tenant config or use default
             AgentIdentity identity = tenantConfig != null && tenantConfig.identity() != null
@@ -266,7 +287,7 @@ public class GatewayService implements ChannelMessageHandler {
         String sessionKey = inbound.sessionKey(defaultAgentId);
 
         var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
-        ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+        ToolProfile toolProfile = ToolProfileHolder.getOrDefault(defaultToolProfile);
         AgentRuntimeContext context = new AgentRuntimeContext(
                 defaultAgentId, sessionKey, session,
                 io.jaiclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
@@ -287,7 +308,7 @@ public class GatewayService implements ChannelMessageHandler {
                     .build());
         }
         var session = sessionManager.getOrCreate(sessionKey, defaultAgentId);
-        ToolProfile toolProfile = ToolProfileHolder.getOrDefault();
+        ToolProfile toolProfile = ToolProfileHolder.getOrDefault(defaultToolProfile);
         AgentRuntimeContext context = new AgentRuntimeContext(
                 defaultAgentId, sessionKey, session,
                 io.jaiclaw.core.model.AgentIdentity.DEFAULT, toolProfile, ".");
@@ -434,6 +455,7 @@ public class GatewayService implements ChannelMessageHandler {
         private TenantChannelAdapterRegistry tenantChannelAdapterRegistry;
         private ThreadOwnershipTracker ownershipTracker;
         private boolean autoVision = true;
+        private ToolProfile defaultToolProfile;
 
         public Builder agentRuntime(AgentRuntime agentRuntime) { this.agentRuntime = agentRuntime; return this; }
         public Builder sessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; return this; }
@@ -446,12 +468,14 @@ public class GatewayService implements ChannelMessageHandler {
         public Builder tenantChannelAdapterRegistry(TenantChannelAdapterRegistry tenantChannelAdapterRegistry) { this.tenantChannelAdapterRegistry = tenantChannelAdapterRegistry; return this; }
         public Builder ownershipTracker(ThreadOwnershipTracker ownershipTracker) { this.ownershipTracker = ownershipTracker; return this; }
         public Builder autoVision(boolean autoVision) { this.autoVision = autoVision; return this; }
+        public Builder defaultToolProfile(ToolProfile defaultToolProfile) { this.defaultToolProfile = defaultToolProfile; return this; }
 
         public GatewayService build() {
             GatewayService svc = new GatewayService(agentRuntime, sessionManager, channelRegistry, defaultAgentId,
                     tenantResolver, attachmentRouter, tenantGuard, tenantAgentConfigService,
                     tenantChannelAdapterRegistry, ownershipTracker);
             svc.setAutoVision(autoVision);
+            svc.setDefaultToolProfile(defaultToolProfile);
             return svc;
         }
     }

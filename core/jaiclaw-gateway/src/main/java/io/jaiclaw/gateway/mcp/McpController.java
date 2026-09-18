@@ -87,12 +87,14 @@ public class McpController {
 
         return registry.get(serverName).map(provider -> {
             // Resolve tenant from headers
-            TenantContext tenant = null;
-            if (tenantResolver != null) {
+            TenantContext tenant = TenantContextHolder.get();
+            if (tenant == null && tenantResolver != null) {
+                // Only resolve when authentication left no tenant — see
+                // SecurityContextTenantResolver for why the order matters.
                 tenant = tenantResolver.resolve(headers).orElse(null);
-            }
-            if (tenant != null) {
-                TenantContextHolder.set(tenant);
+                if (tenant != null) {
+                    TenantContextHolder.set(tenant);
+                }
             }
 
             try {
@@ -147,12 +149,14 @@ public class McpController {
                         Map.of("error", "Missing 'uri' in request body"));
             }
 
-            TenantContext tenant = null;
-            if (tenantResolver != null) {
+            TenantContext tenant = TenantContextHolder.get();
+            if (tenant == null && tenantResolver != null) {
+                // Only resolve when authentication left no tenant — see
+                // SecurityContextTenantResolver for why the order matters.
                 tenant = tenantResolver.resolve(headers).orElse(null);
-            }
-            if (tenant != null) {
-                TenantContextHolder.set(tenant);
+                if (tenant != null) {
+                    TenantContextHolder.set(tenant);
+                }
             }
 
             try {
