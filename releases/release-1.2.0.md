@@ -1,6 +1,6 @@
 # JaiClaw 1.2.0 Release Notes
 
-**Release Date:** _pending_
+**Release Date:** 2026-09-18
 **Distribution:** Maven Central + TapTech Nexus (`tooling.taptech.net`)
 
 > 1.2.0 is the **security and identity release.** It closes the CRITICAL and HIGH findings from the 2026-08-24 security scan, fixes two further critical defects found during a subsequent identity-provider review, and adds a provider-neutral authentication and identity stack: an OIDC resource server, OAuth discovery for MCP clients, and verified channel identity.
