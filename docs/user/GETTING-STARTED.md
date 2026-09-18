@@ -94,7 +94,7 @@ you've set one).
 
 ### Path 2 — Embed in your own Spring Boot app
 
-`1.1.0` is on **Maven Central** — no `<repositories>` block, no snapshot repos, no credentials. Just import the BOM:
+`1.2.0` is on **Maven Central** — no `<repositories>` block, no snapshot repos, no credentials. Just import the BOM:
 
 ```xml
 <dependencyManagement>
@@ -102,7 +102,7 @@ you've set one).
     <dependency>
       <groupId>io.jaiclaw</groupId>
       <artifactId>jaiclaw-bom</artifactId>
-      <version>1.1.0</version>
+      <version>1.2.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -121,7 +121,7 @@ you've set one).
 </dependencies>
 ```
 
-**Alternative mirror — TapTech Nexus.** The same 1.1.0 artifacts are mirrored at `https://tooling.taptech.net/repository/maven-releases/`; adopters already wired for Nexus can keep pointing there by adding a `<repository>` for `taptech-releases`. See [`releases/release-1.1.0.md`](../../releases/release-1.1.0.md) for the full release notes.
+**Alternative mirror — TapTech Nexus.** The same 1.2.0 artifacts are mirrored at `https://tooling.taptech.net/repository/maven-releases/`; adopters already wired for Nexus can keep pointing there by adding a `<repository>` for `taptech-releases`. See [`releases/release-1.2.0.md`](../../releases/release-1.2.0.md) for the full release notes.
 
 Then write a minimal application. The
 [hello-world example](../../jaiclaw-examples/hello-world/) shows the

@@ -11,7 +11,59 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 ## [Unreleased]
 
-In progress on the `1.0.1-SNAPSHOT` line — patch release window post-1.0.0.
+In progress on the `1.3.0-SNAPSHOT` line.
+
+> **Owed for 1.3.0:** `jaiclaw.security.default-tool-profile` must flip from
+> `FULL` to `MINIMAL`. The 1.2.0 default fails *open* and was kept for exactly
+> one minor so the security fix did not silently strip tool access from
+> existing deployments. See `releases/release-1.2.0.md`.
+
+## [1.2.0] — 2026-09-18
+
+The security and identity release. Published to Maven Central.
+
+### Fixed (critical)
+
+- **Tenant context could be established from an unverified JWT.**
+  `JwtTenantResolver` scraped the tenant claim from a base64 payload without
+  verifying the signature, and was auto-wired into the resolver chain used by
+  `/api/chat`, `/mcp/*` and `/v1/chat/completions`. In the default `api-key`
+  mode no JWT-validating filter exists, so an attacker needed only to omit a
+  valid signature to name another tenant. Removed in favour of
+  `SecurityContextTenantResolver`, which reads the validated principal.
+- **Tool authorization failed open.** `ToolProfileHolder.getOrDefault()`
+  returned `FULL` when unset — every request in api-key mode, every
+  channel-originated message, and the `permitAll` `/webhook/**` path. Agents
+  ran with shell, filesystem and browser access.
+
+### Added
+
+- **`jaiclaw-security-oidc`** — OAuth 2.0 / OIDC resource server, opt-in via
+  `jaiclaw.security.mode=oidc`. Provider-agnostic.
+- **API key store** (`jaiclaw.security.api-keys[]`) — one key binds to exactly
+  one tenant and one role; constant-time SHA-256 indexed lookup.
+- **RFC 9728 protected-resource metadata** plus the `WWW-Authenticate` pointer,
+  for MCP client discovery.
+- **Verified channel identity** — a PKCE ceremony binding a channel user to an
+  external identity, with a dual-read migration for per-user AgentMind state
+  and GDPR erasure that spans linked channels.
+
+### Changed (breaking)
+
+- `api-key` + multi-tenant now requires a tenant header (401 absent, 403
+  mismatch). Single-tenant unaffected.
+- `JwtTenantResolver` removed.
+- `ToolProfileHolder.getOrDefault()` deprecated for removal.
+
+### Fixed (build)
+
+- **46 auto-configuration registrations were absent from git.** A bare
+  `META-INF/` ignore rule matched `src/main/resources/META-INF`, so on a fresh
+  clone `jaiclaw-security`'s auto-config never registered — the build
+  succeeded and the beans simply never appeared.
+- **14 modules were missing from the BOM**, including the new OIDC module.
+- Non-interactive CLI commands ignored their arguments; `jaiclaw version`
+  could report a different jar than the one it ran.
 
 ### Added (patch — landed on `main`, ships in 1.0.1)
 

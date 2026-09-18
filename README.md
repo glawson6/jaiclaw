@@ -17,7 +17,7 @@
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.0"></a>
   <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.0-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.1.0-blue" alt="Maven Central 1.1.0"></a>
+  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.2.0-blue" alt="Maven Central 1.2.0"></a>
 </p>
 
 <p align="center">
@@ -36,7 +36,11 @@ JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI
 
 Built on Java 21, Spring Boot 4.1.0, Spring AI 2.0.0, Embabel Agent 2.0.0-SNAPSHOT, Spring Shell 4.0.2, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
 
-**1.1.0 released to Maven Central** on 2026-08-13 — the first Central publish since 0.9.3, unblocked by the Embabel `1.5.0` GA on Central (2026-08-11). See [Distribution](#distribution) for the adopter recipe and the release notes at [releases/release-1.1.0.md](releases/release-1.1.0.md) for the full change catalogue. TapTech Nexus remains an alternative mirror for adopters already wired for it.
+**1.2.0 released to Maven Central** on 2026-09-18 — the security and identity release. It closes two critical defects (tenant context could be set from an *unverified* JWT; tool authorization failed *open* to `FULL`), and adds a provider-neutral authentication stack: an OIDC resource server, OAuth discovery for MCP clients, and verified channel identity.
+
+> **Adopters on 1.1.0 or earlier should read the [breaking changes](releases/release-1.2.0.md#breaking-changes) before upgrading.** In particular, `jaiclaw.security.mode=api-key` with `jaiclaw.tenant.mode=multi` now requires a tenant header. Single-tenant deployments are unaffected.
+
+See [Distribution](#distribution) for the adopter recipe and [releases/release-1.2.0.md](releases/release-1.2.0.md) for the full catalogue. TapTech Nexus remains an alternative mirror.
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, declarative pipelines, scaffolding tooling, and security hardening that don't exist in the Node.js version.
 
@@ -48,9 +52,9 @@ It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/op
 
 For Java teams building their own AI agent product on top of a proven foundation. Pull JaiClaw via the BOM, compose the [Spring Boot starters](jaiclaw-starters/) you need, implement the SPIs for your business domain. The framework gets out of your way.
 
-#### <a name="distribution"></a>Distribution — 1.1.0 on Maven Central
+#### <a name="distribution"></a>Distribution — 1.2.0 on Maven Central
 
-1.1.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
+1.2.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
 
 ```xml
 <dependencyManagement>
@@ -58,7 +62,7 @@ For Java teams building their own AI agent product on top of a proven foundation
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-bom</artifactId>
-            <version>1.1.0</version>
+            <version>1.2.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -66,7 +70,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </dependencyManagement>
 ```
 
-**Alternative mirror — TapTech Nexus.** The same 1.1.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
+**Alternative mirror — TapTech Nexus.** The same 1.2.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
 
 ```xml
 <repositories>
@@ -79,7 +83,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </repositories>
 ```
 
-Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changes that. See [releases/release-1.1.0.md](releases/release-1.1.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
+Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changed that. See [releases/release-1.2.0.md](releases/release-1.2.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
 
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 

@@ -2,6 +2,72 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 1.2.0 (released 2026-09-18)
+
+The **security and identity** release. Published to **Maven Central**:
+
+```xml
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.jaiclaw</groupId>
+      <artifactId>jaiclaw-bom</artifactId>
+      <version>1.2.0</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+### Two critical fixes
+
+- **Tenant context could be set from an unverified JWT.** `JwtTenantResolver`
+  scraped the tenant claim out of a base64 payload without checking the
+  signature, and was auto-wired into the chain that `/api/chat`, `/mcp/*` and
+  `/v1/chat/completions` all consult. In the **default `api-key` mode** no
+  JWT-validating filter exists at all, so an attacker needed only to *omit* a
+  valid signature. Removed; tenancy now comes from the validated principal.
+- **Tool authorization failed open.** `ToolProfileHolder.getOrDefault()`
+  returned `FULL` when unset — which was every request in api-key mode, every
+  channel message, and the `permitAll` `/webhook/**` path. Agents ran with
+  shell, filesystem and browser access.
+
+### New
+
+- **`jaiclaw-security-oidc`** — OAuth 2.0 / OIDC resource server
+  (`jaiclaw.security.mode=oidc`). Provider-agnostic: Logto, Keycloak, Okta,
+  Auth0, Entra ID by configuration alone. Opt-in; not pulled by the starter.
+- **API key store** — `jaiclaw.security.api-keys[]` binds a key to exactly one
+  tenant and one role, with constant-time lookup.
+- **OAuth discovery for MCP clients** — RFC 9728 metadata plus the
+  `WWW-Authenticate` pointer that makes it discoverable.
+- **Verified channel identity** — a PKCE ceremony proving a channel user
+  controls an external identity, so tenancy can derive from the *person*
+  rather than the bot.
+
+### Breaking changes
+
+- `jaiclaw.security.mode=api-key` + `jaiclaw.tenant.mode=multi` now **requires
+  a tenant header** (401 when absent, 403 on mismatch). Single-tenant
+  deployments are unaffected.
+- `JwtTenantResolver` removed.
+- `ToolProfileHolder.getOrDefault()` deprecated —
+  `jaiclaw.security.default-tool-profile` defaults to `FULL` in 1.2.0 and
+  **becomes `MINIMAL` in 1.3.0**. Set it explicitly now.
+
+### Also fixed
+
+- **46 auto-configuration registrations were missing from git** — a bare
+  `META-INF/` ignore rule swallowed them, so on a fresh clone
+  `jaiclaw-security`'s auto-config never registered at all.
+- **14 modules were missing from the BOM**, including the new OIDC module.
+- Non-interactive CLI commands ignored their arguments
+  (`jaiclaw chat "hello"` started a REPL).
+
+See [`releases/release-1.2.0.md`](../../releases/release-1.2.0.md) for the full
+catalogue.
+
 ## 1.1.0 (released 2026-08-13)
 
 Published to **Maven Central** — first Central publish since 0.9.3, unblocked by the Embabel `1.5.0` GA on Central (2026-08-11). No `<repositories>` block, no snapshot repos, no credentials — the BOM import is all adopters need:
