@@ -37,7 +37,7 @@ public class ChatCommands {
     }
 
     @Command(name = "chat", description = "Send a message to the agent")
-    public String chat(@Option(description = "Your message") String message) {
+    public String chat(@Option(longName = "message", description = "Your message") String message) {
         AgentRuntime agentRuntime = agentRuntimeProvider.getIfAvailable();
         if (agentRuntime == null) {
             return "No LLM configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, configure AWS Bedrock, or enable Ollama.";
