@@ -48,19 +48,20 @@ set -euo pipefail
 # `version` command must never abort the whole script.
 
 resolve_jaiclaw_version() {
-    # Two probes, in the same order as the JVM-invocation jar-resolution below:
-    #   1. $JAICLAW_HOME/bin/jaiclaw-cli.jar (canonical installer layout)
-    #   2. <launcher-dir>/jaiclaw-cli.jar    (Docker image ships them side-by-side)
-    local jar="${JAICLAW_HOME:-$HOME/.jaiclaw}/bin/jaiclaw-cli.jar"
+    # Delegates to resolve_jar so `version` always describes the jar that would
+    # actually run. These were previously two separate probe orders that had
+    # drifted: this one checked only the installed and co-located jars, ignoring
+    # both $JAICLAW_CLI_JAR and the dev build, so in a working tree it happily
+    # reported the version of a months-old installed jar while `chat` ran the
+    # freshly built one. One resolver, one answer.
+    local jar
+    jar=$(resolve_jar) || {
+        echo "unknown (jar not installed)"
+        return 0
+    }
     if [[ ! -f "$jar" ]]; then
-        local script_dir
-        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        if [[ -f "$script_dir/jaiclaw-cli.jar" ]]; then
-            jar="$script_dir/jaiclaw-cli.jar"
-        else
-            echo "unknown (jar not installed)"
-            return 0
-        fi
+        echo "unknown (jar not installed)"
+        return 0
     fi
     if ! command -v unzip &>/dev/null; then
         echo "unknown (unzip not on PATH)"
@@ -295,35 +296,77 @@ resolve_jar() {
         return
     fi
 
-    # 1. Installed JAR in JAICLAW_HOME
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root
+    project_root="$(cd "$script_dir/.." && pwd)"
+
+    # 1. Development build, when this launcher is being run from inside a source
+    #    tree. This deliberately outranks the installed jar: invoking
+    #    ./bin/jaiclaw from a checkout should exercise that checkout, not a jar
+    #    installed globally months ago. Getting this backwards is how a stale
+    #    install silently shadows local work — the `version` output says one
+    #    thing while a totally different build actually runs.
+    #
+    #    Gated on a pom.xml so an installed launcher sitting in some unrelated
+    #    bin/ directory never mistakes its parent for a JaiClaw checkout.
+    if [[ -f "$project_root/pom.xml" ]]; then
+        local target_dir="$project_root/apps/jaiclaw-cli/target"
+        if [[ -d "$target_dir" ]]; then
+            local jar
+            jar=$(find_dev_jar "$target_dir")
+            if [[ -n "$jar" ]]; then
+                echo "$jar"
+                return
+            fi
+        fi
+    fi
+
+    # 2. Installed JAR in JAICLAW_HOME
     if [[ -f "$JAICLAW_HOME/bin/jaiclaw-cli.jar" ]]; then
         echo "$JAICLAW_HOME/bin/jaiclaw-cli.jar"
         return
     fi
 
-    # 2. Co-located JAR (same directory as the launcher script)
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # 3. Co-located JAR (same directory as the launcher script)
     if [[ -f "$script_dir/jaiclaw-cli.jar" ]]; then
         echo "$script_dir/jaiclaw-cli.jar"
         return
     fi
 
-    # 3. Development mode — look for built JAR relative to this script
-    local project_root
-    project_root="$(cd "$script_dir/.." && pwd)"
-
-    local target_dir="$project_root/apps/jaiclaw-cli/target"
-    if [[ -d "$target_dir" ]]; then
-        local jar
-        jar=$(find "$target_dir" -maxdepth 1 -name "jaiclaw-cli-*.jar" ! -name "*-original*" -type f 2>/dev/null | head -1)
-        if [[ -n "$jar" ]]; then
-            echo "$jar"
-            return
-        fi
-    fi
-
     return 1
+}
+
+# Newest runnable CLI jar in a target directory.
+#
+# `find | head -1` is not good enough here: a target dir routinely holds jars
+# from several versions (a release build plus the current SNAPSHOT), and find
+# returns them in filesystem order, so the winner was effectively arbitrary.
+# Sorting by mtime makes the freshly built jar win deterministically.
+#
+# -sources/-javadoc jars are excluded because they contain no runnable classes;
+# -original is Spring Boot's pre-repackage artifact and is likewise not runnable.
+find_dev_jar() {
+    local target_dir="$1"
+    local candidates
+    candidates=$(find "$target_dir" -maxdepth 1 -name "jaiclaw-cli-*.jar" \
+        ! -name "*-original*" ! -name "*-sources*" ! -name "*-javadoc*" \
+        -type f 2>/dev/null)
+    [[ -z "$candidates" ]] && return 1
+
+    # Prefer the repackaged fat jar. This module builds BOTH a plain jar and an
+    # -exec fat jar; only the latter has a Main-Class, so picking purely by
+    # mtime can hand back a jar that fails with "no main manifest attribute".
+    local exec_jars
+    exec_jars=$(echo "$candidates" | grep -- "-exec\.jar$" || true)
+    [[ -n "$exec_jars" ]] && candidates="$exec_jars"
+
+    echo "$candidates" \
+        | while read -r f; do
+              [[ -z "$f" ]] && continue
+              printf '%s\t%s\n' "$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null)" "$f"
+          done \
+        | sort -rn | head -1 | cut -f2-
 }
 
 # ─── Fast-path commands (no JVM) ─────────────────────────────────────────────
@@ -1006,8 +1049,30 @@ case "$SUBCOMMAND" in
     estop|estop-status)
         cmd_estop_status
         ;;
+    # `chat` takes its message as a POSITIONAL argument in every documented
+    # example (`jaiclaw chat "hello"`), but Spring Shell 4's @Option is
+    # named-only — there is no positional binding. Translate here rather than
+    # contort the command signature: the user-facing form stays as documented,
+    # and `--message` keeps working for anyone already using it.
+    chat)
+        shift
+        if [[ $# -eq 0 ]]; then
+            # No arguments at all — the user wants the REPL.
+            export JAICLAW_SHELL_INTERACTIVE=true
+            run_jvm chat
+        elif [[ "${1:0:1}" != "-" ]]; then
+            # Positional message. Spring Shell 4's @Option is named-only, so
+            # translate rather than contort the command signature.
+            CHAT_MSG="$1"; shift
+            run_jvm chat --message "$CHAT_MSG" "$@"
+        else
+            # Already in named form (--message "...") — pass straight through.
+            run_jvm chat "$@"
+        fi
+        ;;
+
     # JVM-path commands
-    chat|setup|onboard|gateway|gateway-start|gateway-stop|gateway-status|\
+    setup|onboard|gateway|gateway-start|gateway-stop|gateway-status|\
     tools|skills|status|models|login|logout|\
     model|model-list|model-show|\
     profile|profile-list|profile-create|profile-switch|profile-show|\
@@ -1035,7 +1100,8 @@ Fast commands (no JVM):
   estop                     Show emergency stop state (exit 1 when engaged)
 
 JVM commands:
-  chat <message>            Send a message (or start REPL)
+  chat <message>            Send one message and exit
+  chat                      Start the interactive REPL
   setup / onboard           Interactive setup wizard
   gateway start [--port N]  Start gateway server
   gateway stop              Stop gateway server

@@ -90,7 +90,16 @@ spring:
         region: ${AWS_REGION:us-east-1}
   shell:
     interactive:
-      enabled: true
+      # Spring Shell picks its runner by this flag, and InteractiveShellRunner
+      # wins whenever it is enabled — it consumes the process and discards the
+      # command-line arguments ("Running in interactive mode, arguments will be
+      # ignored"). Hardcoding it to true therefore broke every one-shot
+      # invocation, including the documented `jaiclaw chat "hello"`.
+      #
+      # Defaulting to false makes one-shot work; bin/jaiclaw sets
+      # JAICLAW_SHELL_INTERACTIVE=true when it dispatches with no arguments, so
+      # the REPL still starts for `jaiclaw chat` on its own.
+      enabled: ${JAICLAW_SHELL_INTERACTIVE:false}
 
 logging:
   level:
