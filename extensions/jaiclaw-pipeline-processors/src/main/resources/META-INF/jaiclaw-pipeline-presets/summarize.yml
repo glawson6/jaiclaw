@@ -1,0 +1,21 @@
+id: summarize
+name: Summarize
+description: Boil down the input into a concise summary
+icon: text
+timeoutSeconds: 30
+promptTemplate: |
+  You are an expert summariser. Summarise the following input in a {{config.style}} style,
+  in approximately {{config.length}} words. Preserve every material fact.
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  properties:
+    style:
+      type: string
+      enum: [concise, formal, casual, bullet-points]
+      default: concise
+    length:
+      type: string
+      default: "100"

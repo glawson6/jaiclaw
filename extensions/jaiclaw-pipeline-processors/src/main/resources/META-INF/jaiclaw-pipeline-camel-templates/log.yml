@@ -1,0 +1,11 @@
+id: log
+name: Log
+description: Log the stage body via Camel's log component (safe fallback; scheme is on the default allowlist)
+scheme: log
+icon: log
+uriPattern: "log:{{config.category}}?level={{config.level}}&showBody=true"
+configSchema:
+  type: object
+  properties:
+    category: { type: string, default: "io.jaiclaw.pipeline.log-stage" }
+    level:    { type: string, enum: [TRACE, DEBUG, INFO, WARN, ERROR], default: "INFO" }

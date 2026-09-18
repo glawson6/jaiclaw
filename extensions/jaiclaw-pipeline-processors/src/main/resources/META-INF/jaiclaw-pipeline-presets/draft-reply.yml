@@ -1,0 +1,25 @@
+id: draft-reply
+name: Draft Reply
+description: Draft a reply to the input in a specified tone
+icon: message
+timeoutSeconds: 30
+promptTemplate: |
+  Draft a reply to the following message. Tone: {{config.tone}}. Length: {{config.length}}.
+  Sign off with: {{config.signoff}}.
+
+  MESSAGE:
+  {{input}}
+configSchema:
+  type: object
+  properties:
+    tone:
+      type: string
+      enum: [professional, friendly, apologetic, firm, casual]
+      default: professional
+    length:
+      type: string
+      enum: [short, medium, long]
+      default: medium
+    signoff:
+      type: string
+      default: "Best regards"

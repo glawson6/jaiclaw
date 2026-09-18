@@ -1,0 +1,2 @@
+io.jaiclaw.cronmanager.CronManagerAutoConfiguration
+io.jaiclaw.cronmanager.persistence.h2.H2PersistenceAutoConfiguration

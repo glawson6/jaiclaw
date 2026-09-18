@@ -1,0 +1,14 @@
+id: sentiment
+name: Sentiment
+description: Score sentiment as positive, neutral, or negative
+icon: mood
+timeoutSeconds: 15
+promptTemplate: |
+  Classify the sentiment of the following input as one of: positive, neutral, negative.
+  Return ONLY the label.
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  properties: {}

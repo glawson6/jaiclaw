@@ -1,0 +1,2 @@
+io.jaiclaw.tools.builtin.ascii.GlyphRegistryAutoConfiguration
+io.jaiclaw.tools.builtin.mcp.AsciiRenderMcpAutoConfiguration

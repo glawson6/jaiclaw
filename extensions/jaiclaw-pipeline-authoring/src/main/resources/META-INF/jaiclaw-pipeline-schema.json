@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jaiclaw.io/schema/pipeline-definition/v1.json",
+  "title": "PipelineDefinition",
+  "description": "JaiClaw pipeline definition — the per-file YAML/JSON format authored by hand or by the Studio SPA. Corresponds to io.jaiclaw.pipeline.PipelineDefinition at 1.0.0-SNAPSHOT.",
+  "type": "object",
+  "required": ["id", "stages"],
+  "additionalProperties": false,
+  "properties": {
+    "id":             { "type": "string", "minLength": 1, "description": "Unique pipeline identifier" },
+    "name":           { "type": ["string", "null"], "description": "Human-readable name" },
+    "description":    { "type": ["string", "null"] },
+    "tenantIds":      { "type": ["array", "null"], "items": { "type": "string" }, "description": "Empty = every tenant" },
+    "enabled":        { "type": "boolean", "default": true },
+    "errorStrategy":  { "type": ["string", "null"], "enum": [null, "STOP", "RETRY_THEN_FAIL", "DEAD_LETTER"] },
+    "maxRetries":     { "type": "integer", "minimum": 0, "default": 3 },
+    "deadLetterUri":  { "type": ["string", "null"], "description": "Camel URI; required when errorStrategy=DEAD_LETTER" },
+    "resultTemplate": { "type": ["string", "null"], "description": "Renders the caller-visible result on success. Supports {{stages.X.output}}, {{stages.X.metadata.k}}, {{input}}, {{pipeline.*}}." },
+    "trigger":        { "$ref": "#/definitions/TriggerDefinition" },
+    "stages":         { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/StageDefinition" } },
+    "output":         { "$ref": "#/definitions/OutputDefinition" },
+    "security":       { "$ref": "#/definitions/PipelineSecurityProperties" }
+  },
+  "definitions": {
+    "TriggerDefinition": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "type":       { "type": "string", "enum": ["MANUAL", "HTTP", "FILE", "CRON", "CAMEL_URI"] },
+        "uri":        { "type": ["string", "null"] },
+        "expression": { "type": ["string", "null"], "description": "Cron expression when type=CRON" },
+        "path":       { "type": ["string", "null"] }
+      },
+      "required": ["type"]
+    },
+    "StageDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name":            { "type": "string", "minLength": 1 },
+        "type":            { "type": "string", "enum": ["AGENT", "PROCESSOR", "CAMEL"] },
+        "bean":            { "type": ["string", "null"], "description": "Spring bean name for PROCESSOR stages" },
+        "agentId":         { "type": ["string", "null"], "description": "Agent id for AGENT stages" },
+        "systemPrompt":    { "type": ["string", "null"], "description": "AGENT-stage prompt template" },
+        "channelId":       { "type": ["string", "null"], "description": "Channel for AGENT stages; defaults to pipeline-internal" },
+        "uri":             { "type": ["string", "null"], "description": "Camel URI for CAMEL stages" },
+        "timeout":         { "type": ["string", "null"], "description": "ISO-8601 Duration (e.g. PT30S)" },
+        "runtime":         { "type": ["string", "null"], "enum": [null, "NATIVE", "EMBABEL"] },
+        "embabelWorkflow": { "type": ["string", "null"] },
+        "config":          { "type": ["object", "null"], "additionalProperties": { "type": "string" }, "description": "Per-stage config for beans implementing ConfigurableStageProcessor" },
+        "transport":       { "$ref": "#/definitions/TransportConfig" }
+      }
+    },
+    "TransportConfig": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "uri":  { "type": "string" },
+        "auth": { "$ref": "#/definitions/TransportAuth" }
+      },
+      "required": ["uri"]
+    },
+    "TransportAuth": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "authType":   { "type": "string", "enum": ["NONE", "HMAC_SHA256", "BEARER_TOKEN"] },
+        "secret":     { "type": ["string", "null"] },
+        "headerName": { "type": ["string", "null"] }
+      }
+    },
+    "OutputDefinition": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "type":      { "type": "string", "enum": ["CHANNEL", "CAMEL_URI", "LOG", "NONE"] },
+        "channelId": { "type": ["string", "null"], "description": "Channel for OUTPUT type=CHANNEL" },
+        "uri":       { "type": ["string", "null"], "description": "Camel URI for OUTPUT type=CAMEL_URI" },
+        "template":  { "type": ["string", "null"], "description": "Rendered before delivery; supports the same placeholders as resultTemplate" }
+      },
+      "required": ["type"]
+    },
+    "PipelineSecurityProperties": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "description": "Per-pipeline security overrides. Fields evolve — refer to PipelineSecurityProperties record."
+    }
+  }
+}

@@ -1,0 +1,12 @@
+id: http-post
+name: HTTP POST (webhook)
+description: POST the stage body to an HTTP endpoint
+scheme: http
+icon: network
+uriPattern: "http://{{config.host}}{{config.path}}?httpMethod=POST"
+configSchema:
+  type: object
+  required: [host, path]
+  properties:
+    host: { type: string, description: "hostname[:port]" }
+    path: { type: string, default: "/", description: "URL path starting with /" }

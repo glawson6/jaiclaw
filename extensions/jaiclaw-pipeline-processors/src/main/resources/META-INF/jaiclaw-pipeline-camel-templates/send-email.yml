@@ -1,0 +1,17 @@
+id: send-email
+name: Send Email (SMTP)
+description: Send an email via an SMTP server (uses camel-mail)
+scheme: smtp
+icon: mail
+uriPattern: "smtp://{{config.host}}:{{config.port}}?username={{config.username}}&password=RAW({{config.password}})&to={{config.to}}&subject={{config.subject}}&from={{config.from}}"
+configSchema:
+  type: object
+  required: [host, to, from, subject]
+  properties:
+    host: { type: string, default: "smtp.example.com" }
+    port: { type: string, default: "587" }
+    username: { type: string }
+    password: { type: string }
+    from: { type: string }
+    to: { type: string }
+    subject: { type: string }

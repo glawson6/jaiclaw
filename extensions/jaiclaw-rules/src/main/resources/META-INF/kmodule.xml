@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmodule xmlns="http://www.drools.org/xsd/kmodule"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.drools.org/xsd/kmodule http://www.drools.org/xsd/kmodule.xsd">
+
+    <!-- Main KieBase for all rule packages -->
+    <kbase name="rulesKieBase" packages="rules" default="true" eventProcessingMode="cloud" equalsBehavior="equality">
+        <!-- Stateless session for thread-safe, REST-friendly execution -->
+        <ksession name="rulesKieSession" type="stateless" default="true"/>
+    </kbase>
+
+</kmodule>

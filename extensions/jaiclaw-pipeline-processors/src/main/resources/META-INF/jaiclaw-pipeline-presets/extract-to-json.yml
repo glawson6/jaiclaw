@@ -1,0 +1,21 @@
+id: extract-to-json
+name: Extract to JSON
+description: Extract structured fields from the input into JSON matching a target schema
+icon: json
+timeoutSeconds: 30
+promptTemplate: |
+  Extract the fields described below from the following input and return ONLY a JSON object
+  matching this schema. No prose, no code fences.
+
+  TARGET SCHEMA:
+  {{config.schema}}
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  required: [schema]
+  properties:
+    schema:
+      type: string
+      description: JSON Schema (or an example JSON object) describing the target shape

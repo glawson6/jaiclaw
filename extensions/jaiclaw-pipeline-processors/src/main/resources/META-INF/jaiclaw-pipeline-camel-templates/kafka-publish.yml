@@ -1,0 +1,12 @@
+id: kafka-publish
+name: Kafka Publish
+description: Publish the stage body to a Kafka topic
+scheme: kafka
+icon: kafka
+uriPattern: "kafka:{{config.topic}}?brokers={{config.brokers}}"
+configSchema:
+  type: object
+  required: [topic, brokers]
+  properties:
+    topic: { type: string, description: "Topic name" }
+    brokers: { type: string, default: "localhost:9092" }

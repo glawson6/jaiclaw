@@ -1,0 +1,13 @@
+id: s3-file-archive
+name: S3 File Archive
+description: Write the stage body to an S3 bucket key (via camel-aws2-s3)
+scheme: aws2-s3
+icon: cloud
+uriPattern: "aws2-s3://{{config.bucket}}?region={{config.region}}&keyName={{config.keyName}}"
+configSchema:
+  type: object
+  required: [bucket, region, keyName]
+  properties:
+    bucket: { type: string }
+    region: { type: string, default: "us-east-1" }
+    keyName: { type: string, description: "Object key (template-supported at runtime via camel simple)" }

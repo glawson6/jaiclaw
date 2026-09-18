@@ -14,7 +14,13 @@ docker-compose/.env
 docker-compose/docker-compose.auth-volumes.yml
 *.log
 hs_err_pid*
-META-INF/
+# Build output only. A bare "META-INF/" also matches src/main/resources/META-INF,
+# which silently swallowed every module's
+# META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+# — the file Spring Boot needs to register an auto-configuration. Modules that
+# noticed worked around it with `git add -f`; jaiclaw-security did not, so its
+# auto-config was absent from a fresh clone entirely.
+target/**/META-INF/
 maven-central-deploy/
 op-vault/
 docs/PRIVATE-DOCS-INDEX.md

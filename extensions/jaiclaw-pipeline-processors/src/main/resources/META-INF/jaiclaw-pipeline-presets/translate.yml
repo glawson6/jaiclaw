@@ -1,0 +1,18 @@
+id: translate
+name: Translate
+description: Translate the input into the target language
+icon: language
+timeoutSeconds: 30
+promptTemplate: |
+  Translate the following input into {{config.targetLanguage}}. Preserve tone and formatting.
+  Return ONLY the translated text.
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  required: [targetLanguage]
+  properties:
+    targetLanguage:
+      type: string
+      description: ISO name or BCP-47 tag (e.g. "Spanish", "es-MX", "Japanese")

@@ -1,0 +1,20 @@
+id: classify
+name: Classify
+description: Assign one of a fixed set of labels to the input
+icon: tag
+timeoutSeconds: 20
+promptTemplate: |
+  Classify the following input into exactly one of these labels:
+  {{config.labels}}
+
+  Return ONLY the chosen label — no explanation.
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  required: [labels]
+  properties:
+    labels:
+      type: string
+      description: Comma-separated list of allowed labels (e.g. "billing,technical,other")

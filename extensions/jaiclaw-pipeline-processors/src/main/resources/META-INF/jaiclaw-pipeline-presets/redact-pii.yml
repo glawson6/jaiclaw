@@ -1,0 +1,15 @@
+id: redact-pii
+name: Redact PII
+description: Redact personally identifiable information (emails, phones, names, addresses)
+icon: shield
+timeoutSeconds: 30
+promptTemplate: |
+  Return the following input with every piece of personally identifiable information replaced
+  by a placeholder: emails → [EMAIL], phone numbers → [PHONE], person names → [NAME], street
+  addresses → [ADDRESS], credit-card numbers → [CARD]. Preserve every other detail exactly.
+
+  INPUT:
+  {{input}}
+configSchema:
+  type: object
+  properties: {}

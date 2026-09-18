@@ -1,0 +1,4 @@
+io.jaiclaw.pipeline.PipelineAutoConfiguration
+io.jaiclaw.pipeline.actuator.PipelineActuatorConfiguration
+io.jaiclaw.pipeline.web.PipelineWebConfiguration
+io.jaiclaw.pipeline.web.PipelineWebSseConfiguration

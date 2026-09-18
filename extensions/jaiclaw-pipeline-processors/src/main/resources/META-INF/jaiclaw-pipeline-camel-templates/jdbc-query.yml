@@ -1,0 +1,13 @@
+id: jdbc-query
+name: JDBC Query
+description: Run a SQL statement against a configured DataSource
+scheme: jdbc
+icon: database
+uriPattern: "jdbc:{{config.dataSourceRef}}?resetAutoCommit=false"
+configSchema:
+  type: object
+  required: [dataSourceRef]
+  properties:
+    dataSourceRef:
+      type: string
+      description: Spring bean name of the target DataSource
