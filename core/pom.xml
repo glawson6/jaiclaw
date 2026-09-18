@@ -25,6 +25,7 @@
         <module>jaiclaw-plugin-sdk</module>
         <module>jaiclaw-memory</module>
         <module>jaiclaw-security</module>
+        <module>jaiclaw-security-oidc</module>
         <module>jaiclaw-gateway</module>
     </modules>
 </project>

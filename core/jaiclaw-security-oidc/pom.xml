@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.jaiclaw</groupId>
+        <artifactId>jaiclaw-core-modules</artifactId>
+        <version>1.2.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jaiclaw-security-oidc</artifactId>
+    <name>JaiClaw :: Security :: OIDC</name>
+    <description>
+        OIDC / OAuth 2.0 resource-server authentication for JaiClaw. Opt-in via
+        jaiclaw.security.mode=oidc. Provider-agnostic — works with Logto,
+        Keycloak, Okta, Auth0, or Entra ID.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jaiclaw</groupId>
+            <artifactId>jaiclaw-security</artifactId>
+        </dependency>
+
+        <!--
+            Brings spring-security-oauth2-jose + nimbus-jose-jwt transitively.
+            Kept out of jaiclaw-security deliberately: adopters running a
+            single-user CLI should not inherit the whole OAuth2 stack.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.spockframework</groupId>
+            <artifactId>spock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
