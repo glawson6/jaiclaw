@@ -146,7 +146,10 @@ class ApiKeyAuthenticationFilterSpec extends Specification {
 
         then:
         authed != null
-        authed.principal == "api-key-user"
+        // 1.2.0: the principal is the configured key NAME, not a fixed literal.
+        // With no api-keys[] configured the legacy single key is used, which
+        // reports itself as "legacy-default".
+        authed.principal == ApiKeyAuthenticationFilter.LEGACY_KEY_NAME
     }
 
     // --- Timing-safe API key comparison tests ---

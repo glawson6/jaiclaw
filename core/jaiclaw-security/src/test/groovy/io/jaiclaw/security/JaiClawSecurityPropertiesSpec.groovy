@@ -98,13 +98,13 @@ class JaiClawSecurityPropertiesSpec extends Specification {
 
     // --- ApiKeyFilterProperties + RateLimitProperties.skipPaths ---
 
-    def "apiKeyFilter defaults to the hard-coded [/api/health, /webhook/**] skip list"() {
+    def "apiKeyFilter defaults to the hard-coded skip list"() {
         when:
         def props = new JaiClawSecurityProperties()
 
         then:
         props.apiKeyFilter() != null
-        props.apiKeyFilter().skipPaths() == ["/api/health", "/webhook/**"]
+        props.apiKeyFilter().skipPaths() == ["/api/health", "/webhook/**", "/.well-known/oauth-protected-resource", "/api/identity/link/callback"]
     }
 
     def "apiKeyFilter.skipPaths defaults kick in when the field is null OR empty"() {
@@ -113,8 +113,8 @@ class JaiClawSecurityPropertiesSpec extends Specification {
         def fromEmpty = new JaiClawSecurityProperties.ApiKeyFilterProperties([])
 
         then:
-        fromNull.skipPaths() == ["/api/health", "/webhook/**"]
-        fromEmpty.skipPaths() == ["/api/health", "/webhook/**"]
+        fromNull.skipPaths() == ["/api/health", "/webhook/**", "/.well-known/oauth-protected-resource", "/api/identity/link/callback"]
+        fromEmpty.skipPaths() == ["/api/health", "/webhook/**", "/.well-known/oauth-protected-resource", "/api/identity/link/callback"]
     }
 
     def "apiKeyFilter.skipPaths round-trips through List.copyOf to make the list immutable"() {

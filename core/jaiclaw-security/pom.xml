@@ -53,6 +53,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
+
+        <!--
+            Optional: enables the read-only /actuator/jaiclaw-api-keys endpoint.
+            Marked optional so adopters who do not use Actuator do not inherit it;
+            ApiKeyActuatorConfiguration is gated on the class name and stays inert
+            when it is absent.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

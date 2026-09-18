@@ -1,8 +1,9 @@
 package io.jaiclaw.security;
 
 import io.jaiclaw.core.tenant.DefaultTenantContext;
-import io.jaiclaw.core.tenant.TenantContextHolder;
+import io.jaiclaw.core.tenant.TenantContext;
 import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.security.authn.JaiClawAuthentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,7 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.PathContainer;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.pattern.PathPattern;
@@ -36,12 +38,16 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String API_KEY_PARAM = "api_key";
     private static final String TENANT_ID_HEADER = "X-Tenant-Id";
+    /** Name reported for the legacy single key from {@code jaiclaw.security.api-key}. */
+    static final String LEGACY_KEY_NAME = "legacy-default";
     private static final List<String> DEFAULT_SKIP_PATHS = List.of("/api/health", "/webhook/**");
 
     private final ApiKeyProvider apiKeyProvider;
+    private final ApiKeyStore apiKeyStore;
     private final TenantGuard tenantGuard;
     private final boolean timingSafe;
     private final List<PathPattern> skipPatterns;
+    private final String tenantHeaderName;
 
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider) {
         this(apiKeyProvider, null, false, null);
@@ -65,9 +71,28 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
      */
     public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, TenantGuard tenantGuard,
                                        boolean timingSafe, List<String> skipPaths) {
+        this(apiKeyProvider, null, tenantGuard, timingSafe, skipPaths, TENANT_ID_HEADER);
+    }
+
+    /**
+     * Full constructor.
+     *
+     * @param apiKeyStore      multi-key store consulted first; when {@code null} the
+     *                         filter falls back to the legacy single key from
+     *                         {@link ApiKeyProvider}
+     * @param tenantHeaderName header naming the tenant the caller acts for;
+     *                         {@code jaiclaw.tenant.tenant-header}, default
+     *                         {@code X-Tenant-Id}
+     */
+    public ApiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider, ApiKeyStore apiKeyStore,
+                                       TenantGuard tenantGuard, boolean timingSafe,
+                                       List<String> skipPaths, String tenantHeaderName) {
         this.apiKeyProvider = apiKeyProvider;
+        this.apiKeyStore = apiKeyStore;
         this.tenantGuard = tenantGuard;
         this.timingSafe = timingSafe;
+        this.tenantHeaderName = (tenantHeaderName == null || tenantHeaderName.isBlank())
+                ? TENANT_ID_HEADER : tenantHeaderName;
         List<String> effective = (skipPaths == null || skipPaths.isEmpty())
                 ? DEFAULT_SKIP_PATHS
                 : skipPaths;
@@ -108,52 +133,132 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        boolean keyMatch;
-        if (timingSafe) {
-            keyMatch = MessageDigest.isEqual(
-                    providedKey.getBytes(StandardCharsets.UTF_8),
-                    apiKeyProvider.getResolvedKey().getBytes(StandardCharsets.UTF_8));
-        } else {
-            keyMatch = providedKey.equals(apiKeyProvider.getResolvedKey());
-        }
-
-        if (!keyMatch) {
+        // ── Step 1: identify the key ────────────────────────────────────────
+        // Resolving identity BEFORE any tenant check is deliberate: answering
+        // 403 on a tenant mismatch before verifying the key itself would let an
+        // attacker enumerate valid tenant ids using a garbage key.
+        ApiKeyStore.ApiKeyIdentity identity = identify(providedKey);
+        if (identity == null) {
             log.debug("Invalid API key for request to {}", request.getRequestURI());
-            sendUnauthorized(response);
+            sendUnauthorized(response, "invalid_api_key",
+                    "The supplied API key is not recognised");
             return;
         }
 
-        // In MULTI mode, require X-Tenant-Id header and set TenantContext
+        // ── Step 2: bind the tenant (multi-tenant mode only) ────────────────
+        TenantContext tenant = null;
         if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-            String tenantId = request.getHeader(TENANT_ID_HEADER);
-            if (tenantId == null || tenantId.isBlank()) {
-                log.debug("Multi-tenant mode: missing X-Tenant-Id header for request to {}",
-                        request.getRequestURI());
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write("{\"error\":\"missing_tenant_id\",\"message\":\"X-Tenant-Id header is required in multi-tenant mode\"}");
+            String requestedTenant = request.getHeader(tenantHeaderName);
+
+            if (requestedTenant == null || requestedTenant.isBlank()) {
+                // 401, not 400: the credential is incomplete — the caller has not
+                // finished stating who they are — so the response carries a
+                // WWW-Authenticate challenge.
+                log.debug("Multi-tenant mode: missing {} header for request to {}",
+                        tenantHeaderName, request.getRequestURI());
+                sendUnauthorized(response, "missing_tenant_id",
+                        tenantHeaderName + " header is required in multi-tenant mode");
                 return;
             }
-            TenantContextHolder.set(new DefaultTenantContext(tenantId, tenantId));
+
+            if (!identity.hasTenant()) {
+                // The key declares no tenant, so there is no association to check
+                // the header against. Authentication cannot complete.
+                log.warn("API key '{}' declares no tenant and cannot be used in multi-tenant mode "
+                                + "(request to {})",
+                        identity.keyName(), request.getRequestURI());
+                sendUnauthorized(response, "key_has_no_tenant",
+                        "This API key is not associated with any tenant");
+                return;
+            }
+
+            if (!identity.tenantId().equals(requestedTenant)) {
+                // Authenticated, but not authorised for the tenant named. This is a
+                // genuine security signal — a credential reaching outside its
+                // binding — so it is logged at WARN with the key NAME, never the key.
+                log.warn("API key '{}' is bound to tenant '{}' but requested tenant '{}' "
+                                + "(request to {}) — denied",
+                        identity.keyName(), identity.tenantId(), requestedTenant,
+                        request.getRequestURI());
+                sendForbidden(response);
+                return;
+            }
+
+            tenant = new DefaultTenantContext(identity.tenantId(), identity.tenantId());
         }
 
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken("api-key-user", null, List.of());
+        // ── Step 3: emit a complete principal ───────────────────────────────
+        // Roles are meaningful only in multi-tenant mode: a single-tenant
+        // deployment authenticates with zero authorities, exactly as before 1.2.0.
+        List<GrantedAuthority> authorities = (tenant != null && identity.role() != null)
+                ? List.of(new SimpleGrantedAuthority(identity.role()))
+                : List.of();
+
+        JaiClawAuthentication authentication = new JaiClawAuthentication(
+                identity.keyName(),
+                tenant,
+                null,   // profile falls back to jaiclaw.security.default-tool-profile
+                JaiClawAuthentication.AuthSource.API_KEY,
+                authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
             SecurityContextHolder.clearContext();
-            if (tenantGuard != null && tenantGuard.isMultiTenant()) {
-                TenantContextHolder.clear();
-            }
         }
     }
 
-    private void sendUnauthorized(HttpServletResponse response) throws IOException {
+    /**
+     * Resolve the presented key to an identity, consulting the multi-key store
+     * first and falling back to the legacy single key.
+     *
+     * @return the bound identity, or {@code null} when the key is unknown
+     */
+    private ApiKeyStore.ApiKeyIdentity identify(String providedKey) {
+        if (apiKeyStore != null) {
+            java.util.Optional<ApiKeyStore.ApiKeyIdentity> found =
+                    apiKeyStore.findByKey(providedKey);
+            if (found.isPresent()) {
+                return found.get();
+            }
+        }
+        if (apiKeyProvider == null) {
+            return null;
+        }
+        // Legacy single-key path: no tenant, no role. Works in single-tenant mode;
+        // in multi-tenant mode it is rejected above for having no tenant.
+        boolean keyMatch = timingSafe
+                ? MessageDigest.isEqual(
+                        providedKey.getBytes(StandardCharsets.UTF_8),
+                        apiKeyProvider.getResolvedKey().getBytes(StandardCharsets.UTF_8))
+                : providedKey.equals(apiKeyProvider.getResolvedKey());
+        return keyMatch
+                ? new ApiKeyStore.ApiKeyIdentity(LEGACY_KEY_NAME, null, null)
+                : null;
+    }
+
+    private void sendUnauthorized(HttpServletResponse response, String error, String message)
+            throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"error\":\"invalid_api_key\"}");
+        // A 401 advertises how to authenticate; a 403 does not.
+        response.setHeader("WWW-Authenticate", "ApiKey realm=\"jaiclaw\"");
+        response.getWriter().write(
+                "{\"error\":\"" + error + "\",\"message\":\"" + message + "\"}");
+    }
+
+    private void sendUnauthorized(HttpServletResponse response) throws IOException {
+        sendUnauthorized(response, "invalid_api_key", "The supplied API key is not recognised");
+    }
+
+    private void sendForbidden(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        // Deliberately does not echo the bound tenant — that would tell a caller
+        // holding a valid key which other tenants exist.
+        response.getWriter().write(
+                "{\"error\":\"cross_tenant_denied\","
+                        + "\"message\":\"This API key is not authorised for the requested tenant\"}");
     }
 }

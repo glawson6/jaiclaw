@@ -21,7 +21,9 @@ import java.util.List;
 
 /**
  * Gateway auto-configuration — runs after {@link JaiClawAgentAutoConfiguration}
- * so that {@code @ConditionalOnBean(AgentRuntime.class)} evaluates <em>after</em>
+ * so that {@code @ConditionalOnBean(AgentRuntime.class)
+@org.springframework.context.annotation.Import(
+        io.jaiclaw.gateway.mcp.auth.McpAuthMetadataAutoConfiguration.class)} evaluates <em>after</em>
  * the {@code AgentRuntime} bean has been defined.
  *
  * <p>{@code @AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)} ensures
@@ -54,10 +56,21 @@ public class JaiClawGatewayAutoConfiguration {
         return new io.jaiclaw.gateway.tenant.CompositeTenantResolver(resolvers);
     }
 
+    /**
+     * Resolves the tenant from the validated security principal.
+     *
+     * <p>Replaces the removed {@code JwtTenantResolver}, which parsed the tenant
+     * claim out of an <strong>unverified</strong> JWT payload and so allowed a
+     * forged claim to establish tenant context. Registered only when an
+     * {@link io.jaiclaw.core.tenant.AuthenticatedTenantSupplier} is present —
+     * i.e. when {@code jaiclaw-security} is on the classpath.
+     */
     @Bean
-    @ConditionalOnMissingBean(name = "jwtTenantResolver")
-    public io.jaiclaw.gateway.tenant.JwtTenantResolver jwtTenantResolver() {
-        return new io.jaiclaw.gateway.tenant.JwtTenantResolver();
+    @ConditionalOnMissingBean(name = "securityContextTenantResolver")
+    @ConditionalOnBean(io.jaiclaw.core.tenant.AuthenticatedTenantSupplier.class)
+    public io.jaiclaw.gateway.tenant.SecurityContextTenantResolver securityContextTenantResolver(
+            io.jaiclaw.core.tenant.AuthenticatedTenantSupplier supplier) {
+        return new io.jaiclaw.gateway.tenant.SecurityContextTenantResolver(supplier);
     }
 
     @Bean
@@ -100,7 +113,8 @@ public class JaiClawGatewayAutoConfiguration {
             ObjectProvider<TenantAgentConfigService> configServiceProvider,
             ObjectProvider<io.jaiclaw.gateway.channel.TenantChannelAdapterRegistry> tenantChannelRegistryProvider,
             ObjectProvider<io.jaiclaw.agent.ownership.ThreadOwnershipTracker> ownershipTrackerProvider,
-            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider) {
+            ObjectProvider<io.jaiclaw.core.ops.EmergencyStop> emergencyStopProvider,
+            org.springframework.core.env.Environment environment) {
         io.jaiclaw.gateway.GatewayService svc = new io.jaiclaw.gateway.GatewayService(
                 agentRuntime, sessionManager, channelRegistry,
                 properties.agent().defaultAgent(), tenantResolver, attachmentRouter,
@@ -110,6 +124,27 @@ public class JaiClawGatewayAutoConfiguration {
                 ownershipTrackerProvider.getIfAvailable());
         svc.setAutoVision(gatewayProperties.autoVision());
         svc.setEmergencyStop(emergencyStopProvider.getIfAvailable(), gatewayProperties.estopMessage());
+        // Read via Environment rather than JaiClawSecurityProperties so the gateway
+        // auto-config keeps working when jaiclaw-security is absent. Default FULL
+        // preserves pre-1.2.0 behaviour; becomes MINIMAL in 1.3.0.
+        String configuredProfile = environment.getProperty(
+                "jaiclaw.security.default-tool-profile", "FULL");
+        try {
+            svc.setDefaultToolProfile(
+                    io.jaiclaw.core.tool.ToolProfile.valueOf(configuredProfile.toUpperCase()));
+            if ("FULL".equalsIgnoreCase(configuredProfile)
+                    && !"none".equalsIgnoreCase(
+                            environment.getProperty("jaiclaw.security.mode", "api-key"))) {
+                log.warn("jaiclaw.security.default-tool-profile=FULL — requests that carry no "
+                        + "authenticated tool profile (api-key mode, and every channel-originated "
+                        + "message) receive unrestricted tool access. This default becomes "
+                        + "MINIMAL in 1.3.0; set it explicitly to silence this warning.");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(
+                    "Invalid jaiclaw.security.default-tool-profile='" + configuredProfile
+                            + "'. Valid values: NONE, MINIMAL, WEBHOOK_SAFE, MESSAGING, CODING, FULL.", e);
+        }
         return svc;
     }
 

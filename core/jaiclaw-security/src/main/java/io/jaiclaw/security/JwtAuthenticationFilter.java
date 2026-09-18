@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import io.jaiclaw.security.authn.JaiClawAuthentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -50,21 +50,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7).trim();
 
             tokenValidator.validate(token).ifPresent(validated -> {
-                // Set Spring Security context
                 var authorities = validated.roles().stream()
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                         .toList();
 
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        validated.subject(), null, authorities);
+                ToolProfile profile = roleToolProfileResolver != null
+                        ? roleToolProfileResolver.resolve(validated.roles())
+                        : null;
+
+                // One principal type across every mode — see JaiClawAuthentication.
+                var authentication = new JaiClawAuthentication(
+                        validated.subject(),
+                        validated.tenantContext(),
+                        profile,
+                        JaiClawAuthentication.AuthSource.JWT,
+                        authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                // Set tenant context
+                // Still populated here so downstream code that reads the holders
+                // directly keeps working; SecurityContextTenantResolver is the
+                // supported path for new code.
                 TenantContextHolder.set(validated.tenantContext());
-
-                // Set tool profile based on roles
-                if (roleToolProfileResolver != null) {
-                    ToolProfile profile = roleToolProfileResolver.resolve(validated.roles());
+                if (profile != null) {
                     ToolProfileHolder.set(profile);
                 }
 

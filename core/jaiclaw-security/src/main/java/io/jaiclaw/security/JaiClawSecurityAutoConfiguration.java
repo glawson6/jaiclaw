@@ -22,6 +22,16 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
+import io.jaiclaw.core.tenant.AuthenticatedTenantSupplier;
+import io.jaiclaw.security.authn.SecurityContextAuthenticatedTenantSupplier;
+import io.jaiclaw.core.secrets.SecretReference;
+import io.jaiclaw.core.secrets.SecretResolution;
+import io.jaiclaw.core.secrets.SecretsResolver;
+import io.jaiclaw.core.tenant.TenantGuard;
+import io.jaiclaw.core.tenant.TenantProperties;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -36,6 +46,21 @@ import java.util.Set;
 @ConditionalOnClass(name = "org.springframework.security.web.SecurityFilterChain")
 @EnableConfigurationProperties(JaiClawSecurityProperties.class)
 public class JaiClawSecurityAutoConfiguration {
+
+    private static final Logger log = LoggerFactory.getLogger(JaiClawSecurityAutoConfiguration.class);
+
+    /**
+     * Bridges the validated security principal to the gateway's tenant
+     * resolution, without the gateway having to depend on Spring Security.
+     *
+     * <p>Registered unconditionally so it is available in every mode: in
+     * {@code none} mode it simply always answers empty.
+     */
+    @Bean
+    @ConditionalOnMissingBean(AuthenticatedTenantSupplier.class)
+    public AuthenticatedTenantSupplier authenticatedTenantSupplier() {
+        return new SecurityContextAuthenticatedTenantSupplier();
+    }
 
     /**
      * Always-active logger that reports the security mode at startup.
@@ -119,13 +144,106 @@ public class JaiClawSecurityAutoConfiguration {
             return new ApiKeyProvider(properties.apiKey(), properties.apiKeyFile());
         }
 
+        /**
+         * Multi-key store from {@code jaiclaw.security.api-keys[]}.
+         *
+         * <p>Key material is resolved here, once at startup: literal values are
+         * taken as-is (Spring has already expanded any {@code ${ENV_VAR}}
+         * placeholder) and {@code secret-ref} entries are dereferenced through
+         * the core {@link SecretsResolver} when one is present.
+         */
+        @Bean
+        @ConditionalOnMissingBean(ApiKeyStore.class)
+        ApiKeyStore apiKeyStore(JaiClawSecurityProperties properties,
+                                ObjectProvider<SecretsResolver> secretsResolver,
+                                ObjectProvider<TenantGuard> tenantGuard) {
+            List<ConfigApiKeyStore.ResolvedApiKey> resolved = new ArrayList<>();
+            boolean multiTenant = tenantGuard.getIfAvailable(
+                    () -> new TenantGuard(TenantProperties.DEFAULT)).isMultiTenant();
+
+            for (ApiKeyEntry entry : properties.apiKeys()) {
+                // Fail fast and loudly: a key that cannot authenticate anyone is a
+                // configuration error, and discovering it as a 401 in production is
+                // strictly worse than discovering it at startup.
+                if (entry.role() == null) {
+                    throw new IllegalStateException(
+                            "jaiclaw.security.api-keys entry '" + entry.name()
+                                    + "' has no 'role'. Every API key must declare exactly one "
+                                    + "role — a key with no role would authenticate with no "
+                                    + "authority, which is never what was intended.");
+                }
+                if (!entry.hasKeyMaterial()) {
+                    throw new IllegalStateException(
+                            "jaiclaw.security.api-keys entry '" + entry.name()
+                                    + "' has neither 'key' nor 'secret-ref'.");
+                }
+
+                String material = resolveKeyMaterial(entry, secretsResolver.getIfAvailable());
+                if (material == null || material.isBlank()) {
+                    throw new IllegalStateException(
+                            "jaiclaw.security.api-keys entry '" + entry.name()
+                                    + "' resolved to empty key material.");
+                }
+
+                if (multiTenant && entry.tenantId() == null) {
+                    log.warn("API key '{}' declares no tenant-id. In multi-tenant mode it can "
+                            + "never authenticate — every request will be rejected.", entry.name());
+                }
+
+                resolved.add(new ConfigApiKeyStore.ResolvedApiKey(material,
+                        new ApiKeyStore.ApiKeyIdentity(entry.name(), entry.tenantId(), entry.role())));
+            }
+
+            if (multiTenant && resolved.isEmpty() && properties.apiKey() == null) {
+                log.warn("jaiclaw.tenant.mode=multi with no jaiclaw.security.api-keys[] configured. "
+                        + "The legacy single key has no tenant association, so every multi-tenant "
+                        + "request will be rejected with 401. Configure api-keys[] with a "
+                        + "tenant-id and role per key.");
+            }
+
+            log.info("API key store initialized with {} configured key(s)", resolved.size());
+            return new ConfigApiKeyStore(resolved);
+        }
+
+        private static String resolveKeyMaterial(ApiKeyEntry entry, SecretsResolver resolver) {
+            if (entry.secretRef() == null) {
+                return entry.key();
+            }
+            if (resolver == null) {
+                throw new IllegalStateException(
+                        "jaiclaw.security.api-keys entry '" + entry.name()
+                                + "' uses secret-ref='" + entry.secretRef()
+                                + "' but no SecretsResolver bean is present. Add a secrets "
+                                + "provider or supply the key inline.");
+            }
+            SecretReference ref = SecretReference.parse(entry.secretRef());
+            SecretResolution resolution = resolver.resolve(ref.item());
+            if (resolution instanceof SecretResolution.Resolved r) {
+                return r.value();
+            }
+            throw new IllegalStateException(
+                    "jaiclaw.security.api-keys entry '" + entry.name()
+                            + "' could not resolve secret-ref='" + entry.secretRef() + "'");
+        }
+
         @Bean
         @ConditionalOnMissingBean(ApiKeyAuthenticationFilter.class)
-        ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyProvider apiKeyProvider,
-                                                              JaiClawSecurityProperties properties) {
-            return new ApiKeyAuthenticationFilter(apiKeyProvider, null,
+        ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(
+                ApiKeyProvider apiKeyProvider,
+                ApiKeyStore apiKeyStore,
+                JaiClawSecurityProperties properties,
+                ObjectProvider<TenantGuard> tenantGuard,
+                Environment environment) {
+            // Pre-1.2.0 this passed null for tenantGuard, which left the entire
+            // multi-tenant branch of the filter as dead code — nothing ever
+            // established a tenant in api-key mode.
+            return new ApiKeyAuthenticationFilter(
+                    apiKeyProvider,
+                    apiKeyStore,
+                    tenantGuard.getIfAvailable(() -> new TenantGuard(TenantProperties.DEFAULT)),
                     properties.timingSafeApiKey(),
-                    properties.apiKeyFilter().skipPaths());
+                    properties.apiKeyFilter().skipPaths(),
+                    environment.getProperty("jaiclaw.tenant.tenant-header", "X-Tenant-Id"));
         }
 
         @Bean
@@ -140,6 +258,13 @@ public class JaiClawSecurityAutoConfiguration {
                     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/health").permitAll()
+                            // RFC 9728 discovery. Must be reachable unauthenticated —
+                            // a client cannot authenticate until it has read it.
+                            .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
+                            // OAuth redirect target for channel linking. Reached by the
+                            // user's browser before they have any credential — the
+                            // single-use OAuth state is what makes it safe.
+                            .requestMatchers("/api/identity/link/callback").permitAll()
                             .requestMatchers("/webhook/**").permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .requestMatchers("/mcp/**").authenticated()
@@ -208,6 +333,13 @@ public class JaiClawSecurityAutoConfiguration {
                     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/health").permitAll()
+                            // RFC 9728 discovery. Must be reachable unauthenticated —
+                            // a client cannot authenticate until it has read it.
+                            .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
+                            // OAuth redirect target for channel linking. Reached by the
+                            // user's browser before they have any credential — the
+                            // single-use OAuth state is what makes it safe.
+                            .requestMatchers("/api/identity/link/callback").permitAll()
                             .requestMatchers("/webhook/**").permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .requestMatchers("/mcp/**").authenticated()

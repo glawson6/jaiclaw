@@ -28,12 +28,14 @@ public record JaiClawSecurityProperties(
         RateLimitProperties rateLimit,
         boolean allowNoneOnPublicBind,
         boolean requireHttps,
-        ApiKeyFilterProperties apiKeyFilter
+        ApiKeyFilterProperties apiKeyFilter,
+        List<ApiKeyEntry> apiKeys,
+        String defaultToolProfile
 ) {
     public JaiClawSecurityProperties() {
         this(false, null, null, null, true,
                 new JwtProperties(), new RoleMappingProperties(), RateLimitProperties.defaults(),
-                false, false, ApiKeyFilterProperties.defaults());
+                false, false, ApiKeyFilterProperties.defaults(), List.of(), null);
     }
 
     /**
@@ -54,7 +56,8 @@ public record JaiClawSecurityProperties(
             boolean timingSafeApiKey, JwtProperties jwt, RoleMappingProperties roleMapping,
             RateLimitProperties rateLimit, boolean allowNoneOnPublicBind) {
         this(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey, jwt, roleMapping,
-                rateLimit, allowNoneOnPublicBind, false, ApiKeyFilterProperties.defaults());
+                rateLimit, allowNoneOnPublicBind, false, ApiKeyFilterProperties.defaults(),
+                List.of(), null);
     }
 
     /**
@@ -72,7 +75,28 @@ public record JaiClawSecurityProperties(
             boolean timingSafeApiKey, JwtProperties jwt, RoleMappingProperties roleMapping,
             RateLimitProperties rateLimit, boolean allowNoneOnPublicBind, boolean requireHttps) {
         this(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey, jwt, roleMapping,
-                rateLimit, allowNoneOnPublicBind, requireHttps, ApiKeyFilterProperties.defaults());
+                rateLimit, allowNoneOnPublicBind, requireHttps, ApiKeyFilterProperties.defaults(),
+                List.of(), null);
+    }
+
+    /**
+     * Backward-compatible 11-arg constructor for callers written before
+     * {@code apiKeys} / {@code defaultToolProfile} existed. Defaults to an
+     * empty key list (legacy single-key path) and the 1.2.0 tool-profile
+     * default.
+     *
+     * <p>Deliberately {@code private} — see the sibling 9-arg constructor's
+     * Javadoc above for the Boot-4 record-binder rationale.
+     */
+    @SuppressWarnings("unused")
+    private JaiClawSecurityProperties(
+            boolean enabled, String mode, String apiKey, String apiKeyFile,
+            boolean timingSafeApiKey, JwtProperties jwt, RoleMappingProperties roleMapping,
+            RateLimitProperties rateLimit, boolean allowNoneOnPublicBind, boolean requireHttps,
+            ApiKeyFilterProperties apiKeyFilter) {
+        this(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey, jwt, roleMapping,
+                rateLimit, allowNoneOnPublicBind, requireHttps, apiKeyFilter,
+                List.of(), null);
     }
 
     @ConstructorBinding
@@ -89,6 +113,25 @@ public record JaiClawSecurityProperties(
         if (roleMapping == null) roleMapping = new RoleMappingProperties();
         if (rateLimit == null) rateLimit = RateLimitProperties.defaults();
         if (apiKeyFilter == null) apiKeyFilter = ApiKeyFilterProperties.defaults();
+        apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
+        if (defaultToolProfile == null || defaultToolProfile.isBlank()) {
+            // 1.2.0 preserves the historical fail-open behaviour so existing
+            // deployments are unaffected. This becomes MINIMAL in 1.3.0 — see
+            // docs/dev/TENANT-RESOLUTION-REMEDIATION.md.
+            defaultToolProfile = DEFAULT_TOOL_PROFILE_1_2;
+        }
+    }
+
+    /**
+     * The 1.2.0 default tool profile. Fails <em>open</em>; retained for one
+     * minor so the security fix does not silently strip tool access from
+     * existing api-key deployments. 1.3.0 flips this to {@code MINIMAL}.
+     */
+    public static final String DEFAULT_TOOL_PROFILE_1_2 = "FULL";
+
+    /** The configured default profile, parsed. */
+    public io.jaiclaw.core.tool.ToolProfile resolvedDefaultToolProfile() {
+        return io.jaiclaw.core.tool.ToolProfile.valueOf(defaultToolProfile.toUpperCase());
     }
 
     public static Builder builder() { return new Builder(); }
@@ -105,6 +148,8 @@ public record JaiClawSecurityProperties(
         private boolean allowNoneOnPublicBind;
         private boolean requireHttps;
         private ApiKeyFilterProperties apiKeyFilter;
+        private List<ApiKeyEntry> apiKeys;
+        private String defaultToolProfile;
 
         public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
         public Builder mode(String mode) { this.mode = mode; return this; }
@@ -117,10 +162,13 @@ public record JaiClawSecurityProperties(
         public Builder allowNoneOnPublicBind(boolean v) { this.allowNoneOnPublicBind = v; return this; }
         public Builder requireHttps(boolean v) { this.requireHttps = v; return this; }
         public Builder apiKeyFilter(ApiKeyFilterProperties apiKeyFilter) { this.apiKeyFilter = apiKeyFilter; return this; }
+        public Builder apiKeys(List<ApiKeyEntry> apiKeys) { this.apiKeys = apiKeys; return this; }
+        public Builder defaultToolProfile(String defaultToolProfile) { this.defaultToolProfile = defaultToolProfile; return this; }
 
         public JaiClawSecurityProperties build() {
             return new JaiClawSecurityProperties(enabled, mode, apiKey, apiKeyFile, timingSafeApiKey,
-                    jwt, roleMapping, rateLimit, allowNoneOnPublicBind, requireHttps, apiKeyFilter);
+                    jwt, roleMapping, rateLimit, allowNoneOnPublicBind, requireHttps, apiKeyFilter,
+                    apiKeys, defaultToolProfile);
         }
     }
 
@@ -257,7 +305,9 @@ public record JaiClawSecurityProperties(
 
         public ApiKeyFilterProperties {
             if (skipPaths == null || skipPaths.isEmpty()) {
-                skipPaths = List.of("/api/health", "/webhook/**");
+                skipPaths = List.of("/api/health", "/webhook/**",
+                        "/.well-known/oauth-protected-resource",
+                        "/api/identity/link/callback");
             } else {
                 skipPaths = List.copyOf(skipPaths);
             }
