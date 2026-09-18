@@ -2,14 +2,29 @@
 
 ## Supported Versions
 
-JaiClaw is pre-1.0. Security fixes ship on the latest minor release.
-Older minor versions are best-effort.
+Security fixes ship on the latest minor release. The previous minor is
+best-effort; older lines require an upgrade.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.9.x   | :white_check_mark: |
-| 0.8.x   | :warning: best-effort |
-| < 0.8   | :x: upgrade required |
+| Version | Supported             |
+| ------- | --------------------- |
+| 1.2.x   | :white_check_mark:    |
+| 1.1.x   | :warning: best-effort |
+| 1.0.x   | :warning: best-effort |
+| < 1.0   | :x: upgrade required  |
+
+**1.2.0 fixed two critical defects present in every earlier release.** If you
+are on 1.1.x or below, treat the upgrade as security-relevant rather than
+routine:
+
+- Tenant context could be established from an **unverified** JWT. In the
+  default `api-key` mode no JWT-validating filter existed, so an attacker
+  needed only to *omit* a valid signature to name another tenant.
+- Tool authorization failed **open** — agents ran with the full tool surface
+  (shell, filesystem, browser) on every request in api-key mode, on every
+  channel-originated message, and on the `permitAll` `/webhook/**` path.
+
+See [`releases/release-1.2.0.md`](releases/release-1.2.0.md) for the breaking
+changes the upgrade carries.
 
 ## Reporting a Vulnerability
 
@@ -63,10 +78,8 @@ Out of scope:
 - Issues in example apps under `jaiclaw-examples/` unless they
   demonstrate a flaw in JaiClaw itself (examples are documentation,
   not production-shaped).
-- Dependency CVEs that we've already triaged as false-positives
-  (tracked under `.security/dependency-check-suppressions.xml` once
-  CI hardening lands — see the
-  [codebase-analysis remediation plan](docs/CODEBASE-ANALYSIS-2026-06-10.md)).
+- Dependency CVEs already triaged as false-positives, tracked in
+  [`.security/dependency-check-suppressions.xml`](.security/dependency-check-suppressions.xml).
 
 ## Hardening Recommendations
 
@@ -90,6 +103,49 @@ Several security knobs are **opt-in** by design:
   gateway).
 - HTTPS termination, secret storage, and inbound network policy are
   the operator's responsibility.
+
+### Authentication (1.2.0)
+
+- **`jaiclaw.security.default-tool-profile`** — the profile applied when no
+  authenticated tool profile is present. **Defaults to `FULL` in 1.2.0**,
+  which is fail-*open*: api-key callers and every channel-originated message
+  reach the complete tool surface. The permissive default was kept for one
+  minor so the fix did not silently strip access from existing deployments.
+  **Set it explicitly.** It becomes `MINIMAL` in 1.3.0.
+- **`jaiclaw.security.api-keys[]`** — replaces the single shared key. Each key
+  binds to exactly one tenant and one role, so revoking a capability is
+  deleting one key and a leaked key exposes one (tenant, role) pair. The
+  legacy `jaiclaw.security.api-key` scalar still works in single-tenant mode.
+- **`jaiclaw.security.mode=oidc`** — validates tokens against an identity
+  provider's JWKS (`jaiclaw-security-oidc`, opt-in dependency). Preferred over
+  `mode=jwt`, whose shared HMAC secret means every verifier can also mint
+  tokens. Provider-agnostic.
+- **`jaiclaw.identity.link.enabled=true`** — proves a channel user controls an
+  external identity, so tenancy and authorization derive from the person
+  rather than the bot. Without it, channel identity is asserted and never
+  verified.
+
+See [`docs/user/API-KEY-AUTHENTICATION.md`](docs/user/API-KEY-AUTHENTICATION.md),
+[`docs/user/OIDC-AUTHENTICATION.md`](docs/user/OIDC-AUTHENTICATION.md) and
+[`docs/user/VERIFIED-IDENTITY.md`](docs/user/VERIFIED-IDENTITY.md).
+
+### Known weak defaults
+
+Stated plainly so operators can decide rather than discover:
+
+- **`default-tool-profile` is `FULL`** in 1.2.0 — see above.
+- **Actuator endpoints perform no authorization of their own.**
+  `/actuator/jaiclaw-estop` is state-mutating and can pause every agent in the
+  deployment. Front `/actuator/**` with the same auth as the rest of your
+  admin surface.
+- **`/webhook/**` is `permitAll`** by design, since platforms cannot present a
+  key. Sessions it creates are clamped to `WEBHOOK_SAFE`, and per-platform
+  signature verification is **opt-in** via the `security-hardened` profile —
+  enable it.
+- **`AdminController` and `GdprController` default their role to `""`**, which
+  the authorization helper treats as "any authenticated principal". Set
+  `jaiclaw.gateway.admin.roles.admin` and
+  `jaiclaw.compliance.gdpr.roles.operator` explicitly in production.
 
 If you find a default-on configuration that should be hardened, please
 report it via the email above.
