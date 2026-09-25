@@ -53,29 +53,58 @@ public class ComplianceEnvironmentPostProcessor implements EnvironmentPostProces
                 env.getProperty("jaiclaw.compliance.prompt-redaction", Boolean.class),
                 env.getProperty("jaiclaw.compliance.fips-enforced", Boolean.class),
                 env.getProperty("jaiclaw.compliance.fedramp-warnings", Boolean.class),
-                env.getProperty("jaiclaw.compliance.cui-warnings", Boolean.class)
+                env.getProperty("jaiclaw.compliance.cui-warnings", Boolean.class),
+                env.getProperty("jaiclaw.compliance.audit-hash-chain", Boolean.class),
+                env.getProperty("jaiclaw.compliance.encrypt-at-rest", Boolean.class),
+                env.getProperty("jaiclaw.compliance.hardened-tool-profile", Boolean.class),
+                env.getProperty("jaiclaw.compliance.rate-limit", Boolean.class)
         );
 
         java.util.Map<String, Object> effective = new java.util.LinkedHashMap<>(props.asEffectiveProperties());
 
-        // Cross-subsystem property: jaiclaw.security.require-https. Only set
-        // it when unset by the operator — don't overwrite an explicit choice.
+        // Cross-subsystem properties. Each is only set when the operator has not
+        // chosen one — a profile is a default bundle, never an override of an
+        // explicit instruction.
         if (env.getProperty("jaiclaw.security.require-https") == null && props.effectiveRequireHttps()) {
             effective.put("jaiclaw.security.require-https", true);
+        }
+        // Narrows the fail-open FULL default. Written as the literal enum name
+        // because JaiClawGatewayAutoConfiguration reads this as a raw string and
+        // fails startup on an unparseable value.
+        if (env.getProperty("jaiclaw.security.default-tool-profile") == null
+                && props.effectiveHardenedToolProfile()) {
+            effective.put("jaiclaw.security.default-tool-profile", "MINIMAL");
+        }
+        if (env.getProperty("jaiclaw.security.rate-limit.enabled") == null
+                && props.effectiveRateLimit()) {
+            effective.put("jaiclaw.security.rate-limit.enabled", true);
         }
 
         env.getPropertySources().addFirst(new MapPropertySource(SOURCE_NAME, effective));
         if (profile != ComplianceProfile.NONE) {
-            log.info("Compliance profile '{}' active — effective flags: httpsGuard={}, retention={}, chatAudit={}, baaWarn={}, promptRedact={}, fipsEnforced={}, fedrampWarn={}, cuiWarn={}",
+            log.info("Compliance profile '{}' active — effective flags: httpsGuard={}, retention={}, chatAudit={}, baaWarn={}, promptRedact={}, auditHashChain={}, encryptAtRest={}, hardenedToolProfile={}, rateLimit={}, fipsEnforced={}, fedrampWarn={}, cuiWarn={}",
                     profile,
                     props.effectiveRequireHttps(),
                     props.effectiveRetentionEnforcement(),
                     props.effectiveAuditChatClient(),
                     props.effectiveBaaWarnings(),
                     props.effectivePromptRedaction(),
+                    props.effectiveAuditHashChain(),
+                    props.effectiveEncryptAtRest(),
+                    props.effectiveHardenedToolProfile(),
+                    props.effectiveRateLimit(),
                     props.effectiveFipsEnforced(),
                     props.effectiveFedrampWarnings(),
                     props.effectiveCuiWarnings());
+
+            // An operator who asked for encryption deserves to know at startup
+            // whether it is actually on, not to discover plaintext later.
+            if (props.effectiveEncryptAtRest()
+                    && env.getProperty("jaiclaw.compliance.encryption.key") == null) {
+                log.warn("Compliance profile '{}' enables encryption at rest but "
+                        + "jaiclaw.compliance.encryption.key is not set in the environment. "
+                        + "Startup will fail unless a SecretsProvider supplies it.", profile);
+            }
         }
     }
 

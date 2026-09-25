@@ -99,4 +99,35 @@ class ComplianceProfileSpec extends Specification {
         !p.requiresFedrampWarnings()
         !p.requiresCuiWarnings()
     }
+    def "SOC2 profile turns on the hardened commercial posture"() {
+        given:
+        def p = ComplianceProfile.SOC2
+
+        expect: "the three-flag baseline shared with gdpr/hipaa"
+        p.requiresHttps()
+        p.requiresRetentionEnforcement()
+        p.requiresAuditChatClient()
+
+        and: "plus the four controls no other profile enables"
+        p.requiresAuditHashChain()          // CC7.2 — tamper-evident audit
+        p.requiresEncryptAtRest()           // C1
+        p.requiresHardenedToolProfile()     // CC6.3 — framework default is FULL
+        p.requiresRateLimit()               // CC6.6
+
+        and: "but nothing regime-specific"
+        !p.requiresBaaWarnings()            // BAA is HIPAA-specific
+        !p.requiresPromptRedaction()        // no framework call site; would imply a control that does not operate
+        !p.requiresFipsEnforced()           // FISMA adopters add fips-enforced explicitly
+        !p.requiresFedrampWarnings()
+        !p.requiresCuiWarnings()
+    }
+
+    def "only SOC2 enables the four new controls"() {
+        expect: "adding soc2 must not retroactively harden existing profiles"
+        ComplianceProfile.values().findAll { it.requiresAuditHashChain() } == [ComplianceProfile.SOC2]
+        ComplianceProfile.values().findAll { it.requiresEncryptAtRest() } == [ComplianceProfile.SOC2]
+        ComplianceProfile.values().findAll { it.requiresHardenedToolProfile() } == [ComplianceProfile.SOC2]
+        ComplianceProfile.values().findAll { it.requiresRateLimit() } == [ComplianceProfile.SOC2]
+    }
+
 }

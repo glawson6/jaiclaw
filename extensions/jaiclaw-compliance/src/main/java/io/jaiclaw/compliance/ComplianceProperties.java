@@ -23,6 +23,19 @@ import java.util.Map;
  *                             {@code FedRampWarningChatModelDecorator} (federal-compliance addition)
  * @param cuiWarnings          explicit override for
  *                             {@code CuiWarningChatModelDecorator} (federal-compliance addition)
+ * @param auditHashChain       explicit override for the tamper-evident audit
+ *                             chain ({@code HashChainedAuditLogger}) — SOC 2 CC7.2
+ * @param encryptAtRest        explicit override for encryption at rest
+ *                             ({@code EncryptedAuditLogger} +
+ *                             {@code EncryptedTranscriptStore}). Requires an
+ *                             operator-supplied key; startup aborts without one
+ * @param hardenedToolProfile  explicit override for narrowing
+ *                             {@code jaiclaw.security.default-tool-profile} to
+ *                             {@code MINIMAL}. Cross-subsystem — see
+ *                             {@link ComplianceEnvironmentPostProcessor}
+ * @param rateLimit            explicit override for
+ *                             {@code jaiclaw.security.rate-limit.enabled}.
+ *                             Cross-subsystem
  */
 public record ComplianceProperties(
         ComplianceProfile profile,
@@ -33,11 +46,35 @@ public record ComplianceProperties(
         Boolean promptRedaction,
         Boolean fipsEnforced,
         Boolean fedrampWarnings,
-        Boolean cuiWarnings
+        Boolean cuiWarnings,
+        Boolean auditHashChain,
+        Boolean encryptAtRest,
+        Boolean hardenedToolProfile,
+        Boolean rateLimit
 ) {
 
     public ComplianceProperties {
         if (profile == null) profile = ComplianceProfile.NONE;
+    }
+
+    /**
+     * Backward-compatible 9-arg constructor for callers written before the
+     * SOC 2 flags existed. Defaults all four new fields to null, i.e. "take the
+     * profile default".
+     *
+     * <p>This record is constructed by hand in
+     * {@link ComplianceEnvironmentPostProcessor} and is <em>not</em> bound by
+     * Spring, so the usual one-public-constructor rule for
+     * {@code @ConfigurationProperties} records does not apply here.
+     */
+    public ComplianceProperties(ComplianceProfile profile, Boolean requireHttps,
+                                Boolean retentionEnforcement, Boolean auditChatClient,
+                                Boolean baaWarnings, Boolean promptRedaction,
+                                Boolean fipsEnforced, Boolean fedrampWarnings,
+                                Boolean cuiWarnings) {
+        this(profile, requireHttps, retentionEnforcement, auditChatClient, baaWarnings,
+                promptRedaction, fipsEnforced, fedrampWarnings, cuiWarnings,
+                null, null, null, null);
     }
 
     /** Explicit override wins; otherwise profile default. */
@@ -79,6 +116,31 @@ public record ComplianceProperties(
      * the raw profile / flag values are already on the environment via the
      * operator's config.
      */
+    /** Tamper-evident audit chain — SOC 2 CC7.2. */
+    public boolean effectiveAuditHashChain() {
+        return auditHashChain != null ? auditHashChain : profile.requiresAuditHashChain();
+    }
+
+    /** Encryption at rest. Requires an operator-supplied key. */
+    public boolean effectiveEncryptAtRest() {
+        return encryptAtRest != null ? encryptAtRest : profile.requiresEncryptAtRest();
+    }
+
+    /**
+     * Whether to narrow {@code jaiclaw.security.default-tool-profile} to
+     * {@code MINIMAL}. Cross-subsystem: not published as an
+     * {@code effective.*} flag, because the consumer reads the security
+     * property directly.
+     */
+    public boolean effectiveHardenedToolProfile() {
+        return hardenedToolProfile != null ? hardenedToolProfile : profile.requiresHardenedToolProfile();
+    }
+
+    /** Whether to turn on the built-in rate limiter. Cross-subsystem. */
+    public boolean effectiveRateLimit() {
+        return rateLimit != null ? rateLimit : profile.requiresRateLimit();
+    }
+
     public Map<String, Object> asEffectiveProperties() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("jaiclaw.compliance.effective.profile", profile.name().toLowerCase());
@@ -90,6 +152,8 @@ public record ComplianceProperties(
         out.put("jaiclaw.compliance.effective.fips-enforced", effectiveFipsEnforced());
         out.put("jaiclaw.compliance.effective.fedramp-warnings", effectiveFedrampWarnings());
         out.put("jaiclaw.compliance.effective.cui-warnings", effectiveCuiWarnings());
+        out.put("jaiclaw.compliance.effective.audit-hash-chain", effectiveAuditHashChain());
+        out.put("jaiclaw.compliance.effective.encrypt-at-rest", effectiveEncryptAtRest());
         return out;
     }
 }
