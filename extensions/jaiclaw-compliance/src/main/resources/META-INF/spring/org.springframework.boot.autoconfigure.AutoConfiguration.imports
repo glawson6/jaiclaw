@@ -1,1 +1,2 @@
 io.jaiclaw.compliance.JaiClawComplianceAutoConfiguration
+io.jaiclaw.compliance.encryption.JaiClawEncryptionAutoConfiguration
