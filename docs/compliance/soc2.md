@@ -71,7 +71,7 @@ Column legend, following [fedramp.md](fedramp.md)'s inheritance model:
 | **CC6.7** Transmission and movement of data | ✅ | ✅ | — | HTTPS guard above; `AuditingChatModelBeanPostProcessor` records every LLM call with recipient, so egress to model providers is evidenced |
 | **CC6.8** Prevention of unauthorized software | — | ✅ | ✅ | Opt-in module design and `spring.autoconfigure.exclude` support; OWASP dependency-check is configured in the build |
 | **CC7.1** Detection of configuration changes | ✅ | ✅ | — | Effective compliance flags are inspectable at `/actuator/env`; startup logs the resolved profile |
-| **CC7.2** Monitoring for anomalies — **the audit-integrity criterion** | ✅ | ✅ | ✅ | `HashChainedAuditLogger` maintains a per-tenant SHA-256 chain over audit events and `verifyChain()` returns an `IntegrityReport`, emitting `audit.integrity_violation` on the first break. This is the control that answers *"how do you know these logs weren't altered?"* |
+| **CC7.2** Monitoring for anomalies — **the audit-integrity criterion** | ✅ | ✅ | ✅ | `HashChainedAuditLogger` maintains a per-tenant SHA-256 chain over audit events and `verifyChain()` returns an `IntegrityReport`, emitting `audit.integrity_violation` on the first break. This is the control that answers *"how do you know these logs weren't altered?"* — **within the log**; see the truncation limitation below |
 | **CC7.3 / CC7.4** Incident evaluation and response | ✅ | ✅ | ✅ | Framework emits structured audit events; `EmergencyStop` (`/actuator/jaiclaw-estop`) halts new work during an incident. The IR runbook is yours |
 | **CC7.5** Recovery from incidents | — | ✅ | ✅ | Nothing framework-level |
 | **CC8.1** Change management | — | ✅ | ✅ | Your CI/CD, review, and release process. JaiClaw is versioned semantically with release notes under `releases/` |
@@ -85,6 +85,18 @@ Column legend, following [fedramp.md](fedramp.md)'s inheritance model:
 | **C1.2** Disposal of confidential information | ✅ | ✅ | — | `RetentionEnforcementService` purges on a per-tenant TTL and emits an audit event; `AggregateDataSubjectErasureSpi` cascades deletion across `TranscriptStore` and `AuditLogger` beans |
 | **C1.x** Encryption at rest | ✅ | ✅ | — | `AesGcmFieldEncryptor` (AES-GCM-256, fresh 12-byte nonce per call, 128-bit tag) behind `EncryptedAuditLogger` and `EncryptedTranscriptStore` |
 | **C1.x** Multi-tenant isolation | ✅ | ✅ | — | `TenantGuard` fails closed in MULTI mode; every persistence layer resolves tenant-scoped keys/paths. See [`docs/dev/multi-tenancy-architecture.md`](../dev/multi-tenancy-architecture.md) |
+
+> **Limitation of the hash chain: tail truncation.** The chain detects any
+> *modification* or *deletion* within the log — an edited field, a removed
+> record — and names the offending event. It cannot detect **truncation of the
+> most recent events**, because the remaining prefix is internally consistent
+> and nothing anchors the expected chain head. That is inherent to hash
+> chaining, not a defect in this implementation: detecting truncation requires
+> an external anchor. Ship audit events off-host (SIEM, append-only store) or
+> counter-sign the chain head on a schedule, and treat that as the compensating
+> control. Do not present the chain to an auditor as complete coverage of CC7.2
+> on its own. Covered by `AuditChainTamperSpec`, which asserts the limitation
+> explicitly so it cannot be forgotten.
 
 > **Not claimed: prompt redaction.** `RegexPromptRedactor` is registered as a
 > bean when `prompt-redaction` is on, but **no framework code invokes it** — it
