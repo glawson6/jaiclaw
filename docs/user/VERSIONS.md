@@ -2,6 +2,56 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 1.3.0-SNAPSHOT (in progress)
+
+### SOC 2 readiness
+
+An adopter asked whether JaiClaw is "SOC 2 compliant." It cannot be — SOC 2 is a
+CPA attestation about **an organisation's** controls, not a property of a Maven
+artifact. What 1.3.0 adds is the opt-in profile that assembles the technical
+controls an auditor asks for, plus the document that maps them:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: soc2
+    encryption:
+      key: ${JAICLAW_ENCRYPTION_KEY}   # 32 bytes, hex or base64
+```
+
+| Control | Effective flag | Criterion |
+|---|---|---|
+| Tamper-evident audit chain | `audit-hash-chain` | CC7.2 |
+| Encryption at rest | `encrypt-at-rest` | C1.1 |
+| Least-privilege tool default | `jaiclaw.security.default-tool-profile: MINIMAL` | CC6.1 |
+| Rate limiting | `jaiclaw.security.rate-limit.enabled: true` | CC6.6 |
+| TLS required at startup | `require-https` | CC6.7 |
+| LLM-call auditing | `audit-chat-client` | CC7.2 |
+
+**The default is unchanged and stays that way** — `profile=none` loads zero
+compliance beans. The two `jaiclaw.security.*` properties are set only when the
+operator has not set them.
+
+At-rest encryption is now auto-wired: `EncryptionKeyResolver` reads the key
+through the core `SecretsProvider` SPI and builds the first framework-supplied
+`FieldEncryptor`, which `EncryptionBeanPostProcessor` uses to decorate
+`AuditLogger` and `TranscriptStore`. Before 1.3.0 those decorators existed but
+nothing wired them. Startup aborts if `encrypt-at-rest` is on with no resolvable
+key — running unencrypted while an operator believes otherwise is the worst
+outcome available.
+
+Two limits are stated plainly in [`docs/compliance/soc2.md`](../compliance/soc2.md)
+rather than glossed: the hash chain does **not** detect truncation (replay has no
+persisted head to compare against), and prompt redaction is **not** claimed as a
+control because `PromptRedactor` has no framework call sites.
+
+See [`docs/compliance/soc2.md`](../compliance/soc2.md) for the full mapping and
+[COMPLIANCE-HOWTO.md § Path D](COMPLIANCE-HOWTO.md) for the runbook.
+
+> **Still owed for 1.3.0:** `jaiclaw.security.default-tool-profile` must flip
+> globally from `FULL` to `MINIMAL`. The `soc2` profile sets it, but the
+> framework-wide default still fails open.
+
 ## 1.2.0 (released 2026-09-18)
 
 The **security and identity** release. Published to **Maven Central**:

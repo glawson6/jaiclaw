@@ -81,6 +81,13 @@ public class ComplianceReportMojo extends AbstractMojo {
                 new CodeClaim("altText", "core/jaiclaw-tools/src/main/java/io/jaiclaw/tools/builtin/AsciiRenderTool.java"),
                 new CodeClaim("jsx-a11y", "apps/jaiclaw-pipeline-studio/frontend/package.json")
         ));
+        CLAIMS_BY_REGULATION.put("soc2", List.of(
+                new CodeClaim("SOC2", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/ComplianceProfile.java"),
+                new CodeClaim("requiresAuditHashChain", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/ComplianceProfile.java"),
+                new CodeClaim("verifyChain", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/HashChainedAuditLogger.java"),
+                new CodeClaim("EncryptionKeyResolver", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptionKeyResolver.java"),
+                new CodeClaim("ApiKeyStore", "core/jaiclaw-security/src/main/java/io/jaiclaw/security/ApiKeyStore.java")
+        ));
         CLAIMS_BY_REGULATION.put("fedramp", List.of(
                 new CodeClaim("FedRampWarningChatModelDecorator", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/fedramp/FedRampWarningChatModelDecorator.java"),
                 new CodeClaim("KEY_FEDRAMP_IMPACT", "core/jaiclaw-core/src/main/java/io/jaiclaw/core/tenant/TenantContext.java"),

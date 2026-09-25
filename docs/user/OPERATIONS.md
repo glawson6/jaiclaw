@@ -1108,14 +1108,33 @@ DELETE /api/gdpr/subject/{dataSubjectId}?reason={ART_17_REQUEST|CONSENT_WITHDRAW
 
 ### At-rest encryption (T2-4)
 
-Not auto-wired — supply the 32-byte key from a `SecretsProvider` and decorate your `TranscriptStore` / `AuditLogger`:
+*Auto-wired since 1.3.0.* Supply the key; the framework resolves it and applies
+the `EncryptedTranscriptStore` / `EncryptedAuditLogger` decorators.
 
-```java
-@Bean
-FieldEncryptor fieldEncryptor(SecretsResolver secrets) {
-    return new AesGcmFieldEncryptor(secrets.get("JAICLAW_ENCRYPTION_KEY").getBytes(StandardCharsets.UTF_8));
-}
+```yaml
+jaiclaw:
+  compliance:
+    profile: soc2                        # or: effective.encrypt-at-rest=true
+    encryption:
+      key: ${JAICLAW_ENCRYPTION_KEY}     # 32 bytes, base64 or hex
 ```
+
+```bash
+openssl rand -base64 32                  # generate one
+```
+
+The key may also come from a `SecretsProvider` under the same logical key
+(`jaiclaw.compliance.encryption.key`), so 1Password / Vault / file backends work
+without a second property.
+
+> **A passphrase is not a key.** Earlier revisions of this guide showed
+> `secrets.get("...").getBytes(StandardCharsets.UTF_8)`. That yields 32 bytes
+> only for a 32-character ASCII string — coincidence, not contract — and
+> silently produces a weak key otherwise. `EncryptionKeyResolver` now decodes
+> base64 or hex and **refuses anything that is not exactly 32 bytes**.
+
+> **`encrypt-at-rest=true` with no resolvable key aborts startup.** Running
+> plaintext while an operator believes otherwise is the worse failure.
 
 **Losing the key means losing the ciphertext.** Maintain a key-rotation runbook + backup-encryption-key pattern before enabling in production.
 

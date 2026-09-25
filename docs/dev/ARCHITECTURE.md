@@ -709,7 +709,8 @@ The `jaiclaw-compliance` extension (shipped in 0.9.3) layers GDPR + HIPAA orches
 `ComplianceEnvironmentPostProcessor` runs at the earliest environment stage (registered via `META-INF/spring.factories`) and translates one operator-facing property into a bundle of individual flags:
 
 ```
-jaiclaw.compliance.profile={none|gdpr|hipaa|both}
+jaiclaw.compliance.profile={none|gdpr|hipaa|both|soc2|
+                            fedramp-moderate|cmmc-l2|fips}
         │
         ▼
 ComplianceEnvironmentPostProcessor
@@ -718,12 +719,22 @@ ComplianceEnvironmentPostProcessor
         ├──▶ jaiclaw.compliance.effective.retention-enforcement
         ├──▶ jaiclaw.compliance.effective.audit-chat-client
         ├──▶ jaiclaw.compliance.effective.baa-warnings
-        └──▶ jaiclaw.compliance.effective.prompt-redaction
+        ├──▶ jaiclaw.compliance.effective.prompt-redaction
+        ├──▶ jaiclaw.compliance.effective.audit-hash-chain      (soc2)
+        ├──▶ jaiclaw.compliance.effective.encrypt-at-rest       (soc2)
+        ├──▶ jaiclaw.compliance.effective.fips-enforced
+        ├──▶ jaiclaw.compliance.effective.fedramp-warnings
+        └──▶ jaiclaw.compliance.effective.cui-warnings
+        │
+        └──▶ cross-subsystem (only when the operator has not chosen):
+               jaiclaw.security.require-https
+               jaiclaw.security.default-tool-profile=MINIMAL    (soc2)
+               jaiclaw.security.rate-limit.enabled=true         (soc2)
 ```
 
 Individual flags at `jaiclaw.compliance.<flag>` override the profile default in either direction — an operator can run `profile: hipaa` with `require-https: false` on a bench deployment behind a private TLS-terminating proxy. Effective flags are inspectable via `/actuator/env`.
 
-Cross-subsystem propagation: `ComplianceEnvironmentPostProcessor` also sets `jaiclaw.security.require-https` (unless already explicitly set) so the `RequireHttpsStartupGuard` in `jaiclaw-security` picks up the profile decision.
+Cross-subsystem propagation: `ComplianceEnvironmentPostProcessor` also writes three properties outside its own namespace — `jaiclaw.security.require-https`, and (under `soc2`) `jaiclaw.security.default-tool-profile=MINIMAL` plus `jaiclaw.security.rate-limit.enabled=true`. Each is set **only when the operator has not chosen a value**: a profile is a bundle of defaults, never an override of an explicit instruction. This works because the post-processor runs at the `EnvironmentPostProcessor` stage, long before `@ConditionalOnProperty` evaluation and before `JaiClawGatewayAutoConfiguration` reads the tool profile via `environment.getProperty(...)`.
 
 **Profile `none` (default) loads zero compliance beans.** Every `@Bean` in `JaiClawComplianceAutoConfiguration` is gated on a `@ConditionalOnProperty` matching an effective flag — no wiring, no scheduled tasks, no bean-post-processing until an adopter opts in. The module is safe to keep on the classpath at zero cost.
 

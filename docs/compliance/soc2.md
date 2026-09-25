@@ -275,6 +275,10 @@ JAICLAW_COMPLIANCE_PROFILE=soc2 ./mvnw spring-boot:run -pl :jaiclaw-gateway-app
 - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/HashChainedAuditLogger.java`
 - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/AuditingChatModelBeanPostProcessor.java`
 - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/AesGcmFieldEncryptor.java`
+- `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptionKeyResolver.java`
+- `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptionBeanPostProcessor.java`
+- `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/JaiClawEncryptionAutoConfiguration.java`
+- `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/HashChainedAuditLoggerBeanPostProcessor.java`
 - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptedAuditLogger.java`
 - `extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptedTranscriptStore.java`
 - `extensions/jaiclaw-audit/src/main/java/io/jaiclaw/audit/AuditLogger.java`

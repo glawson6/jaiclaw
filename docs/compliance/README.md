@@ -1,8 +1,8 @@
 # JaiClaw Compliance Posture
 
 **One-page government-researcher entry point.**
-**Framework version:** 1.0.1-SNAPSHOT (post-1.0.0 release)
-**Last reviewed:** 2026-08-06
+**Framework version:** 1.3.0-SNAPSHOT (post-1.2.0 release)
+**Last reviewed:** 2026-09-25
 
 ---
 
@@ -12,10 +12,11 @@ JaiClaw is a **compliance-capable framework**, not a compliance-certified produc
 
 We publish this posture openly so evaluators can review our foundation before an engagement. Everything below is backed by code — file paths cited, no marketing claims.
 
-## Ratings across 8 regulations
+## Ratings across 9 regulations
 
 | Regulation | Status | Framework contribution | Deep-dive |
 |---|---|---|---|
+| **SOC 2** — AICPA Trust Services Criteria | 🟢 **Framework-ready** | Tamper-evident audit chain (`HashChainedAuditLogger` + `verifyChain`), encryption at rest, one-key-one-tenant-one-role API keys, OIDC resource server, narrowed default tool profile — bundled by `jaiclaw.compliance.profile=soc2`. **SOC 2 attests to an organization, never to a library**; the deep-dive is explicit about the large organizational remainder. | [soc2.md](soc2.md) |
 | **Section 508** — Accessibility (29 U.S.C. § 794d, bound to WCAG 2.0 AA) | 🟢 **Ready** | Semantic HTML surfaces, ARIA landmarks + `aria-live` on status indicators, ASCII renderer supports `altText` for screen readers, Pipeline Studio SPA gated by `eslint-plugin-jsx-a11y` + `axe-core` | [section-508.md](section-508.md) |
 | **FedRAMP** — Cloud service authorization | 🟢 **Framework-ready** | Every technical control primitive exists (HTTPS guard, encryption SPI, audit chain, multi-tenant isolation, provider-warning decorator). Control inheritance table shows the JaiClaw / adopter / CSP three-way split. | [fedramp.md](fedramp.md) |
 | **FISMA** — Federal Information Security Modernization Act | 🟢 **Framework-ready** | Technical control alignment with FISMA Moderate baseline. Documentation of the FIPS 199 categorization boundary is the adopter's job. | [fisma.md](fisma.md) |
@@ -43,8 +44,8 @@ We publish this posture openly so evaluators can review our foundation before an
 │  Continuous monitoring reports │ Physical sec    │ Boundary def│
 ├─────────────────────────────────────────────────────────────────┤
 │               FRAMEWORK CONTRIBUTION (JaiClaw)                  │
-│  Audit trail with tamper-evident hash chain                     │
-│  Encryption at rest (AES-GCM-256) via SPI                       │
+│  Audit trail with tamper-evident hash chain (auto-wired: soc2)  │
+│  Encryption at rest (AES-GCM-256, auto-wired: soc2)             │
 │  Encryption in transit (RequireHttpsStartupGuard)               │
 │  Multi-tenant isolation (TenantGuard, fail-closed in MULTI)     │
 │  JWT / API-key auth with rate limiting                          │

@@ -9,6 +9,11 @@
 Most AI agent tools force a choice: a lightweight personal tool that can't scale, or an enterprise platform that's overkill for simple tasks. JaiClaw spans the entire range — the same codebase, the same modules, the same deployment model — from a developer's local terminal to a multi-tenant platform serving thousands of users across dozens of organizations.
 
 ```
+
+> The right-hand column describes **audit-trail depth**, not certification.
+> A framework cannot be SOC 2 or HIPAA compliant — those attest to an
+> organization. See [`docs/compliance/soc2.md`](../compliance/soc2.md) for what
+> JaiClaw contributes and what remains yours.
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                         JaiClaw Application Spectrum                         │
 │                                                                              │
@@ -21,7 +26,7 @@ Most AI agent tools force a choice: a lightweight personal tool that can't scale
 │  0 channels       1 channel        3-7 channels        All 7 channels        │
 │  No auth          API key          JWT roles           JWT multi-tenancy     │
 │  In-memory        In-memory        Redis sessions       Redis + PostgreSQL   │
-│  No audit         Minimal          Full audit trail     SOC 2 / HIPAA        │
+│  No audit         Minimal          Full audit trail     Tamper-evident audit │
 │  ReAct loop       ReAct loop       ReAct + cron         GOAP multi-agent     │
 │  1 LLM provider   1-2 providers    2-3 providers        Any of 11 providers  │
 │                                                                              │

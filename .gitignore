@@ -42,3 +42,4 @@ docs-local/
 **/node_modules/
 **/dist/
 **/.vite/
+/feature-gap-analysis-2026-09-09.md

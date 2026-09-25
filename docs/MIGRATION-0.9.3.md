@@ -128,7 +128,18 @@ The `GdprController` at `/api/gdpr/*` exposes export + erasure via HTTP. **Front
 
 ### At-rest encryption (Tier 2 T2-4)
 
-Not auto-wired — you supply the 32-byte key from a `SecretsProvider`:
+> **Superseded in 1.3.0.** Encryption at rest is now auto-wired — set
+> `jaiclaw.compliance.profile=soc2` (or `effective.encrypt-at-rest=true`) and
+> supply `jaiclaw.compliance.encryption.key`. See
+> [`docs/user/COMPLIANCE.md`](user/COMPLIANCE.md#tier-2-spis).
+>
+> Note also that the `getBytes(StandardCharsets.UTF_8)` below is **wrong** and
+> was never safe: it yields 32 bytes only for a 32-character ASCII string.
+> `EncryptionKeyResolver` decodes base64 or hex and refuses anything else. The
+> snippet is retained only as a record of the 0.9.3 migration.
+
+The 0.9.3-era manual wiring, for historical reference — you supplied the 32-byte
+key from a `SecretsProvider`:
 
 ```java
 @Bean

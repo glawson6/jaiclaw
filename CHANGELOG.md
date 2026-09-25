@@ -18,6 +18,43 @@ In progress on the `1.3.0-SNAPSHOT` line.
 > one minor so the security fix did not silently strip tool access from
 > existing deployments. See `releases/release-1.2.0.md`.
 
+### Added
+
+- **`soc2` compliance profile** — one opt-in property
+  (`jaiclaw.compliance.profile=soc2`) assembles the hardened posture an SOC 2
+  auditor asks to see: a tamper-evident audit chain, encryption at rest, a
+  `MINIMAL` default tool profile, TLS-required-at-startup, and rate limiting.
+  **The framework default is unchanged** — `profile=none` still loads zero
+  compliance beans and alters no behaviour.
+- **At-rest encryption is now auto-wired.** `EncryptionKeyResolver` resolves
+  `jaiclaw.compliance.encryption.key` (hex or base64, 32 bytes) through the core
+  `SecretsProvider` SPI and builds the first framework-supplied
+  `FieldEncryptor`. `EncryptionBeanPostProcessor` then decorates `AuditLogger`
+  and `TranscriptStore`. Previously these decorator classes existed with no path
+  to being used short of an adopter writing their own `@Bean` — reversing the
+  stance documented in `docs/user/COMPLIANCE.md`. Declaring your own
+  `FieldEncryptor` still wins via `@ConditionalOnMissingBean`. Startup **aborts**
+  when `encrypt-at-rest` is on and no key resolves.
+- **`HashChainedAuditLoggerBeanPostProcessor`** — wraps the `AuditLogger` bean
+  when `audit-hash-chain` is set, ordered to nest outside the encryption
+  decorator so the chain covers ciphertext.
+- Two new effective flags: `jaiclaw.compliance.effective.audit-hash-chain` and
+  `…​.encrypt-at-rest`.
+- **`docs/compliance/soc2.md`** — CC1–CC9 + C1 criterion mapping, with the
+  framework/adopter/organisational split made explicit. Documents the two things
+  the framework deliberately does **not** claim: prompt redaction (the
+  `PromptRedactor` SPI has no framework call sites) and truncation detection
+  (the hash chain catches modification and reordering, not a deleted tail).
+  `docs/user/COMPLIANCE-HOWTO.md` gains a matching Path D.
+
+### Changed
+
+- `ComplianceEnvironmentPostProcessor` now sets two properties outside its own
+  namespace — `jaiclaw.security.default-tool-profile=MINIMAL` and
+  `jaiclaw.security.rate-limit.enabled=true` — following the existing
+  `require-https` precedent. Both are set **only when the operator has not set
+  them**, so an explicit value always survives the profile.
+
 ## [1.2.0] — 2026-09-18
 
 The security and identity release. Published to Maven Central.

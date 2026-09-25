@@ -299,7 +299,41 @@ Or, since redaction happens inside `AgentRuntime` when compliance is on, monitor
 
 ### B.5 — Enable at-rest encryption (recommended, not required by HIPAA but strongly advised for §164.312(a)(2)(iv))
 
-Not auto-wired — you supply the 32-byte key from your SecretsProvider:
+**As of 1.3.0 this is auto-wired** — set the flag and supply the key, and the
+framework builds the `FieldEncryptor` and decorates `AuditLogger` +
+`TranscriptStore` for you. No `@Bean` methods needed:
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: hipaa
+    encrypt-at-rest: true             # hipaa does not imply this — opt in explicitly
+    encryption:
+      key: ${JAICLAW_ENCRYPTION_KEY}  # 32 bytes, hex or base64
+```
+
+The key is resolved through the core `SecretsProvider` SPI, so a
+`secret://`-style reference works wherever your provider supports one. Hex is
+tried before base64 — a 64-character hex key is unambiguous either way, but
+base64-decoding it first would silently yield 48 bytes.
+
+**Startup aborts** if `encrypt-at-rest: true` and no key resolves. That is
+deliberate: running unencrypted while an operator believes otherwise is the
+worst available outcome.
+
+`jaiclaw.compliance.profile: soc2` turns `encrypt-at-rest` on by itself — see
+[`docs/compliance/soc2.md`](../compliance/soc2.md).
+
+<details>
+<summary>Manual wiring (pre-1.3.0, or to override the framework's encryptor)</summary>
+
+Declaring your own `FieldEncryptor` bean wins — the auto-configuration backs off
+via `@ConditionalOnMissingBean(FieldEncryptor.class)`. Use this for an
+HSM-backed or KMS-backed encryptor rather than a local key. Note that with
+`encrypt-at-rest: true` the store decorators are applied by
+`EncryptionBeanPostProcessor` using whichever `FieldEncryptor` is in the
+context, so the `@Primary` decorator beans below are only needed if you are
+*also* leaving the flag off and wiring everything by hand:
 
 ```java
 @Bean
@@ -322,6 +356,8 @@ public AuditLogger encryptedAuditLogger(FileAuditLogger backing, FieldEncryptor 
     return new EncryptedAuditLogger(backing, enc);
 }
 ```
+
+</details>
 
 Provision the key:
 
@@ -425,6 +461,99 @@ Complete both checklists (§ A.8 and § B.8). No shortcuts — the two framework
 
 ---
 
+## Path D — I need SOC 2 evidence
+
+SOC 2 differs from Paths A–C in kind: GDPR and HIPAA are statutes with named
+articles, while SOC 2 is a **CPA attestation about your organisation's**
+controls. No framework setting makes you SOC 2 compliant. What the `soc2`
+profile does is assemble the technical controls an auditor will ask to see, so
+your evidence collection is a config read rather than an archaeology project.
+
+Read [`docs/compliance/soc2.md`](../compliance/soc2.md) for the full
+criterion-by-criterion mapping (CC1–CC9 + C1) and the split between what
+JaiClaw provides, what you must do, and what is out of scope.
+
+### D.1 — Enable the profile
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: soc2
+    encryption:
+      key: ${JAICLAW_ENCRYPTION_KEY}   # required — soc2 implies encrypt-at-rest
+```
+
+That one profile sets six effective flags and two cross-subsystem properties:
+
+| Control | Effective setting | Criterion |
+|---|---|---|
+| Tamper-evident audit chain | `audit-hash-chain: true` | CC7.2 |
+| Encryption at rest | `encrypt-at-rest: true` | C1.1 |
+| Least-privilege tool default | `jaiclaw.security.default-tool-profile: MINIMAL` | CC6.1 |
+| Rate limiting | `jaiclaw.security.rate-limit.enabled: true` | CC6.6 |
+| TLS required at startup | `require-https: true` | CC6.7 |
+| LLM-call auditing | `audit-chat-client: true` | CC7.2 |
+
+The two `jaiclaw.security.*` properties are set **only when you have not set
+them yourself** — an explicit operator value always survives the profile.
+
+### D.2 — Verify the posture came up
+
+```bash
+curl -s localhost:8080/actuator/env \
+  | jq -r '.propertySources[] | select(.name=="jaiclawComplianceEffective") | .properties'
+```
+
+This output is itself audit evidence: it shows the control set that was active
+on a given deployment.
+
+### D.3 — Prove the audit chain is intact
+
+The auditor's actual question is "how do you know these logs were not altered?"
+
+There is **no REST endpoint for this** — `verifyChain` is a Java method, and
+exposing it is your call (it reads the whole tenant audit history, so it wants
+admin auth and a rate limit). Wire a scheduled check or an admin endpoint:
+
+```java
+// HashChainedAuditLogger maintains a per-tenant SHA-256 chain-of-hashes
+HashChainedAuditLogger.IntegrityReport report = chainedLogger.verifyChain("acme");
+if (!report.valid()) {
+    log.error("Audit chain break at index {} (event {}): {}",
+            report.brokenAt(), report.offendingEventId(), report.reason());
+}
+```
+
+`IntegrityReport` is
+`(boolean valid, int brokenAt, String offendingEventId, String reason)`. A
+modified or reordered record sets `valid=false` and names the offending event.
+The logger also emits an `audit.integrity_violation` audit event on a break, so
+a SIEM rule on that event type gives you alerting without polling.
+
+Getting the decorated instance depends on how you enabled it — under
+`profile: soc2` the `AuditLogger` bean is wrapped by
+`HashChainedAuditLoggerBeanPostProcessor`, so inject `AuditLogger` and
+`instanceof`-check, or declare the decorator yourself to get a typed reference.
+
+> **⚠️ Limitation you must document for your auditor.** The chain detects
+> *modification* and *reordering*, not **truncation**. `verifyChain` replays the
+> records that are present; it has no persisted head to compare against, and
+> the in-memory `lastHashByTenant` does not survive a restart. An attacker who
+> deletes a contiguous tail leaves a chain that verifies clean. Mitigate
+> outside the framework: ship audit records to append-only storage (S3 Object
+> Lock, a WORM volume, or a SIEM) and alert on volume gaps.
+
+### D.4 — SOC 2 verification checklist
+
+- [ ] `jaiclawComplianceEffective` shows all six flags
+- [ ] `default-tool-profile` is `MINIMAL` — confirm no operator override put it back to `FULL`
+- [ ] Encryption key comes from a vault, not a literal in `application.yml`
+- [ ] Chain verification runs on a schedule, and a failure pages someone
+- [ ] Audit records replicate to append-only storage (covers D.3's truncation gap)
+- [ ] `/actuator/**` is behind admin auth — several endpoints mutate global state
+- [ ] Admin and GDPR controller roles are set; the blank default allows any authenticated caller
+- [ ] You are **not** claiming prompt redaction — `PromptRedactor` has no framework call sites
+
 ## Common gotchas
 
 ### "Nothing is happening after I set the profile"
@@ -487,6 +616,8 @@ If all five pass, ship. If any fails, dig in — a partial pass gives false conf
 ## Related
 
 - [COMPLIANCE.md](COMPLIANCE.md) — reference guide (what & why)
+- [compliance/soc2.md](../compliance/soc2.md) — SOC 2 Trust Services Criteria mapping
+- [compliance/README.md](../compliance/README.md) — per-regulation deep-dives
 - [MIGRATION-0.9.3.md](../MIGRATION-0.9.3.md) — upgrade path from 0.9.2
 - [PRODUCTION-DEPLOYMENT.md § 9.1](PRODUCTION-DEPLOYMENT.md) — deployment topology for compliance-aware setups
 - [OPERATIONS.md § Compliance](OPERATIONS.md) — operator runbook

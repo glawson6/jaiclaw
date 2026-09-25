@@ -105,7 +105,7 @@ This report assesses **what JaiClaw contributes** to each framework, **what rema
 - **Does not block FISMA compliance** at any impact level
 - **Baseline posture** aligns with FISMA Moderate for the majority of technical controls (AC, AU, IA, SC, SI families)
 - **Compliance profiles** (`gdpr`, `hipaa`, `both`) already flip on the settings a FISMA Moderate baseline expects: `require-https`, `retention-enforcement`, `audit-chat-client`
-- **Recommended: add a `fisma-moderate` profile** that additionally: enables `HashChainedAuditLogger` by default, sets a stricter default rate limit, enables `security-hardened` (SSRF guard, HMAC webhook verification), and requires a `TenantContext.fedramp.impact_level` on every request
+- ~~**Recommended: add a `fisma-moderate` profile**~~ — **delivered in 1.3.0 as `soc2`.** Rather than ship two near-identical bundles, the `soc2` profile enables `HashChainedAuditLogger`, encryption at rest, rate limiting, and a narrowed default tool profile. A FISMA Moderate deployment uses `jaiclaw.compliance.profile=soc2` plus `jaiclaw.compliance.fips-enforced=true`. Requiring `TenantContext.fedramp.impact_level` on every request remains unimplemented. See [`docs/compliance/soc2.md`](compliance/soc2.md)
 
 **What's NOT in JaiClaw's scope:**
 - The agency's information security program itself

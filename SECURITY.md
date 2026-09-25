@@ -88,6 +88,11 @@ Several security knobs are **opt-in** by design:
 - `SPRING_PROFILES_ACTIVE=security-hardened` enables HMAC webhook
   verification, SSRF guards, timing-safe API-key comparison, and other
   hardening — see `docs/user/OPERATIONS.md`.
+- `jaiclaw.compliance.profile=soc2` is the **hardened commercial posture**:
+  tamper-evident audit chain, encryption at rest, `MINIMAL` default tool
+  profile, HTTPS guard, rate limiting. See
+  [`docs/compliance/soc2.md`](docs/compliance/soc2.md) for the Trust Services
+  Criteria mapping — and for why a framework cannot itself be SOC 2 compliant.
 - `jaiclaw.compliance.profile={gdpr|hipaa|both}` layers GDPR + HIPAA
   orchestration on top of `security-hardened`: retention enforcement,
   LLM-call auditing, BAA-eligible provider warnings, and an HTTPS

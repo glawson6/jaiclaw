@@ -47,7 +47,8 @@ Pull `jaiclaw-compliance` onto the classpath (usually via `jaiclaw-starter-compl
 ```yaml
 jaiclaw:
   compliance:
-    profile: hipaa    # one of: none | gdpr | hipaa | both  (default: none)
+    profile: hipaa    # one of: none | gdpr | hipaa | both | soc2 |
+    #         fedramp-moderate | cmmc-l2 | fips   (default: none)
 ```
 
 The `profile` knob turns on a coherent bundle of individual flags. Individual flags can override any single element of the bundle in either direction:
@@ -61,13 +62,29 @@ jaiclaw:
 
 ### Profile → flag mapping
 
-| Flag | `none` | `gdpr` | `hipaa` | `both` |
-|---|---|---|---|---|
-| `require-https` | off | on | on | on |
-| `retention-enforcement` | off | on | on | on |
-| `audit-chat-client` | off | on | on | on |
-| `baa-warnings` | off | off | on | on |
-| `prompt-redaction` (T2) | off | off | on | on |
+| Flag | `none` | `gdpr` | `hipaa` | `both` | `soc2` | `fedramp-moderate` | `cmmc-l2` | `fips` |
+|---|---|---|---|---|---|---|---|---|
+| `require-https` | off | on | on | on | on | on | on | off |
+| `retention-enforcement` | off | on | on | on | on | on | on | off |
+| `audit-chat-client` | off | on | on | on | on | on | on | off |
+| `baa-warnings` | off | off | on | on | off | off | off | off |
+| `prompt-redaction` (T2) | off | off | on | on | off | off | on | off |
+| `audit-hash-chain` | off | off | off | off | **on** | off | off | off |
+| `encrypt-at-rest` | off | off | off | off | **on** | off | off | off |
+| `fips-enforced` | off | off | off | off | off | on | off | on |
+| `fedramp-warnings` | off | off | off | off | off | on | off | off |
+| `cui-warnings` | off | off | off | off | off | off | on | off |
+
+Two further properties live outside the `effective.*` namespace, because their
+consumers read the security config directly. Each is set **only when the
+operator has not chosen a value** — a profile is a bundle of defaults, never an
+override of an explicit instruction.
+
+| Cross-subsystem property | Set by |
+|---|---|
+| `jaiclaw.security.require-https` | any profile with `require-https` on |
+| `jaiclaw.security.default-tool-profile` = `MINIMAL` | `soc2` |
+| `jaiclaw.security.rate-limit.enabled` = `true` | `soc2` |
 
 Effective flags are surfaced at `jaiclaw.compliance.effective.*`, so an operator can inspect what the runtime is doing:
 
@@ -78,6 +95,11 @@ jaiclaw.compliance.effective.retention-enforcement=true
 jaiclaw.compliance.effective.audit-chat-client=true
 jaiclaw.compliance.effective.baa-warnings=true
 jaiclaw.compliance.effective.prompt-redaction=true
+jaiclaw.compliance.effective.audit-hash-chain=false
+jaiclaw.compliance.effective.encrypt-at-rest=false
+jaiclaw.compliance.effective.fips-enforced=false
+jaiclaw.compliance.effective.fedramp-warnings=false
+jaiclaw.compliance.effective.cui-warnings=false
 ```
 
 When `profile: none` (the default), zero compliance code loads — no scheduled retention task, no LLM-call decorator, no BAA warning check. The module can sit on the classpath at zero cost.
@@ -202,14 +224,47 @@ The compliance module ships SPIs an adopter can plug in to satisfy specific GDPR
 | `DataSubjectErasureSpi` | `AggregateDataSubjectErasureSpi` | profile != none | GDPR Art. 17 cascade delete across transcript + audit stores |
 | `DataSubjectExportService` | `AggregateDataSubjectExportService` | profile != none | GDPR Art. 15 / 20 export (JSON, JSON-LD, CSV bundle) |
 | `PromptRedactor` | `RegexPromptRedactor` (SSN, MRN, phone, email, DOB, credit card) | `jaiclaw.compliance.prompt-redaction=true` (default on for HIPAA + both profiles) | HIPAA §164.502 PHI masking before LLM dispatch |
-| `FieldEncryptor` | `AesGcmFieldEncryptor` (AES-GCM 256, random per-call nonce) | manually — adopter wires the key material | Payload encryption for transcripts + audit + memory decorators |
+| `FieldEncryptor` | `AesGcmFieldEncryptor` (AES-GCM 256, random per-call nonce) | `jaiclaw.compliance.effective.encrypt-at-rest=true` (set by `profile=soc2`) — the operator supplies the key, the framework resolves and applies it | Payload encryption for transcripts + audit + memory decorators |
 | `ConsentManager` | `InMemoryConsentManager` (production adopters should replace with a durable store) | profile != none | GDPR Art. 6 / 7 consent + Art. 21 withdrawal recording |
-| `AuditLogger` chain-of-hashes | `HashChainedAuditLogger` decorator | manually — adopter wraps the underlying `AuditLogger` | §164.312(b), (c) tamper-evident audit trail with `verifyChain()` |
+| `AuditLogger` chain-of-hashes | `HashChainedAuditLogger` decorator | `jaiclaw.compliance.effective.audit-hash-chain=true` (set by `profile=soc2`) — applied by `HashChainedAuditLoggerBeanPostProcessor` | §164.312(b), (c) tamper-evident audit trail with `verifyChain()` |
 | `PrivacyNoticeService` | `DefaultPrivacyNoticeService` | profile != none | GDPR Art. 13 / 14 first-message notice + acceptance |
 
 **REST surface (T2-2):** `GdprController` exposes the export + erasure SPIs at `/api/gdpr/export/{dataSubjectId}` and `/api/gdpr/subject/{dataSubjectId}` when Spring Web is on the classpath. The controller resolves tenant scope from `TenantContextHolder`; requests without tenant context receive `403`. Adopters MUST front the controller with a rate-limiter + a role-guarded auth layer (`gdpr.operator`).
 
-**Encryption key management (T2-4):** the framework does NOT resolve encryption keys — the adopter wires the 32-byte key from a `SecretsProvider` (env, file, 1Password, Vault). Losing the key means losing the encrypted data. Maintain a key-rotation runbook + backup-encryption-key pattern. Ciphertext format is `base64(nonce || tag_and_ciphertext)`; decrypting a ciphertext with the wrong key raises `EncryptionException` without leaking which of {wrong key, corrupted blob, tampered auth tag} caused the failure.
+**Encryption key management (T2-4):** *changed in 1.3.0.* The framework now
+resolves the key and applies the decorators; the operator supplies the key
+material and owns its lifecycle.
+
+```yaml
+jaiclaw:
+  compliance:
+    profile: soc2                          # or: effective.encrypt-at-rest=true
+    encryption:
+      key: ${JAICLAW_ENCRYPTION_KEY}       # 32 bytes, base64 or hex
+```
+
+`EncryptionKeyResolver` reads `jaiclaw.compliance.encryption.key`, falling back
+to a `SecretsProvider` under the same logical key, then decodes it — **hex is
+tried before base64**, because a 64-character hex key also parses as base64 (to
+48 bytes) and would otherwise be rejected with a confusing length error.
+
+A passphrase is **not** a key. `String.getBytes()` is deliberately not accepted
+as a decoding path: it yields 32 bytes only for a 32-character ASCII string,
+which is coincidence rather than contract. Generate one properly:
+
+```bash
+openssl rand -base64 32
+```
+
+**`encrypt-at-rest=true` with no resolvable key aborts startup.** A deployment
+that believes it encrypts but does not is worse off than one that refuses to
+boot.
+
+Losing the key means losing the encrypted data — maintain a key-rotation runbook
+and a backup-encryption-key pattern before enabling in production. Ciphertext
+format is `base64(nonce || tag_and_ciphertext)`; decrypting with the wrong key
+raises `EncryptionException` without leaking which of {wrong key, corrupted
+blob, tampered auth tag} caused the failure.
 
 **Prompt redaction (T2-3):** `RegexPromptRedactor` is best-effort — regex-based patterns will miss free-form PHI expressions. The plan's risk callout #3 says explicitly: use redaction as a risk reduction, not a HIPAA safeguard on its own. A covered entity should still contract-restrict the LLM provider via a BAA.
 
