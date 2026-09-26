@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import reactor.core.publisher.Flux;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Configuration;
@@ -97,6 +99,27 @@ public class MiniMaxThinkingFilter implements SmartInitializingSingleton {
         public ChatResponse call(Prompt prompt) {
             ChatResponse response = delegate.call(prompt);
             return filterThinkingGenerations(response);
+        }
+
+        // A ChatModel decorator must delegate everything it does not deliberately
+        // alter. The inherited interface defaults are actively wrong here:
+        // getDefaultOptions() returns empty generic options (dropping the model
+        // name and every tool callback from requests built by ChatClient), and
+        // stream() throws UnsupportedOperationException.
+
+        @Override
+        public ChatOptions getDefaultOptions() {
+            return delegate.getDefaultOptions();
+        }
+
+        @Override
+        public ChatOptions getOptions() {
+            return delegate.getOptions();
+        }
+
+        @Override
+        public Flux<ChatResponse> stream(Prompt prompt) {
+            return delegate.stream(prompt).map(this::filterThinkingGenerations);
         }
 
         private ChatResponse filterThinkingGenerations(ChatResponse response) {

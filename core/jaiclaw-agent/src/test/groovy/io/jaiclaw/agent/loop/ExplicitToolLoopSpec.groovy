@@ -8,7 +8,9 @@ import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.model.Generation
+import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.tool.ToolCallback
 import org.springframework.ai.tool.definition.DefaultToolDefinition
 import spock.lang.Specification
@@ -199,5 +201,80 @@ class ExplicitToolLoopSpec extends Specification {
         then:
         result.finalText() == "Done"
         result.history()[0].result() == "approved result"
+    }
+
+    // --- Regression: the options handed to ChatModel.call() must preserve the
+    // provider's concrete ChatOptions type.
+    //
+    // Spring AI 2.0 provider models narrow the prompt options to their own type and
+    // discard anything else. AnthropicChatModel.createRequest is the reference case:
+    //
+    //     options instanceof AnthropicChatOptions ? (AnthropicChatOptions) options
+    //                                             : AnthropicChatOptions.builder().build()
+    //
+    // and then reads BOTH getModel() and the tool list back off that object. Passing a
+    // generic ToolCallingChatOptions therefore shipped requests with no tools and the
+    // provider's fallback model — the shipped 1.2.0 defect.
+
+    def "tool options are derived from the model's own defaults, preserving type and fields"() {
+        given:
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, false)
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+        def mockTool = mockToolCallback("myTool", "tool result")
+
+        // Stands in for a provider's configured options (AnthropicChatOptions etc.):
+        // a tool-capable options object carrying the model name and limits.
+        def providerDefaults = ToolCallingChatOptions.builder()
+                .model("claude-sonnet-4-5")
+                .maxTokens(4096)
+                .temperature(0.2d)
+                .build()
+
+        Prompt captured = null
+
+        when:
+        loop.execute("system prompt", [], "hello", ["myTool": mockTool], "default", "session-1")
+
+        then: "the loop asks the model for its defaults rather than building generic options"
+        1 * chatModel.getDefaultOptions() >> providerDefaults
+        1 * chatModel.call(_ as Prompt) >> { Prompt p ->
+            captured = p
+            new ChatResponse(List.of(new Generation(textMessage("Done!"))))
+        }
+
+        and: "the concrete options type is preserved — this is what the provider's instanceof check needs"
+        captured.options.getClass() == providerDefaults.getClass()
+
+        and: "provider-configured fields survive instead of being replaced by empty defaults"
+        captured.options.model == "claude-sonnet-4-5"
+        captured.options.maxTokens == 4096
+        captured.options.temperature == 0.2d
+
+        and: "the tools are actually attached"
+        captured.options.toolCallbacks*.toolDefinition*.name == ["myTool"]
+    }
+
+    def "falls back to a generic builder when model defaults are not tool-capable"() {
+        given:
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, false)
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+        def mockTool = mockToolCallback("myTool", "tool result")
+
+        Prompt captured = null
+
+        when:
+        loop.execute("system prompt", [], "hello", ["myTool": mockTool], "default", "session-1")
+
+        then:
+        // A plain ChatOptions is not a ToolCallingChatOptions — no mutate() path.
+        1 * chatModel.getDefaultOptions() >> ChatOptions.builder().model("some-model").build()
+        1 * chatModel.call(_ as Prompt) >> { Prompt p ->
+            captured = p
+            new ChatResponse(List.of(new Generation(textMessage("Done!"))))
+        }
+
+        and: "tools still get attached rather than throwing"
+        captured.options instanceof ToolCallingChatOptions
+        captured.options.toolCallbacks*.toolDefinition*.name == ["myTool"]
     }
 }

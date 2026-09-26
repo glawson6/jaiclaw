@@ -18,6 +18,37 @@ In progress on the `1.3.0-SNAPSHOT` line.
 > one minor so the security fix did not silently strip tool access from
 > existing deployments. See `releases/release-1.2.0.md`.
 
+### Fixed (critical)
+
+- **`tool-loop.mode: explicit` sent requests with no tools and the wrong model.**
+  `ExplicitToolLoop` built a generic `ToolCallingChatOptions` carrying only the
+  tool callbacks. Spring AI 2.0 provider models narrow prompt options to their
+  own concrete type and discard anything else — `AnthropicChatModel.createRequest`
+  does `options instanceof AnthropicChatOptions ? (AnthropicChatOptions) options
+  : AnthropicChatOptions.builder().build()`, then reads **both** the model name
+  and the tool list back off that object. A generic options instance therefore
+  took the `else` branch and every request went out with zero tools and the
+  provider's fallback model. The loop now derives options from
+  `ChatModel.getDefaultOptions()` via `mutate()`, preserving the provider's
+  concrete type and its configured fields. Provider-agnostic: any options
+  implementing `ToolCallingChatOptions` round-trips.
+
+- **`MiniMaxThinkingFilter` stripped tools and the model name from every wrapped
+  `ChatModel`, and broke streaming.** `ThinkingFilterChatModel` overrode only
+  `call(Prompt)`, inheriting the `ChatModel` interface defaults for everything
+  else. `getDefaultOptions()` delegates to `getOptions()`, whose default returns
+  `ChatOptions.builder().build()` — empty, generic, no model, no tools — and
+  `ChatClient` merges exactly that into every request, so the non-explicit path
+  lost its tools too. The inherited `stream(Prompt)` default throws
+  `UnsupportedOperationException("streaming is not supported")`, so the filter
+  also disabled streaming on every model it wrapped. Since it wraps **all**
+  `ChatModel` beans by default, this affected non-MiniMax deployments. The
+  decorator now delegates `getDefaultOptions()`, `getOptions()` and `stream()`,
+  filtering thinking blocks on the streaming path as well.
+
+  Workarounds no longer needed: `tool-loop.mode: spring-ai` and
+  `jaiclaw.models.minimax.filter-thinking: false`.
+
 ### Added
 
 - **`soc2` compliance profile** — one opt-in property

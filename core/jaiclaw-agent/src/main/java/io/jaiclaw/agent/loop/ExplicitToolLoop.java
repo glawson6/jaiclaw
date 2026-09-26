@@ -109,9 +109,7 @@ public class ExplicitToolLoop {
             // loop needs. We continue to run each ToolCallback ourselves below, preserving
             // the BEFORE/AFTER hook points + optional approval gate + per-iteration
             // accounting that this class exists to provide.
-            var options = ToolCallingChatOptions.builder()
-                    .toolCallbacks(new ArrayList<>(toolsByName.values()))
-                    .build();
+            ToolCallingChatOptions options = buildToolOptions(new ArrayList<>(toolsByName.values()));
 
             long iterStartNanos = System.nanoTime();
             ChatResponse response = chatModel.call(new Prompt(messages, options));
@@ -281,6 +279,41 @@ public class ExplicitToolLoop {
      * instruction text rather than propagating — a guard must never turn a
      * partially successful run into an exception.
      */
+    /**
+     * Builds the per-request options carrying this iteration's tool callbacks,
+     * <strong>preserving the provider's own options type</strong>.
+     *
+     * <p>This must start from {@link ChatModel#getDefaultOptions()} rather than
+     * {@code ToolCallingChatOptions.builder()}. Spring AI 2.0 provider models
+     * narrow the prompt options to their own concrete type and <em>discard
+     * anything else</em>. {@code AnthropicChatModel.createRequest} is the
+     * reference case:
+     *
+     * <pre>
+     *   options instanceof AnthropicChatOptions ? (AnthropicChatOptions) options
+     *                                           : AnthropicChatOptions.builder().build()
+     * </pre>
+     *
+     * <p>A generic {@code ToolCallingChatOptions} takes the second branch, so the
+     * model name <em>and</em> the tool list are both read back off an empty
+     * object — the request goes out with no tools and the provider's fallback
+     * model. Calling {@code mutate()} on the model's own defaults keeps the
+     * concrete type intact, so the {@code instanceof} check passes and every
+     * configured field (model, maxTokens, temperature, cache options) survives.
+     *
+     * <p>Provider-agnostic by construction: any options implementing
+     * {@link ToolCallingChatOptions} round-trips through {@code mutate()}. The
+     * builder fallback only applies to models whose defaults are not
+     * tool-capable, which is the pre-existing behaviour.
+     */
+    private ToolCallingChatOptions buildToolOptions(List<ToolCallback> toolCallbacks) {
+        ToolCallingChatOptions.Builder builder =
+                chatModel.getDefaultOptions() instanceof ToolCallingChatOptions defaults
+                        ? defaults.mutate()
+                        : ToolCallingChatOptions.builder();
+        return builder.toolCallbacks(toolCallbacks).build();
+    }
+
     private LoopResult finalTurn(List<Message> messages, String instruction,
                                  List<ToolCallEvent> toolCallHistory,
                                  TokenUsage accumulatedUsage, int iterationsUsed,

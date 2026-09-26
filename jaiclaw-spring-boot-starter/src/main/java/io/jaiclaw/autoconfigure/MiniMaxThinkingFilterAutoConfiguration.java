@@ -5,7 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import reactor.core.publisher.Flux;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -80,6 +82,44 @@ public class MiniMaxThinkingFilterAutoConfiguration {
         public ChatResponse call(Prompt prompt) {
             ChatResponse response = delegate.call(prompt);
             return filterThinkingGenerations(response);
+        }
+
+        /**
+         * Delegates the model's real options.
+         *
+         * <p>Without this override the inherited {@link ChatModel} default applies:
+         * {@code getDefaultOptions()} calls {@code getOptions()}, which returns
+         * {@code ChatOptions.builder().build()} — an empty, provider-generic object
+         * carrying no model name and no tool callbacks. Because {@code ChatClient}
+         * merges the model's default options into every request, wrapping a model
+         * silently stripped tools and the configured model name from requests that
+         * never touched the explicit tool loop.
+         *
+         * <p>Returning the delegate's options also keeps the provider's concrete
+         * options type intact, which provider models require — see
+         * {@code ExplicitToolLoop#buildToolOptions}.
+         */
+        @Override
+        public ChatOptions getDefaultOptions() {
+            return delegate.getDefaultOptions();
+        }
+
+        @Override
+        public ChatOptions getOptions() {
+            return delegate.getOptions();
+        }
+
+        /**
+         * Delegates streaming, filtering thinking blocks from each emitted response.
+         *
+         * <p>The inherited {@link ChatModel} default throws
+         * {@code UnsupportedOperationException("streaming is not supported")}, so
+         * before this override the filter broke streaming outright on every model
+         * it wrapped — and it wraps all of them by default.
+         */
+        @Override
+        public Flux<ChatResponse> stream(Prompt prompt) {
+            return delegate.stream(prompt).map(this::filterThinkingGenerations);
         }
 
         private ChatResponse filterThinkingGenerations(ChatResponse response) {
