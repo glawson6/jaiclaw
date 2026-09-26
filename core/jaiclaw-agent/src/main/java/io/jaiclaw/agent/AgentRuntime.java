@@ -145,6 +145,39 @@ public class AgentRuntime {
         this.replaceSystemPrompt = replaceSystemPrompt;
         this.defaultToolPolicy = defaultToolPolicy != null ? defaultToolPolicy : AgentProperties.ToolPolicyConfig.DEFAULT;
         this.compositeProfileRegistry = compositeProfileRegistry;
+        warnOnInertApprovalConfig();
+    }
+
+    /**
+     * Warns when approval controls are configured but cannot take effect.
+     *
+     * <p>Approval gating is implemented by {@link ExplicitToolLoop} only. In
+     * {@code SPRING_AI} mode Spring AI executes tool calls inside its own loop and
+     * never consults {@link ToolApprovalHandler} or {@link ToolLoopConfig#approvalFloors()},
+     * so an operator who configures a {@code PROMPT_ALWAYS} floor there gets no gate
+     * and no error. A silent no-op on a security control is worth a startup WARN:
+     * the failure is invisible until someone tests it, and the natural assumption is
+     * that a configured floor is enforced.
+     */
+    private void warnOnInertApprovalConfig() {
+        boolean approvalConfigured = this.toolLoopConfig.requireApproval()
+                || this.toolLoopConfig.approvalFloors().values().stream()
+                        .anyMatch(f -> f != ApprovalFloor.NONE);
+        if (!approvalConfigured) {
+            return;
+        }
+        if (this.toolLoopConfig.mode() != ToolLoopConfig.Mode.EXPLICIT) {
+            log.warn("Approval controls are configured (requireApproval={}, floors={}) but tool-loop mode is {} — "
+                            + "approval gating is only enforced by the explicit loop, so these settings have NO effect. "
+                            + "Set jaiclaw.agent.agents.<name>.tool-loop.mode=explicit to enforce them.",
+                    this.toolLoopConfig.requireApproval(), this.toolLoopConfig.approvalFloors(),
+                    this.toolLoopConfig.mode());
+        } else if (this.approvalHandler == null) {
+            log.warn("Approval controls are configured (requireApproval={}, floors={}) but no ToolApprovalHandler "
+                            + "bean is registered — affected tool calls will be DENIED. Register a ToolApprovalHandler "
+                            + "to enable interactive approval.",
+                    this.toolLoopConfig.requireApproval(), this.toolLoopConfig.approvalFloors());
+        }
     }
 
     /**

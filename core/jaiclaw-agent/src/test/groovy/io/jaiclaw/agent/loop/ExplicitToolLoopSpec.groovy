@@ -277,4 +277,110 @@ class ExplicitToolLoopSpec extends Specification {
         captured.options instanceof ToolCallingChatOptions
         captured.options.toolCallbacks*.toolDefinition*.name == ["myTool"]
     }
+
+    // --- Regression: the approval gate must fail CLOSED.
+    //
+    // Previously the gate was `if (approvalRequired && approvalHandler != null)`, so a
+    // deployment with no ToolApprovalHandler bean executed approval-required tools
+    // without any gate at all. Headless deployments register no handler by default,
+    // which made PROMPT_ALWAYS *looser* than DENY and contradicted the documented
+    // ApprovalFloor contract ("a floor can only make approval stricter, never looser").
+    // In that configuration the only remaining gate was the system prompt, which a
+    // model can be talked past.
+
+    def "PROMPT_ALWAYS floor denies when no approval handler is registered"() {
+        given:
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, false,
+                null, ToolLoopConfig.DEFAULT_WARNING_RATIO, ToolLoopConfig.DEFAULT_REPETITION_THRESHOLD,
+                ["rebootDevice": ApprovalFloor.PROMPT_ALWAYS])
+        // No handler — the headless default.
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+
+        def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "rebootDevice", '{}')
+        def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
+        def textResponse = new ChatResponse(List.of(new Generation(textMessage("understood"))))
+        chatModel.call(_ as Prompt) >>> [toolResponse, textResponse]
+
+        def toolDef = DefaultToolDefinition.builder()
+                .name("rebootDevice").description("test").inputSchema('{"type":"object"}').build()
+        def mockTool = Mock(ToolCallback) { getToolDefinition() >> toolDef }
+
+        when:
+        def result = loop.execute("system", [], "reboot it", ["rebootDevice": mockTool], "default", "sess-1")
+
+        then: "the tool never runs"
+        0 * mockTool.call(_)
+
+        and: "and the model is told why, so it can choose another path"
+        result.history().size() == 1
+        result.history()[0].result().contains("denied")
+        result.history()[0].result().contains("no approval handler is configured")
+    }
+
+    def "requireApproval denies when no approval handler is registered"() {
+        given:
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, true)
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+
+        def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "myTool", '{}')
+        def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
+        def textResponse = new ChatResponse(List.of(new Generation(textMessage("understood"))))
+        chatModel.call(_ as Prompt) >>> [toolResponse, textResponse]
+
+        def toolDef = DefaultToolDefinition.builder()
+                .name("myTool").description("test").inputSchema('{"type":"object"}').build()
+        def mockTool = Mock(ToolCallback) { getToolDefinition() >> toolDef }
+
+        when:
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
+
+        then:
+        0 * mockTool.call(_)
+        result.history()[0].result().contains("denied")
+    }
+
+    def "a throwing approval handler denies rather than falling through to execution"() {
+        given:
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, true)
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+
+        def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "myTool", '{}')
+        def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
+        def textResponse = new ChatResponse(List.of(new Generation(textMessage("understood"))))
+        chatModel.call(_ as Prompt) >>> [toolResponse, textResponse]
+
+        // A handler that blows up must not be read as an approval.
+        approvalHandler.requestApproval("myTool", _, "sess-1") >> { throw new IllegalStateException("approval backend down") }
+
+        def toolDef = DefaultToolDefinition.builder()
+                .name("myTool").description("test").inputSchema('{"type":"object"}').build()
+        def mockTool = Mock(ToolCallback) { getToolDefinition() >> toolDef }
+
+        when:
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
+
+        then:
+        0 * mockTool.call(_)
+        result.history()[0].result().contains("approval could not be obtained")
+    }
+
+    def "no handler is harmless when the tool requires no approval"() {
+        given: "the default posture — no approval required, no handler registered"
+        def config = new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, false)
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+
+        def toolCall = new AssistantMessage.ToolCall("tc-1", "function", "myTool", '{}')
+        def toolResponse = new ChatResponse(List.of(new Generation(toolCallMessage([toolCall]))))
+        def textResponse = new ChatResponse(List.of(new Generation(textMessage("Done"))))
+        chatModel.call(_ as Prompt) >>> [toolResponse, textResponse]
+
+        def mockTool = mockToolCallback("myTool", "tool result")
+
+        when:
+        def result = loop.execute("system", [], "input", ["myTool": mockTool], "default", "sess-1")
+
+        then: "the fail-closed check must not affect ordinary tools"
+        result.finalText() == "Done"
+        result.history()[0].result() == "tool result"
+    }
 }

@@ -110,6 +110,44 @@ approval-floors:
 An unknown floor name in per-tenant YAML logs a warning and is ignored, rather
 than failing config load for every tenant in the deployment.
 
+### Two prerequisites — both required, or the floor does nothing
+
+Approval floors are enforced by the **explicit tool loop only**, and
+`PROMPT_ALWAYS` needs something to prompt:
+
+1. **`tool-loop.mode` must be `explicit`.** Under the default `spring-ai` mode,
+   Spring AI runs the tool loop internally and never consults the approval
+   handler or the floors — a configured floor is silently inert.
+2. **A `ToolApprovalHandler` bean must be registered** for `PROMPT_ALWAYS`.
+   Nothing in the framework provides a default; headless deployments typically
+   have none.
+
+```yaml
+jaiclaw:
+  agent:
+    agents:
+      default:
+        tool-loop:
+          mode: explicit          # REQUIRED — floors are inert under spring-ai
+          approval-floors:
+            shell_exec: PROMPT_ALWAYS
+```
+
+**Since 1.3.0 both gaps fail closed rather than open.** A `PROMPT_ALWAYS` tool
+with no registered handler is **denied**, not executed — an approval that cannot
+be obtained is not an approval. The same applies when a handler throws. Before
+1.3.0 both cases executed the tool, which made `PROMPT_ALWAYS` weaker than
+`DENY`. `AgentRuntime` also logs a startup WARN when approval controls are
+configured but cannot take effect.
+
+If you want a tool blocked outright with no handler involved, use `DENY` — that
+is what it is for. `PROMPT_ALWAYS` without a handler is a misconfiguration, and
+is now reported as one.
+
+> **The system prompt is not an approval gate.** Instructing the model to ask
+> before acting is useful, but it is advisory — a user can talk the model past
+> it. Only the floors above are mechanical.
+
 ## Events
 
 | Event | Fired when |

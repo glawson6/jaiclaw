@@ -192,6 +192,30 @@ public class ExplicitToolLoop {
                 // Optional approval gate. A PROMPT_ALWAYS floor forces the gate on for
                 // this tool even when the session would otherwise skip approval.
                 boolean approvalRequired = config.requireApproval() || floor == ApprovalFloor.PROMPT_ALWAYS;
+
+                // Fail closed. An approval requirement with no handler to satisfy it is
+                // an unsatisfiable gate, not an absent one — executing anyway would make
+                // PROMPT_ALWAYS *looser* than DENY and break the floor contract ("a floor
+                // can only make approval stricter, never looser"). Headless deployments
+                // register no ToolApprovalHandler bean, so this is the default shape
+                // there: before this check the only gate was the system prompt, which the
+                // model can be talked past.
+                if (approvalRequired && approvalHandler == null) {
+                    String denial = "Tool call denied: `" + tc.name()
+                            + "` requires approval, but no approval handler is configured. "
+                            + "Register a ToolApprovalHandler bean to enable interactive approval, "
+                            + "or remove the approval requirement for this tool.";
+                    log.warn("Denying '{}' — approval required but no ToolApprovalHandler is registered "
+                            + "(floor={}, requireApproval={})", tc.name(), floor, config.requireApproval());
+                    responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), denial));
+                    toolCallHistory.add(ToolCallEvent.after(tc.name(), toolArguments, denial, iteration, sessionKey));
+                    if (hooks != null) {
+                        hooks.fireVoid(ToolCallEndedEvent.of(
+                                agentId, sessionKey, tc.name(), toolArguments, denial, iteration));
+                    }
+                    continue;
+                }
+
                 if (approvalRequired && approvalHandler != null) {
                     try {
                         Map<String, Object> params = parseParams(toolArguments);
@@ -215,12 +239,30 @@ public class ExplicitToolLoop {
                         }
                     } catch (ExecutionException | InterruptedException e) {
                         Thread.currentThread().interrupt();
-                        log.warn("Approval request interrupted for tool {}", tc.name(), e);
-                        String errorResult = "Tool call approval interrupted";
+                        log.warn("Approval request interrupted for tool {} — denying", tc.name(), e);
+                        String errorResult = "Tool call denied: approval was interrupted.";
                         responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), errorResult));
+                        toolCallHistory.add(ToolCallEvent.after(tc.name(), toolArguments, errorResult, iteration, sessionKey));
+                        if (hooks != null) {
+                            hooks.fireVoid(ToolCallEndedEvent.of(
+                                    agentId, sessionKey, tc.name(), toolArguments, errorResult, iteration));
+                        }
                         continue;
                     } catch (Exception e) {
-                        log.warn("Approval handling failed for tool {}", tc.name(), e);
+                        // Fail closed for the same reason as a missing handler: an approval
+                        // that could not be obtained is not an approval. Previously this
+                        // logged and fell through to execution, so a throwing handler (or
+                        // unparseable arguments) silently approved the call.
+                        log.warn("Approval handling failed for tool {} — denying", tc.name(), e);
+                        String errorResult = "Tool call denied: approval could not be obtained ("
+                                + e.getClass().getSimpleName() + ").";
+                        responses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), errorResult));
+                        toolCallHistory.add(ToolCallEvent.after(tc.name(), toolArguments, errorResult, iteration, sessionKey));
+                        if (hooks != null) {
+                            hooks.fireVoid(ToolCallEndedEvent.of(
+                                    agentId, sessionKey, tc.name(), toolArguments, errorResult, iteration));
+                        }
+                        continue;
                     }
                 }
 

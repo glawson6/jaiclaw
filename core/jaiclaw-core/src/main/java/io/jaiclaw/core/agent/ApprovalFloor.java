@@ -16,6 +16,19 @@ import io.jaiclaw.core.api.Experimental;
  * configured floor default to {@link #NONE}, which preserves today's behaviour
  * exactly.
  *
+ * <p><strong>Floors are enforced by the explicit tool loop only.</strong> Under
+ * {@code ToolLoopConfig.Mode.SPRING_AI} (the default) Spring AI runs the tool
+ * loop internally and never consults these floors, so they have no effect;
+ * {@code AgentRuntime} logs a startup warning when that combination is
+ * configured.
+ *
+ * <p>{@link #PROMPT_ALWAYS} additionally requires a registered
+ * {@link ToolApprovalHandler}. Since 1.3.0, a tool whose floor demands approval
+ * that cannot be obtained — no handler registered, or the handler threw — is
+ * <em>denied</em> rather than executed. Failing open there would make
+ * {@code PROMPT_ALWAYS} weaker than {@link #DENY} and break the "stricter, never
+ * looser" guarantee above.
+ *
  * @see ToolLoopConfig#approvalFloors()
  */
 @Experimental

@@ -20,6 +20,34 @@ In progress on the `1.3.0-SNAPSHOT` line.
 
 ### Fixed (critical)
 
+- **The tool approval gate failed open.** `ExplicitToolLoop` gated on
+  `approvalRequired && approvalHandler != null`, so a deployment with no
+  `ToolApprovalHandler` bean executed approval-required tools with no gate at
+  all. Headless deployments register no handler by default, which made
+  `PROMPT_ALWAYS` *looser* than `DENY` and contradicted the documented
+  `ApprovalFloor` contract ("a floor can only make approval stricter, never
+  looser"); the only remaining gate was the system prompt, which a model can be
+  talked past. An approval that cannot be obtained is now a denial: the loop
+  returns a denial tool result naming the missing handler, so the model can
+  choose another path. The same fail-open existed on the exception path — a
+  throwing handler logged a warning and fell through to execution — and now
+  denies as well. Both denials emit `ToolCallEndedEvent` and land in the call
+  history, so they are auditable.
+
+  **This is a behaviour change**, but only for a configuration that was already
+  broken: `requireApproval` defaults to `false`, and both bundled examples that
+  enable it register a `@Component ConsoleApprovalHandler`, so they are
+  unaffected.
+
+- **Approval controls were silently inert in `spring-ai` mode.** Approval gating
+  is implemented by `ExplicitToolLoop` only — Spring AI's internal loop never
+  consults `ToolApprovalHandler` or `approvalFloors`. Configuring a
+  `PROMPT_ALWAYS` floor under the default mode therefore produced no gate and no
+  error. `AgentRuntime` now emits a startup WARN when approval controls are
+  configured under a non-explicit mode, or when the explicit loop has no handler
+  to call. The warning is silent for every default and correctly-configured
+  deployment.
+
 - **`tool-loop.mode: explicit` sent requests with no tools and the wrong model.**
   `ExplicitToolLoop` built a generic `ToolCallingChatOptions` carrying only the
   tool callbacks. Spring AI 2.0 provider models narrow prompt options to their
