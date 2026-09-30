@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.annotation.Order;
 
 /**
  * Channel adapter auto-configuration — runs after {@link JaiClawGatewayAutoConfiguration}
@@ -238,20 +239,40 @@ public class JaiClawChannelAutoConfiguration {
             return new io.jaiclaw.security.ratelimit.UserRateLimiter(rateLimit);
         }
 
+        /**
+         * Authorization + rate limiting for inbound Telegram traffic.
+         *
+         * <p>Ordered first: rejecting unauthorized or flooding traffic must
+         * happen before any filter that acts on message content.
+         *
+         * <p>No longer wired to the GatewayService here —
+         * {@link io.jaiclaw.gateway.FilteredGatewayLifecycle} owns chain
+         * construction, so this bean coexists with other
+         * {@code GatewayMessageFilter}s instead of competing for a single slot.
+         *
+         * <p><strong>{@code @Primary} is load-bearing and unrelated to filter
+         * ordering.</strong> It disambiguates the {@code ChannelMessageHandler}
+         * autowire for {@code jaiclaw-camel}, which resolves that type via
+         * {@code ObjectProvider.getIfAvailable()}
+         * ({@code JaiClawCamelAutoConfiguration:147}). Without it, any app
+         * combining {@code jaiclaw-starter-pipeline} with a rate-limited
+         * Telegram channel fails at startup with
+         * {@code NoUniqueBeanDefinitionException}, because both the
+         * GatewayService and this filter are {@code ChannelMessageHandler}
+         * beans. Locked by {@code CamelChannelHandlerDisambiguationSpec}.
+         */
         @Bean
         @Primary
+        @Order(100)
         @ConditionalOnMissingBean(io.jaiclaw.channel.telegram.TelegramUserIdFilter.class)
         @ConditionalOnClass(name = "io.jaiclaw.channel.telegram.TelegramUserIdFilter")
         @ConditionalOnBean(io.jaiclaw.security.ratelimit.UserRateLimiter.class)
         public io.jaiclaw.channel.telegram.TelegramUserIdFilter telegramUserIdFilter(
                 JaiClawProperties properties,
-                io.jaiclaw.security.ratelimit.UserRateLimiter rateLimiter,
-                io.jaiclaw.gateway.GatewayService gatewayService) {
+                io.jaiclaw.security.ratelimit.UserRateLimiter rateLimiter) {
             var allowedUsers = properties.channels().telegram().allowedUserIds();
             log.info("Creating TelegramUserIdFilter with {} allowed users", allowedUsers.size());
-            var filter = new io.jaiclaw.channel.telegram.TelegramUserIdFilter(allowedUsers, rateLimiter);
-            filter.setDownstream(gatewayService);
-            return filter;
+            return new io.jaiclaw.channel.telegram.TelegramUserIdFilter(allowedUsers, rateLimiter);
         }
     }
 

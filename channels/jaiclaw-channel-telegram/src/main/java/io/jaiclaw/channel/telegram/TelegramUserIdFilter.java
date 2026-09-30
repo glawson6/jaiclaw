@@ -45,8 +45,12 @@ public class TelegramUserIdFilter implements GatewayMessageFilter {
 
     /**
      * Set the downstream handler that receives approved messages.
-     * Called during gateway startup to chain this filter before the GatewayService.
+     *
+     * <p>Called once during gateway startup by
+     * {@link io.jaiclaw.gateway.FilteredGatewayLifecycle}. The handler may be
+     * the GatewayService or another filter — this class must not care which.
      */
+    @Override
     public void setDownstream(ChannelMessageHandler downstream) {
         this.downstream = downstream;
     }

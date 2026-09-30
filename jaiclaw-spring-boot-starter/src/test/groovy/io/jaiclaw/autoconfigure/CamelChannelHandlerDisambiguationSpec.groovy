@@ -1,7 +1,6 @@
 package io.jaiclaw.autoconfigure
 
 import io.jaiclaw.config.JaiClawProperties
-import io.jaiclaw.gateway.GatewayService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import spock.lang.Specification
@@ -26,7 +25,10 @@ import java.lang.reflect.Method
  *
  * <p>A future refactor that drops the annotation will fail this spec
  * immediately rather than re-introducing the runtime crash for downstream
- * apps.
+ * apps. (It did exactly that during the 1.3.0 filter-chaining refactor, which
+ * removed {@code @Primary} on the mistaken assumption it governed filter
+ * selection — it governs {@code ChannelMessageHandler} autowiring, which is a
+ * different concern and still needs it.)
  */
 class CamelChannelHandlerDisambiguationSpec extends Specification {
 
@@ -34,11 +36,14 @@ class CamelChannelHandlerDisambiguationSpec extends Specification {
         given:
         Class<?> telegramConfig = Class.forName(
                 "io.jaiclaw.autoconfigure.JaiClawChannelAutoConfiguration\$TelegramAutoConfiguration")
+        // 1.3.0: the GatewayService parameter was removed — FilteredGatewayLifecycle
+        // now wires each filter's downstream, so the filter no longer needs a
+        // reference to the gateway. @Primary is still required for the reason
+        // below and is what this spec exists to lock.
         Method beanMethod = telegramConfig.getDeclaredMethod(
                 "telegramUserIdFilter",
                 JaiClawProperties,
-                io.jaiclaw.security.ratelimit.UserRateLimiter,
-                GatewayService)
+                io.jaiclaw.security.ratelimit.UserRateLimiter)
 
         expect: "the bean factory exists and produces a TelegramUserIdFilter"
         beanMethod.getAnnotation(Bean) != null

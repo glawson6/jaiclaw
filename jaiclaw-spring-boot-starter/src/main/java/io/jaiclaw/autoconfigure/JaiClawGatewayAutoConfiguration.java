@@ -221,10 +221,15 @@ public class JaiClawGatewayAutoConfiguration {
             io.jaiclaw.gateway.GatewayService gatewayService,
             ChannelRegistry channelRegistry,
             ObjectProvider<io.jaiclaw.gateway.GatewayMessageFilter> messageFilterProvider) {
-        var filter = messageFilterProvider.getIfAvailable();
-        if (filter != null) {
+        // orderedStream(), not getIfAvailable(): filters compose, and a second
+        // filter bean previously broke bean resolution outright. Ordering is
+        // Spring's @Order convention — authorization and rate limiting run ahead
+        // of filters that consume messages (e.g. approval replies).
+        List<io.jaiclaw.gateway.GatewayMessageFilter> filters =
+                messageFilterProvider.orderedStream().toList();
+        if (!filters.isEmpty()) {
             return new io.jaiclaw.gateway.FilteredGatewayLifecycle(
-                    gatewayService, channelRegistry, filter);
+                    gatewayService, channelRegistry, filters);
         }
         return new io.jaiclaw.gateway.GatewayLifecycle(gatewayService);
     }
