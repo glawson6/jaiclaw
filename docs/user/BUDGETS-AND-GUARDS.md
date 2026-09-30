@@ -179,6 +179,21 @@ review" may deserve half an hour. One global number is wrong for one of them.
 | `tools.<name>.timeout` | inherits | Per-tool window |
 | `tools.<name>.on-timeout` | inherits | Set only where waiting is worse than acting |
 
+`on-timeout` takes `deny` or `approve` at either scope, and **resolves to
+`deny` unless you typed `approve` for that scope**. Auto-approval on silence
+never arrives by inheritance or omission:
+
+| You configure | Silence resolves to |
+|---|---|
+| nothing | `deny` |
+| `tools.harmless.on-timeout: approve` | `approve` for `harmless` only |
+| …and any other tool | `deny` — the opt-in does not spread |
+| `tools.shell_exec.timeout: 2m` (no action) | `deny`, with a 2-minute window |
+| `on-timeout: approve` at the top level | `approve` everywhere (allowed, but explicit) |
+
+The fourth row is the one that bites: narrowing a tool's *window* must never
+silently opt it into auto-approval. `ApprovalPolicySpec` pins all five rows.
+
 **The loop enforces the window itself.** Before 1.3.0 the approval call was a
 bare `get()` with no timeout — every shipped handler resolved synchronously, so
 an asynchronous handler would pin the agent thread forever. The loop now applies
