@@ -20,10 +20,13 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Manages an explicit tool call loop using {@link ChatModel#call(Prompt)} directly
@@ -191,7 +194,14 @@ public class ExplicitToolLoop {
 
                 // Optional approval gate. A PROMPT_ALWAYS floor forces the gate on for
                 // this tool even when the session would otherwise skip approval.
-                boolean approvalRequired = config.requireApproval() || floor == ApprovalFloor.PROMPT_ALWAYS;
+                //
+                // autoApprove is the operator's top-level "run unattended" switch, so
+                // they need not neutralise every tool individually. It is evaluated
+                // AFTER the DENY branch above — a denied tool has already continued, so
+                // auto-approve can never execute one. That ordering is the whole reason
+                // this is safe to offer; see ApprovalPolicy#autoApprove.
+                boolean approvalRequired = !config.autoApprove()
+                        && (config.requireApproval() || floor == ApprovalFloor.PROMPT_ALWAYS);
 
                 // Fail closed. An approval requirement with no handler to satisfy it is
                 // an unsatisfiable gate, not an absent one — executing anyway would make
@@ -219,7 +229,26 @@ public class ExplicitToolLoop {
                 if (approvalRequired && approvalHandler != null) {
                     try {
                         Map<String, Object> params = parseParams(toolArguments);
-                        var decision = approvalHandler.requestApproval(tc.name(), params, sessionKey).get();
+
+                        // Bounded wait. Before 1.3.0 this was a bare get(): every
+                        // shipped handler resolved synchronously, so the async path
+                        // in the SPI was never exercised and an incomplete future
+                        // would pin this thread forever. A chat-based handler is the
+                        // first real async implementation, so the loop enforces the
+                        // window itself rather than trusting the handler to.
+                        //
+                        // The handler is expected to apply the same deadline and
+                        // resolve with the configured on-timeout action; this is the
+                        // backstop for one that does not.
+                        Duration window = config.approvalPolicy().timeoutFor(tc.name());
+                        ToolApprovalDecision decision;
+                        try {
+                            decision = approvalHandler
+                                    .requestApproval(tc.name(), params, sessionKey)
+                                    .get(window.toMillis(), TimeUnit.MILLISECONDS);
+                        } catch (TimeoutException te) {
+                            decision = onApprovalTimeout(tc.name(), window);
+                        }
                         switch (decision) {
                             case ToolApprovalDecision.Approved a -> { /* proceed */ }
                             case ToolApprovalDecision.Denied d -> {
@@ -348,6 +377,34 @@ public class ExplicitToolLoop {
      * builder fallback only applies to models whose defaults are not
      * tool-capable, which is the pre-existing behaviour.
      */
+    /**
+     * Resolves an approval request that nobody answered inside its window.
+     *
+     * <p>Defaults to a denial: an unanswered request is not consent, and the
+     * person who wanted the gate is precisely the one who is absent. An
+     * operator can opt a specific tool into {@code APPROVE} where waiting is
+     * worse than acting, but never deployment-wide by default.
+     */
+    private ToolApprovalDecision onApprovalTimeout(String toolName, Duration window) {
+        ApprovalPolicy.OnTimeout action = config.approvalPolicy().onTimeoutFor(toolName);
+        if (action == ApprovalPolicy.OnTimeout.APPROVE) {
+            log.warn("Approval for '{}' timed out after {} — auto-approving per policy",
+                    toolName, window);
+            return new ToolApprovalDecision.Approved();
+        }
+        log.warn("Approval for '{}' timed out after {} — denying", toolName, window);
+        return new ToolApprovalDecision.Denied(
+                "no approver responded within " + humanize(window));
+    }
+
+    /** Renders a duration the way an operator wrote it, not as ISO-8601. */
+    private static String humanize(Duration d) {
+        long totalSeconds = d.toSeconds();
+        if (totalSeconds % 3600 == 0 && totalSeconds >= 3600) return (totalSeconds / 3600) + "h";
+        if (totalSeconds % 60 == 0 && totalSeconds >= 60) return (totalSeconds / 60) + "m";
+        return totalSeconds + "s";
+    }
+
     private ToolCallingChatOptions buildToolOptions(List<ToolCallback> toolCallbacks) {
         ToolCallingChatOptions.Builder builder =
                 chatModel.getDefaultOptions() instanceof ToolCallingChatOptions defaults

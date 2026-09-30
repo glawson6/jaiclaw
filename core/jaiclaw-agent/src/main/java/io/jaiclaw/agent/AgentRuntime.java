@@ -163,6 +163,22 @@ public class AgentRuntime {
         boolean approvalConfigured = this.toolLoopConfig.requireApproval()
                 || this.toolLoopConfig.approvalFloors().values().stream()
                         .anyMatch(f -> f != ApprovalFloor.NONE);
+
+        // Auto-approve disables a security control deployment-wide. Announce it
+        // whether or not anything else is configured — a silent bypass is how
+        // fail-open settings survive review. DENY floors are exempt, so say so
+        // rather than leaving the operator to wonder.
+        if (this.toolLoopConfig.autoApprove()) {
+            long denyFloors = this.toolLoopConfig.approvalFloors().values().stream()
+                    .filter(f -> f == ApprovalFloor.DENY).count();
+            log.warn("Tool approval is AUTO-APPROVED for this agent "
+                            + "(approval.auto-approve=true) — every tool runs without human "
+                            + "confirmation. {} DENY floor(s) remain enforced. Unset "
+                            + "auto-approve to restore interactive approval.",
+                    denyFloors);
+            return;
+        }
+
         if (!approvalConfigured) {
             return;
         }

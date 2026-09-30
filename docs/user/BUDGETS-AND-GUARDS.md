@@ -144,6 +144,73 @@ If you want a tool blocked outright with no handler involved, use `DENY` — tha
 is what it is for. `PROMPT_ALWAYS` without a handler is a misconfiguration, and
 is now reported as one.
 
+## Approval timing (1.3.0)
+
+A floor says *whether* a tool needs approval. This says *how long* the request
+stays open and what silence means.
+
+```yaml
+jaiclaw:
+  agent:
+    agents:
+      default:
+        tool-loop:
+          mode: explicit
+          approval-floors:
+            shell_exec: PROMPT_ALWAYS
+            post_review: PROMPT_ALWAYS
+          approval:
+            auto-approve: false        # master switch — see below
+            default-timeout: 5m        # applies to tools with no entry below
+            on-timeout: deny           # deny (default) | approve
+            tools:
+              shell_exec:  { timeout: 2m,  on-timeout: deny }
+              post_review: { timeout: 30m, on-timeout: deny }
+```
+
+Timeouts are per tool because blast radius and human latency differ. A
+`shell_exec` answered in two minutes or not at all is reasonable; "reply to this
+review" may deserve half an hour. One global number is wrong for one of them.
+
+| Setting | Default | Notes |
+|---|---|---|
+| `default-timeout` | `5m` | Window for tools with no explicit entry |
+| `on-timeout` | `deny` | An unanswered request is not consent |
+| `tools.<name>.timeout` | inherits | Per-tool window |
+| `tools.<name>.on-timeout` | inherits | Set only where waiting is worse than acting |
+
+**The loop enforces the window itself.** Before 1.3.0 the approval call was a
+bare `get()` with no timeout — every shipped handler resolved synchronously, so
+an asynchronous handler would pin the agent thread forever. The loop now applies
+the configured deadline as a backstop even if a handler forgets to.
+
+Durations accept the usual suffixed forms (`30s`, `5m`, `1h`); a bare number is
+seconds. An unparseable value logs a warning and falls back rather than failing
+config load for every tenant.
+
+### `auto-approve` — running unattended
+
+Setting every tool to "no approval needed" one by one is tedious and easy to get
+wrong. One switch covers it:
+
+```yaml
+approval:
+  auto-approve: true
+```
+
+Two guarantees hold:
+
+- **`DENY` still wins.** The loop evaluates a `DENY` floor *before* it decides
+  whether approval is required, so auto-approve structurally cannot execute a
+  denied tool. Use `DENY` for anything that must stay blocked regardless.
+- **It announces itself.** `AgentRuntime` logs a WARN at startup naming the
+  setting and how many `DENY` floors remain enforced. Silently disabling a
+  security control is how fail-open defaults survive review.
+
+This is the one sanctioned exception to "a floor can only make approval
+stricter, never looser" — and deliberately an operator-only, deployment-wide
+decision, not something a tool author or the model can set.
+
 > **The system prompt is not an approval gate.** Instructing the model to ask
 > before acting is useful, but it is advisory — a user can talk the model past
 > it. Only the floors above are mechanical.

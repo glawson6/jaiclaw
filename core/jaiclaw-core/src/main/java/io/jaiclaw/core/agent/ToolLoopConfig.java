@@ -24,6 +24,9 @@ import java.util.Map;
  *                             repetition guard (default {@code 3}); {@code <= 0} disables it
  * @param approvalFloors       per-tool minimum approval posture, keyed by tool name; tools
  *                             absent from the map use {@link ApprovalFloor#NONE}
+ * @param approvalPolicy       how long to wait for a human answer and what silence means;
+ *                             also carries the top-level auto-approve switch. Defaults to
+ *                             {@link ApprovalPolicy#DEFAULT}
  */
 public record ToolLoopConfig(
         Mode mode,
@@ -32,7 +35,8 @@ public record ToolLoopConfig(
         IterationBudget budgetTemplate,
         double budgetWarningRatio,
         int repetitionThreshold,
-        Map<String, ApprovalFloor> approvalFloors
+        Map<String, ApprovalFloor> approvalFloors,
+        ApprovalPolicy approvalPolicy
 ) {
     public enum Mode { SPRING_AI, EXPLICIT }
 
@@ -50,6 +54,19 @@ public record ToolLoopConfig(
         if (budgetWarningRatio <= 0.0 || budgetWarningRatio > 1.0) budgetWarningRatio = DEFAULT_WARNING_RATIO;
         if (repetitionThreshold < 0) repetitionThreshold = DEFAULT_REPETITION_THRESHOLD;
         approvalFloors = approvalFloors == null ? Map.of() : Map.copyOf(approvalFloors);
+        if (approvalPolicy == null) approvalPolicy = ApprovalPolicy.DEFAULT;
+    }
+
+    /**
+     * Seven-argument constructor from 1.2.0, preserved so existing call sites
+     * compile unchanged. Approval policy takes its default (5-minute window,
+     * deny on silence, auto-approve off).
+     */
+    public ToolLoopConfig(Mode mode, int maxIterations, boolean requireApproval,
+                          IterationBudget budgetTemplate, double budgetWarningRatio,
+                          int repetitionThreshold, Map<String, ApprovalFloor> approvalFloors) {
+        this(mode, maxIterations, requireApproval, budgetTemplate, budgetWarningRatio,
+                repetitionThreshold, approvalFloors, ApprovalPolicy.DEFAULT);
     }
 
     /**
@@ -60,7 +77,8 @@ public record ToolLoopConfig(
      */
     public ToolLoopConfig(Mode mode, int maxIterations, boolean requireApproval) {
         this(mode, maxIterations, requireApproval,
-                null, DEFAULT_WARNING_RATIO, DEFAULT_REPETITION_THRESHOLD, Map.of());
+                null, DEFAULT_WARNING_RATIO, DEFAULT_REPETITION_THRESHOLD,
+                Map.of(), ApprovalPolicy.DEFAULT);
     }
 
     /** The approval floor configured for {@code toolName}; never null. */
@@ -72,6 +90,16 @@ public record ToolLoopConfig(
     /** A fresh per-run budget derived from {@link #budgetTemplate()}. */
     public IterationBudget newRunBudget() {
         return budgetTemplate.forRun();
+    }
+
+    /**
+     * True when the operator has turned on blanket auto-approval.
+     *
+     * <p>Callers must still honour a {@link ApprovalFloor#DENY} floor — see
+     * {@link ApprovalPolicy#autoApprove()}.
+     */
+    public boolean autoApprove() {
+        return approvalPolicy.autoApprove();
     }
 
     /** True when the repetition guard is active. */

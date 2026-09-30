@@ -1,6 +1,7 @@
 package io.jaiclaw.config;
 
 import io.jaiclaw.core.agent.ApprovalFloor;
+import io.jaiclaw.core.agent.ApprovalPolicy;
 import io.jaiclaw.core.agent.ToolLoopConfig;
 import io.jaiclaw.core.tenant.TenantMode;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.springframework.core.io.support.ResourcePatternUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -537,8 +539,73 @@ public class TenantAgentConfigService {
                 getInt(map, "budget-max-iterations", 0),
                 getDouble(map, "budget-warning-ratio", ToolLoopConfig.DEFAULT_WARNING_RATIO),
                 getInt(map, "repetition-threshold", ToolLoopConfig.DEFAULT_REPETITION_THRESHOLD),
-                parseApprovalFloors(getMap(map, "approval-floors"))
+                parseApprovalFloors(getMap(map, "approval-floors")),
+                parseApproval(getMap(map, "approval"))
         );
+    }
+
+    /**
+     * Parses the {@code approval} block (timeouts, on-timeout action,
+     * auto-approve). Same fail-soft convention as the floors above: an
+     * unparseable value warns and falls back rather than taking down config
+     * resolution for every tenant.
+     */
+    private ToolLoopProperties.ApprovalProperties parseApproval(Map<String, Object> map) {
+        if (map == null || map.isEmpty()) {
+            return ToolLoopProperties.ApprovalProperties.defaults();
+        }
+        Duration defaultTimeout = parseDurationOr(
+                map.get("default-timeout"), ApprovalPolicy.DEFAULT_TIMEOUT, "default-timeout");
+        ApprovalPolicy.OnTimeout onTimeout = parseOnTimeoutOr(
+                map.get("on-timeout"), ApprovalPolicy.OnTimeout.DENY);
+
+        Map<String, ToolLoopProperties.ApprovalProperties.ToolApproval> tools = new LinkedHashMap<>();
+        Map<String, Object> toolsMap = getMap(map, "tools");
+        if (toolsMap != null) {
+            for (Map.Entry<String, Object> e : toolsMap.entrySet()) {
+                if (!(e.getValue() instanceof Map<?, ?> raw)) continue;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> entry = (Map<String, Object>) raw;
+                tools.put(e.getKey(), new ToolLoopProperties.ApprovalProperties.ToolApproval(
+                        parseDurationOr(entry.get("timeout"), null, "timeout for " + e.getKey()),
+                        parseOnTimeoutOr(entry.get("on-timeout"), null)));
+            }
+        }
+        return new ToolLoopProperties.ApprovalProperties(
+                getBool(map, "auto-approve", false), defaultTimeout, onTimeout, tools);
+    }
+
+    /** Accepts Boot's suffixed duration forms (30s, 5m, 1h) and bare seconds. */
+    private Duration parseDurationOr(Object value, Duration fallback, String what) {
+        if (value == null) return fallback;
+        String raw = value.toString().trim();
+        if (raw.isEmpty()) return fallback;
+        try {
+            if (raw.matches("\\d+")) return Duration.ofSeconds(Long.parseLong(raw));
+            char unit = Character.toLowerCase(raw.charAt(raw.length() - 1));
+            long amount = Long.parseLong(raw.substring(0, raw.length() - 1).trim());
+            return switch (unit) {
+                case 's' -> Duration.ofSeconds(amount);
+                case 'm' -> Duration.ofMinutes(amount);
+                case 'h' -> Duration.ofHours(amount);
+                case 'd' -> Duration.ofDays(amount);
+                default -> throw new IllegalArgumentException("unit " + unit);
+            };
+        } catch (RuntimeException ex) {
+            log.warn("Unparseable approval duration '{}' for {} — using {}", raw, what, fallback);
+            return fallback;
+        }
+    }
+
+    private ApprovalPolicy.OnTimeout parseOnTimeoutOr(Object value, ApprovalPolicy.OnTimeout fallback) {
+        if (value == null) return fallback;
+        try {
+            return ApprovalPolicy.OnTimeout.valueOf(value.toString().trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Unknown approval on-timeout '{}' — using {}. Valid values: {}",
+                    value, fallback, java.util.Arrays.toString(ApprovalPolicy.OnTimeout.values()));
+            return fallback;
+        }
     }
 
     /**

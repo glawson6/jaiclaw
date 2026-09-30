@@ -15,6 +15,7 @@ import org.springframework.ai.tool.ToolCallback
 import org.springframework.ai.tool.definition.DefaultToolDefinition
 import spock.lang.Specification
 
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 class ExplicitToolLoopSpec extends Specification {
@@ -382,5 +383,139 @@ class ExplicitToolLoopSpec extends Specification {
         then: "the fail-closed check must not affect ordinary tools"
         result.finalText() == "Done"
         result.history()[0].result() == "tool result"
+    }
+
+    // --- Approval policy: per-tool timeouts, on-timeout action, and the
+    // top-level auto-approve switch.
+
+    private ToolLoopConfig configWith(ApprovalPolicy policy, Map<String, ApprovalFloor> floors = [:]) {
+        new ToolLoopConfig(ToolLoopConfig.Mode.EXPLICIT, 10, false, null,
+                ToolLoopConfig.DEFAULT_WARNING_RATIO,
+                ToolLoopConfig.DEFAULT_REPETITION_THRESHOLD,
+                floors, policy)
+    }
+
+    private ToolCallback silentTool(String name) {
+        def toolDef = DefaultToolDefinition.builder()
+                .name(name).description("test").inputSchema('{"type":"object"}').build()
+        Mock(ToolCallback) { getToolDefinition() >> toolDef }
+    }
+
+    private void twoTurns(AssistantMessage.ToolCall toolCall) {
+        chatModel.call(_ as Prompt) >>> [
+                new ChatResponse(List.of(new Generation(toolCallMessage([toolCall])))),
+                new ChatResponse(List.of(new Generation(textMessage("understood"))))
+        ]
+    }
+
+    def "an unanswered approval denies once the window closes"() {
+        given: "a handler that never completes — the user never replies"
+        def policy = new ApprovalPolicy(false, Duration.ofMillis(150),
+                ApprovalPolicy.OnTimeout.DENY, [:])
+        def config = configWith(policy, ["rebootDevice": ApprovalFloor.PROMPT_ALWAYS])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+        def mockTool = silentTool("rebootDevice")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "rebootDevice", '{}'))
+
+        approvalHandler.requestApproval("rebootDevice", _, _) >> new CompletableFuture<>()
+
+        when:
+        def result = loop.execute("system", [], "reboot", ["rebootDevice": mockTool], "default", "sess-1")
+
+        then: "the loop does not hang and the tool never runs"
+        0 * mockTool.call(_)
+
+        and: "the model is told why, in operator units rather than ISO-8601"
+        result.history()[0].result().contains("denied")
+        result.history()[0].result().contains("no approver responded")
+    }
+
+    def "on-timeout APPROVE executes the tool when nobody answers"() {
+        given:
+        def policy = new ApprovalPolicy(false, Duration.ofMillis(150),
+                ApprovalPolicy.OnTimeout.APPROVE, [:])
+        def config = configWith(policy, ["harmless": ApprovalFloor.PROMPT_ALWAYS])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+        def mockTool = mockToolCallback("harmless", "did the thing")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "harmless", '{}'))
+
+        approvalHandler.requestApproval("harmless", _, _) >> new CompletableFuture<>()
+
+        when:
+        def result = loop.execute("system", [], "go", ["harmless": mockTool], "default", "sess-1")
+
+        then:
+        result.history()[0].result() == "did the thing"
+    }
+
+    def "a per-tool timeout overrides the policy default"() {
+        given: "a long default but a short override for this tool"
+        def policy = new ApprovalPolicy(false, Duration.ofMinutes(30),
+                ApprovalPolicy.OnTimeout.DENY,
+                ["rebootDevice": new ApprovalPolicy.ToolApprovalPolicy(
+                        Duration.ofMillis(150), null)])
+        def config = configWith(policy, ["rebootDevice": ApprovalFloor.PROMPT_ALWAYS])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+        def mockTool = silentTool("rebootDevice")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "rebootDevice", '{}'))
+
+        approvalHandler.requestApproval("rebootDevice", _, _) >> new CompletableFuture<>()
+
+        when: "the short per-tool window applies, so this returns promptly"
+        def result = loop.execute("system", [], "reboot", ["rebootDevice": mockTool], "default", "sess-1")
+
+        then:
+        0 * mockTool.call(_)
+        result.history()[0].result().contains("no approver responded")
+    }
+
+    def "auto-approve bypasses the gate without consulting the handler"() {
+        given: "a PROMPT_ALWAYS floor that would otherwise require approval"
+        def policy = new ApprovalPolicy(true, ApprovalPolicy.DEFAULT_TIMEOUT,
+                ApprovalPolicy.OnTimeout.DENY, [:])
+        def config = configWith(policy, ["shell_exec": ApprovalFloor.PROMPT_ALWAYS])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+        def mockTool = mockToolCallback("shell_exec", "ran")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "shell_exec", '{}'))
+
+        when:
+        def result = loop.execute("system", [], "run it", ["shell_exec": mockTool], "default", "sess-1")
+
+        then: "the tool runs and nobody was asked"
+        result.history()[0].result() == "ran"
+        0 * approvalHandler.requestApproval(_, _, _)
+    }
+
+    def "auto-approve cannot override a DENY floor"() {
+        given: "the safety property that makes auto-approve offerable at all"
+        def policy = new ApprovalPolicy(true, ApprovalPolicy.DEFAULT_TIMEOUT,
+                ApprovalPolicy.OnTimeout.DENY, [:])
+        def config = configWith(policy, ["dropDatabase": ApprovalFloor.DENY])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, approvalHandler)
+        def mockTool = silentTool("dropDatabase")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "dropDatabase", '{}'))
+
+        when:
+        def result = loop.execute("system", [], "drop it", ["dropDatabase": mockTool], "default", "sess-1")
+
+        then: "DENY is evaluated before approval is computed, so it still blocks"
+        0 * mockTool.call(_)
+        result.history()[0].result().contains("blocked by an operator approval floor")
+    }
+
+    def "auto-approve with no handler registered still executes"() {
+        given: "auto-approve is how an operator runs headless without tripping fail-closed"
+        def policy = new ApprovalPolicy(true, ApprovalPolicy.DEFAULT_TIMEOUT,
+                ApprovalPolicy.OnTimeout.DENY, [:])
+        def config = configWith(policy, ["shell_exec": ApprovalFloor.PROMPT_ALWAYS])
+        def loop = new ExplicitToolLoop(chatModel, config, hooks, null)
+        def mockTool = mockToolCallback("shell_exec", "ran headless")
+        twoTurns(new AssistantMessage.ToolCall("tc-1", "function", "shell_exec", '{}'))
+
+        when:
+        def result = loop.execute("system", [], "run it", ["shell_exec": mockTool], "default", "sess-1")
+
+        then:
+        result.history()[0].result() == "ran headless"
     }
 }
