@@ -399,34 +399,27 @@
         <cve>CVE-2026-0994</cve>
     </suppress>
 
-    <suppress>
-        <notes><![CDATA[
-        FALSE POSITIVE (wrong artifact): CVE-2026-42582 (7.5) is in
-        io.netty.handler.codec.http3.QpackDecoder#decodeHuffmanEncodedLiteral,
-        fixed in 4.2.13.Final. dependency-check flags netty-transport
-        4.1.135.Final because the CPE matches the netty *product* at that
-        version, but the QPACK/HTTP3 decoder does not live in
-        netty-transport. Verified 2026-09-08 on the jaiclaw-gateway tree:
-        the artifact that actually contains the vulnerable class,
-        io.netty:netty-codec-http3, resolves to 4.2.15.Final — already
-        past the 4.2.13 fix. This closes the "re-evaluate the netty pin in
-        the next CVE scan" TODO in the root POM's CVE-override block.
+    <!--
+        REMOVED 2026-10-01 — the netty 4.1.x suppression for CVE-2026-42582 is
+        no longer needed and no longer matches anything.
 
-        Scoped to the io.netty group at the 4.1.x line rather than to
-        individual artifacts: the assigned CPE is cpe:2.3:a:netty:netty,
-        which matches the netty *product* at 4.1.135, so EVERY 4.1.x
-        artifact on the classpath inherits this record — netty-codec,
-        netty-transport, netty-transport-classes-epoll,
-        netty-transport-native-unix-common, netty-handler, and so on.
-        Chasing them by artifact name would be an open-ended list.
-        The HTTP/3 codec that actually contains the vulnerable class is
-        versioned independently (4.2.15.Final) and is NOT covered by this
-        suppression — if netty-codec-http3 is ever flagged below 4.2.13,
-        that is a real finding and must be fixed, not suppressed.
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/io\.netty/netty-.*@4\.1\..*$</packageUrl>
-        <cve>CVE-2026-42582</cve>
-    </suppress>
+        The root POM pinned netty-bom 4.1.135.Final ahead of the Spring Boot
+        BOM, which dragged the reactor backwards off the line Boot manages and
+        produced a MIXED classpath: 15 artifacts on 4.1.135 and 4 on 4.2.15.
+        This suppression existed to silence the product-level CPE match that
+        the stale 4.1.x artifacts attracted.
+
+        Its reachability argument — "netty-codec-http3 already resolves to
+        4.2.15, past the 4.2.13 fix" — was true but only by accident:
+        netty-bom:4.1.135 simply predates that artifact and did not list it, so
+        http3 fell through to Boot's version. Nothing deliberate held it there.
+
+        Dropping the pin and taking Spring Boot 4.1.1's netty 4.2.17.Final
+        resolves all 21 artifacts to a single version, so the CVE is fixed
+        rather than argued around and there is nothing left to suppress.
+        Verified by dependency:tree on jaiclaw-gateway-app, jaiclaw-shell and
+        jaiclaw-cli. See security-report-2026-10-01.md.
+    -->
 
     <suppress>
         <notes><![CDATA[

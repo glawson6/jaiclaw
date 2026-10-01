@@ -58,7 +58,7 @@
         <!-- Spring Boot 4.1 / Spring Framework 7 / Spring AI 2.0 stack.
              Embabel is pinned to a Boot-4 SNAPSHOT — Phase 8 pins it to a GA once released
              (docs/spring-boot-4-upgrade/02-embabel-gate.md). -->
-        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
         <spring-ai.version>2.0.0</spring-ai.version>
         <embabel-agent.version>1.5.0</embabel-agent.version>
         <spring-shell.version>4.0.2</spring-shell.version>
@@ -74,7 +74,6 @@
         <!-- CVE version overrides — Boot 4.1 BOM re-evaluation:
              Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11).
              Netty pin re-evaluate against Boot 4.1 BOM's managed line in a follow-up CVE scan. -->
-        <netty.version>4.1.135.Final</netty.version>
         <log4j2.version>2.26.0</log4j2.version>
 
         <!-- Testing (Spock support restored in Boot 4.1 via Groovy 5) -->
@@ -85,6 +84,7 @@
         <!-- Third-party libraries -->
         <github-api.version>1.330</github-api.version>
         <okhttp.version>4.12.0</okhttp.version>
+        <okio.version>3.16.4</okio.version>
         <line-bot-sdk.version>9.15.0</line-bot-sdk.version>
         <!--
             Camel promoted to the root POM (2026-09-08 CVE scan). Previously
@@ -691,16 +691,27 @@
                 import. Maven dependencyManagement uses first-match-wins.
                 Tomcat 10.1.55 pin from the 0.9.x line was REMOVED at the
                 Spring Boot 4 upgrade — Boot 4 manages Tomcat 11 in its BOM.
-                Netty pin retained. The "re-evaluate in the next CVE scan
-                post-upgrade" TODO was DISCHARGED on 2026-09-08 by the first
-                NVD-backed scan: netty-transport 4.1.135.Final is flagged for
-                CVE-2026-42582 (7.5) across 21 modules, but that CVE lives in
-                io.netty.handler.codec.http3.QpackDecoder — and
-                netty-codec-http3 already resolves to 4.2.15.Final, past the
-                4.2.13 fix. The flag is a product-level CPE match on the
-                pinned version string, not real exposure. Suppressed with
-                evidence in .security/dependency-check-suppressions.xml.
-                See security-report-2026-06-15.md, security-report-2026-09-08.md.
+
+                The Netty pin (netty-bom 4.1.135.Final) was REMOVED on
+                2026-10-01. It had become a CVE *under*-ride: Spring Boot 4.1.0
+                manages netty.version=4.2.15.Final, and because this block
+                precedes the Boot BOM under first-match-wins, the 4.1.135 pin
+                dragged the whole reactor backwards off the line Boot ships and
+                tests against.
+
+                Worse, it produced a MIXED classpath. jaiclaw-gateway-app
+                resolved 15 artifacts on 4.1.135 and 4 on 4.2.15
+                (netty-codec-base, -classes-quic, -compression, -codec-http3) —
+                lines that are not binary-compatible; netty-codec-base is
+                4.2-only. Those four escaped the override purely because
+                netty-bom:4.1.135 predates them and does not list them.
+
+                That accident was also the entire basis of the CVE-2026-42582
+                (7.5) suppression: "http3 already resolves to 4.2.15, past the
+                4.2.13 fix" was true, but only by BOM composition rather than by
+                any deliberate pin. Inheriting Boot's 4.2.15 makes the fix real
+                and lets the suppression be deleted rather than maintained.
+                See security-report-2026-10-01.md.
             -->
             <!--
                 jsoup — CVE-2021-37714 (CVSS 7.5 HIGH, fixed in 1.14.2) plus
@@ -722,14 +733,31 @@
                 <artifactId>jsoup</artifactId>
                 <version>${jsoup.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+            <!--
+                okio — CVE-2020-29582 (MEDIUM 5.3, CWE-276 insecure temp-file
+                permissions, fixed in Kotlin 1.4.21). Found by the 2026-10-01
+                scan, and NOT a finding in the 2026-09-08 report, which
+                recorded kotlin-stdlib-common 1.9.10 as present "only inside
+                example fat JARs". It is in fact on the gateway app's compile
+                classpath via:
 
+                    okhttp:4.12.0 -> okio:3.6.0 -> kotlin-stdlib-common:1.9.10
+
+                while every other Kotlin artifact in the tree resolves to
+                2.3.21. okio 3.16.4 depends on kotlin-stdlib 2.2.20 and drops
+                kotlin-stdlib-common altogether (merged into kotlin-stdlib in
+                Kotlin 2.x), so pinning okio removes the stale artifact rather
+                than suppressing the finding.
+
+                Pinned here rather than bumping okhttp because okhttp 4.12.0 is
+                the last of the 4.x line; moving to 5.x is a larger change and
+                is not required to clear this CVE.
+            -->
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>${okio.version}</version>
+            </dependency>
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
