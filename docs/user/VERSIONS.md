@@ -48,9 +48,108 @@ control because `PromptRedactor` has no framework call sites.
 See [`docs/compliance/soc2.md`](../compliance/soc2.md) for the full mapping and
 [COMPLIANCE-HOWTO.md § Path D](COMPLIANCE-HOWTO.md) for the runbook.
 
-> **Still owed for 1.3.0:** `jaiclaw.security.default-tool-profile` must flip
-> globally from `FULL` to `MINIMAL`. The `soc2` profile sets it, but the
-> framework-wide default still fails open.
+### Fail-closed security controls
+
+Four controls existed but could not be reached; three silently did nothing. The
+pattern throughout: a security control that **cannot** be performed now refuses,
+where it previously proceeded.
+
+**Tool approval no longer fails open.** `ExplicitToolLoop` gated on
+`approvalRequired && approvalHandler != null`, so a deployment with no
+`ToolApprovalHandler` executed approval-required tools with no gate at all.
+Headless deployments register no handler by default, which made `PROMPT_ALWAYS`
+*looser* than `DENY`. An approval that cannot be obtained is now a denial.
+
+**Approval over chat** — the first handler that uses the SPI's async contract;
+both shipped console handlers block on `readLine()` and are inert without a TTY.
+Text replies, not buttons, because the Telegram adapter has no `reply_markup`
+support and drops `callback_query` updates.
+
+```yaml
+jaiclaw:
+  approval:
+    chat:
+      enabled: true
+      approvers:
+        - channel-id: telegram
+          account-id: ${TELEGRAM_ACCOUNT_ID}
+          peer-id: "9001"
+  agent:
+    agents:
+      default:
+        tool-loop:
+          mode: explicit            # required — approval only runs here
+          approval-floors:
+            rebootDevice: PROMPT_ALWAYS
+          approval:
+            auto-approve: false     # master switch; DENY floors still win
+            default-timeout: 5m
+            on-timeout: deny        # deny (default) | approve
+            tools:
+              rebootDevice: { timeout: 2m }
+```
+
+The question goes to the **configured approver**, never whoever triggered the
+run. `on-timeout` defaults to `deny` at every level — auto-approval on silence
+never arrives by inheritance or omission.
+
+**Webhook signature verification.** Discord verified *nothing* while still
+answering its PING challenge, so the endpoint passed Discord's setup check and
+accepted forged interactions. Slack and Telegram skipped verification entirely
+when their secret was blank, **even with the verify flag on** — the likely state
+for anyone who enabled `security-hardened` and stopped there, since the profile
+sets the flag but cannot set the secret. All three now reject. LINE's
+signature compare is constant-time.
+
+**Audit-chain verification runs.** `verifyChain()` had zero callers: the chain
+was maintained on every write and never read. `AuditChainVerifier` runs it per
+tenant on `jaiclaw.compliance.audit.verify.interval` (daily by default).
+
+**The estop actuator endpoint is off by default** and its write operation is
+role-guarded. A blank role **denies** — unlike the admin controllers, whose
+blank-is-allow-all default `SECURITY.md` lists as a weakness. Enabling it under
+`security.mode=none` without a role refuses to start, because that chain is
+`permitAll`. `bin/jaiclaw pause` is unaffected.
+
+**1Password lookups are cached.** `SecretsPropertySource` answers every property
+lookup the app makes, and each **miss** cost an `op read` subprocess — misses
+being the common case, since most properties are not secrets. Misses are cached
+too; `SecretsProvider.refresh()` is the rotation hook. A missing `op` binary is
+now reported at startup instead of producing silently unresolved `${...}`.
+
+### Tool profiles are usable — and the flip moved to 1.4.0
+
+`MINIMAL` previously granted one tool. `WEBHOOK_SAFE` granted **nothing**: no
+tool carried the tag, so the webhook clamp was a no-op despite the enum
+documenting what it should allow. Read-only tools are now tagged — `file_read`,
+`web_search`, `web_fetch`, ASCII rendering, read-only task and wiki tools —
+while writers and executors stay out.
+
+> **`jaiclaw.security.default-tool-profile` still defaults to `FULL`.** 1.2.0's
+> notes said this flips to `MINIMAL` in 1.3.0; **it now flips in 1.4.0.**
+> Flipping it here would have removed **7 of the 8 default built-ins**, because
+> `ToolDefinition`'s convenience constructors default the tag set to
+> `Set.of(FULL)` — most tools were FULL-only by accident, not by decision.
+> 1.3.0 makes `MINIMAL` worth having first.
+>
+> **Set the property explicitly now.** `MINIMAL` is viable today, and the
+> startup warning now fires only when the value is *unset*, so a deliberate
+> choice silences it (it previously tested the value, making it unsilenceable).
+
+### Breaking changes
+
+- Approval requirements with no handler now **deny** rather than execute. Only
+  affects configurations where the control never worked; `requireApproval`
+  defaults to `false`.
+- Webhook verification **rejects** when its secret is missing. If you enabled
+  `security-hardened` without setting secrets, inbound webhooks start failing —
+  which is the point.
+- `ToolProfileHolder.getOrDefault()` removed (deprecated `forRemoval` in 1.2.0).
+  Use `getOrDefault(ToolProfile)`.
+- The estop actuator endpoint is off by default.
+
+See [`releases/release-1.3.0.md`](../../releases/release-1.3.0.md) for the full
+account, including known limitations.
 
 ## 1.2.0 (released 2026-09-18)
 

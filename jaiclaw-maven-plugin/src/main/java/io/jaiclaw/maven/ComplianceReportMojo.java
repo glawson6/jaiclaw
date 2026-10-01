@@ -86,7 +86,21 @@ public class ComplianceReportMojo extends AbstractMojo {
                 new CodeClaim("requiresAuditHashChain", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/ComplianceProfile.java"),
                 new CodeClaim("verifyChain", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/HashChainedAuditLogger.java"),
                 new CodeClaim("EncryptionKeyResolver", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptionKeyResolver.java"),
-                new CodeClaim("ApiKeyStore", "core/jaiclaw-security/src/main/java/io/jaiclaw/security/ApiKeyStore.java")
+                new CodeClaim("ApiKeyStore", "core/jaiclaw-security/src/main/java/io/jaiclaw/security/ApiKeyStore.java"),
+                // CC7.2 — the chain is only evidence if something reads it.
+                // verifyChain() above had zero callers before 1.3.0, so this
+                // claim is what distinguishes "maintained" from "checked".
+                new CodeClaim("AuditChainVerifier", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/audit/AuditChainVerifier.java"),
+                // C1.1 — the decorator that actually applies the encryptor.
+                new CodeClaim("EncryptionBeanPostProcessor", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/encryption/EncryptionBeanPostProcessor.java"),
+                // CC6.1/CC6.3 — least privilege is only meaningful if the
+                // narrow profiles grant a working set; WEBHOOK_SAFE granted
+                // nothing until these tags existed.
+                new CodeClaim("WEBHOOK_SAFE", "core/jaiclaw-tools/src/main/java/io/jaiclaw/tools/builtin/WebSearchTool.java"),
+                // CC6.1 — human-in-the-loop approval that fails closed.
+                new CodeClaim("ApprovalPolicy", "core/jaiclaw-core/src/main/java/io/jaiclaw/core/agent/ApprovalPolicy.java"),
+                // CC7.3/CC7.4 — the incident control is now authorised, not open.
+                new CodeClaim("EstopAuthzProperties", "core/jaiclaw-gateway/src/main/java/io/jaiclaw/gateway/admin/EstopAuthzProperties.java")
         ));
         CLAIMS_BY_REGULATION.put("fedramp", List.of(
                 new CodeClaim("FedRampWarningChatModelDecorator", "extensions/jaiclaw-compliance/src/main/java/io/jaiclaw/compliance/fedramp/FedRampWarningChatModelDecorator.java"),
