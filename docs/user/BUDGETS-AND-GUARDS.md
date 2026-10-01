@@ -226,6 +226,69 @@ This is the one sanctioned exception to "a floor can only make approval
 stricter, never looser" — and deliberately an operator-only, deployment-wide
 decision, not something a tool author or the model can set.
 
+## Approval over chat (1.3.0)
+
+`PROMPT_ALWAYS` needs something to prompt. The framework ships a handler that
+asks a configured approver in chat and waits for a text reply:
+
+```yaml
+jaiclaw:
+  approval:
+    chat:
+      enabled: true                  # opt-in; off by default
+      approvers:
+        - channel-id: telegram
+          account-id: ${TELEGRAM_ACCOUNT_ID}
+          peer-id: "9001"            # the chat to ask in
+```
+
+The approver replies **yes** or **no** in the chat. The reply is consumed by a
+gateway filter rather than becoming a new agent turn, so a bare "yes" authorises
+the tool instead of getting a conversational answer.
+
+**Why text and not buttons.** Inline keyboards would remove the parsing
+ambiguity, but the Telegram adapter has no `reply_markup` support and drops
+`callback_query` updates before they reach the gateway. Text replies work on
+every channel that can carry a message.
+
+### Who gets asked
+
+The question goes to the **configured approver**, never to whoever triggered the
+run. The person who typed "reboot it" is the last person who should confirm it,
+and a cron- or API-triggered run has no requester to ask at all.
+
+With `enabled: true` and no usable approver, every approval-requiring call is
+**denied** and startup logs a warning naming the property. An entry missing its
+`channel-id` or `peer-id` is dropped, since it could not be messaged anyway.
+
+Replace `ApproverResolver` with your own bean for a rota, per-tenant routing, or
+per-tool approvers — the default resolver is the static single-owner case.
+
+### What the approver sees
+
+The tool name, its arguments, the deadline, and what happens on silence — an
+approver cannot judge a request without knowing what is being asked or how long
+they have.
+
+### Behaviour worth knowing
+
+| Situation | Result |
+|---|---|
+| Reply parses as yes/no | Tool approved/denied; the message is consumed |
+| Reply is something else ("what does that do?") | Passed through to the agent; the request **stays open** |
+| Reply from a non-approver | Ordinary message; the approval is untouched |
+| Reply after the window closed | Ordinary message; the stale answer does not authorise |
+| Same "yes" repeated later | Does not authorise a new call — redemption is single-use |
+| Approval channel unavailable, or send fails | Denied immediately rather than waiting out the window |
+
+Replies are matched on whole-message equality against a short vocabulary, not by
+substring: `"don't approve that"` contains "approve" and must not read as
+consent.
+
+> **Not persisted.** A request in flight is lost on restart. That is honest for a
+> human-latency gate — after a restart the agent run is gone too, so a late
+> approval would have nothing to authorise.
+
 > **The system prompt is not an approval gate.** Instructing the model to ask
 > before acting is useful, but it is advisory — a user can talk the model past
 > it. Only the floors above are mechanical.

@@ -16,8 +16,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Gateway auto-configuration — runs after {@link JaiClawAgentAutoConfiguration}
@@ -374,6 +376,104 @@ public class JaiClawGatewayAutoConfiguration {
         public io.jaiclaw.gateway.webhook.WebhookEventController webhookEventController(
                 io.jaiclaw.gateway.webhook.WebhookRouteRegistry registry) {
             return new io.jaiclaw.gateway.webhook.WebhookEventController(registry);
+        }
+    }
+
+    /**
+     * Tool approval over chat — activated when
+     * {@code jaiclaw.approval.chat.enabled=true}.
+     *
+     * <p>Opt-in deliberately. Registering a {@code ToolApprovalHandler} changes
+     * how every {@code PROMPT_ALWAYS} tool behaves, and since 1.3.0 an approval
+     * requirement with no handler fails closed — so acquiring a handler by
+     * upgrading would silently change which tool calls run and which are
+     * denied. An operator asks for this.
+     *
+     * <p>The approval <em>window</em> is not configured here: it lives with the
+     * rest of the loop policy at
+     * {@code jaiclaw.agent.agents.<name>.tool-loop.approval}, because timing is
+     * per-agent and per-tool while the approver is a deployment-wide identity.
+     * This configuration reads the default agent's policy so the handler can
+     * state the correct deadline in the message it sends.
+     */
+    @Configuration
+    @ConditionalOnProperty(name = "jaiclaw.approval.chat.enabled", havingValue = "true")
+    @EnableConfigurationProperties(io.jaiclaw.gateway.approval.ChatApprovalProperties.class)
+    static class ChatApprovalConfiguration {
+
+        private static final org.slf4j.Logger approvalLog =
+                org.slf4j.LoggerFactory.getLogger(ChatApprovalConfiguration.class);
+
+        @Bean
+        @ConditionalOnMissingBean
+        public io.jaiclaw.core.agent.PendingApprovalRegistry pendingApprovalRegistry() {
+            return new io.jaiclaw.core.agent.PendingApprovalRegistry();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.gateway.approval.ApproverResolver.class)
+        public io.jaiclaw.gateway.approval.ApproverResolver approverResolver(
+                io.jaiclaw.gateway.approval.ChatApprovalProperties props) {
+            List<io.jaiclaw.gateway.approval.Approver> approvers = props.toApprovers();
+            if (approvers.isEmpty()) {
+                // Say it at startup rather than letting it surface as a denied
+                // tool call hours later. The handler fails closed in this state.
+                approvalLog.warn("jaiclaw.approval.chat.enabled=true but no usable approvers are "
+                        + "configured — every tool call requiring approval will be DENIED. Set "
+                        + "jaiclaw.approval.chat.approvers[0].{channel-id,peer-id}.");
+            } else {
+                approvalLog.info("Chat approval enabled — {} approver(s): {}",
+                        approvers.size(),
+                        approvers.stream()
+                                .map(a -> a.channelId() + ":" + a.peerId())
+                                .toList());
+            }
+            return new io.jaiclaw.gateway.approval.ConfiguredApproverResolver(approvers);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(io.jaiclaw.core.agent.ToolApprovalHandler.class)
+        public io.jaiclaw.core.agent.ToolApprovalHandler chatApprovalHandler(
+                ChannelRegistry channelRegistry,
+                io.jaiclaw.core.agent.PendingApprovalRegistry pending,
+                io.jaiclaw.gateway.approval.ApproverResolver approverResolver,
+                JaiClawProperties properties) {
+            return new io.jaiclaw.gateway.approval.ChatApprovalHandler(
+                    channelRegistry, pending, approverResolver,
+                    resolveApprovalPolicy(properties));
+        }
+
+        /**
+         * Consumes the approver's reply before it becomes an agent turn.
+         *
+         * <p>Ordered after {@code TelegramUserIdFilter} (100): there is no point
+         * matching a reply from a peer whose traffic is about to be rejected.
+         */
+        @Bean
+        @Order(200)
+        @ConditionalOnMissingBean(io.jaiclaw.gateway.approval.ApprovalReplyFilter.class)
+        public io.jaiclaw.gateway.approval.ApprovalReplyFilter approvalReplyFilter(
+                io.jaiclaw.core.agent.PendingApprovalRegistry pending) {
+            return new io.jaiclaw.gateway.approval.ApprovalReplyFilter(pending);
+        }
+
+        /**
+         * The default agent's approval policy, for the deadline quoted in the
+         * question. Falls back to {@link io.jaiclaw.core.agent.ApprovalPolicy#DEFAULT}
+         * when the agent config is absent.
+         */
+        private static io.jaiclaw.core.agent.ApprovalPolicy resolveApprovalPolicy(
+                JaiClawProperties properties) {
+            if (properties == null || properties.agent() == null) {
+                return io.jaiclaw.core.agent.ApprovalPolicy.DEFAULT;
+            }
+            Map<String, io.jaiclaw.config.AgentProperties.AgentConfig> agents =
+                    properties.agent().agents();
+            io.jaiclaw.config.AgentProperties.AgentConfig agentConfig = agents != null
+                    ? agents.getOrDefault(properties.agent().defaultAgent(),
+                            io.jaiclaw.config.AgentProperties.AgentConfig.DEFAULT)
+                    : io.jaiclaw.config.AgentProperties.AgentConfig.DEFAULT;
+            return agentConfig.toolLoop().toConfig().approvalPolicy();
         }
     }
 
