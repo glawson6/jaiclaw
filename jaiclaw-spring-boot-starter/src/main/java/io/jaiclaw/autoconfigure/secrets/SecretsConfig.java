@@ -10,6 +10,7 @@ import org.springframework.core.env.Environment;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -40,6 +41,9 @@ public final class SecretsConfig {
     static final String PROP_OP_BINARY = "jaiclaw.secrets.onepassword.op-binary";
     static final String PROP_OP_TOKEN = "jaiclaw.secrets.onepassword.service-account-token";
     static final String PROP_OP_TIMEOUT = "jaiclaw.secrets.onepassword.timeout";
+    static final String PROP_CACHE_ENABLED = "jaiclaw.secrets.cache.enabled";
+    static final String PROP_CACHE_TTL = "jaiclaw.secrets.cache.ttl";
+    static final String PROP_CACHE_MISS_TTL = "jaiclaw.secrets.cache.miss-ttl";
 
     private SecretsConfig() {}
 
@@ -65,11 +69,25 @@ public final class SecretsConfig {
             default -> List.of(provider);
         };
 
+        boolean cacheEnabled = !"false".equalsIgnoreCase(
+                env.getProperty(PROP_CACHE_ENABLED, "true"));
+        Duration hitTtl = parseDurationOrDefault(env.getProperty(PROP_CACHE_TTL),
+                io.jaiclaw.core.secrets.CachingSecretsProvider.DEFAULT_HIT_TTL);
+        Duration missTtl = parseDurationOrDefault(env.getProperty(PROP_CACHE_MISS_TTL),
+                io.jaiclaw.core.secrets.CachingSecretsProvider.DEFAULT_MISS_TTL);
+
         List<SecretsProvider> chain = new ArrayList<>();
         for (String name : chainNames) {
             SecretsProvider p = providerFactory.create(name, env);
             if (p != null) {
-                chain.add(p);
+                // Wrap out-of-process providers. SecretsPropertySource is
+                // addFirst-ed into the Environment, so it is asked about EVERY
+                // property the app resolves — without caching, each miss costs
+                // an `op read` subprocess. env/file providers are already
+                // in-memory, so wrapping them would only add indirection.
+                chain.add(cacheEnabled && isOutOfProcess(name)
+                        ? new io.jaiclaw.core.secrets.CachingSecretsProvider(p, hitTtl, missTtl)
+                        : p);
             } else {
                 log.warn("jaiclaw.secrets: unknown provider '{}', skipping", name);
             }
@@ -84,6 +102,39 @@ public final class SecretsConfig {
                 ? SecretsResolver.OnError.FAIL
                 : SecretsResolver.OnError.CONTINUE;
         return new SecretsResolver(chain, onError);
+    }
+
+    /**
+     * Reports an unusable {@code op} binary at startup.
+     *
+     * <p>Called reflectively for the same reason the provider is constructed
+     * reflectively: the starter must not have a compile-time dependency on the
+     * optional extension. A failure here is logged, not thrown — another
+     * provider in the chain may satisfy every key, and the pre-existing
+     * behaviour for a genuinely missing secret is already a startup failure at
+     * the point of use.
+     */
+    private static void probeOnePassword(SecretsProvider provider) {
+        try {
+            Object result = provider.getClass().getMethod("probe").invoke(provider);
+            if (result instanceof java.util.Optional<?> problem && problem.isPresent()) {
+                log.error("jaiclaw.secrets: 1Password provider is configured but unusable — {}. "
+                        + "Secret lookups will fail and ${{...}} placeholders may resolve to "
+                        + "nothing.", problem.get());
+            } else {
+                log.info("jaiclaw.secrets: 1Password CLI probe succeeded");
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            log.debug("jaiclaw.secrets: could not probe the 1Password CLI", e);
+        }
+    }
+
+    /**
+     * True for providers whose lookups leave the JVM, and therefore benefit from
+     * caching. {@code env} and {@code file} resolve from memory already.
+     */
+    private static boolean isOutOfProcess(String providerName) {
+        return "onepassword".equals(providerName) || "vault".equals(providerName);
     }
 
     /**
@@ -134,7 +185,10 @@ public final class SecretsConfig {
             java.time.Duration timeout = parseDuration(timeoutStr);
             Object config = configClass.getDeclaredConstructors()[0]
                     .newInstance(opBinary, vault, token, timeout);
-            return (SecretsProvider) clazz.getDeclaredConstructor(configClass).newInstance(config);
+            SecretsProvider provider =
+                    (SecretsProvider) clazz.getDeclaredConstructor(configClass).newInstance(config);
+            probeOnePassword(provider);
+            return provider;
         } catch (ClassNotFoundException e) {
             log.warn("jaiclaw.secrets.provider=onepassword but jaiclaw-secrets-1password is not on "
                     + "classpath; add 'io.jaiclaw:jaiclaw-secrets-1password' to enable it");
@@ -146,6 +200,32 @@ public final class SecretsConfig {
     }
 
     /** Parse Spring-style duration: "10s", "500ms", "1m". */
+    /**
+     * Null-safe {@link #parseDuration(String)} that also accepts {@code h} and
+     * {@code d}, and falls back rather than throwing.
+     *
+     * <p>A bad TTL must not prevent the application from starting: the
+     * consequence of the fallback is a slightly different cache window, which
+     * is not worth a failed boot.
+     */
+    static Duration parseDurationOrDefault(String raw, Duration fallback) {
+        if (raw == null || raw.isBlank()) return fallback;
+        String t = raw.trim();
+        try {
+            char unit = Character.toLowerCase(t.charAt(t.length() - 1));
+            if (unit == 'h') {
+                return Duration.ofHours(Long.parseLong(t.substring(0, t.length() - 1).trim()));
+            }
+            if (unit == 'd') {
+                return Duration.ofDays(Long.parseLong(t.substring(0, t.length() - 1).trim()));
+            }
+            return parseDuration(t);
+        } catch (RuntimeException e) {
+            log.warn("jaiclaw.secrets: unparseable cache TTL '{}', using {}", raw, fallback);
+            return fallback;
+        }
+    }
+
     static java.time.Duration parseDuration(String s) {
         String t = s.trim();
         if (t.endsWith("ms")) {

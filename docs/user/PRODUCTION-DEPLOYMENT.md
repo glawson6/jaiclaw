@@ -261,6 +261,46 @@ gateway under `start.sh` / `bin/jaiclaw` without an orchestrator, the
 1Password CLI (`op`) provides the same env-var-injection guarantee
 without requiring an in-cluster operator.
 
+> **Two different 1Password paths — do not confuse them.** `--use-1password`
+> below resolves secrets *before* the JVM starts, via `op run --env-file`. The
+> `jaiclaw.secrets.provider=1password` property is a separate, in-process
+> mechanism that shells out to `op read` per lookup. The notes on caching and
+> the startup probe apply only to the latter.
+>
+> **Caching (1.3.0).** `SecretsPropertySource` is `addFirst`-ed into the Spring
+> `Environment`, so it is consulted before every other property source for
+> *every* property the application resolves. Without caching, each **miss** —
+> and most property lookups are not secrets — cost one `op read` subprocess plus
+> a network round-trip. Out-of-process providers are now wrapped in
+> `CachingSecretsProvider`, which caches misses as well as hits:
+>
+> ```yaml
+> jaiclaw:
+>   secrets:
+>     provider: 1password
+>     cache:
+>       enabled: true     # default
+>       ttl: 5m           # resolved secrets
+>       miss-ttl: 1m      # absent keys — shorter, since they are likelier to appear
+> ```
+>
+> Call `SecretsResolver.refresh()` after rotating a secret to make the new value
+> visible without a restart. Provider *failures* are never cached, so a
+> momentary outage does not become a TTL-long one.
+>
+> **Startup probe (1.3.0).** A missing `op` binary used to produce silently
+> unresolved `${...}` placeholders: the error became a `ProviderError`, which the
+> default `chain-on-error=continue` turned into `null`. The provider is now
+> probed at startup and logs an ERROR naming the problem. **No JaiClaw container
+> image ships `op`** — if you set `provider: 1password` in a container you must
+> add the binary and supply `OP_SERVICE_ACCOUNT_TOKEN`, since a non-root
+> container has no signed-in session.
+>
+> **Which secrets come from where.** Prefer External Secrets / a K8s Secret for
+> anything needed at startup (API keys, the encryption key) — those are resolved
+> once and a subprocess per key at boot is wasted work. Reserve the in-process
+> provider for secrets fetched at request time.
+
 **Mechanism.** The launcher (`bin/jaiclaw` or `start.sh`) accepts a
 `--use-1password` flag. When set, the launcher re-execs itself under
 `op run --env-file=<.env.op.tpl> -- <self> <args>`. `op run` reads

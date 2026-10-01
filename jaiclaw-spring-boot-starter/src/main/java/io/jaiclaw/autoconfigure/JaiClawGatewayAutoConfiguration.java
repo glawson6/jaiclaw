@@ -38,7 +38,9 @@ import java.util.Map;
 @AutoConfigureAfter(JaiClawAgentAutoConfiguration.class)
 @ConditionalOnClass(name = "io.jaiclaw.gateway.GatewayService")
 @ConditionalOnBean(AgentRuntime.class)
-@EnableConfigurationProperties(io.jaiclaw.gateway.GatewayProperties.class)
+@EnableConfigurationProperties({
+        io.jaiclaw.gateway.GatewayProperties.class,
+        io.jaiclaw.gateway.admin.EstopAuthzProperties.class})
 public class JaiClawGatewayAutoConfiguration {
 
     private static final org.slf4j.Logger log =
@@ -194,11 +196,35 @@ public class JaiClawGatewayAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnClass(name = "org.springframework.boot.actuate.endpoint.annotation.Endpoint")
+    @ConditionalOnProperty(name = "jaiclaw.gateway.admin.estop.endpoint-enabled",
+            havingValue = "true")
     public io.jaiclaw.gateway.admin.EstopActuatorEndpoint estopActuatorEndpoint(
             io.jaiclaw.core.ops.EmergencyStop emergencyStop,
-            ObjectProvider<io.jaiclaw.core.agent.AgentHookDispatcher> hooksProvider) {
+            ObjectProvider<io.jaiclaw.core.agent.AgentHookDispatcher> hooksProvider,
+            io.jaiclaw.gateway.admin.EstopAuthzProperties authz,
+            org.springframework.core.env.Environment environment) {
+
+        // mode=none installs anyRequest().permitAll(), so an exposed estop
+        // endpoint there is a fleet-wide kill switch with no authentication in
+        // front of it. The role check below would still deny, but refusing to
+        // start is clearer than serving an endpoint that can only 403.
+        String securityMode = environment.getProperty("jaiclaw.security.mode", "api-key");
+        if ("none".equalsIgnoreCase(securityMode) && !authz.hasRole()) {
+            throw new IllegalStateException(
+                    "jaiclaw.gateway.admin.estop.endpoint-enabled=true with "
+                            + "jaiclaw.security.mode=none and no estop role configured. The "
+                            + "filter chain is permitAll in that mode, so this would expose an "
+                            + "unauthenticated fleet-wide pause. Set "
+                            + "jaiclaw.gateway.admin.estop.role, or use bin/jaiclaw pause "
+                            + "(no HTTP surface, works when the app is wedged).");
+        }
+        if (!authz.hasRole()) {
+            log.warn("Estop actuator endpoint is enabled but "
+                    + "jaiclaw.gateway.admin.estop.role is not set — the write operation will "
+                    + "be DENIED. Set the role to allow operators through.");
+        }
         return new io.jaiclaw.gateway.admin.EstopActuatorEndpoint(
-                emergencyStop, hooksProvider.getIfAvailable());
+                emergencyStop, hooksProvider.getIfAvailable(), authz);
     }
 
     /**

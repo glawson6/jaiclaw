@@ -314,8 +314,16 @@ public class SlackAdapter extends AbstractChannelAdapter {
 
     private ResponseEntity<String> handleWebhook(String body, Map<String, String> headers) {
         try {
-            // Verify Slack request signature when verifySignature is enabled and signingSecret is configured
-            if (config.verifySignature() && !config.signingSecret().isBlank()) {
+            // Verification is requested, so it must happen. Previously a blank
+            // signing-secret skipped the check entirely, which made
+            // verify-signature=true weaker than it reads: the operator believes
+            // requests are verified while every request is accepted.
+            if (config.verifySignature()) {
+                if (config.signingSecret().isBlank()) {
+                    log.error("Slack verify-signature=true but signing-secret is not set — "
+                            + "rejecting webhook. Set jaiclaw.channels.slack.signing-secret.");
+                    return ResponseEntity.status(401).body("signature verification unavailable");
+                }
                 if (!verifySlackSignature(body, headers)) {
                     log.warn("Slack webhook signature verification failed");
                     return ResponseEntity.status(401).body("invalid signature");

@@ -399,7 +399,10 @@ Add a startup + scheduled verification:
 ```java
 @Scheduled(cron = "0 0 * * * *")   // Hourly
 public void verifyAuditChain() {
-    for (String tenantId : tenantRegistry.listAllTenants()) {
+    // NOTE: there is no tenant registry in the framework. Enumerate tenants from
+    // wherever your deployment already knows them — your own config, or the audit
+    // store layout ({storeDir}/{tenantId}/), which is what AuditChainVerifier does.
+    for (String tenantId : yourTenantIds()) {
         HashChainedAuditLogger.IntegrityReport report =
                 ((HashChainedAuditLogger) auditLogger).verifyChain(tenantId);
         if (!report.valid()) {
@@ -421,7 +424,10 @@ public MassReadDetector massReadDetector(List<AuditLogger> loggers) {
 
 @Scheduled(cron = "0 */15 * * * *")   // Every 15 min
 public void detectAnomalies() {
-    for (String tenantId : tenantRegistry.listAllTenants()) {
+    // NOTE: there is no tenant registry in the framework. Enumerate tenants from
+    // wherever your deployment already knows them — your own config, or the audit
+    // store layout ({storeDir}/{tenantId}/), which is what AuditChainVerifier does.
+    for (String tenantId : yourTenantIds()) {
         Instant now = Instant.now();
         massReadDetector.detect(tenantId, now.minus(15, ChronoUnit.MINUTES), now);
         // Detected anomalies land as security.event audit entries → SIEM

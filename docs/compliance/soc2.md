@@ -62,7 +62,7 @@ Column legend, following [fedramp.md](fedramp.md)'s inheritance model:
 | **CC1** Control environment (governance, ethics, structure) | — | — | ✅ | Nothing. Board oversight, org structure, code of conduct, competence — entirely organizational |
 | **CC2** Communication and information | — | ✅ | ✅ | Structured audit events are an input to internal reporting; policy communication is organizational |
 | **CC3** Risk assessment | — | ✅ | ✅ | Nothing framework-level. `docs/compliance/` documents the framework's posture as an input to your assessment |
-| **CC4** Monitoring of controls | ✅ | ✅ | ✅ | `AuditLogger` SPI emits structured events; `HashChainedAuditLogger.verifyChain(tenantId)` is a runnable control test. **Nothing schedules it** — adopter wires the cadence |
+| **CC4** Monitoring of controls | ✅ | ✅ | ✅ | `AuditLogger` SPI emits structured events; `HashChainedAuditLogger.verifyChain(tenantId)` is a runnable control test. Scheduled by `AuditChainVerifier` since 1.3.0 (daily by default; `jaiclaw.compliance.audit.verify.interval`) |
 | **CC5** Control activities (policy into practice) | ✅ | ✅ | ✅ | Compliance profiles turn policy decisions into enforced configuration (`ComplianceEnvironmentPostProcessor`); the policy itself is organizational |
 | **CC6.1** Logical access — identity and authorization | ✅ | ✅ | — | `jaiclaw.security.api-keys[]` binds a key to exactly one tenant and one role (`ApiKeyStore`, `ConfigApiKeyStore`); `mode=oidc` validates against an IdP's JWKS (`jaiclaw-security-oidc`); `JaiClawAuthentication` carries principal + tenant + profile |
 | **CC6.2** Registration and authorization of new users | ✅ | ✅ | ✅ | Verified channel identity (`ChannelLinkService`) proves a channel user controls an external identity; provisioning and approval workflow is yours |
@@ -191,7 +191,7 @@ first. These are the framework's defaults **without** the `soc2` profile.
 - **Key management** — generation, storage, rotation, and backup of the
   encryption key. The framework consumes a key; it does not manage its
   lifecycle.
-- **Scheduling `verifyChain()`** — the integrity check exists but nothing runs
+- ~~**Scheduling `verifyChain()`**~~ — done in 1.3.0: `AuditChainVerifier` runs it per tenant on a configurable interval and reports breaks via `audit.integrity_violation`, `log.error` and a failure counter
   it. Wire it to a startup check and a periodic tick, and retain the results as
   evidence.
 - **Log retention and SIEM** — routing audit events off-host, retaining them for

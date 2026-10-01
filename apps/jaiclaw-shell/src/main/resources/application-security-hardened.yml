@@ -1,5 +1,14 @@
-# Security-hardened profile — enables all security flags.
+# Security-hardened profile.
 # Activate with: SPRING_PROFILES_ACTIVE=security-hardened
+#
+# This sets the opt-in hardening flags that need no per-deployment secret.
+# Flags it CANNOT set for you, because they require a value only you have:
+#   jaiclaw.channels.telegram.webhook-secret-token
+#   jaiclaw.channels.slack.signing-secret
+#   jaiclaw.channels.discord.public-key
+#   jaiclaw.gateway.admin.estop.role
+# Verification now REJECTS requests when it is enabled without its secret,
+# rather than silently skipping the check, so set them alongside this profile.
 jaiclaw:
   channels:
     slack:
@@ -18,3 +27,12 @@ jaiclaw:
       workspace-boundary: true
   security:
     timing-safe-api-key: true
+
+# Actuator: expose only what is needed. jaiclaw-estop is NOT included — it
+# mutates global state and is opt-in via
+# jaiclaw.gateway.admin.estop.endpoint-enabled plus a role.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

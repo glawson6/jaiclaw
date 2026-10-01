@@ -142,6 +142,47 @@ public final class OnePasswordSecretsProvider implements SecretsProvider {
                 || stderr.contains("isn't an item");
     }
 
+    /**
+     * Checks that the {@code op} binary can be executed.
+     *
+     * <p>Without this, a missing binary produced <strong>silently unresolved
+     * {@code ${...}} placeholders</strong>: the {@code IOException} became a
+     * {@code SecretsProviderException}, which {@code SecretsResolver} converted
+     * to a {@code ProviderError} under the default {@code chain-on-error=continue},
+     * which {@code SecretsPropertySource} then mapped to {@code null}. The
+     * application started with unconfigured secrets and no error.
+     *
+     * <p>Returns a diagnostic rather than throwing so the caller decides whether
+     * a missing CLI is fatal — it is not, if another provider in the chain can
+     * satisfy every key.
+     *
+     * @return empty when {@code op} is usable, otherwise the reason it is not
+     */
+    public Optional<String> probe() {
+        try {
+            Process process = new ProcessBuilder(opBinary, "--version")
+                    .redirectErrorStream(true)
+                    .start();
+            if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
+                return Optional.of("'" + opBinary + " --version' timed out after " + timeout);
+            }
+            if (process.exitValue() != 0) {
+                return Optional.of("'" + opBinary + " --version' exited "
+                        + process.exitValue() + ": " + readStream(process.getInputStream()).strip());
+            }
+            return Optional.empty();
+        } catch (IOException e) {
+            return Optional.of("cannot execute '" + opBinary + "': " + e.getMessage()
+                    + ". Install the 1Password CLI, or set "
+                    + "jaiclaw.secrets.onepassword.op-binary to its full path. "
+                    + "Note no JaiClaw container image ships it.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Optional.of("interrupted while probing '" + opBinary + "'");
+        }
+    }
+
     /** Build the ProcessBuilder. Package-private for testing. */
     ProcessBuilder processBuilder(String reference) {
         ProcessBuilder pb = new ProcessBuilder(opBinary, "read", reference);

@@ -4,6 +4,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.AbstractChannelAdapter;
 import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.util.WebhookSignatureUtil;
 import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import org.slf4j.Logger;
@@ -140,7 +141,9 @@ public class LineAdapter extends AbstractChannelAdapter {
             mac.init(new SecretKeySpec(config.channelSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] hash = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
             String computed = Base64.getEncoder().encodeToString(hash);
-            return computed.equals(signature);
+            // Constant-time: String.equals short-circuits on the first differing
+            // character, which leaks how much of a guessed signature was correct.
+            return WebhookSignatureUtil.constantTimeEquals(computed, signature);
         } catch (Exception e) {
             log.warn("Signature verification error: {}", e.getMessage());
             return false;

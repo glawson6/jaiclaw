@@ -350,7 +350,15 @@ public class TelegramAdapter extends AbstractChannelAdapter {
         try {
             // Verify webhook secret token when verifyWebhook is enabled.
             // 0.8.0 P3.3: constant-time compare via the shared helper.
-            if (config.verifyWebhook() && !config.webhookSecretToken().isBlank()) {
+            // Verification is requested, so it must happen. A blank secret token
+            // previously skipped the check, leaving verify-webhook=true accepting
+            // every request while reading as protection.
+            if (config.verifyWebhook()) {
+                if (config.webhookSecretToken().isBlank()) {
+                    log.error("Telegram verify-webhook=true but webhook-secret-token is not set — "
+                            + "rejecting webhook. Set jaiclaw.channels.telegram.webhook-secret-token.");
+                    return ResponseEntity.status(401).body("secret token verification unavailable");
+                }
                 String provided = headers.get("x-telegram-bot-api-secret-token");
                 if (!WebhookSignatureUtil.constantTimeEquals(provided, config.webhookSecretToken())) {
                     log.warn("Telegram webhook secret token verification failed");

@@ -138,6 +138,21 @@
 `SPRING_PROFILES_ACTIVE=security-hardened` AND relying on default-off
 behavior of any of these flags.
 
+> **Correction (recorded in 1.3.0).** The table below describes an intent that
+> was only partially delivered. The flags were flipped in
+> `apps/jaiclaw-gateway-app/src/main/resources/application.yml`, **not** in the
+> library defaults — `ChannelsProperties.TelegramProperties.DEFAULT` and
+> `SlackProperties.DEFAULT` still construct with `false`. So any app built on
+> `jaiclaw-spring-boot-starter` (the documented consumption path), and the shell
+> app, inherit **off** unless they activate `security-hardened` or set the flags
+> themselves. Read the table as "changed for the gateway app", not "changed
+> framework-wide". `CLAUDE.md` and `docs/user/OPERATIONS.md` have always
+> described the real defaults.
+>
+> Note also that enabling `verify-signature` / `verify-webhook` without also
+> setting the corresponding secret used to skip verification silently; since
+> 1.3.0 that combination is rejected instead. See `SECURITY.md`.
+
 **What changes:**
 
 | Flag                                          | 0.9.1 default | 0.9.2 default |

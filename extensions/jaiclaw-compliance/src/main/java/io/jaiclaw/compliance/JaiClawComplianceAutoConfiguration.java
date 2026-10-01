@@ -58,6 +58,72 @@ public class JaiClawComplianceAutoConfiguration {
     }
 
     /**
+     * Schedules the audit-chain verification that nothing ran before 1.3.0.
+     *
+     * <p>Gated on the same flag as the chain decorator itself: a chain that is
+     * being maintained should also be checked, and one that is not has nothing
+     * to check. The bean starts its own virtual-thread loop — see
+     * {@link io.jaiclaw.compliance.audit.AuditChainVerifier} for why
+     * {@code @Scheduled} is not used.
+     *
+     * <p>{@code AuditLogger} is taken as an {@code ObjectProvider} stream
+     * because each bean gets its own decorator with independent chain state, so
+     * verifying only the primary would leave the others unchecked.
+     */
+    @Bean(destroyMethod = "close")
+    @ConditionalOnMissingBean(io.jaiclaw.compliance.audit.AuditChainVerifier.class)
+    @ConditionalOnProperty(name = "jaiclaw.compliance.effective.audit-hash-chain",
+            havingValue = "true")
+    public io.jaiclaw.compliance.audit.AuditChainVerifier auditChainVerifier(
+            ObjectProvider<io.jaiclaw.audit.AuditLogger> auditLoggers,
+            org.springframework.core.env.Environment environment) {
+        java.nio.file.Path storeDir = resolveAuditStoreDir(environment);
+        java.time.Duration interval = resolveDuration(
+                environment.getProperty("jaiclaw.compliance.audit.verify.interval"),
+                io.jaiclaw.compliance.audit.AuditChainVerifier.DEFAULT_INTERVAL);
+        io.jaiclaw.compliance.audit.AuditChainVerifier verifier =
+                new io.jaiclaw.compliance.audit.AuditChainVerifier(
+                        auditLoggers.stream().toList(), storeDir, interval, null);
+        verifier.start();
+        return verifier;
+    }
+
+    /**
+     * Where {@code FileAuditLogger} writes, used for tenant discovery. Null when
+     * audit is in-memory, which the verifier handles by checking the default
+     * tenant only.
+     */
+    private static java.nio.file.Path resolveAuditStoreDir(
+            org.springframework.core.env.Environment environment) {
+        String configured = environment.getProperty("jaiclaw.audit.file.directory");
+        if (configured == null || configured.isBlank()) {
+            configured = environment.getProperty("jaiclaw.audit.directory");
+        }
+        return (configured == null || configured.isBlank())
+                ? null
+                : java.nio.file.Path.of(configured);
+    }
+
+    /** Accepts Boot's suffixed duration forms; falls back rather than failing startup. */
+    private static java.time.Duration resolveDuration(String raw, java.time.Duration fallback) {
+        if (raw == null || raw.isBlank()) return fallback;
+        String v = raw.strip();
+        try {
+            if (v.matches("\\d+")) return java.time.Duration.ofSeconds(Long.parseLong(v));
+            long amount = Long.parseLong(v.substring(0, v.length() - 1).trim());
+            return switch (Character.toLowerCase(v.charAt(v.length() - 1))) {
+                case 's' -> java.time.Duration.ofSeconds(amount);
+                case 'm' -> java.time.Duration.ofMinutes(amount);
+                case 'h' -> java.time.Duration.ofHours(amount);
+                case 'd' -> java.time.Duration.ofDays(amount);
+                default -> fallback;
+            };
+        } catch (RuntimeException e) {
+            return fallback;
+        }
+    }
+
+    /**
      * RetentionEnforcementService — only exists when retention enforcement
      * is on. Uses the audit + transcript beans registered elsewhere.
      */

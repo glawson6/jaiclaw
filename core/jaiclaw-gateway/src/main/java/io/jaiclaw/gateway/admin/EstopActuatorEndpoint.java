@@ -43,17 +43,24 @@ public class EstopActuatorEndpoint {
     private static final Logger log = LoggerFactory.getLogger(EstopActuatorEndpoint.class);
 
     private final EmergencyStop emergencyStop;
+    private final EstopAuthzProperties authz;
 
     @Nullable
     private final AgentHookDispatcher hooks;
 
     public EstopActuatorEndpoint(EmergencyStop emergencyStop) {
-        this(emergencyStop, null);
+        this(emergencyStop, null, EstopAuthzProperties.defaults());
     }
 
     public EstopActuatorEndpoint(EmergencyStop emergencyStop, @Nullable AgentHookDispatcher hooks) {
+        this(emergencyStop, hooks, EstopAuthzProperties.defaults());
+    }
+
+    public EstopActuatorEndpoint(EmergencyStop emergencyStop, @Nullable AgentHookDispatcher hooks,
+                                 EstopAuthzProperties authz) {
         this.emergencyStop = emergencyStop;
         this.hooks = hooks;
+        this.authz = authz == null ? EstopAuthzProperties.defaults() : authz;
     }
 
     /** {@code GET /actuator/jaiclaw-estop} — current state. */
@@ -77,6 +84,15 @@ public class EstopActuatorEndpoint {
      */
     @WriteOperation
     public Map<String, Object> set(@Nullable Boolean engaged, @Nullable String reason) {
+        // Authorize before mutating. The endpoint is reachable without
+        // authentication in mode=none, and a bare POST engages the stop, so the
+        // check cannot be left to the filter chain.
+        if (!authorized()) {
+            throw new EstopAuthorizationException(authz.hasRole()
+                    ? "caller lacks the " + authz.role() + " authority"
+                    : "jaiclaw.gateway.admin.estop.role is not set, so the write "
+                            + "operation is denied; use bin/jaiclaw pause instead");
+        }
         boolean engage = engaged == null || engaged;
         try {
             if (engage) {
@@ -105,6 +121,36 @@ public class EstopActuatorEndpoint {
         } catch (RuntimeException e) {
             // A misbehaving hook must never prevent an operator from pausing.
             log.warn("EmergencyStopEvent hook failed", e);
+        }
+    }
+
+    /**
+     * True when the caller may mutate the stop.
+     *
+     * <p>Denies when no role is configured — unlike the admin endpoints, whose
+     * blank-is-allow-all default is a documented weak default this control
+     * deliberately does not copy. Also denies when Spring Security is absent and
+     * a role was asked for: a role that cannot be checked is not a role.
+     */
+    private boolean authorized() {
+        if (!authz.hasRole()) {
+            return false;
+        }
+        try {
+            return SecurityAuthorityCheck.hasAuthority(authz.role());
+        } catch (NoClassDefFoundError e) {
+            // Spring Security not on the classpath. The operator asked for a
+            // role check that cannot be performed; refuse rather than proceed.
+            log.error("jaiclaw.gateway.admin.estop.role is set but Spring Security is not "
+                    + "on the classpath — denying the estop write operation");
+            return false;
+        }
+    }
+
+    /** Signals a refused estop mutation; mapped to 403 by the actuator layer. */
+    public static class EstopAuthorizationException extends RuntimeException {
+        public EstopAuthorizationException(String message) {
+            super("Emergency stop change denied: " + message);
         }
     }
 }

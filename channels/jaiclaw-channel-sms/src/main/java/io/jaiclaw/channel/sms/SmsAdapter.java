@@ -70,7 +70,11 @@ public class SmsAdapter extends AbstractChannelAdapter {
 
     @Override
     protected void doStart() {
-        log.info("SMS adapter started: from={}, webhook={}", config.fromNumber(), config.webhookPath());
+        // Outbound only. Nothing is registered with the WebhookDispatcher, so
+        // config.webhookPath() describes a path this adapter does not serve —
+        // see the note on processWebhook.
+        log.info("SMS adapter started: from={} (outbound only; no inbound webhook is served)",
+                config.fromNumber());
     }
 
     @Override
@@ -101,7 +105,26 @@ public class SmsAdapter extends AbstractChannelAdapter {
     }
 
     /**
-     * Process an inbound Twilio webhook. Called by the gateway's webhook dispatcher.
+     * Process an inbound Twilio webhook.
+     *
+     * <p><strong>Not currently reachable.</strong> {@link #doStart()} registers
+     * no handler with the webhook dispatcher, so no HTTP path routes here and
+     * {@code config.webhookPath()} is inert. The method is retained for adopters
+     * who wire their own controller.
+     *
+     * <p><strong>If you do wire it, this signature cannot verify Twilio
+     * requests.</strong> Twilio's {@code X-Twilio-Signature} is an HMAC-SHA1
+     * over the full request URL plus the sorted POST parameters, so verification
+     * needs the headers and the request URL — neither of which is available
+     * here. The only protection is {@link SmsConfig#isSenderAllowed(String)},
+     * and a {@code From} number is trivially forged on an unauthenticated
+     * endpoint.
+     *
+     * <p>A working verifier exists at
+     * {@code io.jaiclaw.voicecall.telephony.twilio.TwilioWebhookVerifier}; it
+     * requires a {@code WebhookContext} carrying headers and URL. Closing this
+     * gap properly means giving the SMS channel that same context, which is a
+     * signature change rather than an internal fix.
      *
      * @param params the form parameters from Twilio's webhook POST
      */

@@ -89,10 +89,31 @@ pipelineTriggerController.setEmergencyStop(estop);  // pipeline
 
 `/actuator/jaiclaw-estop` **mutates global state** — anyone who can reach it can
 pause every agent in the deployment, or release a pause someone else engaged.
-The endpoint performs no authorization of its own, in keeping with the other
-actuator endpoints here. Front `/actuator/**` with the same authentication you
-use for the rest of your admin surface, and prefer restricting the write
-operation to an operator role.
+**As of 1.3.0 the endpoint is off by default and its write operation is
+role-guarded** — the "prefer restricting the write operation to an operator
+role" advice this section used to give is now a capability rather than a
+suggestion:
+
+```yaml
+jaiclaw:
+  gateway:
+    admin:
+      estop:
+        endpoint-enabled: true          # default false
+        role: JAICLAW_OPERATOR          # required; blank DENIES
+```
+
+A blank role denies rather than allowing any authenticated principal. That is
+deliberately unlike `jaiclaw.gateway.admin.roles.admin`, whose blank-is-allow-all
+default exists for backward compatibility and is listed in `SECURITY.md` as a
+known weak default; a newly added control should not inherit it.
+
+Enabling the endpoint with `jaiclaw.security.mode=none` and no role **refuses to
+start**, because that mode installs `anyRequest().permitAll()` and would publish
+an unauthenticated fleet-wide pause.
+
+Still front `/actuator/**` with your admin authentication — the read operation is
+unguarded, and the other actuator endpoints perform no authorization at all.
 
 ## Observability
 

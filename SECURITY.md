@@ -139,10 +139,18 @@ See [`docs/user/API-KEY-AUTHENTICATION.md`](docs/user/API-KEY-AUTHENTICATION.md)
 Stated plainly so operators can decide rather than discover:
 
 - **`default-tool-profile` is `FULL`** in 1.2.0 — see above.
-- **Actuator endpoints perform no authorization of their own.**
-  `/actuator/jaiclaw-estop` is state-mutating and can pause every agent in the
-  deployment. Front `/actuator/**` with the same auth as the rest of your
-  admin surface.
+- **Actuator endpoints perform no authorization of their own**, with one
+  exception. `/actuator/jaiclaw-estop` is state-mutating and can pause every
+  agent in the deployment, so as of 1.3.0 it is **off by default**
+  (`jaiclaw.gateway.admin.estop.endpoint-enabled`) and its write operation is
+  role-guarded (`jaiclaw.gateway.admin.estop.role`). A blank role **denies**
+  here — deliberately unlike the admin/GDPR controllers below — and enabling the
+  endpoint under `jaiclaw.security.mode=none` without a role refuses to start,
+  because that mode's filter chain is `permitAll`. `bin/jaiclaw pause` remains
+  the always-available path and needs no HTTP surface at all.
+  The other endpoints (`jaiclaw-api-keys`, `pipelines`, `kanban`,
+  `agentmind-tendencies`) are read-only but still disclose configuration; front
+  `/actuator/**` with the same auth as the rest of your admin surface.
 - **`/webhook/**` is `permitAll`** by design, since platforms cannot present a
   key. Sessions it creates are clamped to `WEBHOOK_SAFE`, and per-platform
   signature verification is **opt-in** via the `security-hardened` profile —
