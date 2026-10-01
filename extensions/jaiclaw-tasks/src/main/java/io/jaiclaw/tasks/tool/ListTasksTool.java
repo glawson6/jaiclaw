@@ -28,7 +28,7 @@ public class ListTasksTool extends AbstractBuiltinTool {
 
     public ListTasksTool(TaskService service) {
         super(new ToolDefinition("task_list", "List tasks, optionally filtered by status",
-                ToolCatalog.SECTION_TASKS, INPUT_SCHEMA, Set.of(ToolProfile.FULL)));
+                ToolCatalog.SECTION_TASKS, INPUT_SCHEMA, Set.of(ToolProfile.MINIMAL, ToolProfile.FULL)));
         this.service = service;
     }
 

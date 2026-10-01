@@ -59,8 +59,15 @@ WARN naming the fix.
 
 Fails open. Use `getOrDefault(ToolProfile)` and supply
 `jaiclaw.security.default-tool-profile`. **That property defaults to `FULL` in
-1.2.0** to preserve existing behaviour, and **becomes `MINIMAL` in 1.3.0** —
+1.2.0** to preserve existing behaviour, and **becomes `MINIMAL` in 1.4.0** —
 set it explicitly now.
+
+> **Correction (1.3.0).** This originally said 1.3.0. The flip moved to 1.4.0
+> because making it in 1.3.0 would have removed 7 of the 8 default built-in
+> tools: `ToolDefinition`'s convenience constructors default the profile tag set
+> to `Set.of(FULL)`, so most tools were FULL-only without anyone deciding that.
+> 1.3.0 retags the read-only tools so `MINIMAL` grants a working set first. The
+> advice is unchanged and now easier to follow — set the property explicitly.
 
 ### `RoleToolProfileResolver` ranking corrected
 

@@ -13,8 +13,15 @@ import java.util.Collection;
 /**
  * T1-6: enforce data-retention policies across {@link TranscriptStore} and
  * {@link AuditLogger}. Deployers wire this as a bean (or via the auto-config)
- * and either call {@link #enforceForTenant} on their own schedule or rely on
- * the auto-config to fire a daily {@code @Scheduled} tick.
+ * and call {@link #enforceForTenant} on their own schedule.
+ *
+ * <p><strong>Nothing in the framework calls this.</strong> Earlier wording here
+ * — and in {@code docs/user/OPERATIONS.md} — said the auto-config fired a daily
+ * {@code @Scheduled} tick. It never did: this method has zero call sites. The
+ * bean is created when retention enforcement is enabled, but something has to
+ * ask it to run. {@code AuditChainVerifier} in {@code jaiclaw-compliance} shows
+ * the shape — a fixed-delay loop on a virtual thread, with tenants discovered
+ * from the audit store layout rather than a registry (there is no registry).
  *
  * <p>Policy resolution is deliberately explicit — the enforcement service
  * takes a {@link TenantContext} + {@link RetentionPolicy} pair from the

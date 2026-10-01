@@ -56,7 +56,8 @@ public class WebSearchTool extends AbstractBuiltinTool {
                 "Search the web for information. Returns search results with titles and URLs.",
                 ToolCatalog.SECTION_WEB,
                 INPUT_SCHEMA,
-                Set.of(ToolProfile.CODING, ToolProfile.FULL)
+                Set.of(ToolProfile.MINIMAL, ToolProfile.WEBHOOK_SAFE,
+                        ToolProfile.CODING, ToolProfile.FULL)
         ));
         this.httpClient = httpClient;
     }

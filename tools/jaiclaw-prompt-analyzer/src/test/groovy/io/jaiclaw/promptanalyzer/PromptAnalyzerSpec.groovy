@@ -257,7 +257,7 @@ jaiclaw:
         report.toolProfile() == "none"
     }
 
-    def "profile minimal includes only FileReadTool"() {
+    def "profile minimal includes the read-only working set"() {
         given:
         Path project = createProject("""
 jaiclaw:
@@ -274,8 +274,9 @@ jaiclaw:
         when:
         AnalysisReport report = scanner.analyze(project)
 
-        then:
-        report.builtinToolCount() == 1
+        then: "1.3.0 retagged the read-only built-ins so MINIMAL is usable —"
+        and: "this asserted 1 (file_read only) when MINIMAL was a near-total lockout"
+        report.builtinToolCount() == 5
         report.builtinToolsTokens() > 0
         report.toolProfile() == "minimal"
     }

@@ -1087,7 +1087,7 @@ Some behavior is per-tenant, driven by `TenantContext.getMetadata()`:
 
 ### Retention enforcement runbook
 
-When `retention-enforcement=true`, `RetentionEnforcementService` runs on a scheduled tick and purges every registered `TranscriptStore` + `AuditLogger` whose events are past their per-tenant TTL. Each pass emits a `data.retention_purge` audit event with counts.
+When `retention-enforcement=true`, `RetentionEnforcementService` is **not** scheduled by the framework — despite earlier wording here, `enforceForTenant` has no call sites. Call it on your own schedule; `AuditChainVerifier` shows the pattern and purges every registered `TranscriptStore` + `AuditLogger` whose events are past their per-tenant TTL. Each pass emits a `data.retention_purge` audit event with counts.
 
 - The default TranscriptStore / AuditLogger implementations do a **linear-scan purge** — fine for modest volumes, but store impls with a real index (Lucene, SQLite FTS5, Postgres partition drop) should override `purgeOlderThan` for O(1) purges.
 - Budget the background task CPU accordingly. Purges are tenant-scoped — a purge for tenant `acme` never touches tenant `beta`.

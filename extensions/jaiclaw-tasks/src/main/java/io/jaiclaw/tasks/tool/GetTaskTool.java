@@ -26,7 +26,7 @@ public class GetTaskTool extends AbstractBuiltinTool {
 
     public GetTaskTool(TaskService service) {
         super(new ToolDefinition("task_get", "Get task details by ID",
-                ToolCatalog.SECTION_TASKS, INPUT_SCHEMA, Set.of(ToolProfile.FULL)));
+                ToolCatalog.SECTION_TASKS, INPUT_SCHEMA, Set.of(ToolProfile.MINIMAL, ToolProfile.FULL)));
         this.service = service;
     }
 

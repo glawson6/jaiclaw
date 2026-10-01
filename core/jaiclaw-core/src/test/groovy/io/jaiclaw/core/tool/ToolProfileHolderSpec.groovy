@@ -8,9 +8,9 @@ class ToolProfileHolderSpec extends Specification {
         ToolProfileHolder.clear()
     }
 
-    def "getOrDefault returns FULL when not set"() {
+    def "getOrDefault returns the supplied fallback when not set"() {
         expect:
-        ToolProfileHolder.getOrDefault() == ToolProfile.FULL
+        ToolProfileHolder.getOrDefault(ToolProfile.MINIMAL) == ToolProfile.MINIMAL
     }
 
     def "get returns null when not set"() {
@@ -24,7 +24,7 @@ class ToolProfileHolderSpec extends Specification {
 
         then:
         ToolProfileHolder.get() == ToolProfile.CODING
-        ToolProfileHolder.getOrDefault() == ToolProfile.CODING
+        ToolProfileHolder.getOrDefault(ToolProfile.MINIMAL) == ToolProfile.CODING
     }
 
     def "clear removes profile"() {
@@ -36,7 +36,7 @@ class ToolProfileHolderSpec extends Specification {
 
         then:
         ToolProfileHolder.get() == null
-        ToolProfileHolder.getOrDefault() == ToolProfile.FULL
+        ToolProfileHolder.getOrDefault(ToolProfile.MINIMAL) == ToolProfile.MINIMAL
     }
 
     def "each profile value can be stored and retrieved"() {

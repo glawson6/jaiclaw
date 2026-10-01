@@ -69,7 +69,8 @@ public class WebFetchTool extends AbstractBuiltinTool {
                 "Fetch content from a URL. Returns the HTTP status code and response body.",
                 ToolCatalog.SECTION_WEB,
                 INPUT_SCHEMA,
-                Set.of(ToolProfile.CODING, ToolProfile.FULL)
+                Set.of(ToolProfile.MINIMAL, ToolProfile.WEBHOOK_SAFE,
+                        ToolProfile.CODING, ToolProfile.FULL)
         ));
         this.httpClient = httpClient;
         this.ssrfProtection = ssrfProtection;

@@ -26,7 +26,7 @@ public class WikiSearchTool extends AbstractBuiltinTool {
 
     public WikiSearchTool(WikiService service) {
         super(new ToolDefinition("wiki_search", "Search wiki pages by tag or keyword",
-                ToolCatalog.SECTION_MEMORY, INPUT_SCHEMA, Set.of(ToolProfile.FULL)));
+                ToolCatalog.SECTION_MEMORY, INPUT_SCHEMA, Set.of(ToolProfile.MINIMAL, ToolProfile.FULL)));
         this.service = service;
     }
 

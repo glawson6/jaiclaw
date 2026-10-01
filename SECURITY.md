@@ -138,7 +138,17 @@ See [`docs/user/API-KEY-AUTHENTICATION.md`](docs/user/API-KEY-AUTHENTICATION.md)
 
 Stated plainly so operators can decide rather than discover:
 
-- **`default-tool-profile` is `FULL`** in 1.2.0 — see above.
+- **`default-tool-profile` is `FULL`** — still, in 1.3.0. The 1.2.0 release
+  notes said this would flip to `MINIMAL` in 1.3.0; **it now flips in 1.4.0**,
+  and the reason is worth stating rather than burying. Flipping it in 1.3.0
+  would have removed **7 of the 8 default built-in tools**, because
+  `ToolDefinition`'s convenience constructors default the tag set to
+  `Set.of(FULL)` — so most tools were FULL-only by accident, not by decision.
+  1.3.0 retags the read-only tools so `MINIMAL` grants a usable working set
+  (`file_read`, `web_search`, `web_fetch`, ASCII rendering, read-only task and
+  wiki tools) and `WEBHOOK_SAFE` grants what its documentation always claimed.
+  **Set it explicitly now** — `MINIMAL` is viable today, and the startup warning
+  now fires only when the value is unset, so setting it deliberately silences it.
 - **Actuator endpoints perform no authorization of their own**, with one
   exception. `/actuator/jaiclaw-estop` is state-mutating and can pause every
   agent in the deployment, so as of 1.3.0 it is **off by default**

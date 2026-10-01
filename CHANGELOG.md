@@ -13,10 +13,12 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 In progress on the `1.3.0-SNAPSHOT` line.
 
-> **Owed for 1.3.0:** `jaiclaw.security.default-tool-profile` must flip from
-> `FULL` to `MINIMAL`. The 1.2.0 default fails *open* and was kept for exactly
-> one minor so the security fix did not silently strip tool access from
-> existing deployments. See `releases/release-1.2.0.md`.
+> **Deferred to 1.4.0:** `jaiclaw.security.default-tool-profile` flips from
+> `FULL` to `MINIMAL`. 1.2.0's notes promised 1.3.0; the flip moved because
+> doing it then would have removed 7 of the 8 default built-ins — most tools
+> were FULL-only by accident, since `ToolDefinition`'s convenience constructors
+> default the tag set to `Set.of(FULL)`. 1.3.0 retags the read-only tools so
+> `MINIMAL` is a usable profile first. Set the property explicitly now.
 
 ### Fixed (critical)
 

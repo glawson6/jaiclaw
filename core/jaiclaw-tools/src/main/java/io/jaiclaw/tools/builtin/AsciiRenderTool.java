@@ -93,7 +93,8 @@ public class AsciiRenderTool extends AbstractBuiltinTool {
                         + "{\"type\":\"glyph\",\"params\":{\"x\":..,\"y\":..,\"name\":\"ok\"}}.",
                 ToolCatalog.SECTION_RENDERING,
                 INPUT_SCHEMA,
-                Set.of(ToolProfile.FULL, ToolProfile.CODING, ToolProfile.MESSAGING)
+                Set.of(ToolProfile.MINIMAL, ToolProfile.WEBHOOK_SAFE,
+                        ToolProfile.FULL, ToolProfile.CODING, ToolProfile.MESSAGING)
         ));
     }
 

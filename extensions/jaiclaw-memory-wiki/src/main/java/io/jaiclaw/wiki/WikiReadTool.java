@@ -25,7 +25,7 @@ public class WikiReadTool extends AbstractBuiltinTool {
 
     public WikiReadTool(WikiService service) {
         super(new ToolDefinition("wiki_read", "Read a wiki page by ID or title",
-                ToolCatalog.SECTION_MEMORY, INPUT_SCHEMA, Set.of(ToolProfile.FULL)));
+                ToolCatalog.SECTION_MEMORY, INPUT_SCHEMA, Set.of(ToolProfile.MINIMAL, ToolProfile.FULL)));
         this.service = service;
     }
 

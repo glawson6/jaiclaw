@@ -136,13 +136,19 @@ public class JaiClawGatewayAutoConfiguration {
         try {
             svc.setDefaultToolProfile(
                     io.jaiclaw.core.tool.ToolProfile.valueOf(configuredProfile.toUpperCase()));
-            if ("FULL".equalsIgnoreCase(configuredProfile)
-                    && !"none".equalsIgnoreCase(
-                            environment.getProperty("jaiclaw.security.mode", "api-key"))) {
-                log.warn("jaiclaw.security.default-tool-profile=FULL — requests that carry no "
-                        + "authenticated tool profile (api-key mode, and every channel-originated "
-                        + "message) receive unrestricted tool access. This default becomes "
-                        + "MINIMAL in 1.3.0; set it explicitly to silence this warning.");
+            // Warn on the *implicit* FULL only. The old check tested the value,
+            // so an operator who set FULL deliberately could not silence it
+            // despite the message saying they could. It also suppressed the warning
+            // in mode=none, which is the most permissive mode of all and where it
+            // matters most — both inverted here.
+            boolean explicitlySet =
+                    environment.getProperty("jaiclaw.security.default-tool-profile") != null;
+            if ("FULL".equalsIgnoreCase(configuredProfile) && !explicitlySet) {
+                log.warn("jaiclaw.security.default-tool-profile is unset and defaults to FULL — "
+                        + "requests that carry no authenticated tool profile (api-key mode, "
+                        + "mode=none, and every channel-originated message) receive unrestricted "
+                        + "tool access. Set it explicitly to silence this warning; MINIMAL is "
+                        + "now a usable profile. The default flips to MINIMAL in 1.4.0.");
             }
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException(
