@@ -968,6 +968,43 @@
                             -Dnvd.api.key="${NVD_API_KEY}".
                         -->
                         <nvdApiKey>${nvd.api.key}</nvdApiKey>
+                        <!--
+                            Gate and suppressions live HERE, not only in CI.
+                            Before 2026-10-01 both were passed solely as
+                            command-line flags in
+                            .github/workflows/security-deps.yml, which meant:
+
+                              - the plugin's own default for failBuildOnCVSS is
+                                11, i.e. fail on NOTHING, so any invocation
+                                outside that one workflow reported findings and
+                                exited 0 on a CRITICAL; and
+                              - a local run loaded no suppressions at all and
+                                drowned in the 119 CPE collisions that the
+                                2026-09-08 report identified as the reason CVE
+                                triage had never been completed here.
+
+                            CI still passes both explicitly, which is harmless
+                            belt-and-braces and lets a pipeline tighten the
+                            threshold without editing the POM.
+                        -->
+                        <failBuildOnCVSS>7.0</failBuildOnCVSS>
+                        <suppressionFiles>
+                            <suppressionFile>${maven.multiModuleProjectDirectory}/.security/dependency-check-suppressions.xml</suppressionFile>
+                        </suppressionFiles>
+                        <!--
+                            The cached NVD database makes an offline scan
+                            possible with no API key:
+
+                                ./mvnw org.owasp:dependency-check-maven:check \
+                                    -DautoUpdate=false
+
+                            This is how the 2026-09-08 and 2026-10-01 scans
+                            were actually run. It was recorded only in those
+                            reports' prose, so the next person hitting
+                            "Invalid API Key" had to rediscover it. autoUpdate
+                            stays true by default — an offline scan is a floor,
+                            bounded by the cache's horizon, not a clean bill.
+                        -->
                     </configuration>
                 </plugin>
                 <!--
@@ -1032,6 +1069,47 @@
     </build>
 
     <profiles>
+        <!--
+            Binds the CVE scan to `verify` so it can run as part of a build
+            rather than only as an explicitly-typed goal.
+
+            The plugin is declared in <pluginManagement> and, before
+            2026-10-01, was never bound to any phase in any profile or module —
+            so `mvn verify`, `install` and `package` ran NO CVE scan, silently.
+            The only thing that ever invoked it was one CI workflow, whose PR
+            trigger is filtered to `paths: ['**/pom.xml']`; a vulnerable
+            dependency introduced via a Dockerfile, JBang catalog or vendored
+            jar was never scanned, and a release could publish to Maven Central
+            with no gate at all.
+
+            Opt-in rather than default-on because a full-reactor scan is slow
+            and needs either an NVD API key or a warm cache — making it
+            unconditional would punish every ordinary build. Wire this profile
+            into the release path and into CI:
+
+                ./mvnw verify -Psecurity -DautoUpdate=false
+        -->
+        <profile>
+            <id>security</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cve-scan</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>release</id>
             <properties>

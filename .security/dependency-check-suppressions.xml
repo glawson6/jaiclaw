@@ -632,4 +632,47 @@
         <vulnerabilityName regex="true">^(CVE-2022-41904|CVE-2025-27606|CVE-2024-26132)$</vulnerabilityName>
     </suppress>
 
+    <suppress until="2026-12-31">
+        <notes><![CDATA[
+        NOT REACHABLE (client-only usage): CVE-2026-6860 (CVSSv4 MEDIUM 6.9,
+        CVSSv3 5.3) is a Vert.x *server*-side weakness — a TCP client can
+        complete a TLS handshake presenting an SNI server name that matches a
+        wildcard certificate the server was configured with, giving
+        CWE-295/CWE-770 resource allocation against the TLS *server*.
+
+        JaiClaw never runs a Vert.x server. vertx-core arrives only as the HTTP
+        transport of the fabric8 Kubernetes client:
+
+            jaiclaw-tools-k8s -> io.fabric8:kubernetes-httpclient-vertx:7.4.1
+                              -> io.vertx:vertx-core:4.5.25   (runtime scope)
+
+        Verified 2026-10-01: no source file under
+        extensions/jaiclaw-tools-k8s/src/main/java references Vertx at all, so
+        there is no server socket, no SNI configuration and no wildcard
+        certificate under our control. The client side of the handshake is not
+        the vulnerable party.
+
+        Cannot be fixed by upgrading today: 4.5.25 is the newest vertx-core
+        available, and fabric8 7.4.1 is current, so the managing BOM has not
+        yet shipped a patched transitive. This suppression therefore has an
+        EXPIRY rather than being permanent — re-check when fabric8 releases a
+        version pulling a fixed vertx, and delete this entry rather than
+        extending it.
+
+        Re-evaluate immediately if JaiClaw ever exposes a Vert.x server (e.g. a
+        reactive transport that is not Spring WebFlux/Netty), at which point
+        this becomes a real finding.
+        See security-report-2026-10-01.md.
+
+        Scoped to the io.vertx group at the 4.5.x line rather than to
+        vertx-core alone: the assigned CPE is cpe:2.3:a:eclipse:vert.x, which
+        matches the Vert.x *product* at 4.5.25, so every io.vertx artifact on
+        the classpath inherits the record. The first pass of this suppression
+        named only vertx-core and left vertx-auth-common reported — same
+        product, same non-reachability, same fix.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.vertx/vertx-.*@4\.5\..*$</packageUrl>
+        <cve>CVE-2026-6860</cve>
+    </suppress>
+
 </suppressions>
