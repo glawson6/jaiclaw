@@ -7,6 +7,10 @@ jaiclaw:
     telegram:
       verify-webhook: true
       mask-bot-token: true
+    discord:
+      # Requires jaiclaw.channels.discord.public-key to be set; the adapter
+      # refuses to start in webhook mode if verification is on without a key.
+      verify-signature: true
   tools:
     web:
       ssrf-protection: true

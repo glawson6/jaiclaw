@@ -322,7 +322,9 @@ public class JaiClawChannelAutoConfiguration {
                     discord.applicationId(),
                     discord.enabled(),
                     discord.useGateway(),
-                    discord.allowedSenderIds());
+                    discord.allowedSenderIds(),
+                    discord.publicKey(),
+                    discord.verifySignature());
             return new io.jaiclaw.channel.discord.DiscordAdapter(config, webhookDispatcher);
         }
     }

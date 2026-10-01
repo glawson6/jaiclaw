@@ -4,6 +4,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import io.jaiclaw.channel.AbstractChannelAdapter;
 import io.jaiclaw.channel.ChannelMessage;
+import io.jaiclaw.channel.util.Ed25519SignatureVerifier;
 import io.jaiclaw.channel.DeliveryResult;
 import io.jaiclaw.channel.chunking.PlatformLimits;
 import io.jaiclaw.gateway.WebhookDispatcher;
@@ -94,8 +95,26 @@ public class DiscordAdapter extends AbstractChannelAdapter {
             startGateway();
             log.info("Discord adapter started in GATEWAY mode (no public endpoint needed)");
         } else {
+            // Refuse to expose an unverified interactions endpoint when
+            // verification was asked for but cannot be performed. Slack and
+            // Telegram silently skip verification on a blank secret; that is the
+            // failure mode this check exists to avoid repeating.
+            if (config.verifySignature() && !config.signatureVerifiable()) {
+                throw new IllegalStateException(
+                        "jaiclaw.channels.discord.verify-signature=true but no public-key is set. "
+                                + "Set jaiclaw.channels.discord.public-key to the application "
+                                + "public key from the Discord developer portal, or disable "
+                                + "verification explicitly.");
+            }
+            if (!config.verifySignature()) {
+                log.warn("Discord adapter started in WEBHOOK mode WITHOUT signature "
+                        + "verification — the interactions endpoint accepts unsigned requests "
+                        + "from any caller. Set jaiclaw.channels.discord.verify-signature=true "
+                        + "and public-key to verify.");
+            }
             webhookDispatcher.register("discord", this::handleWebhook);
-            log.info("Discord adapter started in WEBHOOK mode (Interactions)");
+            log.info("Discord adapter started in WEBHOOK mode (Interactions, signature "
+                    + "verification {})", config.signatureVerifiable() ? "ON" : "OFF");
         }
     }
 
@@ -370,6 +389,20 @@ public class DiscordAdapter extends AbstractChannelAdapter {
 
     private ResponseEntity<String> handleWebhook(String body, Map<String, String> headers) {
         try {
+            // Verify BEFORE parsing, and before answering the PING. Discord signs
+            // every interaction including the setup PING, so an endpoint that
+            // answers PING without verifying looks healthy in the developer
+            // portal while accepting forged interactions from anyone who knows
+            // the URL.
+            if (config.verifySignature()) {
+                if (!verifyInteractionSignature(body, headers)) {
+                    log.warn("Discord interaction signature verification failed");
+                    // 401 is what Discord expects for a bad signature; it is also
+                    // what its setup check requires the endpoint to return.
+                    return ResponseEntity.status(401).body("invalid request signature");
+                }
+            }
+
             JsonNode payload = MAPPER.readTree(body);
             int type = payload.path("type").asInt();
 
@@ -406,5 +439,35 @@ public class DiscordAdapter extends AbstractChannelAdapter {
             log.error("Failed to process Discord webhook", e);
             return ResponseEntity.ok("");
         }
+    }
+
+    /**
+     * Verifies {@code X-Signature-Ed25519} over {@code timestamp + rawBody}.
+     *
+     * <p>Uses the raw body string as received. Re-serialising the parsed JSON
+     * would reorder keys or change whitespace and invalidate every signature,
+     * which is why verification happens before {@code readTree}.
+     */
+    private boolean verifyInteractionSignature(String body, Map<String, String> headers) {
+        String signature = header(headers, "x-signature-ed25519");
+        String timestamp = header(headers, "x-signature-timestamp");
+        if (signature == null || timestamp == null) {
+            log.warn("Discord interaction missing signature headers");
+            return false;
+        }
+        return Ed25519SignatureVerifier.verify(config.publicKey(), signature, timestamp, body);
+    }
+
+    /** Case-insensitive header lookup — HTTP header casing is not guaranteed. */
+    private static String header(Map<String, String> headers, String name) {
+        if (headers == null) return null;
+        String direct = headers.get(name);
+        if (direct != null) return direct;
+        for (Map.Entry<String, String> e : headers.entrySet()) {
+            if (e.getKey() != null && e.getKey().equalsIgnoreCase(name)) {
+                return e.getValue();
+            }
+        }
+        return null;
     }
 }

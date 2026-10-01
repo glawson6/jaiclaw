@@ -147,6 +147,19 @@ Stated plainly so operators can decide rather than discover:
   key. Sessions it creates are clamped to `WEBHOOK_SAFE`, and per-platform
   signature verification is **opt-in** via the `security-hardened` profile —
   enable it.
+  - **Discord gained Ed25519 interaction verification in 1.3.0**
+    (`jaiclaw.channels.discord.verify-signature` + `public-key`). Before that it
+    verified *nothing* while still answering Discord's PING challenge, so the
+    endpoint passed setup checks while accepting forged interactions. Webhook-mode
+    deployments should set both; the adapter refuses to start if verification is
+    on without a key, and warns loudly when it is off.
+  - **Slack and Telegram still fail *open* on a blank secret** — the verify flag
+    alone is not enough, the secret must also be set. Fixing that is tracked for
+    1.3.0.
+  - **SMS (Twilio) cannot verify signatures at all**: `processWebhook` takes no
+    headers, so `X-Twilio-Signature` is unreachable. A working verifier exists in
+    `jaiclaw-voice-call` but is not shared. Do not expose the SMS webhook to the
+    internet without a proxy that verifies for you.
 - **`AdminController` and `GdprController` default their role to `""`**, which
   the authorization helper treats as "any authenticated principal". Set
   `jaiclaw.gateway.admin.roles.admin` and

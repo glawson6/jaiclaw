@@ -19,12 +19,40 @@ public record DiscordConfig(
         String applicationId,
         boolean enabled,
         boolean useGateway,
-        Set<String> allowedSenderIds
+        Set<String> allowedSenderIds,
+        String publicKey,
+        boolean verifySignature
 ) {
     public DiscordConfig {
         if (botToken == null) botToken = "";
         if (applicationId == null) applicationId = "";
         if (allowedSenderIds == null) allowedSenderIds = Set.of();
+        if (publicKey == null) publicKey = "";
+    }
+
+    /**
+     * Backwards-compatible 5-arg constructor; signature verification off.
+     *
+     * <p>Hand-constructed record, not {@code @ConfigurationProperties}-bound, so
+     * overloads are safe here — the Boot 4 one-constructor rule applies to the
+     * binder-facing {@code ChannelsProperties.DiscordProperties} instead.
+     */
+    public DiscordConfig(String botToken, String applicationId, boolean enabled,
+                         boolean useGateway, Set<String> allowedSenderIds) {
+        this(botToken, applicationId, enabled, useGateway, allowedSenderIds, "", false);
+    }
+
+    /**
+     * True when inbound interaction signatures should be verified <em>and</em>
+     * a key is available to verify them with.
+     *
+     * <p>Deliberately separate from {@link #verifySignature()} so the adapter can
+     * tell "not asked for" apart from "asked for but unusable" and refuse to
+     * start in the latter case, rather than silently accepting unsigned traffic
+     * the way Slack and Telegram do on a blank secret.
+     */
+    public boolean signatureVerifiable() {
+        return verifySignature && !publicKey.isBlank();
     }
 
     /** Backwards-compatible 3-arg constructor (webhook mode). */
@@ -45,7 +73,8 @@ public record DiscordConfig(
         return allowedSenderIds.isEmpty() || allowedSenderIds.contains(userId);
     }
 
-    public static final DiscordConfig DISABLED = new DiscordConfig("", "", false, false, Set.of());
+    public static final DiscordConfig DISABLED =
+            new DiscordConfig("", "", false, false, Set.of(), "", false);
 
     public static Builder builder() { return new Builder(); }
 

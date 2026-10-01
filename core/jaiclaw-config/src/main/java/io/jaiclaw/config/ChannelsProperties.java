@@ -275,15 +275,26 @@ public record ChannelsProperties(
         }
     }
 
+    /**
+     * @param publicKey      Discord application public key (64 hex chars, from the
+     *                       developer portal) used to verify Ed25519 interaction
+     *                       signatures. Not a secret — it is a public key.
+     * @param verifySignature verify {@code X-Signature-Ed25519} on inbound webhooks.
+     *                       Default false to match the other channels' opt-in shape;
+     *                       turn it on via the {@code security-hardened} profile or
+     *                       explicitly. Webhook-mode deployments should always set it.
+     */
     public record DiscordProperties(
             boolean enabled,
             String botToken,
             String applicationId,
             boolean useGateway,
-            String allowedSenders
+            String allowedSenders,
+            String publicKey,
+            boolean verifySignature
     ) {
         public static final DiscordProperties DEFAULT = new DiscordProperties(
-                false, null, null, false, null
+                false, null, null, false, null, null, false
         );
 
         public Set<String> allowedSenderIds() {
@@ -302,15 +313,20 @@ public record ChannelsProperties(
             private String applicationId;
             private boolean useGateway;
             private String allowedSenders;
+            private String publicKey;
+            private boolean verifySignature;
 
             public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
             public Builder botToken(String botToken) { this.botToken = botToken; return this; }
             public Builder applicationId(String applicationId) { this.applicationId = applicationId; return this; }
             public Builder useGateway(boolean useGateway) { this.useGateway = useGateway; return this; }
             public Builder allowedSenders(String allowedSenders) { this.allowedSenders = allowedSenders; return this; }
+            public Builder publicKey(String publicKey) { this.publicKey = publicKey; return this; }
+            public Builder verifySignature(boolean verifySignature) { this.verifySignature = verifySignature; return this; }
 
             public DiscordProperties build() {
-                return new DiscordProperties(enabled, botToken, applicationId, useGateway, allowedSenders);
+                return new DiscordProperties(enabled, botToken, applicationId, useGateway,
+                        allowedSenders, publicKey, verifySignature);
             }
         }
     }
