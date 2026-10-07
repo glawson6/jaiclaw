@@ -2,7 +2,7 @@
 
 This document tracks notable changes between JaiClaw releases.
 
-## 1.3.0-SNAPSHOT (in progress)
+## 1.3.0 (2026-10-07)
 
 ### SOC 2 readiness
 
@@ -63,7 +63,9 @@ Headless deployments register no handler by default, which made `PROMPT_ALWAYS`
 **Approval over chat** — the first handler that uses the SPI's async contract;
 both shipped console handlers block on `readLine()` and are inert without a TTY.
 Text replies, not buttons, because the Telegram adapter has no `reply_markup`
-support and drops `callback_query` updates.
+support and drops `callback_query` updates. Every request carries a short code
+the approver must quote back (`yes K7Q4`), so an answer is bound to the question
+it was read against; `user-id` restricts who in the conversation may answer.
 
 ```yaml
 jaiclaw:
@@ -74,6 +76,7 @@ jaiclaw:
         - channel-id: telegram
           account-id: ${TELEGRAM_ACCOUNT_ID}
           peer-id: "9001"
+          user-id: "9001"           # recommended; required for group chats
   agent:
     agents:
       default:

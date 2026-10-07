@@ -6,7 +6,15 @@ particular `IterationBudget`, `SubAgentLauncher`, `ToolSearch`, ESTOP and
 `jaiclaw-learning`. Scope source:
 [`feature-gap-analysis-2026-09-09.md`](../../feature-gap-analysis-2026-09-09.md) Part 6.*
 
-**Status:** not started — blocked on 1.2.0 release. Current phase: **Phase 1 (§6)** once unblocked.
+**Status (2026-10-07): superseded for the 1.3.0 label.** 1.3.0 shipped as the
+*fail-closed* release — SOC 2 profile, human-in-the-loop approval, webhook
+verification, actuator/tool-profile hardening — none of which is this plan. The
+scope below (A2A, checkpoints + rollback, prompt-cache discipline, code-execution
+sandbox, `/goal` `/loop` `/heartbeat`, session search, credential pools,
+`clarify`, context-file injection) is intact and **unstarted**, and is the
+candidate scope for **1.4.0** alongside the `default-tool-profile` flip to
+`MINIMAL` and the Part E Logto adapter. Read every "1.3.0" below as "the next
+feature release".
 
 ---
 

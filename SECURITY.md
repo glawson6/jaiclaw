@@ -171,9 +171,15 @@ Stated plainly so operators can decide rather than discover:
     endpoint passed setup checks while accepting forged interactions. Webhook-mode
     deployments should set both; the adapter refuses to start if verification is
     on without a key, and warns loudly when it is off.
-  - **Slack and Telegram still fail *open* on a blank secret** — the verify flag
-    alone is not enough, the secret must also be set. Fixing that is tracked for
-    1.3.0.
+  - **Slack and Telegram reject on a blank secret as of 1.3.0.** Before that,
+    verification was skipped entirely when the secret was unset *even with the
+    verify flag on* — the likely state for anyone who activated
+    `security-hardened` and stopped there. Now the verify flag without its secret
+    returns 401 on every webhook, which is the point: they were never verified.
+  - **Discord signatures carry a five-minute replay window (1.3.0).** The
+    signed timestamp is checked against the adapter clock, matching the Slack
+    verifier; a captured, correctly signed interaction can no longer be
+    replayed indefinitely.
   - **SMS (Twilio) cannot verify signatures at all**: `processWebhook` takes no
     headers, so `X-Twilio-Signature` is unreachable. A working verifier exists in
     `jaiclaw-voice-call` but is not shared. Do not expose the SMS webhook to the
@@ -182,6 +188,13 @@ Stated plainly so operators can decide rather than discover:
   the authorization helper treats as "any authenticated principal". Set
   `jaiclaw.gateway.admin.roles.admin` and
   `jaiclaw.compliance.gdpr.roles.operator` explicitly in production.
+- **Chat approval accepts replies from any participant of the approver
+  conversation unless `user-id` is set.** On Telegram and Discord the configured
+  `peer-id` is the *chat*, which may be a group; without
+  `jaiclaw.approval.chat.approvers[].user-id` any member can approve. Startup
+  warns when it is unset. Ask in a direct message, or set it. Every approval
+  reply must also quote the request's code (`yes K7Q4`), so a reply can never
+  be applied to a different request than the one the approver read.
 
 If you find a default-on configuration that should be hardened, please
 report it via the email above.

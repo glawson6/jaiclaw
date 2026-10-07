@@ -1,6 +1,6 @@
 # Verified Channel Identity
 
-*Applies to 1.4.0 and later. Module: `jaiclaw-identity`.*
+*Applies to 1.2.0 and later. Module: `jaiclaw-identity`.*
 
 Prove that the person on a messaging channel controls a real external identity,
 and use that proof for tenancy, authorization, per-user memory, and GDPR.

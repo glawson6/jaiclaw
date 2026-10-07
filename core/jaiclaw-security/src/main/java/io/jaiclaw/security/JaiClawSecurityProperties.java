@@ -115,17 +115,22 @@ public record JaiClawSecurityProperties(
         if (apiKeyFilter == null) apiKeyFilter = ApiKeyFilterProperties.defaults();
         apiKeys = apiKeys == null ? List.of() : List.copyOf(apiKeys);
         if (defaultToolProfile == null || defaultToolProfile.isBlank()) {
-            // 1.2.0 preserves the historical fail-open behaviour so existing
-            // deployments are unaffected. This becomes MINIMAL in 1.3.0 — see
+            // 1.2.0 preserved the historical fail-open behaviour so existing
+            // deployments were unaffected. 1.3.0 retagged the read-only tools so
+            // MINIMAL is a usable working set; the default flips to MINIMAL in
+            // 1.4.0 — see SECURITY.md "Known weak defaults" and
             // docs/dev/TENANT-RESOLUTION-REMEDIATION.md.
             defaultToolProfile = DEFAULT_TOOL_PROFILE_1_2;
         }
     }
 
     /**
-     * The 1.2.0 default tool profile. Fails <em>open</em>; retained for one
-     * minor so the security fix does not silently strip tool access from
-     * existing api-key deployments. 1.3.0 flips this to {@code MINIMAL}.
+     * The 1.2.0 default tool profile. Fails <em>open</em>; retained so the
+     * security fix does not silently strip tool access from existing api-key
+     * deployments. Flipping it in 1.3.0 would have removed 7 of the 8 default
+     * built-in tools, because most tools were FULL-only by accident; 1.3.0
+     * retags the read-only tools first and <strong>1.4.0 flips this to
+     * {@code MINIMAL}</strong>. Set the property explicitly to opt in now.
      */
     public static final String DEFAULT_TOOL_PROFILE_1_2 = "FULL";
 

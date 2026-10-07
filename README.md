@@ -14,10 +14,10 @@
 
 <p align="center">
   <a href="https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"><img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white" alt="Java 21"></a>
-  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.0"></a>
-  <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.0-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.0"></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.1"></a>
+  <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.1-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.2.0-blue" alt="Maven Central 1.2.0"></a>
+  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.3.0-blue" alt="Maven Central 1.3.0"></a>
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@
 
 JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI agents. The same codebase scales from a developer running `curl | bash` on a laptop to a horizontally-scaled multi-tenant SaaS platform serving thousands of users across dozens of organizations.
 
-Built on Java 21, Spring Boot 4.1.0, Spring AI 2.0.0, Embabel Agent 2.0.0-SNAPSHOT, Spring Shell 4.0.2, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
+Built on Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, Embabel Agent 1.5.3, Spring Shell 4.0.3, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
 
 **1.2.0 released to Maven Central** on 2026-09-18 — the security and identity release. It closes two critical defects (tenant context could be set from an *unverified* JWT; tool authorization failed *open* to `FULL`), and adds a provider-neutral authentication stack: an OIDC resource server, OAuth discovery for MCP clients, and verified channel identity.
 

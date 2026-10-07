@@ -240,11 +240,29 @@ jaiclaw:
         - channel-id: telegram
           account-id: ${TELEGRAM_ACCOUNT_ID}
           peer-id: "9001"            # the chat to ask in
+          user-id: "9001"            # whose replies count (recommended)
 ```
 
-The approver replies **yes** or **no** in the chat. The reply is consumed by a
-gateway filter rather than becoming a new agent turn, so a bare "yes" authorises
-the tool instead of getting a conversational answer.
+Each request carries a short **code**, shown in the prompt. The approver replies
+**`yes K7Q4`** or **`no K7Q4`** in the chat. The reply is consumed by a gateway
+filter rather than becoming a new agent turn, so it authorises (or refuses) the
+tool instead of getting a conversational answer.
+
+**Why the code is mandatory.** A reply is bound to the question it answers.
+Without the code, a "yes" meant for a harmless `wiki_read` could be applied to a
+`shell_exec` that asked a moment later — and a prompt-injected model that emits
+a benign call followed by a dangerous one would get one "yes" applied to the
+dangerous one. Several requests may be outstanding in one conversation at once;
+nothing is superseded or evicted, so inducing a gated tool call cannot cancel
+someone else's pending approval. A bare "yes" is consumed and answered with the
+list of open codes rather than guessed at.
+
+**Why `user-id`.** On Telegram and Discord the `peer-id` is the *conversation*,
+not the person; if it names a group and `user-id` is unset, any member can
+approve. Adapters publish the sender as `platformData["sender_id"]`; with
+`user-id` set, a reply from anyone else is an ordinary message. Startup warns
+when an approver has no `user-id`. In a Telegram direct message the two ids are
+the same number.
 
 **Why text and not buttons.** Inline keyboards would remove the parsing
 ambiguity, but the Telegram adapter has no `reply_markup` support and drops
@@ -274,16 +292,22 @@ they have.
 
 | Situation | Result |
 |---|---|
-| Reply parses as yes/no | Tool approved/denied; the message is consumed |
-| Reply is something else ("what does that do?") | Passed through to the agent; the request **stays open** |
-| Reply from a non-approver | Ordinary message; the approval is untouched |
+| `yes K7Q4` / `no K7Q4` from the approver | That request approved/denied; the message is consumed |
+| Bare `yes` / `no` with a request open | Consumed; the approver is told which codes are open; nothing is redeemed |
+| Code that is unknown, spent, or from another chat | Consumed; the approver is told; nothing is redeemed |
+| Reply is something else ("what does that do?", "ok") | Passed through to the agent; the request **stays open** |
+| Reply from another conversation, or from a non-approver user | Ordinary message; the approval is untouched |
 | Reply after the window closed | Ordinary message; the stale answer does not authorise |
-| Same "yes" repeated later | Does not authorise a new call — redemption is single-use |
+| Same `yes K7Q4` repeated later | Does not authorise a new call — codes are single-use |
+| More than 20 requests open in one conversation | New requests are denied immediately; the open ones are untouched |
 | Approval channel unavailable, or send fails | Denied immediately rather than waiting out the window |
 
-Replies are matched on whole-message equality against a short vocabulary, not by
-substring: `"don't approve that"` contains "approve" and must not read as
-consent.
+Replies are matched on whole-message equality against a deliberately small
+vocabulary (`yes approve approved confirm confirmed` / `no deny denied reject
+rejected cancel abort stop refuse veto`), optionally followed or preceded by a
+code — never by substring: `"don't approve that"` contains "approve" and must
+not read as consent, and `ok`/`sure`/`go` are everyday acknowledgements that
+must not either.
 
 > **Not persisted.** A request in flight is lost on restart. That is honest for a
 > human-latency gate — after a restart the agent run is gone too, so a late

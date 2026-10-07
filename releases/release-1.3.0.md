@@ -1,6 +1,6 @@
 # JaiClaw 1.3.0 Release Notes
 
-**Release Date:** unreleased (1.3.0-SNAPSHOT)
+**Release Date:** 2026-10-07
 **Distribution:** Maven Central + TapTech Nexus (`tooling.taptech.net`)
 
 > 1.3.0 is the **fail-closed release.** It closes four controls that existed but
@@ -49,6 +49,30 @@
   Text replies rather than buttons, because the Telegram adapter has no
   `reply_markup` support and drops `callback_query` updates. Opt in via
   `jaiclaw.approval.chat.enabled`.
+  - **Every request carries a code the approver must quote back** —
+    `yes K7Q4`, not `yes`. This binds the answer to the question: a reply meant
+    for a harmless `wiki_read` cannot be applied to a `shell_exec` that asked a
+    moment later, which is exactly the confirmation-hijack a prompt-injected
+    model would attempt. Several requests may be open per conversation; none
+    supersedes another, so inducing a gated call cannot cancel someone else's
+    pending approval. Codes use an alphabet with no vowels and no look-alike
+    glyphs, so one can never read as a verdict word.
+  - **`user-id` restricts who may answer.** On Telegram and Discord the
+    configured `peer-id` is the *conversation*, which may be a group; without
+    `user-id` any member could approve. Adapters now publish the sender as
+    `platformData["sender_id"]`, the filter checks it, and startup warns when an
+    approver has no `user-id`.
+  - **The key the reply is matched on carries no tenant.** The reply filter
+    runs *before* tenant resolution, so a tenant-scoped key made the two halves
+    disagree and no approval could ever be redeemed in multi-tenant mode. The
+    requesting tenant is recorded on the pending request for audit instead.
+  - **The vocabulary is narrow on purpose**: `yes approve approved confirm
+    confirmed` and `no deny denied reject rejected cancel abort stop refuse
+    veto`. `ok`, `sure`, `go` and `y` are everyday acknowledgements and no
+    longer count as consent.
+
+  These four points are the 2026-10-01 security review's findings 1.1–1.5,
+  each pinned by a spec in `ChatApprovalE2ESpec`.
 - **Per-tool approval timeouts** with a per-tool action on silence
   (`deny` default, `approve` available). Timeouts are per tool because blast
   radius and human latency differ — `shell_exec` answered in two minutes or not
@@ -67,8 +91,10 @@
   the developer-portal setup check *and* accepted forged interactions from
   anyone who knew the URL. An interaction carries a command the agent executes.
   Now verifies `X-Signature-Ed25519` over `timestamp || rawBody` before parsing
-  and before answering PING. No new dependency: the JDK has shipped Ed25519
-  since Java 15.
+  and before answering PING, and **rejects a signed timestamp more than five
+  minutes from now** — the signature proves origin, the window proves
+  freshness, and without the window a captured request replays forever. No new
+  dependency: the JDK has shipped Ed25519 since Java 15.
 - 🔴 **Slack and Telegram failed open on a blank secret.** Verification was
   skipped entirely when the secret was unset, *even with the verify flag on* —
   the likely state for anyone who activated `security-hardened` and stopped
@@ -104,7 +130,8 @@
   network round-trip. Misses are the common case, since most properties are not
   secrets. `CachingSecretsProvider` caches misses as well as hits;
   `SecretsProvider.refresh()` finally does something, as the rotation hook the
-  SPI always declared.
+  SPI always declared — and refreshes the delegate *before* clearing the cache,
+  so a lookup that races the rotation cannot re-pin the old value for a TTL.
 - **A missing `op` binary is now reported at startup.** It previously produced
   silently unresolved `${...}` placeholders: the `IOException` became a
   `ProviderError`, which the default `chain-on-error=continue` turned into
@@ -143,6 +170,13 @@ Set `jaiclaw.gateway.admin.estop.endpoint-enabled=true` **and**
 `jaiclaw.gateway.admin.estop.role` to restore it. `bin/jaiclaw pause|resume` is
 unaffected and needs no HTTP surface.
 
+### `DiscordConfig`'s five-argument constructor is deprecated
+
+It has nowhere to take the interaction public key, so it can only produce a
+config with signature verification **off**. Use the canonical constructor or
+`DiscordConfig.builder().publicKey(..).verifySignature(true)`. It still
+compiles; the adapter warns at startup when verification is off in webhook mode.
+
 ## Deferred to 1.4.0
 
 **`jaiclaw.security.default-tool-profile` still defaults to `FULL`.** The 1.2.0
@@ -156,6 +190,11 @@ so `MINIMAL` grants a usable working set first.
 **Set the property explicitly now.** `MINIMAL` is viable today, and the startup
 warning fires only when the value is unset, so a deliberate choice silences it.
 
+Also carried to 1.4.0, unchanged from the 1.2.0 notes: the Part E Logto adapter
+(`IdentityProviderClient` / `IdentityProviderWebhookVerifier` implementations),
+per-tool OAuth scopes, and the A2A / checkpoint / session-primitive scope in
+`docs/issues/IMPLEMENTATION-PLAN-1.3.0.md`, which that file now says.
+
 ## Known limitations
 
 - **The audit hash chain still cannot detect tail truncation.** `verifyChain`
@@ -167,18 +206,81 @@ warning fires only when the value is unset, so a deliberate choice silences it.
 - **Approval requests are not persisted.** One in flight is lost on restart,
   which is honest for a human-latency gate: after a restart the agent run is
   gone too, so a late approval would have nothing to authorise.
+- **The approval prompt shows every tool argument verbatim** to the approver
+  conversation, with no redaction hook. In multi-tenant mode that conversation
+  is deployment-wide, so one tenant's arguments reach a tenant-agnostic
+  operator chat. Treat the approver chat as operator-only.
+- **An approver without `user-id` is any participant of that conversation.**
+  Startup warns; the fix is configuration.
+- **`CachingSecretsProvider` caches a tenant-scoped miss** while the shared
+  fallback resolves, so a `tenant:KEY` added after the first lookup is unseen
+  for up to `miss-ttl` and the tenant transiently reads the shared value. Call
+  `refresh()` after adding a tenant override, or keep `miss-ttl` short.
 - **Prompt redaction is still not claimed as a control.** `PromptRedactor` has
   no framework call sites; it is an SPI the adopter must invoke.
 
 ## Dependency updates
 
-None. 1.3.0 adds no third-party dependencies — Ed25519 verification uses the
-JDK's `SunEC` provider, and `CachingSecretsProvider` is a bounded map in
+| Dependency | 1.2.0 | 1.3.0 | Why |
+|---|---|---|---|
+| Spring Boot | 4.1.0 | **4.1.1** | Moves managed Netty 4.2.15 → 4.2.17; `netty-bom` now lists `codec-http3`, so the whole Netty stack versions together |
+| Spring AI | 2.0.0 | **2.0.1** | Patch; BOM aligned |
+| Embabel Agent | 1.5.0 | **1.5.3** | Patch line. Taking it surfaced a pre-existing JaiClaw bug, fixed below |
+| Spring Shell | 4.0.2 | **4.0.3** | Patch |
+| Spring Cloud | 2025.1.2 | **2025.1.3** | Patch |
+| Playwright | 1.49.0 | **1.63.0** | **CVE-2025-59288** (fixed at 1.61.0); twelve minors of drift that a stale report had called "latest" |
+| okio | 3.6.0 (transitive) | **3.18.2** (pinned) | **CVE-2020-29582** via `kotlin-stdlib-common:1.9.10`, which okio ≥ 3.16 no longer depends on |
+| Netty | 4.1.135 (pinned) | *unpinned* | The pin dragged 15 artifacts backwards off Boot's 4.2 line while 4 escaped it — a mixed, binary-incompatible classpath. **CVE-2026-42582** is now fixed by composition rather than suppressed |
+| jsoup | 1.22.2 | **1.23.2** | Minor |
+| PDFBox | 3.0.7 | **3.0.8** | Patch |
+| dependency-check-maven | 12.1.0 | **13.0.0** | Scanner current line |
+
+No new third-party runtime dependencies. Ed25519 verification uses the JDK's
+`SunEC` provider, and `CachingSecretsProvider` is a bounded map in
 `jaiclaw-core`, which remains dependency-free down to having no logger.
+
+Not taken, deliberately: Groovy 6 / Spock 2.5, Drools 10, fabric8 8,
+Testcontainers 2, Jedis 8, OkHttp 5, Camel 4.22, jjwt 0.13 — each a major or
+behaviour-changing line that belongs in its own cycle, not a release day.
+
+## Bug fixes
+
+- 🔴 **`runtime: EMBABEL` pipeline stages failed on first run from a Spring Boot
+  fat jar** with `ClassNotFoundException` for the application's own `@Action`
+  types. Embabel's `JvmType` resolves types through the *thread context class
+  loader*; `EmbabelAgentOrchestrationPort` ran on `ForkJoinPool.commonPool`,
+  whose threads carry the JDK application loader, which cannot see
+  `BOOT-INF/classes`. Present in 1.2.0 (reproduced against the released jar);
+  invisible to unit tests, which run on a flat classpath. `EmbabelInvocations`
+  now pins the context class loader for the duration of every invocation.
+  Found by e2e scenario 6f/6g, which had never been run against a fat jar.
+- **`jaiclaw-example-pipeline-e2e` fed `ANTHROPIC_MODEL` into
+  `embabel.models.default-llm`** — the wire model name into the registry
+  lookup. With a MiniMax-routed key the app refused to start. Pinned to a
+  registered id.
+
+## Security fixes
+
+- **CVE-2025-59288** (Playwright) — upgraded.
+- **CVE-2020-29582** (kotlin-stdlib-common via okio) — the artifact is gone from
+  the classpath, not suppressed.
+- **CVE-2026-42582** (netty-codec-http3) — fixed by removing the Netty pin; the
+  suppression that argued it away is deleted.
+- **CVE-2026-6860** (Vert.x) — suppressed **with reachability evidence and an
+  expiry**: Vert.x arrives only as the fabric8 Kubernetes client's runtime HTTP
+  transport, JaiClaw runs no Vert.x server, and no source under
+  `jaiclaw-tools-k8s` references it. No fix exists upstream yet.
+- **The CVE gate is now in the POM.** `failBuildOnCVSS=7.0` and the suppression
+  file were passed only as CLI flags in one CI workflow; every other invocation
+  used the plugin's default of 11, i.e. failed on nothing. A new `security`
+  Maven profile binds the scan to `verify`.
+- Discord Ed25519 verification; Slack/Telegram blank-secret rejection; LINE
+  constant-time compare; approval gate fail-closed; estop endpoint off by
+  default — all above.
 
 ## Documentation corrections
 
-Three claims in shipped docs contradicted the code and are corrected in place:
+Claims in shipped docs that contradicted the code are corrected in place:
 
 - `releases/release-0.9.2.md` said six hardening flags flipped default-on. They
   flipped in the gateway app's YAML only; library defaults are still `false`, so
@@ -188,3 +290,8 @@ Three claims in shipped docs contradicted the code and are corrected in place:
 - `RetentionEnforcementService`'s Javadoc and `docs/user/OPERATIONS.md` both
   claimed it runs on a scheduled tick. `enforceForTenant` has zero call sites;
   the claim is now marked as unimplemented rather than left standing.
+- `CLAUDE.md` labelled `jaiclaw-security-oidc`, the RFC 9728 metadata endpoint
+  and verified channel identity as 1.3.0 / 1.4.0 work. All three shipped in
+  **1.2.0**; `docs/user/VERIFIED-IDENTITY.md` said the same and is corrected.
+- `JaiClawSecurityProperties` Javadoc still promised the `MINIMAL` flip for
+  1.3.0. It now says 1.4.0, matching these notes and `SECURITY.md`.
