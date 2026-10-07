@@ -39,8 +39,11 @@ jobs:
         env:
           MAVEN_OPTS: '-Xmx2g'
 
+      # Not offline: the compile step runs with -DskipTests, so surefire's
+      # provider jar (surefire-junit-platform) is never downloaded by it, and an
+      # offline test run then fails on jaiclaw-core before a single spec runs.
       - name: Run unit tests
-        run: ./mvnw test -B -o
+        run: ./mvnw test -B
         env:
           MAVEN_OPTS: '-Xmx2g'
 

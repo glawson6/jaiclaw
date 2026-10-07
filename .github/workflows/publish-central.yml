@@ -44,12 +44,20 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      # server-id must match the central-publishing plugin's publishingServerId.
+      # setup-java writes a settings.xml whose server entry references
+      # ${env.MAVEN_CENTRAL_USERNAME} / ${env.MAVEN_CENTRAL_PASSWORD}, which the
+      # 1Password step below exports — nothing lands on disk. Without this the
+      # deploy step had no credentials at all and failed at upload.
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
+          server-id: central
+          server-username: MAVEN_CENTRAL_USERNAME
+          server-password: MAVEN_CENTRAL_PASSWORD
 
       # 0.9.2: load Maven Central + GPG secrets from 1Password. The
       # action registers each loaded value with GitHub's log masking so
