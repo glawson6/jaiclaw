@@ -37,6 +37,16 @@ public record DiscordConfig(
      * overloads are safe here — the Boot 4 one-constructor rule applies to the
      * binder-facing {@code ChannelsProperties.DiscordProperties} instead.
      */
+    /**
+     * Pre-1.3.0 shape, with interaction signature verification <strong>off</strong>
+     * because this overload has nowhere to take the public key.
+     *
+     * @deprecated since 1.3.0 — webhook-mode deployments should supply
+     *             {@code publicKey} and {@code verifySignature} via the canonical
+     *             constructor or {@link #builder()}; the adapter warns at startup
+     *             when verification is off.
+     */
+    @Deprecated(since = "1.3.0")
     public DiscordConfig(String botToken, String applicationId, boolean enabled,
                          boolean useGateway, Set<String> allowedSenderIds) {
         this(botToken, applicationId, enabled, useGateway, allowedSenderIds, "", false);
@@ -84,15 +94,21 @@ public record DiscordConfig(
         private boolean enabled;
         private boolean useGateway;
         private Set<String> allowedSenderIds;
+        private String publicKey;
+        private boolean verifySignature;
 
         public Builder botToken(String botToken) { this.botToken = botToken; return this; }
         public Builder applicationId(String applicationId) { this.applicationId = applicationId; return this; }
         public Builder enabled(boolean enabled) { this.enabled = enabled; return this; }
         public Builder useGateway(boolean useGateway) { this.useGateway = useGateway; return this; }
         public Builder allowedSenderIds(Set<String> allowedSenderIds) { this.allowedSenderIds = allowedSenderIds; return this; }
+        /** Discord application public key (hex) for interaction signature verification. */
+        public Builder publicKey(String publicKey) { this.publicKey = publicKey; return this; }
+        public Builder verifySignature(boolean verifySignature) { this.verifySignature = verifySignature; return this; }
 
         public DiscordConfig build() {
-            return new DiscordConfig(botToken, applicationId, enabled, useGateway, allowedSenderIds);
+            return new DiscordConfig(botToken, applicationId, enabled, useGateway, allowedSenderIds,
+                    publicKey, verifySignature);
         }
     }
 }

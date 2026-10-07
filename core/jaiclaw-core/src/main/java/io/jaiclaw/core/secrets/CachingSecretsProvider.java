@@ -158,8 +158,15 @@ public final class CachingSecretsProvider implements SecretsProvider {
     public void refresh() {
         // No logging here: jaiclaw-core carries no logging dependency by design.
         // Callers that want visibility can read size() before and after.
-        cache.clear();
+        //
+        // Delegate first, cache second. The other order has a window: a get()
+        // that misses between clear() and delegate.refresh() re-pins the
+        // pre-rotation value for a full TTL, so a rotation that looked
+        // successful has not happened. Refreshing the delegate first means any
+        // value cached during the window is already post-rotation, and the
+        // clear() then drops whatever was cached before.
         delegate.refresh();
+        cache.clear();
     }
 
     /**

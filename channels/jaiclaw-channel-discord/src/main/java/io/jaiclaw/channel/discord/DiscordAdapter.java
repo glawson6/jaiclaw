@@ -16,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.net.http.WebSocket;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -42,7 +43,16 @@ public class DiscordAdapter extends AbstractChannelAdapter {
     private static final String DISCORD_API_BASE = "https://discord.com/api/v10/";
     private static final int GATEWAY_VERSION = 10;
 
+    /**
+     * Maximum age of a signed interaction, in seconds. Discord signs the
+     * timestamp precisely so a captured request cannot be replayed forever;
+     * without an age check the signature proves origin but not freshness.
+     * Matches the 5-minute window the Slack verifier in this repo enforces.
+     */
+    static final long MAX_TIMESTAMP_DRIFT_SECONDS = 300;
+
     private final DiscordConfig config;
+    private volatile Clock clock = Clock.systemUTC();
     private final WebhookDispatcher webhookDispatcher;
     private final DiscordHttpClient httpClient;
     private final AtomicReference<WebSocket> gatewayWs = new AtomicReference<>();
@@ -87,6 +97,11 @@ public class DiscordAdapter extends AbstractChannelAdapter {
     public DiscordAdapter(DiscordConfig config, WebhookDispatcher webhookDispatcher,
                           RestTemplate restTemplate) {
         this(config, webhookDispatcher, new RestClientDiscordHttpClient());
+    }
+
+    /** Injectable clock for the signature freshness check; tests only. */
+    public void setClock(Clock clock) {
+        this.clock = clock == null ? Clock.systemUTC() : clock;
     }
 
     @Override
@@ -376,7 +391,8 @@ public class DiscordAdapter extends AbstractChannelAdapter {
                 "guild_id", guildId,
                 "channel_id", channelIdValue,
                 "message_id", messageId,
-                "author_id", author.path("id").asText()
+                "author_id", author.path("id").asText(),
+                "sender_id", author.path("id").asText()
         );
 
         var channelMessage = ChannelMessage.inbound(
@@ -420,11 +436,18 @@ public class DiscordAdapter extends AbstractChannelAdapter {
                 String interactionId = payload.path("id").asText();
 
                 if (!content.isBlank()) {
+                    // Interactions carry the invoking user under member.user (in a
+                    // guild) or user (in a DM).
+                    String invokerId = payload.path("member").path("user").path("id").asText("");
+                    if (invokerId.isEmpty()) {
+                        invokerId = payload.path("user").path("id").asText("");
+                    }
                     Map<String, Object> platformData = Map.of(
                             "guild_id", guildId,
                             "channel_id", channelIdValue,
                             "interaction_id", interactionId,
-                            "type", type
+                            "type", type,
+                            "sender_id", invokerId
                     );
 
                     var channelMessage = ChannelMessage.inbound(
@@ -455,7 +478,28 @@ public class DiscordAdapter extends AbstractChannelAdapter {
             log.warn("Discord interaction missing signature headers");
             return false;
         }
+        if (!isFresh(timestamp)) {
+            log.warn("Discord interaction timestamp {} is outside the {}s replay window",
+                    timestamp, MAX_TIMESTAMP_DRIFT_SECONDS);
+            return false;
+        }
         return Ed25519SignatureVerifier.verify(config.publicKey(), signature, timestamp, body);
+    }
+
+    /**
+     * Rejects a signed request whose timestamp is too far from now in either
+     * direction. The signature covers the timestamp, so an attacker cannot
+     * refresh a captured one without the private key.
+     */
+    private boolean isFresh(String timestamp) {
+        long ts;
+        try {
+            ts = Long.parseLong(timestamp.strip());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        long now = clock.instant().getEpochSecond();
+        return Math.abs(now - ts) <= MAX_TIMESTAMP_DRIFT_SECONDS;
     }
 
     /** Case-insensitive header lookup — HTTP header casing is not guaranteed. */

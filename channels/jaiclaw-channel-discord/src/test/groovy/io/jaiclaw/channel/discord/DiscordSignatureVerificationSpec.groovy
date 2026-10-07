@@ -8,6 +8,9 @@ import spock.lang.Specification
 
 import java.nio.charset.StandardCharsets
 import java.security.KeyPair
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.HexFormat
@@ -42,6 +45,11 @@ class DiscordSignatureVerificationSpec extends Specification {
                 [] as Set, publicKeyHex, true)
     }
 
+    /** A timestamp inside the replay window — Discord signs now, so tests must too. */
+    private static String nowTs() {
+        String.valueOf(Instant.now().epochSecond)
+    }
+
     private Map<String, String> signedHeaders(String ts, String body) {
         def signer = Signature.getInstance("Ed25519")
         signer.initSign(keyPair.private)
@@ -64,7 +72,7 @@ class DiscordSignatureVerificationSpec extends Specification {
                 '"data":{"content":"hello"}}'
 
         when:
-        def response = dispatcher.dispatch("discord", body, signedHeaders("1700000000", body))
+        def response = dispatcher.dispatch("discord", body, signedHeaders(nowTs(), body))
 
         then:
         response.statusCode.value() == 200
@@ -91,7 +99,7 @@ class DiscordSignatureVerificationSpec extends Specification {
         started(verifyingConfig())
         def body = '{"type":2,"id":"i1","data":{"content":"rm -rf /"}}'
         def headers = ["x-signature-ed25519"  : "00" * 64,
-                       "x-signature-timestamp": "1700000000"]
+                       "x-signature-timestamp": nowTs()]
 
         when:
         def response = dispatcher.dispatch("discord", body, headers)
@@ -105,7 +113,7 @@ class DiscordSignatureVerificationSpec extends Specification {
         given: "signed as a harmless PING, delivered as a command"
         started(verifyingConfig())
         def signedBody = '{"type":1}'
-        def headers = signedHeaders("1700000000", signedBody)
+        def headers = signedHeaders(nowTs(), signedBody)
 
         when:
         def response = dispatcher.dispatch("discord",
@@ -133,18 +141,72 @@ class DiscordSignatureVerificationSpec extends Specification {
         def body = '{"type":1}'
 
         when:
-        def response = dispatcher.dispatch("discord", body, signedHeaders("1700000000", body))
+        def response = dispatcher.dispatch("discord", body, signedHeaders(nowTs(), body))
 
         then:
         response.statusCode.value() == 200
         response.body.contains('"type"')
     }
 
+    def "a correctly signed but stale interaction is rejected — signatures do not replay forever"() {
+        given: "a request signed six minutes ago"
+        started(verifyingConfig())
+        def body = '{"type":2,"id":"i1","guild_id":"g1","channel_id":"c1",' +
+                '"data":{"content":"hello"}}'
+        def stale = String.valueOf(Instant.now().epochSecond - 360)
+
+        when:
+        def response = dispatcher.dispatch("discord", body, signedHeaders(stale, body))
+
+        then: "the signature is valid, the freshness is not"
+        response.statusCode.value() == 401
+        0 * handler.onMessage(_)
+    }
+
+    def "a signed interaction from the future is rejected too"() {
+        given:
+        started(verifyingConfig())
+        def body = '{"type":1}'
+        def ahead = String.valueOf(Instant.now().epochSecond + 600)
+
+        when:
+        def response = dispatcher.dispatch("discord", body, signedHeaders(ahead, body))
+
+        then:
+        response.statusCode.value() == 401
+    }
+
+    def "the replay window is exactly five minutes, measured against the adapter clock"() {
+        given: "a frozen clock, so the boundary is tested without timing luck"
+        def frozen = Clock.fixed(Instant.ofEpochSecond(1_900_000_000L), ZoneOffset.UTC)
+        def adapter = started(verifyingConfig())
+        adapter.setClock(frozen)
+        def body = '{"type":1}'
+
+        expect:
+        dispatcher.dispatch("discord", body,
+                signedHeaders(String.valueOf(1_900_000_000L - 300), body)).statusCode.value() == 200
+        dispatcher.dispatch("discord", body,
+                signedHeaders(String.valueOf(1_900_000_000L - 301), body)).statusCode.value() == 401
+    }
+
+    def "a non-numeric timestamp is rejected"() {
+        given:
+        started(verifyingConfig())
+        def body = '{"type":1}'
+
+        when:
+        def response = dispatcher.dispatch("discord", body, signedHeaders("yesterday", body))
+
+        then:
+        response.statusCode.value() == 401
+    }
+
     def "header names are matched case-insensitively"() {
         given: "HTTP header casing is not guaranteed by the transport"
         started(verifyingConfig())
         def body = '{"type":1}'
-        def signed = signedHeaders("1700000000", body)
+        def signed = signedHeaders(nowTs(), body)
 
         when:
         def response = dispatcher.dispatch("discord", body,
