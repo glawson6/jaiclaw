@@ -821,10 +821,18 @@ run_scenario_6() {
         cd "$PROJECT_ROOT"
         ./mvnw package -pl :jaiclaw-example-pipeline-e2e -am -DskipTests -B
     )
-    local jar
-    jar=$(find "$PROJECT_ROOT/jaiclaw-examples/pipeline-e2e/target" \
-        -maxdepth 1 -name "jaiclaw-example-pipeline-e2e-*.jar" \
-        ! -name "*-original*" -type f 2>/dev/null | head -1)
+    # Pick the jar for the version under test. A bare glob + head -1 once
+    # selected a 1.2.0 jar left behind by a previous release (target/ is not
+    # cleaned between versions) and failed 6a against stale code.
+    local version
+    version=$(detect_version)
+    local jar="$PROJECT_ROOT/jaiclaw-examples/pipeline-e2e/target/jaiclaw-example-pipeline-e2e-${version}.jar"
+    if [[ ! -f "$jar" ]]; then
+        jar=$(find "$PROJECT_ROOT/jaiclaw-examples/pipeline-e2e/target" \
+            -maxdepth 1 -name "jaiclaw-example-pipeline-e2e-*.jar" \
+            ! -name "*-original*" ! -name "*-sources*" ! -name "*-javadoc*" \
+            -type f -newer "$PROJECT_ROOT/pom.xml" 2>/dev/null | sort | tail -1)
+    fi
     if [[ -z "$jar" ]]; then
         log_fail "Pipeline example JAR not built"
         record_result "6-Pipeline" "FAIL" "JAR missing"

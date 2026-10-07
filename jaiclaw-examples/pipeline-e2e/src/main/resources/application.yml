@@ -71,12 +71,19 @@ spring:
       enabled: false
 
 # Embabel: pick the LLM the GOAP planner uses. `default-llm` must match a
-# model_id from the Anthropic starter's bundled models/anthropic-models.yml.
+# model_id from the Anthropic starter's bundled models/anthropic-models.yml —
+# it is Embabel's *registry* name, NOT the model name sent on the wire. Those
+# are different layers (see CLAUDE.md "Embabel LLM Model Configuration"):
+# ANTHROPIC_MODEL feeds spring.ai.anthropic.chat.model above and may be a
+# proxy's name such as MiniMax-M2.7, which Embabel has never registered and
+# rejects at startup ("Default LLM 'MiniMax-M2.7' is neither a registered model
+# nor a configured role"). Keep this on a registered id; override with
+# EMBABEL_DEFAULT_LLM only to pick a different *registered* model.
 # mock-mode is forced off so Embabel actually resolves models (the upstream
 # default is mock-mode=true).
 embabel:
   models:
-    default-llm: ${EMBABEL_DEFAULT_LLM:${ANTHROPIC_MODEL:claude-sonnet-4-5}}
+    default-llm: ${EMBABEL_DEFAULT_LLM:claude-sonnet-4-5}
   agent:
     platform:
       test:
