@@ -43,3 +43,8 @@ docs-local/
 **/dist/
 **/.vite/
 /feature-gap-analysis-2026-09-09.md
+
+# Codex mirrors of the (also ignored) Claude Code configuration
+/AGENTS.md
+/.agents/
+/.codex/
