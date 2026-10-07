@@ -35,6 +35,14 @@ import java.util.concurrent.CompletableFuture;
  * send. Text replies need none of that, work on every channel that can carry a
  * message, and are what an approver reaches for anyway.
  *
+ * <h2>Binding the answer to the question</h2>
+ *
+ * <p>Every request carries a short code, shown in the prompt, which the approver
+ * must echo back ({@code yes K7Q4}). A bare "yes" redeems nothing. Without the
+ * code, a reply meant for one request could be applied to whichever request
+ * happened to be newest — and a prompt-injected model that emits a benign call
+ * followed by a dangerous one would get one "yes" applied to the dangerous one.
+ *
  * <h2>Routing</h2>
  *
  * <p>The question goes to a configured approver, not to whoever triggered the
@@ -88,15 +96,23 @@ public class ChatApprovalHandler implements ToolApprovalHandler {
                     "approver channel '" + approver.channelId() + "' is unavailable"));
         }
 
+        // Recorded for audit only. The lookup key must not depend on the tenant:
+        // the reply is matched by a filter that runs before tenant resolution.
         String tenantId = TenantContextHolder.get() != null
                 ? TenantContextHolder.get().getTenantId()
                 : null;
-        String peerKey = PendingApprovalRegistry.peerKey(
-                tenantId, approver.channelId(), approver.peerId());
+        String peerKey = PendingApprovalRegistry.peerKey(approver.channelId(), approver.peerId());
         Duration window = policy.timeoutFor(toolName);
 
         PendingApprovalRegistry.PendingApproval request =
-                pending.register(toolName, sessionKey, peerKey, window);
+                pending.register(toolName, sessionKey, tenantId, peerKey, window);
+        if (request.future().isDone()) {
+            // Registry refused — the conversation already has too many open
+            // questions. The future already carries the denial.
+            log.warn("Approval for '{}' refused: too many requests outstanding for {}:{}",
+                    toolName, approver.channelId(), approver.peerId());
+            return request.future();
+        }
 
         try {
             adapter.get().sendMessage(ChannelMessage.outbound(
@@ -104,7 +120,7 @@ public class ChatApprovalHandler implements ToolApprovalHandler {
                     approver.channelId(),
                     approver.accountId(),
                     approver.peerId(),
-                    renderPrompt(toolName, parameters, window)));
+                    renderPrompt(toolName, parameters, window, request.approvalId())));
         } catch (RuntimeException e) {
             // If the question never reached anyone, do not leave the caller
             // waiting out the full window for an answer that cannot come.
@@ -114,7 +130,7 @@ public class ChatApprovalHandler implements ToolApprovalHandler {
                     "approval request could not be delivered"));
         }
 
-        log.info("Approval requested for '{}' from {}:{} (window {}, id {})",
+        log.info("Approval requested for '{}' from {}:{} (window {}, code {})",
                 toolName, approver.channelId(), approver.peerId(), window, request.approvalId());
         return request.future();
     }
@@ -122,22 +138,24 @@ public class ChatApprovalHandler implements ToolApprovalHandler {
     /**
      * The message the approver sees.
      *
-     * <p>Names the tool, shows the arguments, and states the deadline and what
-     * happens on silence — an approver cannot make a judgement without knowing
-     * what is being asked or how long they have.
+     * <p>Names the tool, shows the arguments, states the code to echo back, the
+     * deadline, and what happens on silence — an approver cannot make a
+     * judgement without knowing what is being asked or how long they have.
      */
-    private String renderPrompt(String toolName, Map<String, Object> parameters, Duration window) {
+    private String renderPrompt(String toolName, Map<String, Object> parameters,
+                                Duration window, String code) {
         String action = policy.onTimeoutFor(toolName) == ApprovalPolicy.OnTimeout.APPROVE
                 ? "proceed automatically"
                 : "be denied";
         StringBuilder sb = new StringBuilder();
-        sb.append("Approval needed: `").append(toolName).append("`\n");
+        sb.append("Approval needed: `").append(toolName).append("` — code ").append(code).append("\n");
         if (parameters != null && !parameters.isEmpty()) {
             sb.append("\n");
             parameters.forEach((k, v) -> sb.append("• ")
                     .append(k).append(": ").append(truncate(String.valueOf(v))).append("\n"));
         }
-        sb.append("\nReply *yes* to approve or *no* to deny.\n");
+        sb.append("\nReply *yes ").append(code).append("* to approve or *no ")
+                .append(code).append("* to deny.\n");
         sb.append("No reply within ").append(humanize(window))
                 .append(" and it will ").append(action).append(".");
         return sb.toString();

@@ -459,6 +459,12 @@ public class JaiClawGatewayAutoConfiguration {
                         approvers.stream()
                                 .map(a -> a.channelId() + ":" + a.peerId())
                                 .toList());
+                approvers.stream()
+                        .filter(a -> !a.restrictsUser())
+                        .forEach(a -> approvalLog.warn("Approver {}:{} has no user-id — ANY "
+                                + "participant of that conversation can approve tool calls. Ask in "
+                                + "a direct message, or set jaiclaw.approval.chat.approvers[].user-id.",
+                                a.channelId(), a.peerId()));
             }
             return new io.jaiclaw.gateway.approval.ConfiguredApproverResolver(approvers);
         }
@@ -480,13 +486,20 @@ public class JaiClawGatewayAutoConfiguration {
          *
          * <p>Ordered after {@code TelegramUserIdFilter} (100): there is no point
          * matching a reply from a peer whose traffic is about to be rejected.
+         * Given the resolver so it can check the reply came from an approver
+         * (and, with {@code user-id} set, from the approver's own account), and
+         * the channel registry so it can tell the approver when a reply is
+         * missing its code.
          */
         @Bean
         @Order(200)
         @ConditionalOnMissingBean(io.jaiclaw.gateway.approval.ApprovalReplyFilter.class)
         public io.jaiclaw.gateway.approval.ApprovalReplyFilter approvalReplyFilter(
-                io.jaiclaw.core.agent.PendingApprovalRegistry pending) {
-            return new io.jaiclaw.gateway.approval.ApprovalReplyFilter(pending);
+                io.jaiclaw.core.agent.PendingApprovalRegistry pending,
+                io.jaiclaw.gateway.approval.ApproverResolver approverResolver,
+                ChannelRegistry channelRegistry) {
+            return new io.jaiclaw.gateway.approval.ApprovalReplyFilter(
+                    pending, approverResolver, channelRegistry);
         }
 
         /**

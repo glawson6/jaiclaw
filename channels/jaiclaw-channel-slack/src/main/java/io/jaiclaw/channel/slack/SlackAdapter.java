@@ -300,7 +300,9 @@ public class SlackAdapter extends AbstractChannelAdapter {
                     "team_id", teamId,
                     "channel", channel,
                     "ts", event.path("ts").asText(),
-                    "event_id", eventId
+                    "event_id", eventId,
+                    // The person, as distinct from the channel the message was posted in.
+                    "sender_id", userId
             );
 
             var channelMessage = ChannelMessage.inbound(

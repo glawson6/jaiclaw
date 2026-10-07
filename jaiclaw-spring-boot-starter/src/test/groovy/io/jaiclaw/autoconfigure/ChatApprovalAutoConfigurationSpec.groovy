@@ -83,6 +83,14 @@ class ChatApprovalAutoConfigurationSpec extends Specification {
         m.returnType == ApprovalReplyFilter
     }
 
+    def "the reply filter is handed the approver resolver, so it can check who replied"() {
+        given:
+        Method m = bean("approvalReplyFilter")
+
+        expect: "without it any conversation with a pending request could answer"
+        m.parameterTypes.toList().contains(ApproverResolver)
+    }
+
     def "every bean backs off when an adopter supplies their own"() {
         expect:
         bean(name).getAnnotation(ConditionalOnMissingBean) != null
@@ -116,10 +124,10 @@ class ChatApprovalAutoConfigurationSpec extends Specification {
     def "incomplete approver entries are dropped rather than carried forward"() {
         given: "entries that cannot be messaged"
         def props = new ChatApprovalProperties(true, [
-                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "9001"),
-                new ChatApprovalProperties.ApproverConfig(null, "acct", "9002"),
-                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "   "),
-                new ChatApprovalProperties.ApproverConfig("telegram", "acct", null),
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "9001", null),
+                new ChatApprovalProperties.ApproverConfig(null, "acct", "9002", null),
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "   ", null),
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", null, null),
         ])
 
         when:
@@ -129,6 +137,24 @@ class ChatApprovalAutoConfigurationSpec extends Specification {
         approvers.size() == 1
         approvers[0].channelId() == "telegram"
         approvers[0].peerId() == "9001"
+    }
+
+    def "user-id is carried through and a blank one means 'any participant'"() {
+        given:
+        def props = new ChatApprovalProperties(true, [
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "-100777", " 9001 "),
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "9001", "  "),
+                new ChatApprovalProperties.ApproverConfig("telegram", "acct", "9002", null),
+        ])
+
+        when:
+        def approvers = props.toApprovers()
+
+        then:
+        approvers[0].userId() == "9001"
+        approvers[0].restrictsUser()
+        !approvers[1].restrictsUser()
+        !approvers[2].restrictsUser()
     }
 
     def "a null approver list binds as empty rather than NPE-ing"() {

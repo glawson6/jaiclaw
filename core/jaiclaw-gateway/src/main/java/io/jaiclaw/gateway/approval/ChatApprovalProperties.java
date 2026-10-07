@@ -17,6 +17,7 @@ import java.util.List;
  *         - channel-id: telegram
  *           account-id: ${TELEGRAM_ACCOUNT_ID}
  *           peer-id: "9001"          # the chat to ask in
+ *           user-id: "9001"          # whose replies count (recommended)
  * }</pre>
  *
  * <p>Opt-in. With {@code enabled: false} (the default) no approval beans load
@@ -27,6 +28,12 @@ import java.util.List;
  * <p><strong>Enabling this with no approvers is a misconfiguration</strong>, and
  * is reported as one at startup rather than discovered when a tool call is
  * denied. The handler denies in that state; see {@link ChatApprovalHandler}.
+ *
+ * <p><strong>{@code user-id} is what makes a group chat safe.</strong> On
+ * Telegram and Discord the {@code peer-id} is the <em>conversation</em>, not
+ * the person; if it names a group and {@code user-id} is unset, any member can
+ * approve. Startup warns when an approver has no {@code user-id}. In a Telegram
+ * direct message the two ids are the same number.
  *
  * <p>The timing of an approval request — how long the window is and what
  * silence means — is <em>not</em> here. It lives with the rest of the loop
@@ -57,8 +64,9 @@ public record ChatApprovalProperties(
      * @param channelId channel to ask on, e.g. {@code telegram}
      * @param accountId sending account on that channel
      * @param peerId    conversation to ask in; the chat id for Telegram
+     * @param userId    platform user id whose replies are honoured; blank accepts any participant
      */
-    public record ApproverConfig(String channelId, String accountId, String peerId) {
+    public record ApproverConfig(String channelId, String accountId, String peerId, String userId) {
 
         /** True when every field needed to actually send a message is present. */
         public boolean isComplete() {
@@ -85,7 +93,8 @@ public record ChatApprovalProperties(
     public List<Approver> toApprovers() {
         return approvers.stream()
                 .filter(ApproverConfig::isComplete)
-                .map(a -> new Approver(a.channelId(), a.accountId(), a.peerId()))
+                .map(a -> new Approver(a.channelId(), a.accountId(), a.peerId(),
+                        a.userId() == null || a.userId().isBlank() ? null : a.userId().strip()))
                 .toList();
     }
 }

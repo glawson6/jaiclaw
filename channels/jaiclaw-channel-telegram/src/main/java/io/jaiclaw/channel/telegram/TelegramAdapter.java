@@ -196,7 +196,10 @@ public class TelegramAdapter extends AbstractChannelAdapter {
         Map<String, Object> platformData = Map.of(
                 "update_id", update.path("update_id").asLong(),
                 "chat_id", messageNode.path("chat").path("id").asLong(),
-                "message_id", messageNode.path("message_id").asLong()
+                "message_id", messageNode.path("message_id").asLong(),
+                // The person, as distinct from the chat: peerId is the chat id,
+                // which in a group is shared by every member.
+                "sender_id", fromId
         );
 
         // Extract text (may accompany a document as caption)

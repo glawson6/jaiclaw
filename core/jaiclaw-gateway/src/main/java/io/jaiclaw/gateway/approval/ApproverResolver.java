@@ -2,29 +2,23 @@ package io.jaiclaw.gateway.approval;
 
 import io.jaiclaw.core.api.Experimental;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
- * Decides who is asked to authorise a tool call.
+ * Decides who is asked to approve a tool call, and who is allowed to answer.
  *
- * <p>An SPI rather than a fixed lookup because "who approves this" is a
- * deployment policy. A single-owner assistant has one answer; a team
- * deployment may route by tenant, by tool, or to an on-call rota. The
- * framework ships the single-approver case and leaves the rest open.
- *
- * <p>Returning {@link Optional#empty()} means no approver could be
- * determined, which callers treat as a <strong>denial</strong> — never as
- * permission to proceed unapproved.
+ * <p>{@link #resolve} is consulted when a question is sent; {@link #all} is
+ * consulted when a reply arrives, so the reply filter can check that the
+ * message really came from an approver conversation (and, when configured,
+ * from the approver's own user id) before treating it as consent.
  */
 @Experimental
 public interface ApproverResolver {
 
-    /**
-     * @param sessionKey the session whose tool call needs approval, in
-     *                   {@code agentId:channel:account:peer} form; available for
-     *                   routing decisions, but an implementation is free to
-     *                   ignore it and always return the configured owner
-     * @return the approver to ask, or empty to deny
-     */
+    /** The approver to ask for this session, or empty to deny. */
     Optional<Approver> resolve(String sessionKey);
+
+    /** Every identity whose replies may redeem an approval. */
+    List<Approver> all();
 }
