@@ -1029,15 +1029,19 @@ When `profile: none` (the default), zero compliance beans load — the module is
 
 ### Profile → flag mapping
 
-| Flag | `none` | `gdpr` | `hipaa` | `both` | `fedramp-moderate` | `cmmc-l2` | `fips` |
-|---|---|---|---|---|---|---|---|
-| `jaiclaw.compliance.require-https` | off | on | on | on | on | on | off |
-| `jaiclaw.compliance.retention-enforcement` | off | on | on | on | on | on | off |
-| `jaiclaw.compliance.audit-chat-client` | off | on | on | on | on | on | off |
-| `jaiclaw.compliance.baa-warnings` | off | off | on | on | off | off | off |
-| `jaiclaw.compliance.prompt-redaction` | off | off | on | on | off | on | off |
-| `jaiclaw.compliance.fips-enforced` | off | off | off | off | on | off | on |
-| `jaiclaw.compliance.fedramp-warnings` | off | off | off | off | on | off | off |
+| Flag | `none` | `gdpr` | `hipaa` | `both` | `soc2` | `fedramp-moderate` | `cmmc-l2` | `fips` |
+|---|---|---|---|---|---|---|---|---|
+| `jaiclaw.compliance.require-https` | off | on | on | on | on | on | on | off |
+| `jaiclaw.compliance.retention-enforcement` | off | on | on | on | on | on | on | off |
+| `jaiclaw.compliance.audit-chat-client` | off | on | on | on | on | on | on | off |
+| `jaiclaw.compliance.baa-warnings` | off | off | on | on | off | off | off | off |
+| `jaiclaw.compliance.prompt-redaction` | off | off | on | on | off | off | on | off |
+| `jaiclaw.compliance.audit-hash-chain` (1.3.0) | off | off | off | off | on | off | off | off |
+| `jaiclaw.compliance.encrypt-at-rest` (1.3.0; startup aborts without a key) | off | off | off | off | on | off | off | off |
+| `jaiclaw.compliance.fips-enforced` | off | off | off | off | off | on | off | on |
+| `jaiclaw.compliance.fedramp-warnings` | off | off | off | off | off | on | off | off |
+
+`soc2` additionally sets `jaiclaw.security.default-tool-profile=MINIMAL` and `jaiclaw.security.rate-limit.enabled=true` — only when the operator has not set them.
 | `jaiclaw.compliance.cui-warnings` | off | off | off | off | off | on | off |
 
 Individual flags override the profile default in either direction. Example — run the HIPAA profile on a bench deployment behind a private TLS-terminating proxy:
@@ -1081,7 +1085,7 @@ Some behavior is per-tenant, driven by `TenantContext.getMetadata()`:
 | Metadata key | Purpose |
 |---|---|
 | `gdpr.lawful_basis` | Written to every `AuditEvent.lawfulBasis` |
-| `data.retention_days` | Retention TTL — enforced by `RetentionEnforcementService` |
+| `data.retention_days` | Retention TTL — read by `RetentionEnforcementService.enforceForTenant`, which **you** must schedule (see below) |
 | `data.restriction_flags` | GDPR Art. 18 processing restrictions |
 | `data.residency_required` | Required residency for routing / storage |
 | `hipaa.phi_processing` | Drives BAA-eligible-provider enforcement + `PromptRedactor` |

@@ -277,7 +277,7 @@ The installer detects whether Java 21+ is available, and offers to install it vi
 ### Option 2: Docker
 
 ```bash
-git clone https://github.com/jaiclaw/jaiclaw.git
+git clone https://github.com/glawson6/jaiclaw.git
 cd jaiclaw
 ./quickstart.sh
 ```
@@ -317,7 +317,7 @@ vi docker-compose/.env       # edit API keys once
 ### Option 4: setup.sh (developer setup)
 
 ```bash
-git clone https://github.com/jaiclaw/jaiclaw.git
+git clone https://github.com/glawson6/jaiclaw.git
 cd jaiclaw
 ./setup.sh
 ```
@@ -522,7 +522,7 @@ One-property activation via compliance profiles:
 ```yaml
 jaiclaw:
   compliance:
-    profile: hipaa          # or: gdpr | both | fedramp-moderate | cmmc-l2 | fips | none
+    profile: hipaa          # or: gdpr | both | soc2 | fedramp-moderate | cmmc-l2 | fips | none
 ```
 
 Each profile flips a bundle of effective flags (HTTPS enforcement, audit chain, PHI redaction, FIPS provider check, BAA/FedRAMP/CUI provider warnings) with per-flag overrides available.
