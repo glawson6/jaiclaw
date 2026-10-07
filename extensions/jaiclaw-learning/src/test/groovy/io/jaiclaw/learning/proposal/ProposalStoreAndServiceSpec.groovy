@@ -107,9 +107,16 @@ class ProposalStoreAndServiceSpec extends Specification {
         when:
         service.submit(memory("../../etc", "sneaky"))
 
-        then:
-        !Files.exists(tmp.resolve("../../etc"))
+        then: "the sanitised directory is inside the base directory"
         store.proposalsDir("../../etc").normalize().startsWith(tmp.normalize())
+
+        and: "the proposal was written there, and nowhere else"
+        Files.exists(store.proposalsDir("../../etc"))
+        Files.walk(tmp).filter { it.toString().endsWith(".json") }.count() == 1L
+        // Deliberately NOT `!Files.exists(tmp.resolve("../../etc"))`: on a Linux
+        // runner the temp dir is /tmp/<x>, so that path *is* /etc and exists —
+        // the spec would fail for a reason unrelated to the store.
+        !Files.exists(tmp.resolve("../../etc/proposals"))
     }
 
     def "listing is newest-first"() {

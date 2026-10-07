@@ -64,6 +64,10 @@ jobs:
         env:
           E2E_SCENARIOS: ${{ github.event.inputs.scenarios || '1,3,4,5' }}
           AI_PROVIDER: ${{ github.event.inputs.ai_provider || 'anthropic' }}
+          # Scenario 1 boots the gateway with `spring-boot:run` on a 2-vCPU
+          # runner; the 120 s default has been tripping since 2026-09-25 while
+          # scenarios 3-5 pass, so give the first boot the headroom it needs.
+          E2E_TIMEOUT: '300'
 
       - name: Upload test artifacts
         if: always()
