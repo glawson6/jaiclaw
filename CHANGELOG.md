@@ -11,7 +11,13 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 
 ## [Unreleased]
 
-In progress on the `1.3.0-SNAPSHOT` line.
+In progress on the `1.4.0-SNAPSHOT` line. Owed: `jaiclaw.security.default-tool-profile`
+flips `FULL` → `MINIMAL`; Part E Logto adapter; per-tool OAuth scopes.
+
+## [1.3.0] — 2026-10-07
+
+The **fail-closed release**. Full notes: [`releases/release-1.3.0.md`](releases/release-1.3.0.md).
+
 
 > **Deferred to 1.4.0:** `jaiclaw.security.default-tool-profile` flips from
 > `FULL` to `MINIMAL`. 1.2.0's notes promised 1.3.0; the flip moved because
@@ -115,6 +121,91 @@ In progress on the `1.3.0-SNAPSHOT` line.
   `jaiclaw.security.rate-limit.enabled=true` — following the existing
   `require-https` precedent. Both are set **only when the operator has not set
   them**, so an explicit value always survives the profile.
+
+### Security
+
+- **Discord verified nothing.** No Ed25519 check and no config flag, while still
+  answering Discord's PING challenge — the endpoint passed the developer-portal
+  setup check *and* accepted forged interactions. Now verifies
+  `X-Signature-Ed25519` over `timestamp || body` before parsing and before PING,
+  and rejects a signed timestamp more than five minutes from now (replay
+  window, matching the Slack verifier). `jaiclaw.channels.discord.verify-signature`
+  + `public-key`; webhook mode refuses to start with the flag on and no key.
+- **Slack and Telegram failed open on a blank secret** even with the verify flag
+  on — the likely state after enabling `security-hardened` without setting the
+  secrets. Both now return 401.
+- **LINE** used `String.equals` for signature comparison; now `MessageDigest.isEqual`.
+- **`/actuator/jaiclaw-estop` is off by default** and role-guarded
+  (`jaiclaw.gateway.admin.estop.{endpoint-enabled,role}`); a blank role denies;
+  enabling it under `security.mode=none` without a role refuses to start.
+- **Chat approval hardened after the 2026-10-01 security review** (findings
+  1.1–1.5, each pinned by a spec): every request carries a code the approver must
+  quote back (`yes K7Q4`) so an answer is bound to the question it was read
+  against; several requests coexist per conversation and nothing supersedes
+  anything (bounded at 20); approvers may carry a `user-id` checked against
+  `platformData["sender_id"]`, which Telegram, Slack and Discord now publish
+  (fail-closed when absent, startup WARN when unset); the lookup key carries no
+  tenant, because the reply filter runs before tenant resolution and a
+  tenant-scoped key could never match; the vocabulary is `yes approve approved
+  confirm confirmed` / `no deny denied reject rejected cancel abort stop refuse
+  veto` — `ok`, `sure`, `go`, `y` are no longer consent.
+- **CVEs cleared:** CVE-2025-59288 (Playwright → 1.63.0), CVE-2020-29582
+  (kotlin-stdlib-common via okio → 3.18.2, artifact gone), CVE-2026-42582
+  (netty-codec-http3 — fixed by dropping the Netty pin that dragged 15 artifacts
+  backwards onto a mixed 4.1/4.2 classpath; suppression deleted). CVE-2026-6860
+  (Vert.x, fabric8 transport only) suppressed with reachability evidence and an
+  expiry. `failBuildOnCVSS=7.0` and the suppression file now live in the POM; a
+  new `security` Maven profile binds the scan to `verify`.
+
+### Added (approval, profiles, secrets)
+
+- **Approval over chat** — `ChatApprovalHandler` + `ApprovalReplyFilter` +
+  `PendingApprovalRegistry` + `ApprovalReplyParser`; opt-in via
+  `jaiclaw.approval.chat.enabled` with `approvers[].{channel-id,account-id,peer-id,user-id}`.
+  The first `ToolApprovalHandler` that uses the SPI's asynchronous contract.
+- **Per-tool approval timeouts** with `on-timeout: deny|approve` (deny unless
+  typed), and a top-level **`auto-approve`** switch that a `DENY` floor still wins
+  over. `jaiclaw.agent.agents.<name>.tool-loop.approval`.
+- **`MINIMAL` and `WEBHOOK_SAFE` are usable profiles.** `WEBHOOK_SAFE` granted
+  nothing — no tool carried the tag. Read-only tools retagged: `file_read`,
+  `web_search`, `web_fetch`, ASCII rendering, read-only task and wiki tools.
+- **`CachingSecretsProvider`** — 1Password lookups cached (misses too, since
+  `SecretsPropertySource` answers every property lookup); `refresh()` finally
+  does something and refreshes the delegate before clearing the cache. A missing
+  `op` binary is reported at startup instead of yielding silent `${...}`.
+- **`AuditChainVerifier`** runs `verifyChain()` per tenant on a schedule
+  (`jaiclaw.compliance.audit.verify.interval`, daily); it previously had zero callers.
+- `GatewayMessageFilter.setDownstream` + `FilteredGatewayLifecycle` chain
+  composition, so several filters coexist (`@Order`).
+- `DiscordConfig.builder().publicKey(..).verifySignature(..)`.
+
+### Fixed
+
+- **`runtime: EMBABEL` pipeline stages failed from a Spring Boot fat jar** with
+  `ClassNotFoundException` for the application's `@Action` types: Embabel's
+  `JvmType` resolves types through the thread context class loader, and
+  `ForkJoinPool.commonPool` / Camel SEDA threads carry the JDK app loader.
+  Present in 1.2.0 (reproduced against the released jar). `EmbabelInvocations`
+  pins the TCCL for every invocation.
+- `jaiclaw-example-pipeline-e2e` fed `ANTHROPIC_MODEL` (wire name) into
+  `embabel.models.default-llm` (registry name) and refused to start with a
+  MiniMax-routed key.
+- CI: unit tests ran offline after a `-DskipTests` compile and failed before any
+  spec; the Central publish workflow had no Maven server credentials.
+
+### Removed / Deprecated
+
+- `ToolProfileHolder.getOrDefault()` removed (deprecated `forRemoval` in 1.2.0).
+- `DiscordConfig`'s five-argument constructor deprecated — it can only produce
+  `verifySignature=false`.
+
+### Dependencies
+
+Spring Boot 4.1.0 → **4.1.1**, Spring AI 2.0.0 → **2.0.1**, Embabel 1.5.0 →
+**1.5.3**, Spring Shell 4.0.2 → **4.0.3**, Spring Cloud 2025.1.2 → **2025.1.3**,
+Playwright 1.49.0 → **1.63.0**, okio pinned **3.18.2**, Netty **unpinned**
+(follows Boot: 4.2.17), jsoup 1.22.2 → **1.23.2**, PDFBox 3.0.7 → **3.0.8**,
+dependency-check-maven 12.1.0 → **13.0.0**. No new runtime dependencies.
 
 ## [1.2.0] — 2026-09-18
 
@@ -533,7 +624,8 @@ Initial commit of the JaiClaw port of OpenClaw. Java 21 / Spring Boot
 
 ---
 
-[Unreleased]: https://github.com/glawson6/jaiclaw/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/glawson6/jaiclaw/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/glawson6/jaiclaw/compare/v1.2.0...v1.3.0
 [0.7.1]: https://github.com/glawson6/jaiclaw/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/glawson6/jaiclaw/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/glawson6/jaiclaw/compare/v0.5.0...v0.6.0

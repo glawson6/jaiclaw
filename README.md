@@ -36,11 +36,11 @@ JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI
 
 Built on Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, Embabel Agent 1.5.3, Spring Shell 4.0.3, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
 
-**1.2.0 released to Maven Central** on 2026-09-18 — the security and identity release. It closes two critical defects (tenant context could be set from an *unverified* JWT; tool authorization failed *open* to `FULL`), and adds a provider-neutral authentication stack: an OIDC resource server, OAuth discovery for MCP clients, and verified channel identity.
+**1.3.0 released to Maven Central** on 2026-10-07 — the *fail-closed* release. Security controls that existed but could not be reached, or silently did nothing, now refuse where they used to proceed: the tool-approval gate denies when no handler can be asked, Slack and Telegram reject webhooks when their secret is blank, Discord verifies Ed25519 interaction signatures (with a replay window), the audit hash chain is actually verified on a schedule, and encryption at rest is wired end to end. It adds **human-in-the-loop approval over chat** (code-bound replies, approver identity), a **`soc2` compliance profile**, usable `MINIMAL` / `WEBHOOK_SAFE` tool profiles, and cached 1Password lookups.
 
-> **Adopters on 1.1.0 or earlier should read the [breaking changes](releases/release-1.2.0.md#breaking-changes) before upgrading.** In particular, `jaiclaw.security.mode=api-key` with `jaiclaw.tenant.mode=multi` now requires a tenant header. Single-tenant deployments are unaffected.
+> **Adopters coming from 1.2.0 should read the [breaking changes](releases/release-1.3.0.md#breaking-changes).** Approval-required tools with no `ToolApprovalHandler` are now **denied** instead of executed; `verify-signature` / `verify-webhook` without their secret now return 401; the estop actuator endpoint is off by default. Each only affects configurations where the control was never working.
 
-See [Distribution](#distribution) for the adopter recipe and [releases/release-1.2.0.md](releases/release-1.2.0.md) for the full catalogue. TapTech Nexus remains an alternative mirror.
+See [Distribution](#distribution) for the adopter recipe and [releases/release-1.3.0.md](releases/release-1.3.0.md) for the full catalogue. TapTech Nexus remains an alternative mirror.
 
 It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/openclaw) (TypeScript/Node.js) and has since grown well beyond the original — adding enterprise multi-tenancy, GOAP-based agent planning, MCP server hosting, declarative pipelines, scaffolding tooling, and security hardening that don't exist in the Node.js version.
 
@@ -52,9 +52,9 @@ It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/op
 
 For Java teams building their own AI agent product on top of a proven foundation. Pull JaiClaw via the BOM, compose the [Spring Boot starters](jaiclaw-starters/) you need, implement the SPIs for your business domain. The framework gets out of your way.
 
-#### <a name="distribution"></a>Distribution — 1.2.0 on Maven Central
+#### <a name="distribution"></a>Distribution — 1.3.0 on Maven Central
 
-1.2.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
+1.3.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
 
 ```xml
 <dependencyManagement>
@@ -62,7 +62,7 @@ For Java teams building their own AI agent product on top of a proven foundation
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-bom</artifactId>
-            <version>1.2.0</version>
+            <version>1.3.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -70,7 +70,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </dependencyManagement>
 ```
 
-**Alternative mirror — TapTech Nexus.** The same 1.2.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
+**Alternative mirror — TapTech Nexus.** The same 1.3.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
 
 ```xml
 <repositories>
@@ -83,7 +83,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </repositories>
 ```
 
-Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changed that. See [releases/release-1.2.0.md](releases/release-1.2.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
+Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changed that. See [releases/release-1.3.0.md](releases/release-1.3.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
 
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 
@@ -503,7 +503,9 @@ JAICLAW_SECURITY_MODE=none ./start.sh local
 JAICLAW_API_KEY=my-custom-key ./start.sh local
 ```
 
-For production deployments, enable the `security-hardened` Spring profile to turn on HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe API key comparison, and ECDH agent-to-agent key exchange. See [docs/user/PRODUCTION-DEPLOYMENT.md § 9 Security hardening](docs/user/PRODUCTION-DEPLOYMENT.md).
+For production deployments, enable the `security-hardened` Spring profile to turn on HMAC webhook verification, SSRF guards, workspace path boundaries, timing-safe API key comparison, and ECDH agent-to-agent key exchange. See [docs/user/PRODUCTION-DEPLOYMENT.md § 9 Security hardening](docs/user/PRODUCTION-DEPLOYMENT.md). The profile sets the verify flags but cannot set your secrets — as of 1.3.0 a verify flag without its secret **rejects** every webhook rather than silently accepting them.
+
+**Human-in-the-loop approval (1.3.0).** Tools can be floored to `PROMPT_ALWAYS` or `DENY` per agent, and the shipped chat handler asks a configured approver and waits for a reply such as `yes K7Q4` — every request carries a code so an answer can never be applied to a different call than the one the approver read. An approval that cannot be obtained is a denial. See [docs/user/BUDGETS-AND-GUARDS.md](docs/user/BUDGETS-AND-GUARDS.md) and [SECURITY.md](SECURITY.md) for the defaults worth knowing.
 
 ## Compliance
 

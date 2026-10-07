@@ -700,6 +700,28 @@ spring:
       base-url: http://ollama.infra:11434
 ```
 
+## Human-in-the-Loop Approval (1.3.0)
+
+```
+ExplicitToolLoop (jaiclaw-agent, mode: explicit)
+  │  ApprovalFloor per tool: NONE | PROMPT_ALWAYS | DENY   (DENY evaluated first — auto-approve cannot bypass it)
+  │  ApprovalPolicy: per-tool timeout + on-timeout (deny default)
+  ▼
+ToolApprovalHandler (jaiclaw-core SPI)  ── no bean registered ──▶ DENIED  (fail closed; pre-1.3.0 this executed)
+  │
+  ▼ ChatApprovalHandler (jaiclaw-gateway, opt-in jaiclaw.approval.chat.enabled)
+  │   ApproverResolver.resolve(sessionKey) → Approver{channelId, accountId, peerId, userId?}
+  │   PendingApprovalRegistry.register(tool, session, tenantId, peerKey, window) → code (e.g. K7Q4)
+  │   sends "Approval needed: `tool` — code K7Q4 … Reply *yes K7Q4* / *no K7Q4*" via the ChannelAdapter
+  │
+  ▼ inbound reply  ──▶  GatewayMessageFilter chain (TelegramUserIdFilter @100 → ApprovalReplyFilter @200 → GatewayService)
+        ApprovalReplyFilter: pending for channel:peer?  → from a configured approver (user-id checked when set; sender from
+        platformData["sender_id"]; fails closed if absent)? → ApprovalReplyParser → redeem(peerKey, code, decision)
+        bare "yes" / unknown code: consumed, approver told the open codes — never guessed
+```
+
+Design points, each pinned by a spec: the registry is keyed by **code**, so several requests coexist per conversation and nothing supersedes anything (bounded at 20, excess denied); the conversation key carries **no tenant**, because the filter runs upstream of tenant resolution and a tenant-scoped key could never match (the requesting tenant is recorded on the request for audit); codes come from an alphabet with no vowels and no look-alike glyphs so they can never read as a verdict; the vocabulary is `yes approve approved confirm confirmed` / `no deny denied reject rejected cancel abort stop refuse veto` — `ok`, `sure`, `go` are not consent. Requests are not persisted across restart. See `docs/user/BUDGETS-AND-GUARDS.md`.
+
 ## Compliance Orchestration
 
 The `jaiclaw-compliance` extension (shipped in 0.9.3) layers GDPR + HIPAA orchestration on top of the security-hardened profile. The full adopter-facing guide is at `docs/user/COMPLIANCE.md`; this section covers the internal architecture.

@@ -957,12 +957,16 @@ SPRING_PROFILES_ACTIVE=security-hardened ./start.sh local
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `jaiclaw.channels.slack.verify-signature` | `false` | HMAC-SHA256 verification of Slack webhook signatures with replay protection |
-| `jaiclaw.channels.telegram.verify-webhook` | `false` | `X-Telegram-Bot-Api-Secret-Token` header verification on inbound webhooks |
+| `jaiclaw.channels.slack.verify-signature` | `false` | HMAC-SHA256 verification of Slack webhook signatures with replay protection. **1.3.0:** with the flag on and `signing-secret` blank, every webhook is rejected (401) instead of silently accepted |
+| `jaiclaw.channels.telegram.verify-webhook` | `false` | `X-Telegram-Bot-Api-Secret-Token` header verification on inbound webhooks. **1.3.0:** blank `webhook-secret-token` rejects, as above |
+| `jaiclaw.channels.discord.verify-signature` + `public-key` | `false` | **1.3.0.** Ed25519 verification of Discord interaction signatures over `timestamp || body`, with a 5-minute replay window. Webhook mode refuses to start when the flag is on and `public-key` is blank |
 | `jaiclaw.channels.telegram.mask-bot-token` | `false` | Use SHA-256 hash prefix of bot token as accountId in session keys |
 | `jaiclaw.tools.web.ssrf-protection` | `false` | Block WebFetchTool requests to private/internal/link-local IPs |
 | `jaiclaw.tools.code.workspace-boundary` | `false` | Path traversal protection in FileEditTool, GrepTool, GlobTool |
 | `jaiclaw.security.timing-safe-api-key` | `false` | Constant-time API key comparison via `MessageDigest.isEqual()` |
+| `jaiclaw.gateway.admin.estop.endpoint-enabled` + `role` | `false` / blank | **1.3.0.** `/actuator/jaiclaw-estop` is off by default; its POST is role-guarded and a blank role **denies**. `bin/jaiclaw pause\|resume` needs no HTTP surface |
+
+Two related 1.3.0 behaviours that are not flags: a tool floored to `PROMPT_ALWAYS` with no `ToolApprovalHandler` registered is **denied**, not executed (opt in to the chat handler with `jaiclaw.approval.chat.enabled=true` — see [BUDGETS-AND-GUARDS.md](BUDGETS-AND-GUARDS.md)), and `jaiclaw.security.default-tool-profile` still defaults to `FULL` with a startup warning; set it to `MINIMAL` explicitly now, the default flips in 1.4.0.
 
 ### Rate limiting
 
