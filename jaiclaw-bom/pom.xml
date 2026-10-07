@@ -50,12 +50,12 @@
     </distributionManagement>
 
     <properties>
-        <!-- Align with root pom's spring-ai.version (2.0.0). Prior 1.1.7 pin
+        <!-- Align with root pom's spring-ai.version (2.0.1). Prior 1.1.7 pin
              was a leftover from the Boot 3.5 line and made scaffolded apps
              fail with NoSuchMethodError: HttpHeaders.addAll(MultiValueMap) —
              Spring AI 1.1.7 references org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration
              which no longer exists in Boot 4. -->
-        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
 
     <profiles>

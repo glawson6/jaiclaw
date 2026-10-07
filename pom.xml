@@ -56,13 +56,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Spring Boot 4.1 / Spring Framework 7 / Spring AI 2.0 stack.
-             Embabel is pinned to a Boot-4 SNAPSHOT — Phase 8 pins it to a GA once released
-             (docs/spring-boot-4-upgrade/02-embabel-gate.md). -->
+             Embabel is on its GA line (1.5.x on Maven Central); see
+             docs/spring-boot-4-upgrade/02-embabel-gate.md for how it got there. -->
         <spring-boot.version>4.1.1</spring-boot.version>
-        <spring-ai.version>2.0.0</spring-ai.version>
-        <embabel-agent.version>1.5.0</embabel-agent.version>
-        <spring-shell.version>4.0.2</spring-shell.version>
-        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
+        <!-- Embabel's JvmType resolves @Action parameter/return types through the
+             thread context class loader. Run it from a thread whose TCCL is the
+             JDK app loader (ForkJoinPool.commonPool, Camel SEDA consumers) inside
+             a Spring Boot fat jar and application classes are invisible —
+             ClassNotFoundException at JvmType.kt:65. jaiclaw-embabel-delegate
+             pins the TCCL around every invocation (EmbabelInvocations.run). -->
+        <embabel-agent.version>1.5.3</embabel-agent.version>
+        <spring-shell.version>4.0.3</spring-shell.version>
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
         <!-- GitHub Copilot Java SDK — the official com.github:copilot-sdk-java
              artifact on Maven Central. Consumed by extensions/jaiclaw-github-copilot
              to expose the Copilot backend as a Spring AI ChatModel. The
@@ -84,7 +90,7 @@
         <!-- Third-party libraries -->
         <github-api.version>1.330</github-api.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <okio.version>3.16.4</okio.version>
+        <okio.version>3.18.2</okio.version>
         <line-bot-sdk.version>9.15.0</line-bot-sdk.version>
         <!--
             Camel promoted to the root POM (2026-09-08 CVE scan). Previously
@@ -96,12 +102,12 @@
         <!--
             jsoup — CVE override, see dependencyManagement below.
         -->
-        <jsoup.version>1.22.2</jsoup.version>
+        <jsoup.version>1.23.2</jsoup.version>
         <!-- Plugins -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <jkube.version>1.19.0</jkube.version>
-        <dependency-check.version>12.1.0</dependency-check.version>
+        <dependency-check.version>13.0.0</dependency-check.version>
         <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
         <!--
             OSS Index credentials — supplied at invocation time via
