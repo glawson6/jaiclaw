@@ -58,9 +58,46 @@ final class EmbabelInvocations {
      * (default binding is {@code "it" -> userInput}). Returns the raw
      * {@link AgentProcess}; callers handle status interpretation.
      */
+    /**
+     * Runs the agent with the thread context class loader pinned to the one
+     * that loaded this class.
+     *
+     * <p>Embabel's {@code JvmType} resolves every {@code @Action} parameter and
+     * return type with {@code Class.forName(name, false,
+     * Thread.currentThread().getContextClassLoader())}. Inside a Spring Boot
+     * fat jar the application's classes live under {@code BOOT-INF/classes}
+     * and are visible only to Boot's {@code LaunchedClassLoader}; a thread
+     * whose context loader is the JDK application loader — every
+     * {@code ForkJoinPool.commonPool} worker, and Camel's SEDA consumers —
+     * therefore fails with {@code ClassNotFoundException} for the adopter's
+     * own domain types on the first run. Unit tests never see this because
+     * they run on a flat classpath where both loaders are the same object.
+     *
+     * <p>The loader that loaded this class is the right one: on a flat
+     * classpath it is the app loader, in a fat jar it is the launched loader,
+     * and in either case it is the loader the adopter's agent beans came from.
+     */
     static AgentProcess run(AgentPlatform agentPlatform, Agent agent, Map<String, Object> input) {
         log.info("Embabel run — workflow={} input-keys={}", agent.getName(), input.keySet());
-        return agentPlatform.runAgentFrom(agent, ProcessOptions.DEFAULT, input);
+        Thread current = Thread.currentThread();
+        ClassLoader previous = current.getContextClassLoader();
+        ClassLoader pinned = contextClassLoaderFor(agent);
+        current.setContextClassLoader(pinned);
+        try {
+            return agentPlatform.runAgentFrom(agent, ProcessOptions.DEFAULT, input);
+        } finally {
+            current.setContextClassLoader(previous);
+        }
+    }
+
+    /**
+     * The loader to run under: this module's own, which in every deployment
+     * shape can see both Embabel and the application's classes. Falls back to
+     * the system loader only if this class somehow has none (bootstrap).
+     */
+    static ClassLoader contextClassLoaderFor(Agent agent) {
+        ClassLoader own = EmbabelInvocations.class.getClassLoader();
+        return own != null ? own : ClassLoader.getSystemClassLoader();
     }
 
     /**

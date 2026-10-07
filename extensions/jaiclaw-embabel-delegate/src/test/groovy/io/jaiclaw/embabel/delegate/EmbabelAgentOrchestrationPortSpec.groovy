@@ -12,6 +12,9 @@ import io.jaiclaw.tools.bridge.embabel.WorkflowDescriptor
 import spock.lang.Specification
 import spock.lang.Subject
 
+import java.net.URL
+import java.net.URLClassLoader
+
 /**
  * Coverage for the pipeline-side Embabel orchestration port. Mirrors
  * the lookup + status + serialization scenarios from
@@ -46,6 +49,58 @@ class EmbabelAgentOrchestrationPortSpec extends Specification {
         then:
         workflows.size() == 2
         workflows*.name() == ["invoice-classifier", "po-extractor"]
+    }
+
+    def "execute pins the thread context class loader to this module's loader for the Embabel call"() {
+        given: "Embabel's JvmType resolves @Action types via the TCCL; the common pool's is the JDK app loader"
+        Agent agent = makeAgent("LoaderAgent")
+        AgentProcess process = Mock()
+        Blackboard blackboard = Mock()
+        ClassLoader seenDuringCall = null
+
+        agentPlatform.agents() >> [agent]
+        agentPlatform.runAgentFrom(agent, ProcessOptions.DEFAULT, ["it": "input"]) >> {
+            seenDuringCall = Thread.currentThread().contextClassLoader
+            process
+        }
+        process.getStatus() >> AgentProcessStatusCode.COMPLETED
+        process.getBlackboard() >> blackboard
+        blackboard.lastResult() >> "ok"
+
+        when: "the call runs on a pool thread whose TCCL cannot see application classes"
+        OrchestrationResult result = port.execute("LoaderAgent", ["it": "input"]).get()
+
+        then: "inside the Embabel call the loader is the one that loaded the delegate"
+        result.success()
+        seenDuringCall.is(EmbabelInvocations.classLoader)
+    }
+
+    def "run restores the caller's context class loader afterwards, even on failure"() {
+        given: "a thread carrying a deliberately empty loader"
+        Agent agent = makeAgent("RestoreAgent")
+        ClassLoader empty = new URLClassLoader(new URL[0], (ClassLoader) null)
+        ClassLoader seenDuringCall = null
+        ClassLoader seenAfterCall = null
+        agentPlatform.runAgentFrom(agent, ProcessOptions.DEFAULT, ["it": "x"]) >> {
+            seenDuringCall = Thread.currentThread().contextClassLoader
+            throw new IllegalStateException("boom")
+        }
+
+        when:
+        Thread t = new Thread({
+            Thread.currentThread().contextClassLoader = empty
+            try {
+                EmbabelInvocations.run(agentPlatform, agent, ["it": "x"])
+            } catch (IllegalStateException ignored) {
+            }
+            seenAfterCall = Thread.currentThread().contextClassLoader
+        })
+        t.start()
+        t.join(5000)
+
+        then: "pinned for the call, and the empty loader is back once it returns"
+        seenDuringCall.is(EmbabelInvocations.classLoader)
+        seenAfterCall.is(empty)
     }
 
     def "execute returns success with serialized JSON when the agent completes"() {
