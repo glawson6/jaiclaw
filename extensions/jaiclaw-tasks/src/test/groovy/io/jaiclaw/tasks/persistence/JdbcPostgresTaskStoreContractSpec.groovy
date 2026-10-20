@@ -4,7 +4,7 @@ import io.jaiclaw.tasks.TaskStore
 import io.jaiclaw.tasks.persistence.h2.H2TaskStore
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.SimpleDriverDataSource
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import spock.lang.Shared
 

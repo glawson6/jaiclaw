@@ -123,18 +123,7 @@ class CopilotChatModelSpec extends Specification {
     def "toChatResponse maps content + finish reason"() {
         given:
         def chatModel = new CopilotChatModel(api, new CopilotChatOptions(), mapper)
-        def data = new AssistantMessageEvent.AssistantMessageEventData(
-                "msg-1",       // messageId
-                "gpt-4o",       // model
-                "the answer is 4",  // content
-                null,           // toolRequests
-                null, null, null, null, null,   // reasoning + encryptedContent + phase
-                123L,           // outputTokens
-                "int-1", "req-1", "srvreq-1", "api-1",  // interactionId etc
-                null,           // serverTools
-                "turn-1", null, // turnId, parentToolCallId
-                null            // citations
-        )
+        def data = rec(AssistantMessageEvent.AssistantMessageEventData, [messageId: "msg-1", model: "gpt-4o", content: "the answer is 4", outputTokens: 123L, interactionId: "int-1", requestId: "req-1", serviceRequestId: "srvreq-1", apiCallId: "api-1", turnId: "turn-1"])
         def event = new AssistantMessageEvent()
         event.setData(data)
 
@@ -151,13 +140,8 @@ class CopilotChatModelSpec extends Specification {
     def "toChatResponse maps toolRequests to finish reason TOOL_CALLS"() {
         given:
         def chatModel = new CopilotChatModel(api, new CopilotChatOptions(), mapper)
-        def toolReq = new com.github.copilot.generated.AssistantMessageToolRequest(
-                "call-1", "search", [q: "hi"], null, null, null, null, null)
-        def data = new AssistantMessageEvent.AssistantMessageEventData(
-                "msg-1", "gpt-4o", "calling search", [toolReq],
-                null, null, null, null, null,
-                42L, "int-1", "req-1", "srvreq-1", "api-1",
-                null, "turn-1", null, null)
+        def toolReq = rec(com.github.copilot.generated.AssistantMessageToolRequest, [toolCallId: "call-1", name: "search", arguments: [q: "hi"]])
+        def data = rec(AssistantMessageEvent.AssistantMessageEventData, [messageId: "msg-1", model: "gpt-4o", content: "calling search", toolRequests: [toolReq], outputTokens: 42L, interactionId: "int-1", requestId: "req-1", serviceRequestId: "srvreq-1", apiCallId: "api-1", turnId: "turn-1"])
         def event = new AssistantMessageEvent()
         event.setData(data)
 
@@ -169,5 +153,19 @@ class CopilotChatModelSpec extends Specification {
         response.getResult().getOutput().getToolCalls().size() == 1
         response.getResult().getOutput().getToolCalls()[0].id() == "call-1"
         response.getResult().getOutput().getToolCalls()[0].name() == "search"
+    }
+
+    /**
+     * Builds an SDK-generated record by component name. The Copilot SDK adds
+     * components to its generated records in patch releases (1.0.5 -> 1.0.23
+     * grew AssistantMessageEventData from 18 to 26), so positional
+     * construction breaks on every bump; naming the components does not.
+     */
+    private static <T> T rec(Class<T> type, Map<String, ?> values) {
+        def comps = type.recordComponents
+        def unknown = values.keySet() - (comps*.name as Set)
+        assert unknown.isEmpty() : "not components of ${type.simpleName}: ${unknown}"
+        def ctor = type.getDeclaredConstructor(comps*.type as Class[])
+        ctor.newInstance(comps.collect { values[it.name] } as Object[])
     }
 }

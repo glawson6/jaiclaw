@@ -15,7 +15,7 @@
     <description>Kubernetes monitoring and management tools for JaiClaw agents</description>
 
     <properties>
-        <fabric8.version>7.1.0</fabric8.version>
+        <fabric8.version>8.0.0</fabric8.version>
     </properties>
 
     <dependencies>

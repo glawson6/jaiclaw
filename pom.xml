@@ -75,7 +75,7 @@
              underlying auth is delegated to the local `gh copilot` CLI (see
              docs/user/COPILOT-INTEGRATION.md). Bytecode target is Java 17;
              works cleanly against JaiClaw's JDK 21 baseline. -->
-        <copilot-sdk.version>1.0.5-01</copilot-sdk.version>
+        <copilot-sdk.version>1.0.23</copilot-sdk.version>
 
         <!-- CVE version overrides — Boot 4.1 BOM re-evaluation:
              Tomcat 10.1 pin REMOVED (Boot 4 = Tomcat 11).
@@ -83,8 +83,8 @@
         <log4j2.version>2.26.0</log4j2.version>
 
         <!-- Testing (Spock support restored in Boot 4.1 via Groovy 5) -->
-        <spock.version>2.4-groovy-5.0</spock.version>
-        <groovy.version>5.0.7</groovy.version>
+        <spock.version>2.5-groovy-5.0</spock.version>
+        <groovy.version>5.0.8</groovy.version>
         <gmavenplus-plugin.version>5.1.0</gmavenplus-plugin.version>
 
         <!-- Third-party libraries -->
@@ -98,17 +98,17 @@
             jaiclaw-spring-boot-starter drift to camel-core 4.18.2 while
             everything else was on 4.21.0. Single source of truth now.
         -->
-        <camel.version>4.21.0</camel.version>
+        <camel.version>4.23.0</camel.version>
         <!--
             jsoup — CVE override, see dependencyManagement below.
         -->
         <jsoup.version>1.23.2</jsoup.version>
         <!-- Plugins -->
-        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
-        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
-        <jkube.version>1.19.0</jkube.version>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
+        <jkube.version>1.20.0</jkube.version>
         <dependency-check.version>13.0.0</dependency-check.version>
-        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <!--
             OSS Index credentials — supplied at invocation time via
             -DossIndex.user=... -DossIndex.token=... or CI secrets.
@@ -835,7 +835,7 @@
             <dependency>
                 <groupId>org.objenesis</groupId>
                 <artifactId>objenesis</artifactId>
-                <version>3.5</version>
+                <version>3.6</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -1133,12 +1133,16 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.9.0</version>
+                        <version>0.12.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>true</autoPublish>
-                            <waitUntil>published</waitUntil>
+                            <!-- validated, not published: the portal publish cycle takes
+                                 10-30 min and the 1.3.0 release aborted release.sh at the
+                                 poll timeout after a successful upload. autoPublish still
+                                 publishes; verification happens against repo1 afterwards. -->
+                            <waitUntil>validated</waitUntil>
                             <ignorePublishedComponents>true</ignorePublishedComponents>
                         </configuration>
                     </plugin>

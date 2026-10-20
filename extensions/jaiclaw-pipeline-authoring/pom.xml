@@ -70,7 +70,7 @@
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-core</artifactId>
-            <version>4.21.0</version>
+            <version>${camel.version}</version>
             <optional>true</optional>
         </dependency>
 

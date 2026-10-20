@@ -94,16 +94,7 @@ class CopilotToolMapperSpec extends Specification {
 
     def "toSpringAiToolCall converts a Copilot tool request record"() {
         given:
-        def request = new AssistantMessageToolRequest(
-                "call-42",           // toolCallId
-                "search_items",       // name
-                [keyword: "spring"],  // arguments as a Map (SDK deserializes to Map/JsonNode)
-                null,                 // type
-                "Search Items",       // toolTitle
-                null,                 // mcpServerName
-                null,                 // mcpToolName
-                null                  // intentionSummary
-        )
+        def request = rec(AssistantMessageToolRequest, [toolCallId: "call-42", name: "search_items", arguments: [keyword: "spring"], toolTitle: "Search Items"])
 
         when:
         def tc = mapper.toSpringAiToolCall(request)
@@ -118,9 +109,7 @@ class CopilotToolMapperSpec extends Specification {
 
     def "toSpringAiToolCall handles String arguments verbatim"() {
         given:
-        def request = new AssistantMessageToolRequest(
-                "call-1", "raw_json_tool", '{"already":"json"}',
-                null, null, null, null, null)
+        def request = rec(AssistantMessageToolRequest, [toolCallId: "call-1", name: "raw_json_tool", arguments: '{"already":"json"}'])
 
         when:
         def tc = mapper.toSpringAiToolCall(request)
@@ -131,9 +120,7 @@ class CopilotToolMapperSpec extends Specification {
 
     def "toSpringAiToolCall handles null arguments as empty object"() {
         given:
-        def request = new AssistantMessageToolRequest(
-                "call-1", "no_args_tool", null,
-                null, null, null, null, null)
+        def request = rec(AssistantMessageToolRequest, [toolCallId: "call-1", name: "no_args_tool"])
 
         when:
         def tc = mapper.toSpringAiToolCall(request)
@@ -150,10 +137,8 @@ class CopilotToolMapperSpec extends Specification {
 
     def "toSpringAiToolCalls bulk-converts a list"() {
         given:
-        def r1 = new AssistantMessageToolRequest(
-                "c1", "t1", [x: 1], null, null, null, null, null)
-        def r2 = new AssistantMessageToolRequest(
-                "c2", "t2", [y: 2], null, null, null, null, null)
+        def r1 = rec(AssistantMessageToolRequest, [toolCallId: "c1", name: "t1", arguments: [x: 1]])
+        def r2 = rec(AssistantMessageToolRequest, [toolCallId: "c2", name: "t2", arguments: [y: 2]])
 
         when:
         def result = mapper.toSpringAiToolCalls([r1, r2])
@@ -162,5 +147,19 @@ class CopilotToolMapperSpec extends Specification {
         result.size() == 2
         result[0].id() == "c1"
         result[1].id() == "c2"
+    }
+
+    /**
+     * Builds an SDK-generated record by component name. The Copilot SDK adds
+     * components to its generated records in patch releases (1.0.5 -> 1.0.23
+     * grew AssistantMessageEventData from 18 to 26), so positional
+     * construction breaks on every bump; naming the components does not.
+     */
+    private static <T> T rec(Class<T> type, Map<String, ?> values) {
+        def comps = type.recordComponents
+        def unknown = values.keySet() - (comps*.name as Set)
+        assert unknown.isEmpty() : "not components of ${type.simpleName}: ${unknown}"
+        def ctor = type.getDeclaredConstructor(comps*.type as Class[])
+        ctor.newInstance(comps.collect { values[it.name] } as Object[])
     }
 }

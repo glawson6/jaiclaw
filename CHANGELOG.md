@@ -14,6 +14,43 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 In progress on the `1.4.0-SNAPSHOT` line. Owed: `jaiclaw.security.default-tool-profile`
 flips `FULL` → `MINIMAL`; Part E Logto adapter; per-tool OAuth scopes.
 
+### Dependencies (2026-10-20)
+
+Tier 1 is current (Spring Boot 4.1.1, Spring AI 2.0.1, Embabel 1.5.3, Spring
+Shell 4.0.3, Spring Cloud 2025.1.3); Boot 4.1.2 / Spring AI 2.0.2 land 2026-10-22
+and Boot 4.2 / Spring AI 2.1 stay blocked until Embabel targets Boot 4.2.
+
+- **Apache Camel 4.21.0 → 4.23.0 (LTS)** — `camel-dependencies` 4.23.0 pins the
+  same Spring Boot 4.1.1 / Spring AI 2.0.1 we run. Behaviour changes to know:
+  `SSLContextParameters` defaults to TLSv1.2 minimum, `@PropertyInject` fails on
+  invalid values instead of defaulting, the Jasypt starter changed its default
+  algorithm, `CAMEL_COMPONENT_*` env vars now take effect. The two pipeline
+  modules that hardcoded `camel-core` 4.21.0 now use `${camel.version}`.
+- **Spock 2.4 → 2.5** (`groovy-5.0` classifier) and **Groovy 5.0.7 → 5.0.8**
+  (what Boot manages). Spock 2.5 throws on interactions declared against `null`
+  and keeps interactions alive in `cleanup`; nothing in the suite tripped.
+- **fabric8 kubernetes-client 7.1.0 → 8.0.0** — Java 17 baseline, Jackson 3
+  (`tools.jackson.*`, aligned with Boot 4), Vert.x 5 as the default HTTP
+  transport. `jaiclaw-tools-k8s` needed no code change.
+- **Drools 9.44.0.Final → 10.2.0** — DRL and KIE APIs unchanged; `drools-mvel`
+  is deprecated upstream in favour of `drools-engine` (still published, kept for
+  now). JDK 17+.
+- **Testcontainers 1.21.4 → 2.0.5** + **testcontainers-redis 2.2.4 → 3.0.0** —
+  `org.testcontainers:postgresql` is now `testcontainers-postgresql`,
+  `PostgreSQLContainer` moved to `org.testcontainers.postgresql`; JUnit 4
+  support removed (Spock unaffected).
+- **GitHub Copilot SDK 1.0.5-01 → 1.0.23** — the generated records grew
+  (`AssistantMessageEventData` 18 → 26 components), which broke positional
+  construction in the specs only; they now build records by component name.
+  `CopilotChatModel` and `CopilotToolMapper` needed no change.
+- JJWT 0.12.6 → 0.13.0; objenesis 3.5 → 3.6; maven-surefire 3.5.5 → 3.6.0;
+  maven-compiler 3.13.0 → 3.16.0; jacoco 0.8.12 → 0.8.15; JKube 1.19.0 → 1.20.0;
+  central-publishing-maven-plugin 0.9.0 → 0.12.0 in root and BOM, now
+  `waitUntil=validated` so `release.sh` no longer aborts at the publish-poll
+  timeout; `maven-gpg-plugin` aligned to 3.2.8 in the BOM; Maven wrapper 3.9.16;
+  explicit `commons-logging` versions dropped from the two CLI apps (Boot
+  manages it).
+
 ## [1.3.0] — 2026-10-07
 
 The **fail-closed release**. Full notes: [`releases/release-1.3.0.md`](releases/release-1.3.0.md).

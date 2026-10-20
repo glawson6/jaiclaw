@@ -15,7 +15,7 @@
     <description>Drools-based rules engine extension for JaiClaw agents — rule execution, configurable loaders, and LLM tool integration</description>
 
     <properties>
-        <drools.version>9.44.0.Final</drools.version>
+        <drools.version>10.2.0</drools.version>
         <!--
             Pin XStream to the latest patched version. Drools 9.44 pulls in
             XStream 1.4.20 (transitively via drools-xml-support); 1.4.21 is
