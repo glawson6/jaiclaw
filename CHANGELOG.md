@@ -31,7 +31,7 @@ notes: [`releases/release-1.3.1.md`](releases/release-1.3.1.md).
   targets Boot 4.2.
 
 - **Apache Camel 4.21.0 → 4.23.0 (LTS)** — `camel-dependencies` 4.23.0 pins the
-  same Spring Boot 4.1.1 / Spring AI 2.0.1 we run. Behaviour changes to know:
+  same Spring Boot 4.1 / Spring AI 2.0 line we run (the root POM's 4.1.2 wins). Behaviour changes to know:
   `SSLContextParameters` defaults to TLSv1.2 minimum, `@PropertyInject` fails on
   invalid values instead of defaulting, the Jasypt starter changed its default
   algorithm, `CAMEL_COMPONENT_*` env vars now take effect. The two pipeline
