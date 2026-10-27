@@ -54,7 +54,7 @@ public class ScaffoldMojo extends AbstractMojo {
      * default when the framework moves to a new Boot line. Override with
      * {@code -Djaiclaw.scaffold.springBootVersion=...}.
      */
-    @Parameter(property = "jaiclaw.scaffold.springBootVersion", defaultValue = "4.1.0")
+    @Parameter(property = "jaiclaw.scaffold.springBootVersion", defaultValue = "4.1.2")
     private String springBootVersion;
 
     @Override

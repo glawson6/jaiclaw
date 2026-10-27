@@ -40,8 +40,8 @@ public class ScaffoldMcpToolProvider implements McpToolProvider {
     // to a new Boot or JaiClaw line. Not user-configurable at the MCP layer:
     // adopters who need a pin declare `jaiclaw-version` / `spring-boot-version`
     // directly in the manifest YAML they submit.
-    private static final String DEFAULT_JAICLAW_VERSION = "1.0.0-SNAPSHOT";
-    private static final String DEFAULT_SPRING_BOOT_VERSION = "4.1.0";
+    private static final String DEFAULT_JAICLAW_VERSION = "1.3.1";
+    private static final String DEFAULT_SPRING_BOOT_VERSION = "4.1.2";
 
     private static ProjectManifest applyVersionDefaults(ProjectManifest manifest) {
         if (manifest.jaiclawVersion() == null || manifest.jaiclawVersion().isBlank()) {

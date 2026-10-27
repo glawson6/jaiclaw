@@ -28,6 +28,21 @@ if [ -f "./mvnw" ] && [ -f "./pom.xml" ]; then
     JAICLAW_DIR="."
 fi
 
+# ─── Version detection ────────────────────────────────────────────────────────
+# The jar names and image tags below follow the reactor version. Reading it
+# from pom.xml (no Maven start-up) replaces the 0.1.0-SNAPSHOT literals that
+# pinned these scripts to a version that stopped existing after 0.1.0: the
+# "already built?" checks never matched, so every launch rebuilt the whole
+# reactor, and docker compose looked for images that were never built.
+detect_jaiclaw_version() {
+    local pom="$1/pom.xml"
+    if [ -f "$pom" ]; then
+        grep -m1 '<version>' "$pom" | sed 's/.*<version>\(.*\)<\/version>.*/\1/'
+    fi
+}
+JAICLAW_VERSION="${JAICLAW_VERSION:-$(detect_jaiclaw_version "$JAICLAW_DIR")}"
+export JAICLAW_VERSION
+
 # Source persistent config pointer (written by quickstart --reconfigure or first-run prompt)
 [ -f "$HOME/.jaiclawrc" ] && source "$HOME/.jaiclawrc"
 
@@ -188,6 +203,10 @@ clone_repo() {
         run_step "Cloning JaiClaw repository..." git clone "$JAICLAW_REPO" "$JAICLAW_DIR"
     fi
     ok "Source code ready"
+    # In curl-install mode the clone happens after the top-level detection ran
+    # against a directory that did not exist yet; resolve the version now.
+    JAICLAW_VERSION="${JAICLAW_VERSION:-$(detect_jaiclaw_version "$JAICLAW_DIR")}"
+    export JAICLAW_VERSION
 }
 
 # ─── Build Docker image ──────────────────────────────────────────────────────
@@ -198,7 +217,7 @@ build_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing image..."
-        docker rmi io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-gateway-app:${JAICLAW_VERSION} 2>/dev/null || true
     fi
 
     # Check if we can build from source (requires Java 21)
@@ -223,14 +242,14 @@ build_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:${JAICLAW_VERSION} (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-gateway-app:${JAICLAW_VERSION} (${secs}s)"
         fi
     else
         # No Java — check if the image already exists
         debug "Checking for pre-built Docker image..."
-        if docker image inspect io.jaiclaw/jaiclaw-gateway-app:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-gateway-app:${JAICLAW_VERSION} &>/dev/null; then
             ok "Docker image already exists (skipping build)"
         else
             err "Cannot build Docker image — Java 21+ is required for the Maven build."
@@ -250,7 +269,7 @@ build_shell_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing shell image..."
-        docker rmi io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-shell:${JAICLAW_VERSION} 2>/dev/null || true
     fi
 
     if check_java; then
@@ -272,13 +291,13 @@ build_shell_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-shell:${JAICLAW_VERSION} (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-shell:${JAICLAW_VERSION} (${secs}s)"
         fi
     else
         debug "Checking for pre-built shell Docker image..."
-        if docker image inspect io.jaiclaw/jaiclaw-shell:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-shell:${JAICLAW_VERSION} &>/dev/null; then
             ok "Shell Docker image already exists (skipping build)"
         else
             err "Cannot build shell Docker image — Java 21+ is required for the Maven build."
@@ -293,7 +312,7 @@ build_cron_manager_image() {
     # Remove existing image when force-building
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-build requested — removing existing cron-manager image..."
-        docker rmi io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT 2>/dev/null || true
+        docker rmi io.jaiclaw/jaiclaw-cron-manager:${JAICLAW_VERSION} 2>/dev/null || true
     fi
 
     if check_java; then
@@ -315,13 +334,13 @@ build_cron_manager_image() {
         local mins=$(( elapsed / 60 ))
         local secs=$(( elapsed % 60 ))
         if [ "$mins" -gt 0 ]; then
-            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT (${mins}m ${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:${JAICLAW_VERSION} (${mins}m ${secs}s)"
         else
-            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT (${secs}s)"
+            ok "Docker image built: io.jaiclaw/jaiclaw-cron-manager:${JAICLAW_VERSION} (${secs}s)"
         fi
     else
         debug "Checking for pre-built cron-manager Docker image..."
-        if docker image inspect io.jaiclaw/jaiclaw-cron-manager:0.1.0-SNAPSHOT &>/dev/null; then
+        if docker image inspect io.jaiclaw/jaiclaw-cron-manager:${JAICLAW_VERSION} &>/dev/null; then
             ok "Cron Manager Docker image already exists (skipping build)"
         else
             err "Cannot build cron-manager Docker image — Java 21+ is required for the Maven build."
@@ -350,7 +369,7 @@ launch_shell() {
 build_local() {
     header "Building JaiClaw (Local)"
 
-    local jar="$JAICLAW_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-${JAICLAW_VERSION}.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
         info "Building JaiClaw from source with Maven..."
@@ -383,7 +402,7 @@ build_local() {
 build_shell_local() {
     header "Building JaiClaw Shell (Local)"
 
-    local jar="$JAICLAW_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-${JAICLAW_VERSION}.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
         info "Building JaiClaw Shell from source..."
@@ -451,7 +470,7 @@ launch_shell_local() {
 build_cron_manager_local() {
     header "Building Cron Manager (Local)"
 
-    local jar="$JAICLAW_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-0.1.0-SNAPSHOT.jar"
+    local jar="$JAICLAW_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-${JAICLAW_VERSION}.jar"
 
     if [ "$FORCE_BUILD" = true ] || [ ! -f "$jar" ]; then
         info "Building Cron Manager from source..."

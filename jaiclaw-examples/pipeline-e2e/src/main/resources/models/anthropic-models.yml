@@ -1,0 +1,59 @@
+# ============================================
+# Anthropic model definitions
+# ============================================
+# Overrides Embabel's default anthropic-models.yml to include both standard
+# Anthropic models and MiniMax models (via Anthropic-compatible API).
+#
+# The model_id is what gets sent as the "model" parameter in the API request.
+# Embabel's model registry keys on model_id — embabel.models.default-llm must
+# match one of these model_id values.
+#
+# For Anthropic:  EMBABEL_DEFAULT_LLM=claude-haiku-4-5 (or any claude-* below)
+# For MiniMax:    EMBABEL_DEFAULT_LLM=MiniMax-M2.7
+
+models:
+  # ========================================
+  # ANTHROPIC MODELS
+  # ========================================
+
+  - name: "claude_haiku_45"
+    model_id: "claude-haiku-4-5"
+    display_name: "Claude Haiku 4.5"
+    knowledge_cutoff_date: "2025-02-01"
+    max_tokens: 8192
+    pricing_model:
+      usd_per1m_input_tokens: 1.0
+      usd_per1m_output_tokens: 5.0
+
+  - name: "claude_sonnet_45"
+    model_id: "claude-sonnet-4-5"
+    display_name: "Claude Sonnet 4.5"
+    knowledge_cutoff_date: "2025-01-01"
+    max_tokens: 8192
+    pricing_model:
+      usd_per1m_input_tokens: 3.0
+      usd_per1m_output_tokens: 15.0
+
+  - name: "claude_sonnet_46"
+    model_id: "claude-sonnet-4-6"
+    display_name: "Claude Sonnet 4.6"
+    knowledge_cutoff_date: "2025-10-01"
+    max_tokens: 8192
+    pricing_model:
+      usd_per1m_input_tokens: 3.0
+      usd_per1m_output_tokens: 15.0
+
+  # ========================================
+  # MINIMAX MODELS (via Anthropic-compatible API)
+  # ========================================
+  # Requires: ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic
+  #           ANTHROPIC_API_KEY=<minimax-api-key>
+
+  - name: "minimax_m27"
+    model_id: "MiniMax-M2.7"
+    display_name: "MiniMax M2.7 (via Anthropic API)"
+    knowledge_cutoff_date: "2025-01-01"
+    max_tokens: 4096
+    pricing_model:
+      usd_per1m_input_tokens: 0.0
+      usd_per1m_output_tokens: 0.0

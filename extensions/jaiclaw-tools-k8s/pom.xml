@@ -14,9 +14,6 @@
     <name>JaiClaw :: Tools :: Kubernetes</name>
     <description>Kubernetes monitoring and management tools for JaiClaw agents</description>
 
-    <properties>
-        <fabric8.version>8.0.0</fabric8.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -26,7 +23,7 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>
-            <version>${fabric8.version}</version>
+            <!-- version: root dependencyManagement (fabric8 BOM, ${fabric8.version}) -->
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>

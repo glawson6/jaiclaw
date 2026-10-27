@@ -2,6 +2,26 @@
 
 This document tracks notable changes between JaiClaw releases.
 
+## 1.3.1 (2026-10-26)
+
+### Dependency refresh
+
+No JaiClaw API, configuration key or runtime behaviour changes. Spring Boot
+4.1.2, Spring Cloud 2025.1.4 (Spring AI held at 2.0.1 — 2.0.2 breaks Embabel
+against Anthropic-compatible proxies); Apache Camel 4.23.0 LTS (pins the
+same Boot 4.1 / Spring AI 2.0 line); Spock 2.5 / Groovy 5.0.8; fabric8
+kubernetes-client 8.0.0 (Jackson 3, Vert.x 5 transport); Drools 10.2.0;
+Testcontainers 2.0.5 + testcontainers-redis 3.0.0 (test scope); GitHub Copilot
+SDK 1.0.23; JJWT 0.13.0; build plugins (surefire 3.6.0, compiler 3.16.0,
+jacoco 0.8.15, JKube 1.20.0, central-publishing 0.12.0 with
+`waitUntil=validated`). `quickstart.sh` / `start.sh` now derive the version from
+`pom.xml` instead of a `0.1.0-SNAPSHOT` literal. Full table and the Camel 4.23
+behaviour notes in [`releases/release-1.3.1.md`](../../releases/release-1.3.1.md).
+
+### Breaking changes
+
+None. The `default-tool-profile` flip to `MINIMAL` remains scheduled for 1.4.0.
+
 ## 1.3.0 (2026-10-07)
 
 ### SOC 2 readiness

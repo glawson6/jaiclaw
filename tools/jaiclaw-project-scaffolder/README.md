@@ -61,7 +61,7 @@ description: My awesome bot              # REQUIRED. Used in pom.xml and README
 group-id: com.example                    # Default: com.example
 java-package: com.example.mybot         # Default: derived from group-id + sanitized name
 version: 0.1.0-SNAPSHOT                  # Default: 0.1.0-SNAPSHOT
-jaiclaw-version: 0.3.0-SNAPSHOT          # Default: 0.3.0-SNAPSHOT
+jaiclaw-version: 1.3.1                   # Default: the plugin's own version (mojo) / 1.3.1 (MCP tool)
 
 # Maven parent strategy
 parent: standalone                       # standalone|jaiclaw (default: standalone)
@@ -421,7 +421,7 @@ The `parent` field controls the Maven parent POM strategy. This is the most sign
 |--------|----------------------|-----------|
 | **Maven parent** | `spring-boot-starter-parent` | `jaiclaw-parent` |
 | **Version management** | `jaiclaw-bom` import in `<dependencyManagement>` | Inherited from parent POM |
-| **Test deps** | Explicit versions (Groovy 4.0.24, Spock 2.3) | Inherited — no versions in POM |
+| **Test deps** | Explicit versions (Groovy 5.0.8, Spock 2.5) | Inherited — no versions in POM |
 | **Build plugins** | gmavenplus, surefire config declared | Inherited — lean `<build>` |
 | **JKube/Docker** | Inline `<profiles>` block | Inherited from parent's k8s profile |
 | **POM size** | ~150 lines | ~70 lines |
@@ -471,7 +471,7 @@ The only manifest difference is one line: `parent: jaiclaw`. The generated POM i
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.14</version>
+    <version>4.1.2</version>
     <relativePath/>
 </parent>
 
@@ -488,7 +488,7 @@ The only manifest difference is one line: `parent: jaiclaw`. The generated POM i
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-bom</artifactId>
-            <version>0.3.0-SNAPSHOT</version>
+            <version>1.3.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -502,7 +502,7 @@ The only manifest difference is one line: `parent: jaiclaw`. The generated POM i
 <parent>
     <groupId>io.jaiclaw</groupId>
     <artifactId>jaiclaw-parent</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>1.3.1</version>
     <relativePath/>
 </parent>
 
@@ -561,7 +561,7 @@ shell:> scaffold create --manifest /path/to/my-bot.yml
 
 **Maven Plugin:**
 ```bash
-mvn io.jaiclaw:jaiclaw-maven-plugin:0.3.0-SNAPSHOT:scaffold \
+mvn io.jaiclaw:jaiclaw-maven-plugin:1.3.1:scaffold \
     -Djaiclaw.scaffold.manifest=my-bot.yml \
     -Djaiclaw.scaffold.outputDir=./projects
 ```

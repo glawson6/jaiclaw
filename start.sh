@@ -31,6 +31,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_DIR="$SCRIPT_DIR/docker-compose"
 
+# ─── Version detection ────────────────────────────────────────────────────────
+# The jar names and image tags below follow the reactor version. Reading it
+# from pom.xml (no Maven start-up) replaces the ${JAICLAW_VERSION} literals that
+# pinned these scripts to a version that stopped existing after 0.1.0: the
+# "already built?" checks never matched, so every launch rebuilt the whole
+# reactor, and docker compose looked for images that were never built.
+detect_jaiclaw_version() {
+    local pom="$1/pom.xml"
+    if [ -f "$pom" ]; then
+        grep -m1 '<version>' "$pom" | sed 's/.*<version>\(.*\)<\/version>.*/\1/'
+    fi
+}
+JAICLAW_VERSION="${JAICLAW_VERSION:-$(detect_jaiclaw_version "$SCRIPT_DIR")}"
+export JAICLAW_VERSION
+
 # Shared helpers (colors, logging, API key resolution)
 source "$SCRIPT_DIR/scripts/common.sh"
 
@@ -137,7 +152,7 @@ ensure_local_build() {
 
 ensure_image() {
     local module="${1:-jaiclaw-gateway-app}"
-    local image="io.jaiclaw/${module}:0.1.0-SNAPSHOT"
+    local image="io.jaiclaw/${module}:${JAICLAW_VERSION}"
     if [ "$FORCE_BUILD" = true ]; then
         info "Force-building Docker image for ${module}..."
         docker rmi "$image" 2>/dev/null || true
@@ -247,7 +262,7 @@ cmd_shell() {
     load_env
     check_auth_status "$SCRIPT_DIR/scripts/auth-status.sh"
     ensure_java
-    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-0.1.0-SNAPSHOT.jar"
+    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-shell/target/jaiclaw-shell-${JAICLAW_VERSION}.jar"
 
     echo "Starting interactive shell..."
     echo ""
@@ -289,7 +304,7 @@ cmd_local() {
     check_auth_status "$SCRIPT_DIR/scripts/auth-status.sh"
     resolve_api_key
     ensure_java
-    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-0.1.0-SNAPSHOT.jar"
+    ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-gateway-app/target/jaiclaw-gateway-app-${JAICLAW_VERSION}.jar"
 
     echo "Starting gateway on http://localhost:${SERVER_PORT:-8080}..."
     print_security_info
@@ -342,7 +357,7 @@ cmd_cron() {
         resolve_api_key
         ensure_java
 
-        ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-0.1.0-SNAPSHOT.jar"
+        ensure_local_build "$SCRIPT_DIR/apps/jaiclaw-cron-manager/target/jaiclaw-cron-manager-${JAICLAW_VERSION}.jar"
 
         echo "Starting cron-manager on http://localhost:${JAICLAW_CRON_MANAGER_PORT:-8090}..."
         print_security_info

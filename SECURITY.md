@@ -116,7 +116,8 @@ Several security knobs are **opt-in** by design:
   which is fail-*open*: api-key callers and every channel-originated message
   reach the complete tool surface. The permissive default was kept for one
   minor so the fix did not silently strip access from existing deployments.
-  **Set it explicitly.** It becomes `MINIMAL` in 1.3.0.
+  **Set it explicitly.** It becomes `MINIMAL` in 1.4.0 (moved from 1.3.0 — see
+  "Known weak defaults" below).
 - **`jaiclaw.security.api-keys[]`** — replaces the single shared key. Each key
   binds to exactly one tenant and one role, so revoking a capability is
   deleting one key and a leaked key exposes one (tenant, role) pair. The

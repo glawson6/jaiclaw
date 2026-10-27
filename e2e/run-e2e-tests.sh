@@ -12,7 +12,7 @@
 #   E2E_SCENARIOS=all ./e2e/run-e2e-tests.sh             # all 6 scenarios
 #
 # Environment Variables:
-#   E2E_SCENARIOS       Comma-separated list (1,2,3,4,5,6) or "all" (default: 1,2,3,4,5,6)
+#   E2E_SCENARIOS       Comma-separated list (1,2,3,4,5,6) or "all" (default: 1,2,3,4,6 — 5 needs Docker)
 #   AI_PROVIDER         Provider name: anthropic, openai, gemini (default: anthropic)
 #   ANTHROPIC_API_KEY   API key for Anthropic
 #   ANTHROPIC_BASE_URL  Optional base URL override (e.g., MiniMax endpoint)

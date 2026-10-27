@@ -79,13 +79,15 @@ jobs:
         # `-Pk8s` activates JKube's kubernetes-maven-plugin which
         # produces native-platform Docker images tagged
         # `io.jaiclaw/<artifactId>:<version>`.
-        # `-am` isn't needed here — the install step above populated
-        # every dep — but `-pl` is required so we only rebuild these
-        # three apps, not the whole reactor.
+        # No `-am`: the install step above populated every dep, and with an
+        # explicit `k8s:build` goal `-am` makes JKube build a throwaway image
+        # for every upstream module (the root k8s profile configures the plugin
+        # reactor-wide; only the app poms bind an execution). `-pl` keeps it to
+        # the three apps.
         run: |
           ./mvnw package k8s:build \
             -pl :jaiclaw-gateway-app,:jaiclaw-shell,:jaiclaw-cli \
-            -am -Pk8s -DskipTests -B -o
+            -Pk8s -DskipTests -B -o
 
       - name: List built images
         # Show what landed on the runner's Docker daemon — useful for

@@ -14,11 +14,21 @@ hints, full lists of new examples), see `releases/release-X.Y.Z.md`.
 In progress on the `1.4.0-SNAPSHOT` line. Owed: `jaiclaw.security.default-tool-profile`
 flips `FULL` → `MINIMAL`; Part E Logto adapter; per-tool OAuth scopes.
 
-### Dependencies (2026-10-20)
+## [1.3.1] — 2026-10-26
 
-Tier 1 is current (Spring Boot 4.1.1, Spring AI 2.0.1, Embabel 1.5.3, Spring
-Shell 4.0.3, Spring Cloud 2025.1.3); Boot 4.1.2 / Spring AI 2.0.2 land 2026-10-22
-and Boot 4.2 / Spring AI 2.1 stay blocked until Embabel targets Boot 4.2.
+Dependency refresh; no JaiClaw API, configuration or behaviour changes. Full
+notes: [`releases/release-1.3.1.md`](releases/release-1.3.1.md).
+
+### Dependencies
+
+- **Spring Boot 4.1.1 → 4.1.2**, **Spring Cloud 2025.1.3 → 2025.1.4**. Boot
+  4.1.2 moves managed Spring Framework to 7.0.10, Spring Security 7.1.2, Jackson
+  3.1.7, Netty 4.2.19. **Spring AI stays at 2.0.1**: 2.0.2 was tried and
+  reverted because Embabel 1.5.3's Anthropic client gets 401s from an
+  Anthropic-compatible proxy under the new Anthropic SDK (JaiClaw's own Spring
+  AI path is fine). Embabel 1.5.3, Spring Shell 4.0.3 and Camel 4.23.0 are the
+  latest on their lines; Boot 4.2 / Spring AI 2.1 stay blocked until Embabel
+  targets Boot 4.2.
 
 - **Apache Camel 4.21.0 → 4.23.0 (LTS)** — `camel-dependencies` 4.23.0 pins the
   same Spring Boot 4.1.1 / Spring AI 2.0.1 we run. Behaviour changes to know:
@@ -50,6 +60,24 @@ and Boot 4.2 / Spring AI 2.1 stay blocked until Embabel targets Boot 4.2.
   timeout; `maven-gpg-plugin` aligned to 3.2.8 in the BOM; Maven wrapper 3.9.16;
   explicit `commons-logging` versions dropped from the two CLI apps (Boot
   manages it).
+
+### Fixed
+
+- `jaiclaw-starter-k8s-monitor` resolved fabric8 `kubernetes-client` 7.4.1 (Vert.x
+  4.5) because Spring Cloud's BOM pins it and was imported first; fabric8 is now
+  managed through `io.fabric8:kubernetes-client-bom` imported ahead of Spring
+  Cloud, so every consumer gets 8.0.0 / Vert.x 5.2.0.
+- `jaiclaw-example-pipeline-e2e` registers `MiniMax-M2.7` as an Embabel model and
+  lets `ANTHROPIC_MODEL` drive `embabel.models.default-llm`, so a MiniMax-routed
+  key no longer relies on MiniMax's Claude-name mapping (which changed on their
+  side and broke e2e 6g).
+- `quickstart.sh` / `start.sh` pinned jar paths and image tags to
+  `0.1.0-SNAPSHOT`, so every `--local` launch rebuilt the reactor and Docker
+  mode asked compose for images that were never built. Both now read the
+  version from `pom.xml` and export `JAICLAW_VERSION`.
+- `e2e/run-e2e-tests.sh` header now states the real default scenario set.
+- Scaffolder defaults (`ScaffoldMojo`, `ScaffoldMcpToolProvider`, scaffolder
+  README) referenced Spring Boot 4.1.0 and pre-1.0 JaiClaw versions.
 
 ## [1.3.0] — 2026-10-07
 
@@ -661,7 +689,8 @@ Initial commit of the JaiClaw port of OpenClaw. Java 21 / Spring Boot
 
 ---
 
-[Unreleased]: https://github.com/glawson6/jaiclaw/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/glawson6/jaiclaw/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/glawson6/jaiclaw/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/glawson6/jaiclaw/compare/v1.2.0...v1.3.0
 [0.7.1]: https://github.com/glawson6/jaiclaw/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/glawson6/jaiclaw/compare/v0.6.0...v0.7.0

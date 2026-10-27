@@ -14,10 +14,10 @@
 
 <p align="center">
   <a href="https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html"><img src="https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white" alt="Java 21"></a>
-  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.1"></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.2"></a>
   <a href="https://docs.spring.io/spring-ai/reference/"><img src="https://img.shields.io/badge/Spring%20AI-2.0.1-6DB33F?logo=spring&logoColor=white" alt="Spring AI 2.0.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.3.0-blue" alt="Maven Central 1.3.0"></a>
+  <a href="https://central.sonatype.com/artifact/io.jaiclaw/jaiclaw-bom"><img src="https://img.shields.io/badge/Maven%20Central-1.3.1-blue" alt="Maven Central 1.3.1"></a>
 </p>
 
 <p align="center">
@@ -34,7 +34,9 @@
 
 JaiClaw *(pronounced "Jay-Claw")* is a Java framework for building production AI agents. The same codebase scales from a developer running `curl | bash` on a laptop to a horizontally-scaled multi-tenant SaaS platform serving thousands of users across dozens of organizations.
 
-Built on Java 21, Spring Boot 4.1.1, Spring AI 2.0.1, Embabel Agent 1.5.3, Spring Shell 4.0.3, and Apache Camel 4.21.0 — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
+Built on Java 21, Spring Boot 4.1.2, Spring AI 2.0.1, Embabel Agent 1.5.3, Spring Shell 4.0.3, and Apache Camel 4.23.0 LTS — JaiClaw treats the AI agent runtime the way Spring Boot treats the web tier: a Java library with explicit SPIs, a published BOM, conditional auto-configuration, and an API stability program. Bring it in via the JaiClaw BOM, compose the starters you need, implement the SPIs your business requires, ship.
+
+**1.3.1 released to Maven Central** on 2026-10-26 — a dependency refresh with no breaking changes: Spring Boot 4.1.2, Camel 4.23.0 LTS, Spock 2.5, fabric8 8, Drools 10, Testcontainers 2 ([notes](releases/release-1.3.1.md)).
 
 **1.3.0 released to Maven Central** on 2026-10-07 — the *fail-closed* release. Security controls that existed but could not be reached, or silently did nothing, now refuse where they used to proceed: the tool-approval gate denies when no handler can be asked, Slack and Telegram reject webhooks when their secret is blank, Discord verifies Ed25519 interaction signatures (with a replay window), the audit hash chain is actually verified on a schedule, and encryption at rest is wired end to end. It adds **human-in-the-loop approval over chat** (code-bound replies, approver identity), a **`soc2` compliance profile**, usable `MINIMAL` / `WEBHOOK_SAFE` tool profiles, and cached 1Password lookups.
 
@@ -52,9 +54,9 @@ It started as a ground-up Java port of [OpenClaw](https://github.com/openclaw/op
 
 For Java teams building their own AI agent product on top of a proven foundation. Pull JaiClaw via the BOM, compose the [Spring Boot starters](jaiclaw-starters/) you need, implement the SPIs for your business domain. The framework gets out of your way.
 
-#### <a name="distribution"></a>Distribution — 1.3.0 on Maven Central
+#### <a name="distribution"></a>Distribution — 1.3.1 on Maven Central
 
-1.3.0 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
+1.3.1 is published to **Maven Central**. No `<repositories>` block, no credentials, no snapshot repos — the BOM import is all adopters need:
 
 ```xml
 <dependencyManagement>
@@ -62,7 +64,7 @@ For Java teams building their own AI agent product on top of a proven foundation
         <dependency>
             <groupId>io.jaiclaw</groupId>
             <artifactId>jaiclaw-bom</artifactId>
-            <version>1.3.0</version>
+            <version>1.3.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -70,7 +72,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </dependencyManagement>
 ```
 
-**Alternative mirror — TapTech Nexus.** The same 1.3.0 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
+**Alternative mirror — TapTech Nexus.** The same 1.3.1 artifacts are also mirrored at `https://tooling.taptech.net/repository/maven-releases/`. Adopters already wired for Nexus can keep pointing there; no functional difference.
 
 ```xml
 <repositories>
@@ -83,7 +85,7 @@ For Java teams building their own AI agent product on top of a proven foundation
 </repositories>
 ```
 
-Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changed that. See [releases/release-1.3.0.md](releases/release-1.3.0.md) for the changelog and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
+Prior release 1.0.0 was Nexus-only (Embabel wasn't yet on Central); 1.1.0 changed that. See [releases/release-1.3.1.md](releases/release-1.3.1.md) and [releases/release-1.3.0.md](releases/release-1.3.0.md) for the changelogs and [docs/spring-boot-4-upgrade/02-embabel-gate.md](docs/spring-boot-4-upgrade/02-embabel-gate.md) for the version-line history.
 
 Don't want to wire up the project structure by hand? Skip it. The [scaffolding tool](#scaffolding-a-new-jaiclaw-project) generates a complete, runnable Maven project from a ~10-line YAML manifest.
 

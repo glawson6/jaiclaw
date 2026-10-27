@@ -123,7 +123,7 @@ jaiclaw-core  (pure Java — NO Spring dependency)
   +---> jaiclaw-canvas  (A2UI artifact rendering, HTML file management)
   +---> jaiclaw-code  (file editing, code generation tools)
   +---> jaiclaw-messaging  (MCP server: channel messaging, sessions, agent-routed chat)
-  +---> jaiclaw-rules  (Drools 9.44 rule execution — text-analysis, decision, validation, tax)
+  +---> jaiclaw-rules  (Drools 10.2 rule execution — text-analysis, decision, validation, tax)
   +---> jaiclaw-pipeline  (declarative multi-stage pipeline DSL; depends on jaiclaw-camel, jaiclaw-config, jaiclaw-core, jackson-dataformat-yaml; optional: jaiclaw-audit, jaiclaw-plugin-sdk, jaiclaw-security, jaiclaw-channel-api, spring-boot-actuator, spring-web, camel-quartz-starter)
   +---> jaiclaw-tasks  (async task lifecycle + JSON/H2/Redis/Postgres stores via TaskStoreProvider SPI, virtual-thread + Camel SEDA execution, tenant-routing store, lease columns)
   +---> jaiclaw-kanban  (user-defined-state kanban over jaiclaw-tasks: YAML/H2 board store, TaskStateEngine SPI [graph + optional Spring State Machine], TaskTransitionService with bounded TransitionHistory + optional jsonl journal, Spring TaskStateChanged events + first-class HookEvent, BoardAsciiRenderer over jaiclaw-ascii-render, REST + SSE + Actuator + MCP/agent tools, ColumnProcessorManager + AgentColumnProcessor with idempotency ledger, KanbanRecoveryManager + StaleRunningDetector)
@@ -479,7 +479,7 @@ env:
 | Docker image build (JKube)       | Done         | `-Pk8s` profile in POMs      |
 | HTTP proxy support               | Done         | `jaiclaw-core` + `jaiclaw-config` + starter |
 | Maven plugin (CI token check)   | Done         | `jaiclaw-maven-plugin`         |
-| Rules engine (Drools 9.44)     | Done         | `jaiclaw-rules`                |
+| Rules engine (Drools 10.2)     | Done         | `jaiclaw-rules`                |
 | Async task store SPI + JSON/H2/Redis/Postgres backends | Done | `jaiclaw-tasks`            |
 | Kanban boards (REST + SSE + ASCII + MCP + processors) | Done | `jaiclaw-kanban`           |
 | **Helm chart**                   | **Needed**   | `helm/spring-boot-app/`      |
