@@ -165,22 +165,27 @@ public class DefaultSubAgentLauncher implements SubAgentLauncher {
             String summary = answer == null ? null : answer.content();
 
             SubAgentResult result = SubAgentResult.completed(handleId, childSessionKey, summary, childBudget);
-            handle.future().complete(result);
+            // Fire before completing the future: a parent parked on await() resumes
+            // the instant complete() runs, and observers (audit, metrics, specs)
+            // must already have seen the end event by then. The other order left a
+            // window in which the result was visible but the event had not fired —
+            // caught by DelegationE2ESpec on a slow CI runner.
             fire(() -> SubAgentEndedEvent.of(parent.agentId(), childSessionKey, handleId,
                     parentSessionKey, SubAgentStatus.COMPLETED.name(), summary, childBudget, null));
+            handle.future().complete(result);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            handle.future().complete(SubAgentResult.cancelled(handleId, childSessionKey, 0));
             fire(() -> SubAgentEndedEvent.of(parent.agentId(), childSessionKey, handleId,
                     parentSessionKey, SubAgentStatus.CANCELLED.name(), null, 0,
                     "Interrupted before completion"));
+            handle.future().complete(SubAgentResult.cancelled(handleId, childSessionKey, 0));
         } catch (Throwable t) {
             String message = unwrap(t);
             log.warn("Subagent {} failed: {}", handleId, message);
-            handle.future().complete(SubAgentResult.failed(handleId, childSessionKey, message, 0));
             fire(() -> SubAgentEndedEvent.of(parent.agentId(), childSessionKey, handleId,
                     parentSessionKey, SubAgentStatus.FAILED.name(), null, 0, message));
+            handle.future().complete(SubAgentResult.failed(handleId, childSessionKey, message, 0));
         } finally {
             if (acquired) {
                 permits.release();
